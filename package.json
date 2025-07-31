@@ -1,0 +1,20 @@
+{
+    "name": "multi-fleet-managment",
+    "version": "1.0.0",
+    "description": "",
+    "main": "index.js",
+    "scripts": {
+        "dev": "pnpm --parallel run dev",
+        "build": "pnpm --parallel run build",
+        "start": "pnpm --parallel run start",
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "workspaces": [
+        "packages/client",
+        "packages/server"
+    ],
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "packageManager": "pnpm@10.13.1"
+}
