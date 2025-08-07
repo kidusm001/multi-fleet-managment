@@ -24,6 +24,8 @@ pnpm-debug.log*
 # Editor directories and files
 .idea/
 .vscode/
+.cursor/
+.taskmaster/
 *.suo
 *.ntvs*
 *.njsproj
@@ -33,3 +35,19 @@ pnpm-debug.log*
 # OS generated files
 .DS_Store
 Thumbs.db
+
+yarn-error.log*
+dev-debug.log
+# Environment variables
+.idea
+.vscode
+# OS specific
+
+# Task files
+# tasks.json
+# tasks/ 
+
+
+# ai
+# taskmaster
+*.mdc
