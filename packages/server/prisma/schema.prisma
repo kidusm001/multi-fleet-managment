@@ -17,6 +17,7 @@ enum Role {
   ADMIN
   MANAGER
   DRIVER
+  EMPLOYEE
 }
 
 enum VehicleStatus {
@@ -24,6 +25,7 @@ enum VehicleStatus {
   IN_USE
   MAINTENANCE
   OUT_OF_SERVICE
+  INACTIVE
 }
 
 enum NotificationType {
@@ -39,6 +41,24 @@ enum NotificationStatus {
   ARCHIVED
 }
 
+enum RouteStatus {
+  ACTIVE
+  INACTIVE
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSED
+  CANCELLED
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 model Tenant {
   id        String   @id @default(cuid())
   name      String
@@ -51,40 +71,162 @@ model Tenant {
   routes              Route[]
   stops               Stop[]
   vehicles            Vehicle[]
+  vehicleCategories   VehicleCategory[]
   vehicleAvailability VehicleAvailability[]
   payrollReports      PayrollReport[]
   notifications       Notification[]
+  departments         Department[]
+  shifts              Shift[]
+  employees           Employee[]
+  vehicleRequests     VehicleRequest[]
 
   @@map("tenants")
 }
 
 model User {
-  id       String @id @default(cuid())
-  email    String @unique
-  password String
-  role     Role   @default(DRIVER)
-  tenantId String
+  id            String   @id @default(cuid())
+  email         String   @unique
+  password      String?
+  name          String?
+  emailVerified Boolean  @default(false)
+  image         String?
+  role          Role     @default(EMPLOYEE)
+  tenantId      String
+  banned        Boolean  @default(false)
+  banReason     String?
+  banExpires    DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   // Relations
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant                Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  sessions              Session[]
+  accounts              Account[]
+  seenNotifications     Notification[] @relation("NotificationSeenBy")
 
   // Indexes
   @@index([tenantId])
   @@map("users")
 }
 
+model Session {
+  id        String   @id @default(cuid())
+  expiresAt DateTime
+  token     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
+  impersonatedBy String?
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model Account {
+  id                    String    @id @default(cuid())
+  accountId             String
+  providerId            String
+  userId                String
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("accounts")
+}
+
+model Department {
+  id        String     @id @default(cuid())
+  name      String
+  tenantId  String
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  // Relations
+  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  employees Employee[]
+
+  // Indexes
+  @@index([tenantId])
+  @@map("departments")
+}
+
+model Shift {
+  id        String   @id @default(cuid())
+  name      String
+  startTime DateTime
+  endTime   DateTime
+  timeZone  String
+  tenantId  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  tenant              Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  employees           Employee[]
+  routes              Route[]
+  vehicleAvailability VehicleAvailability[]
+
+  // Indexes
+  @@index([tenantId])
+  @@map("shifts")
+}
+
+model Employee {
+  id           String   @id @default(cuid())
+  name         String
+  location     String?
+  assigned     Boolean  @default(false)
+  departmentId String
+  shiftId      String
+  stopId       String?  @unique
+  tenantId     String
+  deleted      Boolean  @default(false)
+  deletedAt    DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  department Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  shift      Shift      @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  stop       Stop?      @relation(fields: [stopId], references: [id], onDelete: SetNull)
+
+  // Indexes
+  @@index([tenantId])
+  @@index([departmentId])
+  @@index([shiftId])
+  @@map("employees")
+}
+
 model Driver {
-  id              String  @id @default(cuid())
+  id              String   @id @default(cuid())
   name            String
-  email           String
+  email           String?
   phone           String?
-  licenseNumber   String  @unique
+  licenseNumber   String   @unique
+  phoneNumber     String?
+  status          String   @default("active") // active, off-duty, on-break
   experienceYears Int?
-  isActive        Boolean @default(true)
+  rating          Float?   @default(0.0)
+  isActive        Boolean  @default(true)
   tenantId        String
+  deleted         Boolean  @default(false)
+  deletedAt       DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -93,48 +235,124 @@ model Driver {
   tenant              Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   vehicleAvailability VehicleAvailability[]
   payrollReports      PayrollReport[]
+  assignedVehicles    Vehicle[]             @relation("VehicleDriver")
 
   // Indexes
   @@index([tenantId])
   @@map("drivers")
 }
 
-model Route {
-  id          String  @id @default(cuid())
-  name        String
-  description String?
-  isActive    Boolean @default(true)
-  tenantId    String
+model VehicleCategory {
+  id       String @id @default(cuid())
+  name     String
+  capacity Int    @default(0)
+  tenantId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  vehicles        Vehicle[]
+  vehicleRequests VehicleRequest[]
+
+  // Indexes
+  @@index([tenantId])
+  @@map("vehicle_categories")
+}
+
+model Vehicle {
+  id              String        @id @default(cuid())
+  plateNumber     String        @unique
+  name            String?
+  model           String
+  make            String?
+  type            String        @default("in-house") // in-house or outsourced
+  vendor          String?       // For outsourced vehicles
+  capacity        Int
+  year            Int?
+  status          VehicleStatus @default(AVAILABLE)
+  lastMaintenance DateTime?
+  nextMaintenance DateTime?
+  dailyRate       Decimal?      @db.Decimal(10, 2)
+  isActive        Boolean       @default(true)
+  categoryId      String?
+  driverId        String?       // Assigned driver
+  tenantId        String
+  deleted         Boolean       @default(false)
+  deletedAt       DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   // Relations
   tenant              Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  stops               Stop[]
+  category            VehicleCategory?      @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  driver              Driver?               @relation("VehicleDriver", fields: [driverId], references: [id], onDelete: SetNull)
   vehicleAvailability VehicleAvailability[]
+  payrollReports      PayrollReport[]
+  routes              Route[]
 
   // Indexes
   @@index([tenantId])
-  @@map("routes")
+  @@index([categoryId])
+  @@index([driverId])
+  @@map("vehicles")
 }
 
-model Stop {
-  id        String  @id @default(cuid())
-  name      String
-  latitude  Float?
-  longitude Float?
-  address   String?
-  order     Int
-  routeId   String
-  tenantId  String
+model Route {
+  id            String      @id @default(cuid())
+  name          String
+  description   String?
+  vehicleId     String?
+  shiftId       String?
+  date          DateTime?
+  startTime     DateTime?
+  endTime       DateTime?
+  totalDistance Float?
+  totalTime     Float?
+  status        RouteStatus @default(ACTIVE)
+  isActive      Boolean     @default(true)
+  tenantId      String
+  deleted       Boolean     @default(false)
+  deletedAt     DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   // Relations
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  route  Route  @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  tenant              Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  vehicle             Vehicle?              @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  shift               Shift?                @relation(fields: [shiftId], references: [id], onDelete: SetNull)
+  stops               Stop[]
+  vehicleAvailability VehicleAvailability[]
+
+  // Indexes
+  @@index([tenantId])
+  @@index([vehicleId])
+  @@index([shiftId])
+  @@map("routes")
+}
+
+model Stop {
+  id                   String    @id @default(cuid())
+  name                 String
+  latitude             Float?
+  longitude            Float?
+  address              String?
+  sequence             Int?      @default(0)
+  order                Int       @default(0)
+  routeId              String?
+  estimatedArrivalTime DateTime?
+  tenantId             String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  route    Route?    @relation(fields: [routeId], references: [id], onDelete: SetNull)
+  employee Employee?
 
   // Indexes
   @@index([tenantId])
@@ -142,37 +360,16 @@ model Stop {
   @@map("stops")
 }
 
-model Vehicle {
-  id              String        @id @default(cuid())
-  plateNumber     String        @unique
-  model           String
-  capacity        Int
-  year            Int?
-  status          VehicleStatus @default(AVAILABLE)
-  lastMaintenance DateTime?
-  isActive        Boolean       @default(true)
-  tenantId        String
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  tenant              Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  vehicleAvailability VehicleAvailability[]
-
-  // Indexes
-  @@index([tenantId])
-  @@map("vehicles")
-}
-
 model VehicleAvailability {
   id        String   @id @default(cuid())
   date      DateTime
   startTime DateTime
   endTime   DateTime
+  available Boolean  @default(true)
   vehicleId String
   driverId  String
-  routeId   String
+  routeId   String?
+  shiftId   String?
   tenantId  String
 
   createdAt DateTime @default(now())
@@ -182,63 +379,130 @@ model VehicleAvailability {
   tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
   driver  Driver  @relation(fields: [driverId], references: [id], onDelete: Cascade)
-  route   Route   @relation(fields: [routeId], references: [id], onDelete: Cascade)
+  route   Route?  @relation(fields: [routeId], references: [id], onDelete: SetNull)
+  shift   Shift?  @relation(fields: [shiftId], references: [id], onDelete: SetNull)
 
   // Indexes
   @@index([tenantId])
   @@index([vehicleId])
   @@index([driverId])
   @@index([routeId])
+  @@index([shiftId])
   @@index([date])
+  @@unique([vehicleId, shiftId, date])
   @@map("vehicle_availability")
 }
 
 model PayrollReport {
-  id            String    @id @default(cuid())
-  period        String // e.g., "2024-01", "Q1-2024"
-  totalAmount   Float
-  hoursWorked   Float?
-  overtimeHours Float?
-  deductions    Float?
-  bonuses       Float?
-  generatedAt   DateTime  @default(now())
-  paidAt        DateTime?
-  driverId      String
-  tenantId      String
+  id               String        @id @default(cuid())
+  vehicleId        String?
+  driverId         String?
+  workedDays       Int?
+  dailyRate        Decimal?      @db.Decimal(10, 2)
+  totalPayment     Decimal       @db.Decimal(10, 2)
+  payDate          DateTime?
+  period           String        // e.g., "2024-01", "Q1-2024"
+  month            String?
+  year             Int?
+  status           PaymentStatus @default(PENDING)
+  maintenanceCost  Decimal?      @db.Decimal(10, 2)
+  insuranceCost    Decimal?      @db.Decimal(10, 2)
+  otherExpenses    Decimal?      @db.Decimal(10, 2)
+  efficiency       Int           @default(0) // Efficiency percentage
+  utilizationRate  Int           @default(0) // Utilization rate percentage
+  totalAmount      Float?
+  hoursWorked      Float?
+  overtimeHours    Float?
+  deductions       Float?
+  bonuses          Float?
+  generatedAt      DateTime      @default(now())
+  paidAt           DateTime?
+  tenantId         String
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   // Relations
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  driver Driver @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  tenant  Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  vehicle Vehicle? @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  driver  Driver?  @relation(fields: [driverId], references: [id], onDelete: SetNull)
 
   // Indexes
   @@index([tenantId])
+  @@index([vehicleId])
   @@index([driverId])
   @@index([period])
   @@map("payroll_reports")
 }
 
 model Notification {
-  id       String             @id @default(cuid())
-  title    String
-  message  String
-  type     NotificationType   @default(INFO)
-  status   NotificationStatus @default(UNREAD)
-  userId   String? // Nullable for system-wide notifications
-  tenantId String
+  id               String             @id @default(cuid())
+  title            String
+  message          String
+  type             NotificationType   @default(INFO)
+  status           NotificationStatus @default(UNREAD)
+  toRoles          String[] // Array of role strings
+  fromRole         String?
+  importance       String             @default("Medium")
+  localTime        String?
+  relatedEntityId  String?
+  userId           String? // Nullable for system-wide notifications
+  tenantId         String
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   // Relations
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  seenBy User[] @relation("NotificationSeenBy")
 
   // Indexes
   @@index([tenantId])
   @@index([userId])
   @@index([status])
   @@index([type])
+  @@index([createdAt])
   @@map("notifications")
+}
+
+model VehicleRequest {
+  id           String         @id @default(cuid())
+  name         String
+  licensePlate String
+  categoryId   String?
+  dailyRate    Float?
+  capacity     Int
+  type         String
+  model        String
+  vendor       String?
+  status       ApprovalStatus @default(PENDING)
+  requestedBy  String // Role of the requester
+  approvedBy   String? // Role of the approver
+  approvedAt   DateTime?
+  comment      String? // For rejection reasons or notes
+  tenantId     String
+
+  requestedAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  tenant   Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  category VehicleCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  // Indexes
+  @@index([tenantId])
+  @@index([categoryId])
+  @@map("vehicle_requests")
+}
+
+model Verification {
+  id         String    @id @default(cuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime? @default(now())
+  updatedAt  DateTime? @updatedAt
+
+  @@map("verifications")
 }
