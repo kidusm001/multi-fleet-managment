@@ -42,7 +42,8 @@ export const auth = betterAuth({
         input: false,
       },
       banExpires: {
-        type: "string",
+        // Matches DateTime? in Prisma schema
+        type: "date",
         required: false,
         input: false,
       },
@@ -51,7 +52,8 @@ export const auth = betterAuth({
   plugins: [
     admin({
       defaultRole: "MANAGER",
-      adminRole: ["ADMIN", "SUPER_ADMIN"],
+      // Only roles present in Role enum
+      adminRole: ["ADMIN"],
     }),
   ],
   trustedOrigins: [
