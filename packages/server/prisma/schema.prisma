@@ -17,7 +17,6 @@ enum Role {
   ADMIN
   MANAGER
   DRIVER
-  EMPLOYEE
 }
 
 enum VehicleStatus {
