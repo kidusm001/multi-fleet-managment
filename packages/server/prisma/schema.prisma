@@ -1,0 +1,244 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  MANAGER
+  DRIVER
+}
+
+enum VehicleStatus {
+  AVAILABLE
+  IN_USE
+  MAINTENANCE
+  OUT_OF_SERVICE
+}
+
+enum NotificationType {
+  INFO
+  WARNING
+  ALERT
+  SYSTEM
+}
+
+enum NotificationStatus {
+  UNREAD
+  READ
+  ARCHIVED
+}
+
+model Tenant {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  users               User[]
+  drivers             Driver[]
+  routes              Route[]
+  stops               Stop[]
+  vehicles            Vehicle[]
+  vehicleAvailability VehicleAvailability[]
+  payrollReports      PayrollReport[]
+  notifications       Notification[]
+
+  @@map("tenants")
+}
+
+model User {
+  id       String @id @default(cuid())
+  email    String @unique
+  password String
+  role     Role   @default(DRIVER)
+  tenantId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  // Indexes
+  @@index([tenantId])
+  @@map("users")
+}
+
+model Driver {
+  id              String  @id @default(cuid())
+  name            String
+  email           String
+  phone           String?
+  licenseNumber   String  @unique
+  experienceYears Int?
+  isActive        Boolean @default(true)
+  tenantId        String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  tenant              Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  vehicleAvailability VehicleAvailability[]
+  payrollReports      PayrollReport[]
+
+  // Indexes
+  @@index([tenantId])
+  @@map("drivers")
+}
+
+model Route {
+  id          String  @id @default(cuid())
+  name        String
+  description String?
+  isActive    Boolean @default(true)
+  tenantId    String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  tenant              Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  stops               Stop[]
+  vehicleAvailability VehicleAvailability[]
+
+  // Indexes
+  @@index([tenantId])
+  @@map("routes")
+}
+
+model Stop {
+  id        String  @id @default(cuid())
+  name      String
+  latitude  Float?
+  longitude Float?
+  address   String?
+  order     Int
+  routeId   String
+  tenantId  String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  route  Route  @relation(fields: [routeId], references: [id], onDelete: Cascade)
+
+  // Indexes
+  @@index([tenantId])
+  @@index([routeId])
+  @@map("stops")
+}
+
+model Vehicle {
+  id              String        @id @default(cuid())
+  plateNumber     String        @unique
+  model           String
+  capacity        Int
+  year            Int?
+  status          VehicleStatus @default(AVAILABLE)
+  lastMaintenance DateTime?
+  isActive        Boolean       @default(true)
+  tenantId        String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  tenant              Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  vehicleAvailability VehicleAvailability[]
+
+  // Indexes
+  @@index([tenantId])
+  @@map("vehicles")
+}
+
+model VehicleAvailability {
+  id        String   @id @default(cuid())
+  date      DateTime
+  startTime DateTime
+  endTime   DateTime
+  vehicleId String
+  driverId  String
+  routeId   String
+  tenantId  String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  driver  Driver  @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  route   Route   @relation(fields: [routeId], references: [id], onDelete: Cascade)
+
+  // Indexes
+  @@index([tenantId])
+  @@index([vehicleId])
+  @@index([driverId])
+  @@index([routeId])
+  @@index([date])
+  @@map("vehicle_availability")
+}
+
+model PayrollReport {
+  id            String    @id @default(cuid())
+  period        String // e.g., "2024-01", "Q1-2024"
+  totalAmount   Float
+  hoursWorked   Float?
+  overtimeHours Float?
+  deductions    Float?
+  bonuses       Float?
+  generatedAt   DateTime  @default(now())
+  paidAt        DateTime?
+  driverId      String
+  tenantId      String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  driver Driver @relation(fields: [driverId], references: [id], onDelete: Cascade)
+
+  // Indexes
+  @@index([tenantId])
+  @@index([driverId])
+  @@index([period])
+  @@map("payroll_reports")
+}
+
+model Notification {
+  id       String             @id @default(cuid())
+  title    String
+  message  String
+  type     NotificationType   @default(INFO)
+  status   NotificationStatus @default(UNREAD)
+  userId   String? // Nullable for system-wide notifications
+  tenantId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  // Indexes
+  @@index([tenantId])
+  @@index([userId])
+  @@index([status])
+  @@index([type])
+  @@map("notifications")
+}
