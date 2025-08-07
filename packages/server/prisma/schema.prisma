@@ -89,7 +89,7 @@ model User {
   name          String?
   emailVerified Boolean  @default(false)
   image         String?
-  role          Role     @default(EMPLOYEE)
+  role          Role     @default(MANAGER)
   tenantId      String
   banned        Boolean  @default(false)
   banReason     String?
