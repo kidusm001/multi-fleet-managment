@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
+import { requireRoles, requireSession } from '../middleware/auth';
 
 const prisma = new PrismaClient();
 const router = Router();
@@ -138,6 +139,18 @@ router.get('/protected/ping', async (req, res) => {
     console.error('Protected route error:', e);
     res.status(500).json({ error: 'Failed' });
   }
+});
+// Role protected demo routes (for future tests)
+router.get('/protected/admin', requireRoles('ADMIN'), (req, res) => {
+  res.json({ ok: true, role: 'ADMIN' });
+});
+
+router.get('/protected/manager-or-admin', requireRoles('MANAGER', 'ADMIN'), (req, res) => {
+  res.json({ ok: true, role: 'MANAGER_OR_ADMIN' });
+});
+
+router.get('/protected/any-auth', requireSession, (req, res) => {
+  res.json({ ok: true, userId: req.sessionUser?.id });
 });
 
 // Local 404 handler for unmatched auth subpaths (helps diagnose test 404s)
