@@ -103,6 +103,7 @@ model User {
   sessions              Session[]
   accounts              Account[]
   seenNotifications     Notification[] @relation("NotificationSeenBy")
+  memberships           Membership[]
 
   // Indexes
   @@index([tenantId])
@@ -504,4 +505,27 @@ model Verification {
   updatedAt  DateTime? @updatedAt
 
   @@map("verifications")
+}
+
+// --- Added for organization-based multi-tenancy (Better Auth organization plugin) ---
+model Organization {
+  id        String       @id @default(cuid())
+  name      String
+  createdAt DateTime     @default(now())
+  users     Membership[]
+  @@map("organizations")
+}
+
+model Membership {
+  id             String       @id @default(cuid())
+  userId         String
+  organizationId String
+  role           String       @default("member")
+  createdAt      DateTime     @default(now())
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId])
+  @@index([organizationId])
+  @@map("memberships")
 }
