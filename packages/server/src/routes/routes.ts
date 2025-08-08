@@ -40,6 +40,37 @@ router.get('/', requireRoles('ADMIN', 'MANAGER', 'DRIVER'), async (req, res) => 
   }
 });
 
+// (LEGACY PORT) GET /routes/unique-locations - routes with unique employee locations
+router.get('/unique-locations', requireRoles('ADMIN', 'MANAGER'), async (req, res) => {
+  try {
+    const tenantId = req.sessionUser!.tenantId;
+    const routes = await prisma.route.findMany({
+      where: { tenantId, deleted: false },
+      include: {
+        stops: {
+          where: { tenantId },
+          include: {
+            employee: true,
+          }
+        }
+      }
+    });
+
+    const routesWithUnique = routes.map(r => {
+      const locSet = new Set<string>();
+      for (const s of r.stops) {
+        const loc = (s as any).employee?.location;
+        if (loc) locSet.add(loc);
+      }
+      return { ...r, uniqueLocations: Array.from(locSet) };
+    });
+    res.json({ routes: routesWithUnique });
+  } catch (e) {
+    console.error('GET /routes/unique-locations error:', e);
+    res.status(500).json({ error: 'Failed to fetch unique locations' });
+  }
+});
+
 // GET /routes/:id - Get specific route for the current tenant
 router.get('/:id', requireRoles('ADMIN', 'MANAGER', 'DRIVER'), async (req, res) => {
   try {
@@ -67,6 +98,45 @@ router.get('/:id', requireRoles('ADMIN', 'MANAGER', 'DRIVER'), async (req, res) 
   } catch (e: any) {
     console.error('GET /routes/:id error:', e);
     res.status(500).json({ error: 'Failed to fetch route' });
+  }
+});
+
+// GET /routes/shift/:shiftId - all routes for a shift (tenant scoped)
+router.get('/shift/:shiftId', requireRoles('ADMIN', 'MANAGER'), async (req, res) => {
+  try {
+    const { shiftId } = req.params;
+    const tenantId = req.sessionUser!.tenantId;
+    const routes = await prisma.route.findMany({
+      where: { tenantId, shiftId, deleted: false },
+      include: {
+        stops: { where: { tenantId }, orderBy: { order: 'asc' } },
+        vehicle: true,
+        shift: true
+      }
+    });
+    res.json({ routes });
+  } catch (e) {
+    console.error('GET /routes/shift/:shiftId error:', e);
+    res.status(500).json({ error: 'Failed to fetch shift routes' });
+  }
+});
+
+// GET /routes/:routeId/stops - list stops for route
+router.get('/:routeId/stops', requireRoles('ADMIN', 'MANAGER', 'DRIVER'), async (req, res) => {
+  try {
+    const { routeId } = req.params;
+    const tenantId = req.sessionUser!.tenantId;
+    const route = await prisma.route.findFirst({ where: { id: routeId, tenantId, deleted: false } });
+    if (!route) return res.status(404).json({ error: 'Route not found' });
+    const stops = await prisma.stop.findMany({
+      where: { routeId, tenantId },
+      orderBy: { order: 'asc' },
+      include: { employee: true }
+    });
+    res.json({ stops });
+  } catch (e) {
+    console.error('GET /routes/:routeId/stops error:', e);
+    res.status(500).json({ error: 'Failed to fetch stops' });
   }
 });
 
@@ -124,6 +194,37 @@ router.post('/', requireRoles('ADMIN', 'MANAGER'), async (req, res) => {
   } catch (e: any) {
     console.error('POST /routes error:', e);
     res.status(500).json({ error: 'Failed to create route' });
+  }
+});
+
+// PUT /routes/:routeId/stops - replace stop ordering & arrival times (simplified)
+router.put('/:routeId/stops', requireRoles('ADMIN', 'MANAGER'), async (req, res) => {
+  try {
+    const { routeId } = req.params;
+    const { stops } = req.body as { stops: Array<{ stopId: string; estimatedArrivalTime?: string }>; };
+    const tenantId = req.sessionUser!.tenantId;
+    if (!Array.isArray(stops)) return res.status(400).json({ error: 'stops array required' });
+    const route = await prisma.route.findFirst({ where: { id: routeId, tenantId, deleted: false } });
+    if (!route) return res.status(404).json({ error: 'Route not found' });
+    // Disassociate existing stops for this route (tenant scoped)
+    await prisma.stop.updateMany({ where: { routeId, tenantId }, data: { routeId: null, sequence: null, estimatedArrivalTime: null } });
+    // Re-associate provided stops in order
+    for (let i = 0; i < stops.length; i++) {
+      const s = stops[i];
+      await prisma.stop.update({
+        where: { id: s.stopId },
+        data: {
+          routeId,
+          sequence: i + 1,
+          estimatedArrivalTime: s.estimatedArrivalTime ? new Date(s.estimatedArrivalTime) : null
+        }
+      });
+    }
+    const updated = await prisma.stop.findMany({ where: { routeId, tenantId }, orderBy: { sequence: 'asc' } });
+    res.json({ stops: updated });
+  } catch (e) {
+    console.error('PUT /routes/:routeId/stops error:', e);
+    res.status(500).json({ error: 'Failed to update stops' });
   }
 });
 
@@ -195,6 +296,39 @@ router.put('/:id', requireRoles('ADMIN', 'MANAGER'), async (req, res) => {
   }
 });
 
+// PATCH /routes/:id/status/:status - status change mapping
+router.patch('/:id/status/:status', requireRoles('ADMIN', 'MANAGER'), async (req, res) => {
+  try {
+    const { id, status } = req.params;
+    const tenantId = req.sessionUser!.tenantId;
+    const map: Record<string, string> = { active: 'ACTIVE', inactive: 'INACTIVE', canceled: 'CANCELLED', cancelled: 'CANCELLED' };
+    const mapped = map[status.toLowerCase()];
+    if (!mapped) return res.status(400).json({ error: 'Unsupported status value' });
+    const existing = await prisma.route.findFirst({ where: { id, tenantId, deleted: false } });
+    if (!existing) return res.status(404).json({ error: 'Route not found' });
+    const updated = await prisma.route.update({ where: { id }, data: { status: mapped as any } });
+    res.json({ route: updated });
+  } catch (e) {
+    console.error('PATCH /routes/:id/status/:status error:', e);
+    res.status(500).json({ error: 'Failed to update status' });
+  }
+});
+
+// PATCH /routes/:id/restore - restore soft deleted route
+router.patch('/:id/restore', requireRoles('ADMIN', 'MANAGER'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const tenantId = req.sessionUser!.tenantId;
+    const existing = await prisma.route.findFirst({ where: { id, tenantId, deleted: true } });
+    if (!existing) return res.status(404).json({ error: 'Route not found or not deleted' });
+    const restored = await prisma.route.update({ where: { id }, data: { deleted: false, deletedAt: null } });
+    res.json({ route: restored });
+  } catch (e) {
+    console.error('PATCH /routes/:id/restore error:', e);
+    res.status(500).json({ error: 'Failed to restore route' });
+  }
+});
+
 // DELETE /routes/:id - Soft delete route (ADMIN/MANAGER only)
 router.delete('/:id', requireRoles('ADMIN', 'MANAGER'), async (req, res) => {
   try {
@@ -215,7 +349,8 @@ router.delete('/:id', requireRoles('ADMIN', 'MANAGER'), async (req, res) => {
       where: { id: req.params.id },
       data: { 
         deleted: true,
-        deletedAt: new Date()
+        deletedAt: new Date(),
+        status: 'INACTIVE'
       }
     });
     
