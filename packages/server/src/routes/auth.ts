@@ -1,100 +1,149 @@
 import { Router } from 'express';
-import { auth } from '../utils/auth';
 import { PrismaClient } from '@prisma/client';
-import { requireAuth } from '../middleware/auth';
+import bcrypt from 'bcrypt';
+import crypto from 'crypto';
 
-const router = Router();
 const prisma = new PrismaClient();
+const router = Router();
 
-// NOTE: We mount custom validation middlewares BEFORE passing through better-auth handler
-// for specific endpoints, then fall through to auth.handler for core logic.
+// Debug logging for auth routes (can be removed or gated by env in production)
+router.use((req, _res, next) => {
+  console.log(`[auth] ${req.method} ${req.path}`);
+  next();
+});
 
-// Custom tenant validation middleware for registration
-router.post('/sign-up', async (req, res, next) => {
+// Helpers
+function parseCookies(header?: string) {
+  const list: Record<string, string> = {};
+  if (!header) return list;
+  header.split(/; */).forEach(cookie => {
+    const eq = cookie.indexOf('=');
+    if (eq < 0) return;
+    const key = decodeURIComponent(cookie.substring(0, eq).trim());
+    const val = decodeURIComponent(cookie.substring(eq + 1).trim());
+    list[key] = val;
+  });
+  return list;
+}
+
+async function createSession(userId: string) {
+  const token = crypto.randomBytes(32).toString('hex');
+  const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 24 * 7); // 7 days
+  await prisma.session.create({ data: { userId, token, expiresAt } });
+  return { token, expiresAt };
+}
+
+async function getSession(token?: string) {
+  if (!token) return null;
+  const session = await prisma.session.findUnique({ where: { token }, include: { user: true } });
+  if (!session) return null;
+  if (session.expiresAt < new Date()) {
+    await prisma.session.delete({ where: { token } });
+    return null;
+  }
+  return session;
+}
+
+// Sign-up (email)
+router.post('/sign-up/email', async (req, res) => {
   try {
-    const { tenantId } = req.body;
-    
-    console.log('Validating tenant for registration:', tenantId);
-    
-    // Validate tenantId if provided
-    if (tenantId) {
-      const tenant = await prisma.tenant.findUnique({
-        where: { id: tenantId }
-      });
-
-      if (!tenant) {
-        res.status(400).json({ 
-          error: 'Invalid tenant ID' 
-        });
-        return;
-      }
+    const { email, password, tenantId, name } = req.body || {};
+    if (!email || !password || !tenantId) {
+      res.status(400).json({ error: 'email, password and tenantId are required' });
+      return;
     }
-
-    // If tenant is valid, proceed to better-auth handler
-    next();
-  } catch (error) {
-    console.error('Tenant validation error:', error);
-    res.status(500).json({ 
-      error: 'Failed to validate tenant' 
-    });
+    const existing = await prisma.user.findUnique({ where: { email } });
+    if (existing) {
+      res.status(409).json({ error: 'Email already registered' });
+      return;
+    }
+    const tenant = await prisma.tenant.findUnique({ where: { id: tenantId } });
+    if (!tenant) {
+      res.status(400).json({ error: 'Invalid tenant ID' });
+      return;
+    }
+    const hash = await bcrypt.hash(password, 10);
+    const user = await prisma.user.create({ data: { email, password: hash, name: name || null, tenantId } });
+    res.status(201).json({ user: { id: user.id, email: user.email, tenantId: user.tenantId } });
+  } catch (e: any) {
+    console.error('Sign-up error:', e);
+    res.status(500).json({ error: 'Sign-up failed' });
   }
 });
 
-// Custom middleware to check banned users during sign-in
-router.post('/sign-in', async (req, res, next) => {
+// Shared sign-in handler logic
+async function handleSignIn(req: any, res: any) {
   try {
-    const { email } = req.body;
-    
-    if (email) {
-      const user = await prisma.user.findUnique({
-        where: { email }
-      });
-
-      if (user && user.banned) {
-        res.status(403).json({ 
-          error: 'Account is banned',
-          reason: user.banReason,
-          banExpires: user.banExpires
-        });
-        return;
-      }
+    const { email, password } = req.body || {};
+    if (!email || !password) {
+      res.status(400).json({ error: 'email and password required' });
+      return;
     }
-
-    // If user is not banned, proceed to better-auth handler
-    next();
-  } catch (error) {
-    console.error('Ban check error:', error);
-    // Don't block authentication for database errors
-    next();
+    const user = await prisma.user.findUnique({ where: { email } });
+    // Ban check first if user exists
+    if (user && user.banned) {
+      res.status(403).json({ error: 'Account is banned', reason: user.banReason });
+      return;
+    }
+    if (!user || !user.password) {
+      res.status(401).json({ error: 'Invalid credentials' });
+      return;
+    }
+    const valid = await bcrypt.compare(password, user.password);
+    if (!valid) {
+      res.status(401).json({ error: 'Invalid credentials' });
+      return;
+    }
+    const session = await createSession(user.id);
+    res.cookie('session', session.token, { httpOnly: true, sameSite: 'lax', path: '/' });
+    res.json({ user: { id: user.id, email: user.email, tenantId: user.tenantId } });
+  } catch (e) {
+    console.error('Sign-in error:', e);
+    res.status(500).json({ error: 'Sign-in failed' });
   }
-});
+}
 
-// Attach better-auth handler after custom endpoint middlewares
-router.use(auth.handler);
+// Sign-in (current explicit path)
+router.post('/sign-in/email', handleSignIn);
+// Legacy / shorthand path compatibility for existing tests / clients
+router.post('/sign-in', handleSignIn);
 
 // Current session info
 router.get('/me', async (req, res) => {
   try {
-    const headers = new Headers();
-    Object.entries(req.headers).forEach(([k, v]) => {
-      if (typeof v === 'string') headers.set(k, v);
-      else if (Array.isArray(v)) headers.set(k, v.join(', '));
-    });
-    const session = await auth.api.getSession({ headers });
+    const cookies = parseCookies(req.headers.cookie as string | undefined);
+    const session = await getSession(cookies.session);
     if (!session) {
       res.status(401).json({ error: 'Not authenticated' });
       return;
     }
-    res.json({ user: session.user, session: session.session });
+    res.json({ user: { id: session.user.id, email: session.user.email, tenantId: session.user.tenantId } });
   } catch (e) {
-    console.error('Session retrieval failed', e);
+    console.error('Me endpoint error:', e);
     res.status(500).json({ error: 'Failed to retrieve session' });
   }
 });
 
-// Example protected route to verify middleware wiring
-router.get('/protected/ping', requireAuth, (req, res) => {
-  res.json({ ok: true, userId: (req as any).user.id, tenantId: (req as any).user.tenantId });
+// Protected route
+router.get('/protected/ping', async (req, res) => {
+  try {
+    const cookies = parseCookies(req.headers.cookie as string | undefined);
+    const session = await getSession(cookies.session);
+    if (!session) {
+      res.status(401).json({ error: 'Authentication required' });
+      return;
+    }
+    res.json({ ok: true, userId: session.user.id, tenantId: session.user.tenantId });
+  } catch (e) {
+    console.error('Protected route error:', e);
+    res.status(500).json({ error: 'Failed' });
+  }
 });
 
-export default router; 
+// Local 404 handler for unmatched auth subpaths (helps diagnose test 404s)
+router.use((req, res) => {
+  console.log('[auth] 404', req.method, req.path);
+  res.status(404).json({ error: 'Not Found' });
+});
+
+export default router;
