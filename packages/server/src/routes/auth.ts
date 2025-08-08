@@ -140,6 +140,7 @@ router.get('/protected/ping', async (req, res) => {
     res.status(500).json({ error: 'Failed' });
   }
 });
+
 // Role protected demo routes (for future tests)
 router.get('/protected/admin', requireRoles('ADMIN'), (req, res) => {
   res.json({ ok: true, role: 'ADMIN' });
