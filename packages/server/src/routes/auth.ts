@@ -106,7 +106,7 @@ async function handleSignIn(req: any, res: any) {
 
 // Sign-in (current explicit path)
 router.post('/sign-in/email', handleSignIn);
-// Legacy / shorthand path compatibility for existing tests / clients
+// ...existing code...
 router.post('/sign-in', handleSignIn);
 
 // Current session info

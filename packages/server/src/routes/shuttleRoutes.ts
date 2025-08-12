@@ -346,7 +346,7 @@ const getAvailableShuttlesForShift: RequestHandler<{ shiftId: string }> = async 
     }
 
     // Fetch shuttles and filter to active, non-deleted
-    // Note: In legacy naming, these are "shuttles"; schema may map to vehicles in current DB
+  // ...existing code...
     const shuttles: any[] = await (prisma as any).shuttle.findMany();
     const filtered = (shuttles || []).filter((s) => s.status === 'active' && !s.deleted);
 
