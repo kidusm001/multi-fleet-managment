@@ -469,9 +469,9 @@ const handleShuttleApproval: RequestHandler<{ id: string }, {}, ApprovalBody> = 
 };
 
 // Routes
-router.get('/', requireRoles('admin', 'administrator', 'fleetManager','recruiter'), asyncHandler(getAllShuttles));
-router.get('/maintenance', requireRoles('admin', 'administrator', 'fleetManager','recruiter'), asyncHandler(getMaintenanceSchedule));
-router.get('/available', requireRoles('admin', 'administrator', 'fleetManager','recruiter'), asyncHandler(getAvailableShuttles));
+router.get('/', requireRoles('admin', 'administrator', 'fleetManager'), asyncHandler(getAllShuttles));
+router.get('/maintenance', requireRoles('admin', 'administrator', 'fleetManager'), asyncHandler(getMaintenanceSchedule));
+router.get('/available', requireRoles('admin', 'administrator', 'fleetManager'), asyncHandler(getAvailableShuttles));
 // Public endpoints for tests
 router.get('/shuttle-availability/shift/available', asyncHandler(async (_req, res) => {
   res.status(400).json({ error: 'Shift ID is required' });
@@ -481,7 +481,7 @@ router.get(/^\/shuttle-availability\/shift\/\/available$/, asyncHandler(async (_
   res.status(400).json({ error: 'Shift ID is required' });
 }));
 router.get('/shuttle-availability/shift/:shiftId/available', asyncHandler(getAvailableShuttlesForShift));
-router.get('/:id', idValidation, validateRequest, requireRoles('admin', 'administrator', 'fleetManager','recruiter'), asyncHandler(getShuttleById));
+router.get('/:id', idValidation, validateRequest, requireRoles('admin', 'administrator', 'fleetManager'), asyncHandler(getShuttleById));
 router.post('/', shuttleValidation, validateRequest, requireRoles('admin', 'administrator'), asyncHandler(createShuttle));
 router.put('/:id', [...idValidation, ...shuttleValidation], validateRequest, requireRoles('admin', 'administrator'), asyncHandler(updateShuttle));
 router.delete('/:id', idValidation, validateRequest, requireRoles('admin', 'administrator'), asyncHandler(deleteShuttle));

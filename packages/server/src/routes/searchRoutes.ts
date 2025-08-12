@@ -7,7 +7,6 @@ const router = express.Router();
 
 // Import frontend ROLES values - can be moved to a backend constants file later
 const ROLES = {
-  RECRUITMENT: 'recruiter',
   ADMIN: 'admin',
   MANAGER: 'fleetManager'
 };
@@ -229,8 +228,8 @@ router.get('/', asyncHandler(async (req: Request, res: Response, _next: NextFunc
       console.error('Shuttle search error:', error);
     }
 
-    // Role-specific searches for admin/manager/recruiter
-    if ([ROLES.ADMIN, ROLES.RECRUITMENT].includes(role as any)) {
+  // Role-specific searches for admin only
+  if ([ROLES.ADMIN].includes(role as any)) {
       // Search employees
       try {
         const employees = await prisma.employee.findMany({
@@ -263,41 +262,6 @@ router.get('/', asyncHandler(async (req: Request, res: Response, _next: NextFunc
         console.log(`Found ${employees.length} employees matching "${searchStr}"`);
       } catch (error) {
         console.error('Employee search error:', error);
-      }
-      
-      // RECRUITERS can also search CANDIDATES
-      try {
-        const candidates = await prisma.candidate.findMany({
-          where: {
-            OR: [
-              { name: { contains: searchStr, mode: 'insensitive' } },
-              { email: { contains: searchStr, mode: 'insensitive' } },
-              { contact: { contains: searchStr, mode: 'insensitive' } },
-              { department: { contains: searchStr, mode: 'insensitive' } },
-              { location: { contains: searchStr, mode: 'insensitive' } },
-            ]
-          },
-          take: limitNum,
-          include: {
-            batch: true
-          },
-          orderBy: [
-            {
-              name: 'asc'
-            }
-          ]
-        });
-
-        results.push(...candidates.map(candidate => ({
-          id: candidate.id,
-          title: candidate.name,
-          subtitle: `${candidate.status} - ${candidate.department || 'No department'} - ${candidate.location}`,
-          type: 'candidate',
-          data: candidate
-        })));
-        console.log(`Found ${candidates.length} candidates matching "${searchStr}"`);
-      } catch (error) {
-        console.error('Candidate search error:', error);
       }
     }
 
@@ -399,7 +363,6 @@ router.get('/', asyncHandler(async (req: Request, res: Response, _next: NextFunc
       route: 0,
       shuttle: 1, 
       employee: 2,
-      candidate: 3,
       driver: 4, 
       shift: 5,
       department: 6,
@@ -471,9 +434,6 @@ function getAvailablePages(role: string) {
       return allPages;
     case ROLES.MANAGER:
       return allPages.filter(page => !['employees'].includes(page.id));
-    case ROLES.RECRUITMENT:
-      // Allow recruiters to access routes as well
-      return allPages.filter(page => ['dashboard', 'employees', 'routes'].includes(page.id));
     default:
       return allPages.filter(page => ['dashboard', 'routes', 'shuttles'].includes(page.id));
   }

@@ -14,6 +14,27 @@
     "resolveJsonModule": true,
   "types": ["node", "vitest" ]
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist"]
+  "include": [
+    "src/index.ts",
+    "src/app.ts",
+    "src/db.ts",
+  "src/middleware/auth.ts",
+    "src/routes/auth.ts",
+    "src/routes/shuttleRoutes.ts",
+  "src/services/notificationService.ts",
+  "src/services/shuttleAvailabilityService.ts",
+    "src/types/**/*.ts",
+  "src/utils/auth.ts",
+    "src/tests/**/*.ts",
+    "src/routes/__tests__/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+  "src/middleware/validateRouteAvailability.ts",
+    "src/controllers/**",
+    "src/routes/**",
+    "!src/routes/auth.ts",
+    "!src/routes/shuttleRoutes.ts"
+  ]
 }

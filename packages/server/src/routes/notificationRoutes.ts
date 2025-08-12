@@ -8,7 +8,7 @@ const router = express.Router();
 // Get all notifications with filters
 router.get(
   '/',
-  requireRole(['admin', 'administrator', 'fleetManager', 'recruiter']),
+  requireRole(['admin', 'administrator', 'fleetManager']),
   asyncHandler(async (req: Request, res: Response) => {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
@@ -28,7 +28,7 @@ router.get(
 // Get unread notifications
 router.get(
   '/unread',
-  requireRole(['admin', 'administrator', 'fleetManager', 'recruiter']),
+  requireRole(['admin', 'administrator', 'fleetManager']),
   asyncHandler(async (req: Request, res: Response) => {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
@@ -44,7 +44,7 @@ router.get(
 // Get read notifications
 router.get(
   '/read',
-  requireRole(['admin', 'administrator', 'fleetManager', 'recruiter']),
+  requireRole(['admin', 'administrator', 'fleetManager']),
   asyncHandler(async (req: Request, res: Response) => {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
@@ -60,7 +60,7 @@ router.get(
 // Get notifications by type
 router.get(
   '/type/:notificationType',
-  requireRole(['admin', 'administrator', 'fleetManager', 'recruiter']),
+  requireRole(['admin', 'administrator', 'fleetManager']),
   asyncHandler(async (req: Request, res: Response) => {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;
@@ -90,7 +90,7 @@ router.post(
 // Mark notification as seen
 router.patch(
   '/:id/mark-seen',
-  requireRole(['admin', 'administrator', 'fleetManager', 'recruiter']),
+  requireRole(['admin', 'administrator', 'fleetManager']),
   asyncHandler(async (req: Request, res: Response) => {
     const result = await notificationService.markAsSeen(req.params.id, (req as any).user.id);
     res.json(result);
@@ -100,7 +100,7 @@ router.patch(
 // Mark notification as unread
 router.patch(
   '/:id/mark-unread',
-  requireRole(['admin', 'administrator', 'fleetManager', 'recruiter']),
+  requireRole(['admin', 'administrator', 'fleetManager']),
   asyncHandler(async (req: Request, res: Response) => {
     const result = await notificationService.markAsUnread(req.params.id, (req as any).user.id);
     res.json(result);
@@ -110,7 +110,7 @@ router.patch(
 // Mark all notifications as seen
 router.post(
   '/mark-all-seen',
-  requireRole(['admin', 'administrator', 'fleetManager', 'recruiter']),
+  requireRole(['admin', 'administrator', 'fleetManager']),
   asyncHandler(async (req: Request, res: Response) => {
     const result = await notificationService.markAllAsSeen((req as any).user.id);
     res.json(result);
@@ -120,7 +120,7 @@ router.post(
 // Get unseen notification count
 router.get(
   '/unseen-count',
-  requireRole(['admin', 'administrator', 'fleetManager', 'recruiter']),
+  requireRole(['admin', 'administrator', 'fleetManager']),
   asyncHandler(async (req: Request, res: Response) => {
     const count = await notificationService.getUnseenCount((req as any).user.id);
     res.json({ count });
@@ -130,7 +130,7 @@ router.get(
 // Get notifications sorted by importance
 router.get(
   '/sorted-by-importance',
-  requireRole(['admin', 'administrator', 'fleetManager', 'recruiter']),
+  requireRole(['admin', 'administrator', 'fleetManager']),
   asyncHandler(async (req: Request, res: Response) => {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 10;

@@ -27,10 +27,10 @@ interface FormattedDepartment {
 /**
  * @route   GET /api/departments
  * @desc    Get all departments with employee count
- * @access  Admin, Manager, Recruiter
+ * @access  Admin, Manager
  */
 router.get('/', 
-  requireRole(['admin', 'administrator', 'fleetManager', 'recruiter']), 
+  requireRole(['admin', 'administrator', 'fleetManager']), 
   asyncHandler(async (_req: Request, res: Response) => {
     const departments: DepartmentWithCount[] = await prisma.department.findMany({
       include: {
@@ -54,10 +54,10 @@ router.get('/',
 /**
  * @route   GET /api/departments/:id
  * @desc    Get department by ID with employees
- * @access  Admin, Manager, Recruiter
+ * @access  Admin, Manager
  */
 router.get('/:id',
-  requireRole(['admin', 'administrator', 'fleetManager', 'recruiter']),
+  requireRole(['admin', 'administrator', 'fleetManager']),
   [
     param('id').isInt().withMessage('Department ID must be an integer')
   ],
@@ -95,10 +95,10 @@ router.get('/:id',
 /**
  * @route   GET /api/departments/:id/employees
  * @desc    Get all employees in a department
- * @access  Admin, Manager, Recruiter
+ * @access  Admin, Manager
  */
 router.get('/:id/employees',
-  requireRole(['admin', 'administrator', 'fleetManager', 'recruiter']),
+  requireRole(['admin', 'administrator', 'fleetManager']),
   [
     param('id').isInt().withMessage('Department ID must be an integer')
   ],

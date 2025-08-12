@@ -20,15 +20,15 @@ router.use(fileUpload({
 /**
  * @route   GET /employees/shift/:shiftId/unassigned
  * @desc    Get unassigned employees by shift
- * @access  Private (admin, administrator, fleetManager, recruiter)
+ * @access  Private (admin, administrator, fleetManager)
  */
 router.get(
   '/shift/:shiftId/unassigned',
-  requireRole(['admin', 'administrator', 'fleetManager', 'recruiter']),
+  requireRole(['admin', 'administrator', 'fleetManager']),
   shiftIdValidation,
   validateRequest,
   asyncHandler(async (req: TypedRequest<{ shiftId: string }, {}>, res: Response) => {
-    const shiftId = parseInt(req.params.shiftId);
+    const shiftId = req.params.shiftId;
 
     const employees = await prisma.employee.findMany({
       where: {
@@ -54,7 +54,7 @@ router.get(
  */
 router.get(
   '/',
-  requireRole(['admin', 'administrator', 'fleetManager', 'recruiter']),
+  requireRole(['admin', 'administrator', 'fleetManager']),
   asyncHandler(async (_req: TypedRequest<{}, {}>, res: Response) => {
     const employees = await prisma.employee.findMany({
       where: {
@@ -107,7 +107,7 @@ router.get(
  */
 router.get(
   '/:id',
-  requireRole(['admin', 'administrator', 'fleetManager', 'recruiter']),
+  requireRole(['admin', 'administrator', 'fleetManager']),
   employeeIdValidation,
   validateRequest,
   asyncHandler(async (req: TypedRequest<{ id: string }, {}>, res: Response) => {
@@ -347,7 +347,7 @@ router.post(
  */
 router.get(
   '/stats',
-  requireRole(['admin', 'administrator', 'fleetManager', 'recruiter']),
+  requireRole(['admin', 'administrator', 'fleetManager']),
   asyncHandler(async (_req: Request, res: Response, _next: NextFunction): Promise<void> => {
     // Get all active employees
     const allEmployees = await prisma.employee.findMany({
@@ -399,7 +399,7 @@ router.get(
  */
 router.get(
   '/upload-template',
-  requireRole(['admin', 'administrator', 'fleetManager', 'recruiter']),
+  requireRole(['admin', 'administrator', 'fleetManager']),
   asyncHandler(async (_req: Request, res: Response, _next: NextFunction): Promise<void> => {
     try {
       // Get actual departments from the database
@@ -411,7 +411,7 @@ router.get(
       // Use real department names or fallback to predefined ones if none exist
       const departmentNames = departments.length > 0
         ? departments.map(d => d.name)
-        : ["Recruitment-Support", "Creative", "Trade Surveillance", "Cvent-Addis"];
+  : ["Operations", "Creative", "Trade Surveillance", "Cvent-Addis"];      
       
       // Generate a proper Excel template
       // Using CSV format with proper Ethiopian names and values based on the schema
@@ -419,9 +419,9 @@ router.get(
       
       // Add example rows with Ethiopian names and actual departments
       const exampleRows = [
-        ['Abebe Kebede', 'abebe.kebede@example.com', '+251911234567', departmentNames[0] || "Recruitment-Support", 'Software Developer', 'Bole, Addis Ababa'],
+  ['Abebe Kebede', 'abebe.kebede@example.com', '+251911234567', departmentNames[0] || "Operations", 'Software Developer', 'Bole, Addis Ababa'],
         ['Tigist Alemayehu', 'tigist.a@example.com', '+251922345678', departmentNames[1] || "Creative", 'Accountant', 'Kazanchis, Addis Ababa'],
-        ['Dawit Gebre', 'dawit.g@example.com', '+251933456789', departmentNames[2] || "Trade Surveillance", 'Recruiter', 'Piassa, Addis Ababa']
+  ['Dawit Gebre', 'dawit.g@example.com', '+251933456789', departmentNames[2] || "Trade Surveillance", 'Supervisor', 'Piassa, Addis Ababa']
       ];
       
       // Build CSV content

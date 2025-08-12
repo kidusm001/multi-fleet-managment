@@ -4,7 +4,7 @@ import asyncHandler from 'express-async-handler';
 import validateRequest from '../middleware/validateRequest';
 import { idValidation, routeValidation, shiftIdValidation, routeEmployeeIdValidation } from '../middleware/validation';
 import { RouteBody, StopUpdate } from '../types/routeTypes';
-import { checkShuttleAvailability } from '../services/shuttleAvailabilityService';
+import { getAvailableShuttles } from '../services/shuttleAvailabilityService';
 import { requireRole } from '../middleware/requireRole';
 import { notificationService } from '../services/notificationService';
 
@@ -17,7 +17,7 @@ const router = express.Router();
  */
 router.get(
   '/',
- requireRole(['admin', 'administrator', 'fleetManager','recruiter']),
+ requireRole(['admin', 'administrator', 'fleetManager']),
   asyncHandler(async (_req: Request, res: Response) => {
     const routes = await prisma.route.findMany({
       where: { deleted: false },
@@ -46,7 +46,7 @@ router.get(
  */
 router.get(
   '/unique-locations',
- requireRole(['admin', 'administrator', 'fleetManager','recruiter']),
+ requireRole(['admin', 'administrator', 'fleetManager']),
   asyncHandler(async (_req: Request, res: Response) => {
     const routes = await prisma.route.findMany({
       include: {
@@ -92,7 +92,7 @@ router.get(
   '/:id',
   idValidation,
   validateRequest,
- requireRole(['admin', 'administrator', 'fleetManager','recruiter']),
+ requireRole(['admin', 'administrator', 'fleetManager']),
   asyncHandler(async (req: Request, res: Response) => {
     const id = parseInt(req.params.id, 10);
 
@@ -131,7 +131,7 @@ router.get(
   '/shift/:shiftId',
   shiftIdValidation, // Reuse idValidation for shiftId
   validateRequest,
- requireRole(['admin', 'administrator', 'fleetManager','recruiter']),
+ requireRole(['admin', 'administrator', 'fleetManager']),
   asyncHandler(async (req: Request<{ shiftId: string }>, res: Response) => {
     const shiftId = parseInt(req.params.shiftId, 10);
 
@@ -173,7 +173,7 @@ router.get(
   '/:routeId/stops',
   idValidation, // Reuse idValidation for routeId
   validateRequest,
- requireRole(['admin', 'administrator', 'fleetManager','recruiter']),
+ requireRole(['admin', 'administrator', 'fleetManager']),
   asyncHandler(async (req: Request<{ routeId: string }>, res: Response) => {
     const routeId = parseInt(req.params.routeId, 10);
 

@@ -57,7 +57,7 @@ const getAllCategories: RequestHandler = async (_req, res) => {
   });
   res.send(categories);
 };
-router.get('/', requireRole(['admin', 'administrator', 'fleetManager','recruiter']), asyncHandler(getAllCategories));
+router.get('/', requireRole(['admin', 'administrator', 'fleetManager']), asyncHandler(getAllCategories));
 
 /**
  * @route   GET /shuttle-categories/:id
@@ -80,7 +80,7 @@ const getCategoryById: RequestHandler<{ id: string }> = async (req, res) => {
 
   res.send(category);
 };
-router.get('/:id', idValidation, validateRequest, requireRole(['admin', 'administrator', 'fleetManager','recruiter']), asyncHandler(getCategoryById));
+router.get('/:id', idValidation, validateRequest, requireRole(['admin', 'administrator', 'fleetManager']), asyncHandler(getCategoryById));
 
 /**
  * @route   POST /shuttle-categories

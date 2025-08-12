@@ -32,7 +32,7 @@ const getAllShifts: RequestHandler = async (_req: Request, res: Response) => {
   });
   res.json(shifts);
 };
-router.get('/', requireRole(['admin', 'administrator', 'fleetManager','recruiter']), asyncHandler(getAllShifts));
+router.get('/', requireRole(['admin', 'administrator', 'fleetManager']), asyncHandler(getAllShifts));
 
 /**
  * @route   GET /shifts/endtimes
@@ -49,7 +49,7 @@ const getAllShiftEndTimes: RequestHandler = async (_req: Request, res: Response)
   });
   res.json(shifts);
 };
-router.get('/endtimes', requireRole(['admin', 'administrator', 'fleetManager','recruiter']), asyncHandler(getAllShiftEndTimes));
+router.get('/endtimes', requireRole(['admin', 'administrator', 'fleetManager']), asyncHandler(getAllShiftEndTimes));
 
 /**
  * @route   GET /shifts/:id
@@ -75,7 +75,7 @@ const getShiftById: RequestHandler<{ id: string }> = async (
 
   res.json(shift);
 };
-router.get('/:id', idValidation, validateRequest, requireRole(['admin', 'administrator', 'fleetManager','recruiter']), asyncHandler(getShiftById));
+router.get('/:id', idValidation, validateRequest, requireRole(['admin', 'administrator', 'fleetManager']), asyncHandler(getShiftById));
 
 /**
  * @route   GET /shifts/:id/employees
@@ -101,7 +101,7 @@ const getShiftEmployeesById: RequestHandler<{ id: string }> = async (
 
   res.json(shift);
 };
-router.get('/:id/employees', idValidation, validateRequest, requireRole(['admin', 'administrator', 'fleetManager','recruiter']), asyncHandler(getShiftEmployeesById));
+router.get('/:id/employees', idValidation, validateRequest, requireRole(['admin', 'administrator', 'fleetManager']), asyncHandler(getShiftEmployeesById));
 
 /**
  * @route   POST /shifts

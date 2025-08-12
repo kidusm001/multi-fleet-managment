@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import authRoutes from './routes/auth';
 import { loadSession } from './middleware/auth';
+// import apiRouter from './routes';
 
 dotenv.config();
 
@@ -18,6 +19,8 @@ export function createApp() {
 
   // Routes
   app.use('/auth', authRoutes);
+  // Temporarily disable legacy API routes until tenantized
+  // app.use('/api', apiRouter);
 
   // Health check endpoint
   app.get('/health', (req, res) => {

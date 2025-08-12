@@ -15,17 +15,17 @@ export async function getAvailableShuttles({ shiftId }: GetAvailableShuttlesPara
     throw error;
   }
 
-  // Find active, non-deleted vehicles (legacy "shuttle") not in maintenance
-  const shuttles = await prisma.shuttle.findMany?.({
+  // Find active, non-deleted vehicles (current schema uses Vehicle)
+  const vehicles = await prisma.vehicle.findMany({
     where: {
       deleted: false,
-      status: 'active',
+      status: 'AVAILABLE',
     },
-  } as any).catch(() => [] as any[]);
+  });
 
   return {
-    count: Array.isArray(shuttles) ? shuttles.length : 0,
-    shuttles: shuttles || [],
+  count: vehicles.length,
+  shuttles: vehicles,
     shiftDetails: {
       startTime: shift.startTime.toISOString(),
       endTime: shift.endTime.toISOString(),

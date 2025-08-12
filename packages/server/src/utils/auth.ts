@@ -20,7 +20,7 @@ export const auth = betterAuth({
       role: {
         type: "string",
         required: true,
-        defaultValue: "recruiter",
+        defaultValue: "manager",
         // Do not allow users to set this during sign-up
         input: false,
       },
@@ -28,7 +28,7 @@ export const auth = betterAuth({
   },
   plugins: [
     admin({
-      defaultRole: "recruiter",
+      defaultRole: "manager",
       adminRole: ["admin"],
     }),
   ],
