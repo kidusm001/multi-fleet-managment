@@ -26,7 +26,8 @@
     "express-fileupload": "^1.5.2",
     "express-validator": "^7.2.1",
     "jsonwebtoken": "^9.0.2",
-    "socket.io": "^4.8.1"
+  "socket.io": "^4.8.1",
+  "pdfkit": "^0.15.0"
   },
   "devDependencies": {
     "@types/bcrypt": "^6.0.0",
@@ -42,8 +43,9 @@
     "prisma": "^6.13.0",
     "supertest": "^7.0.0",
     "ts-node": "^10.9.2",
-    "typescript": "^5.9.2",
-    "vitest": "^2.1.4"
+  "typescript": "^5.9.2",
+  "@types/pdfkit": "^0.13.6",
+  "vitest": "^2.1.4"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"

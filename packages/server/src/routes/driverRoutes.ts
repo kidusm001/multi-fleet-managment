@@ -9,61 +9,36 @@ const router = express.Router();
 const prisma = new PrismaClient();
 
 // Type definitions
-interface DriverWithShuttle extends Driver {
-  shuttle?: {
-    id: number;
-    name: string;
-    licensePlate: string;
-  };
-}
-
 interface FormattedDriver {
-  id: number;
+  id: string;
   name: string;
   licenseNumber: string;
-  phoneNumber: string;
+  phoneNumber: string | null;
   status: string;
-  experience: number;
-  rating: number;
-  shuttleId?: number;
-  shuttle?: {
-    id: number;
-    name: string;
-    licensePlate: string;
-  };
+  experience: number | null;
+  rating: number | null;
+  vehicleId?: string;
 }
 
 /**
  * @route   GET /api/drivers
- * @desc    Get all active drivers with their assigned shuttles
+ * @desc    Get all active drivers with their assigned vehicles
  * @access  Admin, Manager
  */
 router.get('/', 
   requireRole(['admin', 'administrator', 'fleetManager']), 
   asyncHandler(async (_req: Request, res: Response) => {
-    const drivers = await prisma.driver.findMany({
-      where: { deleted: false },
-      include: {
-        shuttle: {
-          select: {
-            id: true,
-            name: true,
-            licensePlate: true
-          }
-        }
-      }
-    });
+  const drivers = await prisma.driver.findMany({ where: { deleted: false } });
     
     const formattedDrivers: FormattedDriver[] = drivers.map(driver => ({
-      id: driver.id,
+  id: driver.id,
       name: driver.name,
       licenseNumber: driver.licenseNumber,
-      phoneNumber: driver.phoneNumber,
+  phoneNumber: driver.phoneNumber ?? null,
       status: driver.status,
-      experience: driver.experience,
-      rating: driver.rating,
-      shuttleId: driver.shuttleId ?? undefined,
-      shuttle: driver.shuttle ?? undefined
+  experience: (driver as any).experienceYears ?? null,
+  rating: driver.rating ?? null,
+  vehicleId: (driver as any).assignedVehicles?.[0]?.id
     }));
     
     res.json(formattedDrivers);
@@ -72,27 +47,19 @@ router.get('/',
 
 /**
  * @route   GET /api/drivers/:id
- * @desc    Get driver by ID with assigned shuttle
+ * @desc    Get driver by ID with assigned vehicle
  * @access  Admin, Manager
  */
 router.get('/:id',
   requireRole(['admin', 'administrator', 'fleetManager']),
-  [param('id').isInt().withMessage('Driver ID must be an integer')],
+  [param('id').isString().withMessage('Driver ID must be a string')],
   validateRequest,
   asyncHandler(async (req: Request, res: Response) => {
-    const id = parseInt(req.params.id);
+  const id = req.params.id;
     
     const driver = await prisma.driver.findUnique({
       where: { id },
-      include: {
-        shuttle: {
-          select: {
-            id: true,
-            name: true,
-            licensePlate: true
-          }
-        }
-      }
+  include: { assignedVehicles: true }
     });
     
     if (!driver || driver.deleted) {
@@ -109,7 +76,7 @@ interface DriverCreateData {
   licenseNumber: string;
   phoneNumber: string;
   experience: number;
-  shuttleId?: number;
+  vehicleId?: string;
 }
 
 /**
@@ -135,13 +102,11 @@ router.post('/',
       .trim(),
     body('experience')
       .isInt({ min: 0 }).withMessage('Experience must be a non-negative integer'),
-    body('shuttleId')
-      .optional()
-      .isInt().withMessage('Shuttle ID must be an integer')
+  body('vehicleId').optional().isString().withMessage('Vehicle ID must be a string')
   ],
   validateRequest,
   asyncHandler(async (req: Request, res: Response) => {
-    const { name, licenseNumber, phoneNumber, experience, shuttleId } = req.body as DriverCreateData;
+    const { name, licenseNumber, phoneNumber, experience, vehicleId } = req.body as DriverCreateData;
     
     // Check if driver with same license number exists
     const existingDriver = await prisma.driver.findFirst({
@@ -156,15 +121,12 @@ router.post('/',
       return;
     }
     
-    // Validate shuttle if provided
-    if (shuttleId) {
-      const shuttle = await prisma.shuttle.findUnique({ 
-        where: { id: shuttleId },
-        include: { driver: true }
-      });
+    // Validate vehicle if provided
+    if (vehicleId) {
+      const vehicle = await prisma.vehicle.findUnique({ where: { id: vehicleId } });
       
-      if (!shuttle || shuttle.deleted) {
-        res.status(404).json({ error: 'Shuttle not found' });
+      if (!vehicle || vehicle.deleted) {
+        res.status(404).json({ error: 'Vehicle not found' });
         return;
       }
     }
@@ -174,18 +136,10 @@ router.post('/',
         name,
         licenseNumber,
         phoneNumber,
-        experience,
-        shuttleId
+        experienceYears: experience,
+        tenantId: (req as any).auth?.tenantId || 'tenant-dev'
       },
-      include: {
-        shuttle: {
-          select: {
-            id: true,
-            name: true,
-            licensePlate: true
-          }
-        }
-      }
+      include: { assignedVehicles: true }
     });
     
     res.status(201).json(driver);
@@ -198,7 +152,7 @@ interface DriverUpdateData {
   status?: 'active' | 'off-duty' | 'on-break';
   experience?: number;
   rating?: number;
-  shuttleId?: number | null;
+  vehicleId?: string | null;
 }
 
 /**
@@ -209,7 +163,7 @@ interface DriverUpdateData {
 router.patch('/:id',
   requireRole(['admin', 'administrator', 'fleetManager']),
   [
-    param('id').isInt().withMessage('Driver ID must be an integer'),
+  param('id').isString().withMessage('Driver ID must be a string'),
     body('name')
       .optional()
       .isString().withMessage('Driver name must be a string')
@@ -230,32 +184,30 @@ router.patch('/:id',
     body('rating')
       .optional()
       .isFloat({ min: 0, max: 5 }).withMessage('Rating must be between 0 and 5'),
-    body('shuttleId')
+    body('vehicleId')
       .optional()
-      .isInt().withMessage('Shuttle ID must be an integer')
+      .isInt().withMessage('Vehicle ID must be an integer')
       .toInt()
   ],
   validateRequest,
   asyncHandler(async (req: Request, res: Response) => {
-    const id = parseInt(req.params.id);
+  const id = req.params.id;
     const updates = req.body as DriverUpdateData;
     
     // Verify driver exists
-    const driver = await prisma.driver.findUnique({ where: { id } });
+  const driver = await prisma.driver.findUnique({ where: { id } });
     if (!driver || driver.deleted) {
       res.status(404).json({ error: 'Driver not found' });
       return;
     }
     
-    // Validate shuttle if being updated
-    if (updates.shuttleId !== undefined) {
-      if (updates.shuttleId !== null) {
-        const shuttle = await prisma.shuttle.findUnique({ 
-          where: { id: updates.shuttleId }
-        });
+    // Validate vehicle if being updated
+    if (updates.vehicleId !== undefined) {
+      if (updates.vehicleId !== null) {
+  const vehicle = await prisma.vehicle.findUnique({ where: { id: updates.vehicleId } });
         
-        if (!shuttle || shuttle.deleted) {
-          res.status(404).json({ error: 'Shuttle not found' });
+        if (!vehicle || vehicle.deleted) {
+          res.status(404).json({ error: 'Vehicle not found' });
           return;
         }
       }
@@ -265,15 +217,7 @@ router.patch('/:id',
     const updatedDriver = await prisma.driver.update({
       where: { id },
       data: updates,
-      include: {
-        shuttle: {
-          select: {
-            id: true,
-            name: true,
-            licensePlate: true
-          }
-        }
-      }
+  include: { assignedVehicles: true }
     });
     
     res.json(updatedDriver);
@@ -287,13 +231,13 @@ router.patch('/:id',
  */
 router.delete('/:id',
   requireRole(['admin', 'administrator']),
-  [param('id').isInt().withMessage('Driver ID must be an integer')],
+  [param('id').isString().withMessage('Driver ID must be a string')],
   validateRequest,
   asyncHandler(async (req: Request, res: Response) => {
-    const id = parseInt(req.params.id);
+  const id = req.params.id;
     
     // Check if driver exists
-    const driver = await prisma.driver.findUnique({ where: { id } });
+  const driver = await prisma.driver.findUnique({ where: { id } });
     
     if (!driver || driver.deleted) {
       res.status(404).json({ error: 'Driver not found' });
@@ -301,12 +245,12 @@ router.delete('/:id',
     }
     
     // Soft delete driver
-    await prisma.driver.update({
+  await prisma.driver.update({
       where: { id },
       data: {
         deleted: true,
         deletedAt: new Date(),
-        shuttleId: null // Remove shuttle assignment
+    // assignedVehicles relation cleanup happens via Vehicle update elsewhere if needed
       }
     });
     

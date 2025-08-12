@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, RouteStatus } from '@prisma/client';
 import {getAvailableShuttles} from '../../services/shuttleAvailabilityService';
 const prisma = new PrismaClient();
 
@@ -6,8 +6,8 @@ async function seedMockData() {
   try {
     // Clear existing data
     await prisma.$transaction([
-      prisma.route.deleteMany(),
-      prisma.shuttle.deleteMany(),
+  prisma.route.deleteMany(),
+  prisma.vehicle.deleteMany(),
       prisma.shift.deleteMany(),
       prisma.department.deleteMany(),
       prisma.employee.deleteMany(),
@@ -15,136 +15,147 @@ async function seedMockData() {
     ]);
 
     // Create departments
-    const department = await prisma.department.create({
+  const tenant = await prisma.tenant.create({ data: { name: 'Test Tenant' } });
+  const department = await prisma.department.create({
       data: {
-        name: 'Engineering'
+    name: 'Engineering',
+    tenant: { connect: { id: tenant.id } }
       }
     });
 
     // Create shifts
-    const morningShift = await prisma.shift.create({
+  const morningShift = await prisma.shift.create({
       data: {
         name: 'Morning Shift',
         startTime: new Date('2024-12-28T09:00:00Z'),
         endTime: new Date('2024-12-28T17:00:00Z'),
-        timeZone: 'America/New_York'
+    timeZone: 'America/New_York',
+    tenant: { connect: { id: tenant.id } }
       }
     });
 
-    const eveningShift = await prisma.shift.create({
+  const eveningShift = await prisma.shift.create({
       data: {
         name: 'Evening Shift',
         startTime: new Date('2024-12-28T17:00:00Z'),
         endTime: new Date('2024-12-29T01:00:00Z'),
-        timeZone: 'America/New_York'
+    timeZone: 'America/New_York',
+    tenant: { connect: { id: tenant.id } }
       }
     });
 
     // Create shuttles
-    const shuttles = await Promise.all([
-      prisma.shuttle.create({
+  const shuttles = await Promise.all([
+    prisma.vehicle.create({
         data: {
-          name: 'Shuttle A',
+      name: 'Shuttle A',
           model: 'Toyota HiAce',
-          type: 'in-house',
-          status: 'active',
+      type: 'in-house',
+      status: 'AVAILABLE',
           capacity: 15,
-          licensePlate: 'ABC123',
-          dailyRate: 100.00,
-          categoryId: 1 // Assuming category exists
+      plateNumber: 'ABC123',
+      dailyRate: 100.00,
+      tenant: { connect: { id: tenant.id } }
         }
       }),
-      prisma.shuttle.create({
+    prisma.vehicle.create({
         data: {
           name: 'Shuttle B',
           model: 'Mercedes Sprinter',
-          type: 'in-house',
-          status: 'active',
+      type: 'in-house',
+      status: 'AVAILABLE',
           capacity: 12,
-          licensePlate: 'XYZ789',
-          dailyRate: 120.00,
-          categoryId: 1
+      plateNumber: 'XYZ789',
+      dailyRate: 120.00,
+      tenant: { connect: { id: tenant.id } }
         }
       }),
-      prisma.shuttle.create({
+    prisma.vehicle.create({
         data: {
           name: 'Shuttle C',
           model: 'Ford Transit',
           type: 'outsourced',
-          status: 'active',
+      status: 'AVAILABLE',
           capacity: 18,
-          licensePlate: 'DEF456',
+      plateNumber: 'DEF456',
           dailyRate: 150.00,
           vendor: 'Express Transit',
-          categoryId: 1
+      tenant: { connect: { id: tenant.id } }
         }
       }),
-      prisma.shuttle.create({
+    prisma.vehicle.create({
         data: {
           name: 'Shuttle D',
           model: 'Toyota Coaster',
-          type: 'in-house',
-          status: 'maintenance',
+      type: 'in-house',
+      status: 'MAINTENANCE',
           capacity: 20,
-          licensePlate: 'MNO321',
-          dailyRate: 130.00,
-          categoryId: 1
+      plateNumber: 'MNO321',
+      dailyRate: 130.00,
+      tenant: { connect: { id: tenant.id } }
         }
       })
     ]);
 
     // Create stops
     const stops = await Promise.all([
-      prisma.stop.create({
+    prisma.stop.create({
         data: {
+      name: 'Stop 1',
           latitude: 40.7128,
           longitude: -74.0060,
-          sequence: 1
+      sequence: 1,
+      tenant: { connect: { id: tenant.id } }
         }
       }),
-      prisma.stop.create({
+    prisma.stop.create({
         data: {
+      name: 'Stop 2',
           latitude: 40.7589,
           longitude: -73.9851,
-          sequence: 2
+      sequence: 2,
+      tenant: { connect: { id: tenant.id } }
         }
       })
     ]);
 
     // Create employees
     const employees = await Promise.all([
-      prisma.employee.create({
+    prisma.employee.create({
         data: {
           name: 'John Doe',
           location: 'Manhattan',
           departmentId: department.id,
           shiftId: morningShift.id,
-          stopId: stops[0].id
+      stopId: stops[0].id,
+      tenantId: tenant.id
         }
       }),
-      prisma.employee.create({
+    prisma.employee.create({
         data: {
           name: 'Jane Smith',
           location: 'Brooklyn',
           departmentId: department.id,
           shiftId: morningShift.id,
-          stopId: stops[1].id
+      stopId: stops[1].id,
+      tenantId: tenant.id
         }
       })
     ]);
 
     // Create a route for Shuttle A in morning shift (to test availability)
-    await prisma.route.create({
+  await prisma.route.create({
       data: {
         name: 'Morning Route 1',
-        shuttleId: shuttles[0].id,
+    vehicleId: shuttles[0].id,
         shiftId: morningShift.id,
         date: new Date('2024-12-28'),
         startTime: new Date('2024-12-28T09:00:00Z'),
         endTime: new Date('2024-12-28T10:30:00Z'),
         totalDistance: 15.5,
-        totalTime: 90,
-        status: 'active'
+    totalTime: 90,
+    status: RouteStatus.ACTIVE,
+    tenantId: tenant.id
       }
     });
 

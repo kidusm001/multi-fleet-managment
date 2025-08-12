@@ -6,16 +6,14 @@ import prisma from '../db';
 const router = express.Router();
 
 // Types
-interface ShuttleParams {
-  id: string;
-}
+interface ShuttleParams { id: string }
 
 interface ShuttleBody {
   name: string;
   licensePlate: string;
-  categoryId: number;
+  categoryId: string;
   dailyRate: number;
-  capacity: number; // Added capacity
+  capacity: number;
   model?: string;
   type?: 'in-house' | 'outsourced';
   vendor?: string | null;
@@ -27,7 +25,7 @@ interface ShuttleUpdateBody extends Partial<ShuttleBody> {}
 const shuttleValidation = [
   body('name').optional().trim().notEmpty().withMessage('Name cannot be empty'),
   body('licensePlate').optional().trim().notEmpty().withMessage('License plate cannot be empty'),
-  body('categoryId').optional().isInt().withMessage('Category ID must be a number'),
+  body('categoryId').optional().isString().withMessage('Category ID must be a string'),
   body('dailyRate').optional().isFloat({ min: 0 }).withMessage('Daily rate must be positive'),
   body('model').optional().trim(),
   body('type').optional().isIn(['in-house', 'outsourced']).withMessage('Invalid type'),
@@ -37,13 +35,13 @@ const shuttleValidation = [
 const createShuttleValidation = [
   body('name').trim().notEmpty().withMessage('Name is required'),
   body('licensePlate').trim().notEmpty().withMessage('License plate is required'),
-  body('categoryId').isInt().withMessage('Valid category ID is required'),
+  body('categoryId').isString().withMessage('Valid category ID is required'),
   body('dailyRate').isFloat({ min: 0 }).withMessage('Daily rate must be positive'),
   body('capacity').isInt({ min: 1 }).withMessage('Capacity must be at least 1'), // Added capacity validation
 ];
 
 const idValidation = [
-  param('id').isInt().withMessage('Valid ID is required')
+  param('id').isString().withMessage('Valid ID is required')
 ];
 
 // Add status update validation
@@ -65,13 +63,12 @@ const validate = (req: Request, res: Response, next: NextFunction) => {
 
 // Route handlers 
 router.get('/', asyncHandler(async (_req: Request, res: Response) => {
-  const shuttles = await prisma.shuttle.findMany({
+  const shuttles = await prisma.vehicle.findMany({
     where: {
       deleted: false
     },
     include: {
       category: true,
-      contract: true,
       routes: true
     }
   });
@@ -83,14 +80,13 @@ router.get(
   idValidation,
   validate,
   asyncHandler(async (req: Request<{ id: string }>, res: Response) => {
-    const shuttle = await prisma.shuttle.findFirst({
+  const shuttle = await prisma.vehicle.findFirst({
       where: { 
-        id: parseInt(req.params.id),
+    id: req.params.id,
         deleted: false 
       },
       include: {
         category: true,
-        contract: true,
         routes: true
       }
     });
@@ -108,16 +104,17 @@ router.post(
   createShuttleValidation,
   validate,
   asyncHandler(async (req: Request<{}, {}, ShuttleBody>, res: Response) => {
-    const shuttle = await prisma.shuttle.create({
+  const shuttle = await prisma.vehicle.create({
       data: {
-        name: req.body.name,
-        licensePlate: req.body.licensePlate,
-        categoryId: parseInt(req.body.categoryId.toString()),
-        dailyRate: req.body.dailyRate,
-        capacity: req.body.capacity,
-        model: req.body.model || '',
-        type: req.body.type || 'in-house',
-        vendor: req.body.vendor || null
+    name: req.body.name,
+    plateNumber: req.body.licensePlate,
+    categoryId: req.body.categoryId,
+    dailyRate: req.body.dailyRate,
+    capacity: req.body.capacity,
+    model: req.body.model || '',
+    type: req.body.type || 'in-house',
+    vendor: req.body.vendor || null,
+  tenantId: (req as any).auth?.tenantId || 'tenant-dev'
       },
       include: { 
         category: true 
@@ -132,13 +129,13 @@ router.put(
   [...idValidation, ...shuttleValidation],
   validate,
   asyncHandler(async (req: Request<{ id: string }, {}, ShuttleUpdateBody>, res: Response): Promise<void> => {
-    const shuttleId = parseInt(req.params.id);
+  const shuttleId = req.params.id;
     
     try {
       console.log('PUT /shuttles/:id - Request body:', req.body);
 
       // First verify that the shuttle exists
-      const existingShuttle = await prisma.shuttle.findUnique({
+  const existingShuttle = await prisma.vehicle.findUnique({
         where: { id: shuttleId }
       });
 
@@ -152,16 +149,16 @@ router.put(
       const updateData = {
         ...(req.body.name !== undefined && { name: req.body.name }),
         ...(req.body.model !== undefined && { model: req.body.model }), // Changed condition
-        ...(req.body.licensePlate !== undefined && { licensePlate: req.body.licensePlate }),
-        ...(req.body.categoryId !== undefined && { categoryId: Number(req.body.categoryId) }),
-        ...(req.body.dailyRate !== undefined && { dailyRate: Number(req.body.dailyRate) }),
+  ...(req.body.licensePlate !== undefined && { plateNumber: req.body.licensePlate }),
+  ...(req.body.categoryId !== undefined && { categoryId: String(req.body.categoryId) }),
+  ...(req.body.dailyRate !== undefined && { dailyRate: Number(req.body.dailyRate) }),
         ...(req.body.type !== undefined && { type: req.body.type }),
         ...(req.body.vendor !== undefined && { vendor: req.body.vendor }) // This will now update even if vendor is null
       };
 
       console.log('Update data:', updateData);
 
-      const shuttle = await prisma.shuttle.update({
+  const shuttle = await prisma.vehicle.update({
         where: { id: shuttleId },
         data: updateData,
         include: {
@@ -183,9 +180,9 @@ router.delete(
   idValidation,
   validate,
   asyncHandler(async (req: Request<{ id: string }>, res: Response) => {
-    await prisma.shuttle.update({
+  await prisma.vehicle.update({
       where: { 
-        id: parseInt(req.params.id) 
+    id: req.params.id 
       },
       data: {
         deleted: true,
@@ -204,10 +201,10 @@ router.patch(
   asyncHandler(async (req: Request<{ id: string }, {}, { status: string, lastMaintenance?: string, nextMaintenance?: string }>, res: Response) => {
     const { status, lastMaintenance, nextMaintenance } = req.body;
     
-    const shuttle = await prisma.shuttle.update({
-      where: { id: parseInt(req.params.id) },
+    const shuttle = await prisma.vehicle.update({
+      where: { id: req.params.id },
       data: {
-        status,
+        status: status as any,
         ...(status === 'maintenance' ? {
           lastMaintenance: lastMaintenance || new Date().toISOString(),
           nextMaintenance: nextMaintenance || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
@@ -228,9 +225,9 @@ router.post('/:id/restore', idValidation, validate, asyncHandler(async (
   req: Request<{ id: string }>, 
   res: Response
 ) => {
-  const shuttle = await prisma.shuttle.update({
+  const shuttle = await prisma.vehicle.update({
     where: { 
-      id: parseInt(req.params.id) 
+      id: req.params.id 
     },
     data: {
       deleted: false,
@@ -242,13 +239,12 @@ router.post('/:id/restore', idValidation, validate, asyncHandler(async (
 
 // Optional: Add route to get deleted shuttles
 router.get('/deleted', asyncHandler(async (_req: Request, res: Response) => {
-  const deletedShuttles = await prisma.shuttle.findMany({
+  const deletedShuttles = await prisma.vehicle.findMany({
     where: {
       deleted: true
     },
     include: {
       category: true,
-      contract: true,
       routes: true
     }
   });

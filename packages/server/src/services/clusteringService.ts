@@ -8,4 +8,4 @@ export const clusteringService = {
   },
 };
 
-export default clusteringService;
+// No default export; use only named export
