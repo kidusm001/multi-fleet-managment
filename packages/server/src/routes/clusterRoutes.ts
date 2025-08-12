@@ -5,7 +5,7 @@ import prisma from '../db';
 import  validateRequest  from '../middleware/validateRequest';
 import { clusterValidation, vehicleAvailabilityValidation, specificVehicleClusterValidation } from '../middleware/validation';
 import { ClusterParams, ClusterBody, TypedRequest, ClusteringBody, ClusteringBodyFastApi } from '../types/routeTypes';
-import { clusteringService } from '../services/clusteringService.ts';
+import { clusteringService } from '../services/clusteringService';
 import { requireRole } from '../middleware/requireRole';
 
 const router = express.Router();
