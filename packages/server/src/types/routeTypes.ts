@@ -40,3 +40,21 @@ export interface StopUpdate {
   sequence?: number | null;
   estimatedArrivalTime?: string | Date | null;
 }
+
+// Clustering-related types (lightweight to satisfy imports)
+export interface ClusterParams {
+  shiftId: string;
+  shuttleId: string;
+}
+
+export interface ClusterBody {
+  shiftId: string;
+  date: string;
+}
+
+export interface ClusteringBody {
+  employees: any;
+  shuttles: any;
+}
+
+export type ClusteringBodyFastApi = ClusteringBody;

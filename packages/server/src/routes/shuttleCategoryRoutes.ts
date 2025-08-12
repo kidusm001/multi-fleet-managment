@@ -1,7 +1,7 @@
 import express, { RequestHandler } from 'express';
 import prisma from '../db';
 import asyncHandler from 'express-async-handler';
-import { idValidation, shuttleCategoryValidation } from '../middleware/validation';
+import { idValidation, vehicleCategoryValidation } from '../middleware/validation';
 import validateRequest from '../middleware/validateRequest';
 import { requireRole } from '../middleware/requireRole';
 import { notificationService } from '../services/notificationService';
@@ -45,7 +45,7 @@ initializeCategories().catch(console.error);
 
 /**
  * @route   GET /shuttle-categories
- * @desc    Get all shuttle categories
+ * @desc    Get all vehicle categories
  * @access  Public
  */
 router.get('/', requireRole(['admin', 'administrator', 'fleetManager']), asyncHandler(async (_req, res) => {
@@ -55,7 +55,7 @@ router.get('/', requireRole(['admin', 'administrator', 'fleetManager']), asyncHa
 
 /**
  * @route   GET /shuttle-categories/:id
- * @desc    Get shuttle category by ID
+ * @desc    Get vehicle category by ID
  * @access  Public
  */
 router.get('/:id', idValidation, validateRequest, requireRole(['admin', 'administrator', 'fleetManager']), asyncHandler(async (req, res) => {
@@ -70,10 +70,10 @@ router.get('/:id', idValidation, validateRequest, requireRole(['admin', 'adminis
 
 /**
  * @route   POST /shuttle-categories
- * @desc    Create a new shuttle category
+ * @desc    Create a new vehicle category
  * @access  Public
  */
-router.post('/', shuttleCategoryValidation, validateRequest, requireRole(['admin', 'administrator']), asyncHandler(async (req, res) => {
+router.post('/', vehicleCategoryValidation, validateRequest, requireRole(['admin', 'administrator']), asyncHandler(async (req, res) => {
   const { name, capacity } = req.body as ShuttleCategoryBody;
   const tenantId = (req as any).user?.tenantId || 'default-tenant';
   const category = await prisma.vehicleCategory.create({ data: { name, capacity, tenant: { connect: { id: tenantId } } }, include: { vehicles: true } });
@@ -91,10 +91,10 @@ router.post('/', shuttleCategoryValidation, validateRequest, requireRole(['admin
 
 /**
  * @route   PUT /shuttle-categories/:id
- * @desc    Update shuttle category by ID
+ * @desc    Update vehicle category by ID
  * @access  Public
  */
-router.put('/:id', [...idValidation, ...shuttleCategoryValidation], validateRequest, requireRole(['admin', 'administrator']), asyncHandler(async (req, res) => {
+router.put('/:id', [...idValidation, ...vehicleCategoryValidation], validateRequest, requireRole(['admin', 'administrator']), asyncHandler(async (req, res) => {
   const id = req.params.id;
   const { name, capacity } = req.body as ShuttleCategoryBody;
   const oldCategory = await prisma.vehicleCategory.findUnique({ where: { id }, include: { vehicles: true } });
@@ -117,7 +117,7 @@ router.put('/:id', [...idValidation, ...shuttleCategoryValidation], validateRequ
 
 /**
  * @route   DELETE /shuttle-categories/:id
- * @desc    Delete shuttle category by ID
+ * @desc    Delete vehicle category by ID
  * @access  Public
  */
 router.delete('/:id', idValidation, validateRequest, requireRole(['admin', 'administrator']), asyncHandler(async (req, res) => {

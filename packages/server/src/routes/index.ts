@@ -8,7 +8,7 @@ import driverRoutes from './driverRoutes';
 import shuttleCategoryRoutes from './shuttleCategoryRoutes';
 import clusterRoutes from './clusterRoutes';
 import notificationRoutes from './notificationRoutes';
-import shuttleRequestRoutes from './shuttleRequestRoutes';
+import vehicleRequestRoutes from './vehicleRequestRoutes';
 import searchRoutes from './searchRoutes';
 
 const router = express.Router();
@@ -31,7 +31,7 @@ router.use('/drivers', driverRoutes);
 router.use('/shuttle-categories', shuttleCategoryRoutes);
 router.use('/clusters', clusterRoutes);
 router.use('/notifications', notificationRoutes);
-router.use('/shuttle-requests', shuttleRequestRoutes);
+router.use('/vehicle-requests', vehicleRequestRoutes);
 router.use('/search', searchRoutes);
 
 // Debug route to check if router is working
@@ -48,7 +48,7 @@ const debugRoute: RequestHandler = (req, res) => {
       '/shuttle-categories',
       '/clusters',
       '/notifications',
-      '/shuttle-requests',
+  '/vehicle-requests',
       '/search'
     ]
   });

@@ -5,8 +5,8 @@ export const idValidation: ValidationChain[] = [
   param('id').trim().notEmpty().withMessage('Valid ID is required')
 ];
 
-// Shuttle Category validation
-export const shuttleCategoryValidation: ValidationChain[] = [
+// Vehicle Category validation
+export const vehicleCategoryValidation: ValidationChain[] = [
   body('name').trim().notEmpty().withMessage('Category name is required'),
   body('capacity')
     .isInt({ gt: 0 })
@@ -23,8 +23,8 @@ export const routeEmployeeIdValidation : ValidationChain[] = [
   param('employeeId').trim().notEmpty().withMessage('Valid employee ID is required')
 ];
 
-// Shuttle validation
-export const shuttleValidation: ValidationChain[] = [
+// Vehicle validation
+export const vehicleValidation: ValidationChain[] = [
   body('name').trim().notEmpty().withMessage('Name is required'),
   body('licensePlate').trim().notEmpty().withMessage('License plate is required'),
   body('categoryId').isInt().withMessage('Valid category ID is required'),
@@ -85,15 +85,15 @@ export const clusterValidation: ValidationChain[] = [
   body('date').isISO8601().withMessage('Valid date is required')
 ];
 
-// Availability validation
-export const availabilityValidation: ValidationChain[] = [
+// Vehicle availability validation
+export const vehicleAvailabilityValidation: ValidationChain[] = [
   param('shuttleId').trim().notEmpty().withMessage('Valid vehicle ID is required'),
   param('shiftId').trim().notEmpty().withMessage('Valid shift ID is required'),
   body('date').isISO8601().withMessage('Valid date is required')
 ];
 
-// Specific shuttle cluster validation
-export const specificShuttleClusterValidation: ValidationChain[] = [
+// Specific vehicle cluster validation
+export const specificVehicleClusterValidation: ValidationChain[] = [
   param('shiftId').trim().notEmpty().withMessage('Shift ID is required'),
   param('shuttleId').trim().notEmpty().withMessage('Vehicle ID is required'),
   body('date')

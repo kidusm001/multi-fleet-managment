@@ -1,9 +1,9 @@
 import express, { Response, Request, NextFunction } from 'express';
 import asyncHandler from 'express-async-handler';
 import prisma from '../db';
-import axios from 'axios';
+// Use fetch (Node 18+) instead of axios to avoid extra dependency
 import  validateRequest  from '../middleware/validateRequest';
-import { clusterValidation, availabilityValidation, specificShuttleClusterValidation } from '../middleware/validation';
+import { clusterValidation, vehicleAvailabilityValidation, specificVehicleClusterValidation } from '../middleware/validation';
 import { ClusterParams, ClusterBody, TypedRequest, ClusteringBody, ClusteringBodyFastApi } from '../types/routeTypes';
 import { clusteringService } from '../services/clusteringService';
 import { requireRole } from '../middleware/requireRole';
@@ -52,19 +52,23 @@ router.post('/clustering', requireRole([ 'administrator', 'fleetManager']), asyn
   }
 
   try {
-    const response = await axios.post(`${FASTAPI_URL}/clustering`, {
+    const response = await fetch(`${FASTAPI_URL}/clustering`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        // Forward the cookie header to FastAPI
+        Cookie: `better-auth.session_token=${sessionCookie}`,
+      },
+      body: JSON.stringify({
       locations: {
         HQ: [38.768504565538684, 9.016317042558217],
         employees,
       },
       shuttles,
-    }, {
-      headers: {
-        // Forward the cookie header to FastAPI
-        Cookie: `better-auth.session_token=${sessionCookie}`,
-      },
+    }),
     });
-    res.json(response.data);
+    const data = await response.json();
+    res.json(data);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: 'Error calling clustering service' });
@@ -84,34 +88,34 @@ router.post(
       return;
     }
 
-    // Get available shuttles for the shift
-    const availableShuttles = await prisma.shuttle.findMany({
+    // Get available vehicles for the shift
+    const availableVehicles = await prisma.vehicle.findMany({
       where: {
         deleted: false,
       },
       include: {
         category: true,
-        availability: {
+        vehicleAvailability: {
           where: {
-            shiftId,
+            shiftId: String(shiftId),
             date: new Date(date),
-            available: true
-          }
-        }
+            available: true,
+          },
+        },
       }
     });
 
-    // Filter shuttles that have availability
-    const shuttlesWithAvailability = availableShuttles.filter(
-      shuttle => shuttle.availability.length > 0
+    // Filter vehicles that have availability
+    const vehiclesWithAvailability = availableVehicles.filter(
+      (v) => v.vehicleAvailability.length > 0
     );
 
     const clusters = await clusteringService.getOptimalClusters(
       String(shiftId),
       new Date(date),
-      shuttlesWithAvailability.map(s => ({
-        id: s.id,
-        capacity: s.category?.capacity || 0
+      vehiclesWithAvailability.map((v) => ({
+        id: v.id,
+        capacity: v.category?.capacity || 0,
       }))
     );
 
@@ -128,7 +132,7 @@ router.post(
     console.log('Request headers:', req.headers);
     next();
   },
-  specificShuttleClusterValidation,
+  specificVehicleClusterValidation,
   validateRequest,
   asyncHandler(async (req: TypedRequest<{ shiftId: string; shuttleId: string }, { date: string }>, res: Response) => {
     const { shiftId, shuttleId } = req.params;
@@ -151,20 +155,20 @@ router.post(
     }
 
     try {
-      // Check if shuttle exists
-      const shuttle = await prisma.shuttle.findUnique({
-        where: { id: parseInt(shuttleId) }
+      // Check if vehicle exists
+      const vehicle = await prisma.vehicle.findUnique({
+        where: { id: String(shuttleId) }
       });
 
-      if (!shuttle) {
-        console.log('Shuttle not found:', shuttleId);
-        res.status(404).json({ error: 'Shuttle not found' });
+      if (!vehicle) {
+        console.log('Vehicle not found:', shuttleId);
+        res.status(404).json({ error: 'Vehicle not found' });
         return;
       }
 
       // Check if shift exists
       const shift = await prisma.shift.findUnique({
-        where: { id: parseInt(shiftId) }
+        where: { id: String(shiftId) }
       });
 
       if (!shift) {
@@ -173,11 +177,11 @@ router.post(
         return;
       }
 
-      // Check if shuttle is available for the shift
-      const isAvailable = await prisma.shuttleAvailability.findFirst({
+    // Check if vehicle is available for the shift
+    const isAvailable = await prisma.vehicleAvailability.findFirst({
         where: {
-          shuttleId: parseInt(shuttleId),
-          shiftId: parseInt(shiftId),
+      vehicleId: String(shuttleId),
+      shiftId: String(shiftId),
           date: parsedDate,
           available: true
         }
@@ -186,14 +190,14 @@ router.post(
       console.log('Availability check result:', isAvailable);
 
       if (!isAvailable) {
-        res.status(400).json({ error: 'Shuttle is not available for this shift' });
+  res.status(400).json({ error: 'Vehicle is not available for this shift' });
         return;
       }
 
       const cluster = await clusteringService.getOptimalClusterForShuttle(
         shiftId,
         parsedDate,
-        parseInt(shuttleId)
+  String(shuttleId)
       );
 
       console.log('Cluster result:', cluster);
@@ -203,7 +207,7 @@ router.post(
         return;
       }
 
-      res.json(cluster);
+  res.json(cluster);
     } catch (error: any) {
       console.error('Error processing request:', error);
       res.status(500).json({ 
@@ -216,85 +220,67 @@ router.post(
 
 // Check shuttle availability for a shift
 router.post(
-  '/availability/:shuttleId/:shiftId',
-  availabilityValidation,
+  '/availability/:vehicleId/:shiftId',
+  vehicleAvailabilityValidation,
   validateRequest,
-  asyncHandler(async (req: TypedRequest<{ shuttleId: string; shiftId: string }, { date: string }>, res: Response) => {
-    const { shuttleId, shiftId } = req.params;
+  asyncHandler(async (req: TypedRequest<{ vehicleId: string; shiftId: string }, { date: string }>, res: Response) => {
+    const { vehicleId, shiftId } = req.params;
     const { date } = req.body;
 
-    if (!shuttleId || !shiftId) {
-      res.status(400).json({ error: 'Shuttle ID and Shift ID are required' });
+    if (!vehicleId || !shiftId) {
+      res.status(400).json({ error: 'Vehicle ID and Shift ID are required' });
       return;
     }
 
-    const availability = await prisma.shuttleAvailability.findFirst({
+  const availability = await prisma.vehicleAvailability.findFirst({
       where: {
-        shuttleId: parseInt(shuttleId),
-        shiftId: parseInt(shiftId),
-        date: new Date(date)
+        vehicleId: String(vehicleId),
+        shiftId: String(shiftId),
+        date: new Date(date),
       },
       include: {
-        shuttle: {
-          include: {
-            category: true
-          }
-        },
-        shift: true
-      }
+        vehicle: { include: { category: true } },
+        shift: true,
+      },
     });
 
     if (!availability) {
-      // Check if there are any conflicting routes
-      const shift = await prisma.shift.findUnique({
-        where: { id: parseInt(shiftId) }
-      });
-
+      const shift = await prisma.shift.findUnique({ where: { id: String(shiftId) } });
       if (!shift) {
         res.status(404).json({ error: 'Shift not found' });
         return;
       }
 
+      const vehicleRecord = await prisma.vehicle.findUnique({ where: { id: String(vehicleId) } });
+
       const conflictingRoute = await prisma.route.findFirst({
         where: {
-          shuttleId: parseInt(shuttleId),
+          vehicleId: String(vehicleId),
           date: new Date(date),
           OR: [
-            {
-              startTime: {
-                lte: shift.endTime,
-                gte: shift.startTime
-              }
-            },
-            {
-              endTime: {
-                lte: shift.endTime,
-                gte: shift.startTime
-              }
-            }
-          ]
-        }
+            { startTime: { lte: shift.endTime, gte: shift.startTime } },
+            { endTime: { lte: shift.endTime, gte: shift.startTime } },
+          ],
+        },
       });
 
-      // If no conflicting route, shuttle is available
       const isAvailable = !conflictingRoute;
 
-      // Create availability record
-      const newAvailability = await prisma.shuttleAvailability.create({
+    const newAvailability = await prisma.vehicleAvailability.create({
         data: {
-          shuttleId: parseInt(shuttleId),
-          shiftId: parseInt(shiftId),
+          vehicleId: String(vehicleId),
+          shiftId: String(shiftId),
           date: new Date(date),
-          available: isAvailable
+          startTime: shift.startTime,
+          endTime: shift.endTime,
+          available: isAvailable,
+      driverId: vehicleRecord?.driverId || (await prisma.driver.findFirst({ where: { tenantId: (req as any).user?.tenantId || 'default-tenant' } }))?.id || (await prisma.driver.create({ data: { name: 'Auto-assigned', licenseNumber: `AUTO-${Date.now()}`, tenantId: (req as any).user?.tenantId || 'default-tenant' } })).id,
+          tenantId: (req as any).user?.tenantId || 'default-tenant',
         },
         include: {
-          shuttle: {
-            include: {
-              category: true
-            }
-          },
-          shift: true
-        }
+          vehicle: { include: { category: true } },
+          shift: true,
+        },
       });
 
       res.json(newAvailability);

@@ -2,7 +2,7 @@
 import express, { RequestHandler, Request, Response } from 'express';
 import { PrismaClient, RouteStatus } from '@prisma/client';
 import asyncHandler from 'express-async-handler';
-import { idValidation, shuttleValidation } from '../middleware/validation';
+import { idValidation, vehicleValidation as shuttleValidation } from '../middleware/validation';
 import validateRequest from '../middleware/validateRequest';
 import { notificationService } from '../services/notificationService';
 import { requireRoles } from '../middleware/auth';
