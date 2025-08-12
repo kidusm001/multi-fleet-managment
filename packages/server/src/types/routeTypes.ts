@@ -33,6 +33,8 @@ export interface RouteBody {
 
 export interface StopUpdate {
   id: string;
+  // Optional employeeId used in some update operations to map stops by employee
+  employeeId?: string;
   latitude?: number;
   longitude?: number;
   sequence?: number | null;

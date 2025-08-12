@@ -67,14 +67,6 @@ router.get('/', asyncHandler(async (req: Request, res: Response, _next: NextFunc
   try {
     // ALL USERS can search routes (prioritize data over pages)
     try {
-      // Check if query might be for a route with a number (e.g., "route 123" or "route123")
-      const routeNumberMatch = searchStr.match(/route\s*(\d+)/i);
-      let routeNumberSearch = null;
-      if (routeNumberMatch && routeNumberMatch[1]) {
-        routeNumberSearch = parseInt(routeNumberMatch[1]);
-        console.log(`Detected potential route number search: ${routeNumberSearch}`);
-      }
-
       // Check if query is a variation of "route" (e.g., "rout", "rte")
       const isRouteVariation = ['route', 'rout', 'rte'].some(variation => 
         searchStr.includes(variation) || variation.includes(searchStr)
@@ -92,15 +84,9 @@ router.get('/', asyncHandler(async (req: Request, res: Response, _next: NextFunc
         ],
         deleted: false
       };
-      
-      // If the search looks like "route 123", search for route with ID 123
-      if (routeNumberSearch) {
-        whereClause.OR.push({ id: { equals: routeNumberSearch } });
-      }
-      
-      // If search is a number, match by ID
-      if (!isNaN(parseInt(searchStr))) {
-        whereClause.OR.push({ id: { equals: parseInt(searchStr) } });
+      // If search string looks like an ID (cuid-like) length, try exact match
+      if (searchStr.length >= 8) {
+        whereClause.OR.push({ id: { equals: searchStr } });
       }
       
       // For explicit route queries with short search terms, we might just return all routes
@@ -113,7 +99,7 @@ router.get('/', asyncHandler(async (req: Request, res: Response, _next: NextFunc
         where: whereClause,
         take: limitNum,
         include: {
-          shuttle: true,
+          vehicle: true,
           shift: true
         },
         orderBy: [
@@ -132,7 +118,7 @@ router.get('/', asyncHandler(async (req: Request, res: Response, _next: NextFunc
           where: { deleted: false },
           take: limitNum,
           include: {
-            shuttle: true,
+            vehicle: true,
             shift: true
           },
           orderBy: [{ name: 'asc' }]
@@ -141,7 +127,7 @@ router.get('/', asyncHandler(async (req: Request, res: Response, _next: NextFunc
         results.push(...allRoutes.map(route => ({
           id: route.id,
           title: route.name,
-          subtitle: `${route.status} - ${route.shuttle?.name || 'No shuttle'}`,
+          subtitle: `${route.status} - ${route.vehicle?.name || route.vehicle?.plateNumber || 'No vehicle'}`,
           type: 'route',
           data: route
         })));
@@ -149,7 +135,7 @@ router.get('/', asyncHandler(async (req: Request, res: Response, _next: NextFunc
         results.push(...routes.map(route => ({
           id: route.id,
           title: route.name,
-          subtitle: `${route.status} - ${route.shuttle?.name || 'No shuttle'}`,
+          subtitle: `${route.status} - ${route.vehicle?.name || route.vehicle?.plateNumber || 'No vehicle'}`,
           type: 'route',
           data: route
         })));
@@ -195,14 +181,14 @@ router.get('/', asyncHandler(async (req: Request, res: Response, _next: NextFunc
     //  page.description.toLowerCase().includes(searchStr)
     // ));
 
-    // ALL USERS can search shuttles
+    // ALL USERS can search vehicles
     try {
-      const shuttles = await prisma.shuttle.findMany({
+      const vehicles = await prisma.vehicle.findMany({
         where: {
           OR: [
             { name: { contains: searchStr, mode: 'insensitive' } },
             { model: { contains: searchStr, mode: 'insensitive' } },
-            { licensePlate: { contains: searchStr, mode: 'insensitive' } },
+            { plateNumber: { contains: searchStr, mode: 'insensitive' } },
           ],
           deleted: false
         },
@@ -217,15 +203,15 @@ router.get('/', asyncHandler(async (req: Request, res: Response, _next: NextFunc
         ]
       });
 
-      results.push(...shuttles.map(shuttle => ({
-        id: shuttle.id,
-        title: shuttle.name,
-        subtitle: `${shuttle.model || 'Unknown model'} - ${shuttle.licensePlate}`,
-        type: 'shuttle',
-        data: shuttle
+      results.push(...vehicles.map(vehicle => ({
+        id: vehicle.id,
+        title: vehicle.name || vehicle.plateNumber,
+        subtitle: `${vehicle.model || 'Unknown model'} - ${vehicle.plateNumber}`,
+        type: 'vehicle',
+        data: vehicle
       })));
     } catch (error) {
-      console.error('Shuttle search error:', error);
+      console.error('Vehicle search error:', error);
     }
 
   // Role-specific searches for admin only
@@ -268,7 +254,7 @@ router.get('/', asyncHandler(async (req: Request, res: Response, _next: NextFunc
     if ([ROLES.ADMIN, ROLES.MANAGER].includes(role as any)) {
       // Search drivers
       try {
-        const drivers = await prisma.driver.findMany({
+    const drivers = await prisma.driver.findMany({
           where: {
             OR: [
               { name: { contains: searchStr, mode: 'insensitive' } },
@@ -279,7 +265,7 @@ router.get('/', asyncHandler(async (req: Request, res: Response, _next: NextFunc
           },
           take: limitNum,
           include: {
-            shuttle: true
+      assignedVehicles: true
           },
           orderBy: [
             {

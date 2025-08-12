@@ -2,7 +2,7 @@ import { body, param, ValidationChain } from 'express-validator';
 
 // Common validation chains
 export const idValidation: ValidationChain[] = [
-  param('id').isInt({ gt: 0 }).withMessage('Valid ID is required')
+  param('id').trim().notEmpty().withMessage('Valid ID is required')
 ];
 
 // Shuttle Category validation
@@ -15,12 +15,12 @@ export const shuttleCategoryValidation: ValidationChain[] = [
 
 // Shift ID validation
 export const shiftIdValidation: ValidationChain[]= [
-  param('shiftId').isInt().toInt().withMessage('Valid numeric shift ID is required')
+  param('shiftId').trim().notEmpty().withMessage('Valid shift ID is required')
 ];
 
 export const routeEmployeeIdValidation : ValidationChain[] = [
-  param('routeId').isInt().toInt().withMessage('Valid route ID is required'),
-  param('employeeId').isUUID().withMessage('Valid employee ID is required')
+  param('routeId').trim().notEmpty().withMessage('Valid route ID is required'),
+  param('employeeId').trim().notEmpty().withMessage('Valid employee ID is required')
 ];
 
 // Shuttle validation
@@ -51,16 +51,17 @@ export const shiftValidation: ValidationChain[]= [
 //Employee ID validation
 export const employeeIdValidation: ValidationChain[] = [
   param('id')
-    .isUUID()
-    .withMessage('Valid employee ID must be a UUID'),
+    .trim()
+    .notEmpty()
+    .withMessage('Valid employee ID is required'),
 ];
 
 // Employee validation
 export const employeeValidation: ValidationChain[] = [
   body('name').trim().notEmpty().withMessage('Name is required'),
   body('location').trim().notEmpty().withMessage('Location is required'),
-  body('departmentId').isInt().toInt().withMessage('Valid department ID is required'),
-  body('shiftId').isInt().toInt().withMessage('Valid shift ID is required'),
+  body('departmentId').trim().notEmpty().withMessage('Valid department ID is required'),
+  body('shiftId').trim().notEmpty().withMessage('Valid shift ID is required'),
   body('latitude').isFloat().withMessage('Valid latitude is required'),
   body('longitude').isFloat().withMessage('Valid longitude is required')
 ];
@@ -68,53 +69,33 @@ export const employeeValidation: ValidationChain[] = [
 // Route validation
 export const routeValidation: ValidationChain[] = [
   body('name').trim().notEmpty().withMessage('Name is required'),
-  body('shuttleId').isInt().toInt().withMessage('Valid shuttle ID is required'),
-  body('shiftId').isInt().toInt().withMessage('Valid shift ID is required'),
+  body('shuttleId').trim().notEmpty().withMessage('Valid vehicle ID is required'),
+  body('shiftId').trim().notEmpty().withMessage('Valid shift ID is required'),
   body('date').isISO8601().withMessage('Valid date is required'),
   body('totalDistance').isFloat({ min: 0 }).withMessage('Total distance must be positive'),
   body('totalTime').isFloat({ min: 0 }).withMessage('Total time must be positive'),
   body('employees').isArray().withMessage('Employees must be an array'),
-  body('employees.*.employeeId').isUUID().withMessage('Valid employeeId is required'),
-  body('employees.*.stopId').isInt().withMessage('Valid stopId is required')
+  body('employees.*.employeeId').trim().notEmpty().withMessage('Valid employeeId is required'),
+  body('employees.*.stopId').trim().notEmpty().withMessage('Valid stopId is required')
 ];
 
 // Cluster validation
 export const clusterValidation: ValidationChain[] = [
-  body('shiftId').isInt().toInt().withMessage('Valid shift ID is required'),
+  body('shiftId').trim().notEmpty().withMessage('Valid shift ID is required'),
   body('date').isISO8601().withMessage('Valid date is required')
 ];
 
 // Availability validation
 export const availabilityValidation: ValidationChain[] = [
-  param('shuttleId').isInt().toInt().withMessage('Valid shuttle ID is required'),
-  param('shiftId').isInt().toInt().withMessage('Valid shift ID is required'),
+  param('shuttleId').trim().notEmpty().withMessage('Valid vehicle ID is required'),
+  param('shiftId').trim().notEmpty().withMessage('Valid shift ID is required'),
   body('date').isISO8601().withMessage('Valid date is required')
 ];
 
 // Specific shuttle cluster validation
 export const specificShuttleClusterValidation: ValidationChain[] = [
-  param('shiftId')
-    .trim()
-    .notEmpty()
-    .withMessage('Shift ID is required')
-    .custom((value) => {
-      const intValue = parseInt(value);
-      if (isNaN(intValue)) {
-        throw new Error('Shift ID must be a valid number');
-      }
-      return true;
-    }),
-  param('shuttleId')
-    .trim()
-    .notEmpty()
-    .withMessage('Shuttle ID is required')
-    .custom((value) => {
-      const intValue = parseInt(value);
-      if (isNaN(intValue)) {
-        throw new Error('Shuttle ID must be a valid number');
-      }
-      return true;
-    }),
+  param('shiftId').trim().notEmpty().withMessage('Shift ID is required'),
+  param('shuttleId').trim().notEmpty().withMessage('Vehicle ID is required'),
   body('date')
     .exists()
     .withMessage('Date is required')

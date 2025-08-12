@@ -11,6 +11,13 @@ const router = express.Router();
 const prisma = new PrismaClient();
 
 // Type definitions
+// Extend Express Request type to include user with tenantId
+interface AuthenticatedRequest extends Request {
+  user?: {
+    tenantId: string;
+    // ...other user properties
+  };
+}
 interface DepartmentWithCount extends Department {
   _count: {
     employees: number;
@@ -18,7 +25,7 @@ interface DepartmentWithCount extends Department {
 }
 
 interface FormattedDepartment {
-  id: number;
+  id: string;
   name: string;
   employeeCount: number;
   employees?: any[];
@@ -39,14 +46,11 @@ router.get('/',
         }
       }
     });
-    
-    // Format the response to include employeeCount instead of _count
     const formattedDepartments: FormattedDepartment[] = departments.map(dept => ({
-      id: dept.id,
+      id: dept.id.toString(),
       name: dept.name,
       employeeCount: dept._count.employees
     }));
-    
     res.json(formattedDepartments);
   })
 );
@@ -63,8 +67,7 @@ router.get('/:id',
   ],
   validateRequest,
   asyncHandler(async (req: Request, res: Response) => {
-    const id = parseInt(req.params.id);
-    
+    const id = req.params.id;
     const department = await prisma.department.findUnique({
       where: { id },
       include: {
@@ -104,8 +107,7 @@ router.get('/:id/employees',
   ],
   validateRequest,
   asyncHandler(async (req: Request, res: Response) => {
-    const departmentId = parseInt(req.params.id);
-    
+    const departmentId = req.params.id;
     const department = await prisma.department.findUnique({
       where: { id: departmentId },
       include: { employees: true }
@@ -139,23 +141,21 @@ router.post('/',
       .isLength({ min: 2, max: 100 }).withMessage('Department name must be between 2 and 100 characters')
   ],
   validateRequest,
-  asyncHandler(async (req: Request, res: Response) => {
+  asyncHandler(async (req: AuthenticatedRequest, res: Response) => {
     const { name } = req.body as DepartmentCreateData;
-    
     // Check if department with same name exists
     const existingDepartment = await prisma.department.findFirst({
       where: { name: { equals: name, mode: 'insensitive' } }
     });
-    
     if (existingDepartment) {
       res.status(409).json({ error: 'Department with this name already exists' });
       return;
     }
-    
+    // TODO: Replace 'tenantId' with actual tenant logic
+    const tenantId = req.user?.tenantId || 'default-tenant';
     const department = await prisma.department.create({
-      data: { name }
+      data: { name, tenantId }
     });
-    
     await notificationService.createNotification({
       toRoles: ['admin', 'administrator', 'fleetManager'],
       fromRole: 'system',
@@ -165,7 +165,6 @@ router.post('/',
       importance: 'Medium',
       relatedEntityId: department.id.toString()
     });
-    
     res.status(201).json(department);
   })
 );
@@ -192,7 +191,7 @@ router.patch('/:id',
   ],
   validateRequest,
   asyncHandler(async (req: Request, res: Response) => {
-    const id = parseInt(req.params.id);
+  const id = req.params.id;
     const { name } = req.body as DepartmentUpdateData;
     
     // Verify department exists
@@ -232,7 +231,8 @@ router.patch('/:id',
       include: {
         _count: {
           select: { employees: true }
-        }
+        },
+        employees: true
       }
     });
     
@@ -241,18 +241,17 @@ router.patch('/:id',
       fromRole: 'system',
       notificationType: 'department',
       subject: 'Department Updated',
-      message: `Department name changed from "${originalName}" to "${name}". Affects ${updatedDepartment._count.employees} employees.`,
-      importance: department.employees.length > 0 ? 'High' : 'Medium',
-      relatedEntityId: id.toString()
+  message: `Department name changed from "${originalName}" to "${name}". Affects ${updatedDepartment._count.employees} employees.`,
+  importance: updatedDepartment.employees && updatedDepartment.employees.length > 0 ? 'High' : 'Medium',
+  relatedEntityId: id.toString()
     });
     
     // Format response
     const formattedDepartment: FormattedDepartment = {
-      id: updatedDepartment.id,
+      id: updatedDepartment.id.toString(),
       name: updatedDepartment.name,
       employeeCount: updatedDepartment._count.employees
     };
-    
     res.json(formattedDepartment);
   })
 );
@@ -267,7 +266,7 @@ router.delete('/:id',
   [param('id').isInt().withMessage('Department ID must be an integer')],
   validateRequest,
   asyncHandler(async (req: Request, res: Response) => {
-    const id = parseInt(req.params.id);
+  const id = req.params.id;
     
 
     // Check if department exists

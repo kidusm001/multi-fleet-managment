@@ -3,13 +3,24 @@ import asyncHandler from 'express-async-handler';
 import prisma from '../db';
 import validateRequest from '../middleware/validateRequest';
 import { employeeValidation, employeeIdValidation, shiftIdValidation } from '../middleware/validation';
-import { EmployeeParams, EmployeeBody, TypedRequest } from '../types/routeTypes';
+// Removed TypedRequest-specific types to align with Express typings
 import { requireRole } from '../middleware/requireRole';
 import { notificationService } from '../services/notificationService';
 // Fix the import statement for express-fileupload
+import { UploadedFile } from 'express-fileupload';
 import fileUpload from 'express-fileupload';
 
 // Set up file upload middleware
+// Extend Express Request type to include user and files
+interface AuthenticatedRequest extends Request {
+  user?: {
+    tenantId: string;
+    // ...other user properties
+  };
+  files?: {
+    [key: string]: UploadedFile | UploadedFile[];
+  };
+}
 const router = express.Router();
 router.use(fileUpload({
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
@@ -27,7 +38,7 @@ router.get(
   requireRole(['admin', 'administrator', 'fleetManager']),
   shiftIdValidation,
   validateRequest,
-  asyncHandler(async (req: TypedRequest<{ shiftId: string }, {}>, res: Response) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const shiftId = req.params.shiftId;
 
     const employees = await prisma.employee.findMany({
@@ -55,7 +66,7 @@ router.get(
 router.get(
   '/',
   requireRole(['admin', 'administrator', 'fleetManager']),
-  asyncHandler(async (_req: TypedRequest<{}, {}>, res: Response) => {
+  asyncHandler(async (_req: Request, res: Response) => {
     const employees = await prisma.employee.findMany({
       where: {
         deleted: false,
@@ -110,7 +121,7 @@ router.get(
   requireRole(['admin', 'administrator', 'fleetManager']),
   employeeIdValidation,
   validateRequest,
-  asyncHandler(async (req: TypedRequest<{ id: string }, {}>, res: Response) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const id = req.params.id;
     const employee = await prisma.employee.findFirst({
       where: {
@@ -120,15 +131,13 @@ router.get(
       include: {
         department: true,
         shift: true,
-        stop: true,
-      },
+        stop: true
+      }
     });
-
     if (!employee) {
       res.status(404).json({ error: 'Employee not found' });
       return;
     }
-
     res.json(employee);
   })
 );
@@ -143,22 +152,23 @@ router.post(
   requireRole(['admin', 'administrator']),
   employeeValidation,
   validateRequest,
-  asyncHandler(async (req: TypedRequest<{}, EmployeeBody>, res: Response) => {
-    const { name, location, departmentId, shiftId, latitude, longitude } = req.body;
-
-    // First create a stop for the employee
+  asyncHandler(async (req: Request, res: Response) => {
+    const { name, location, departmentId, shiftId, latitude, longitude } = req.body as Record<string, any>;
+    const tenantId = (req as any).user?.tenantId || 'default-tenant';
     const stop = await prisma.stop.create({
       data: {
+        name: `${name}-stop`,
+        tenant: { connect: { id: tenantId } },
         latitude: parseFloat(String(latitude)),
         longitude: parseFloat(String(longitude)),
         sequence: null,
         estimatedArrivalTime: null
       }
     });
-
     const employee = await prisma.employee.create({
       data: {
         name,
+        tenant: { connect: { id: tenantId } },
         location,
         department: { connect: { id: departmentId } },
         shift: { connect: { id: shiftId } },
@@ -171,17 +181,15 @@ router.post(
         stop: true
       }
     });
-
     await notificationService.createNotification({
       toRoles: ['admin', 'administrator', 'fleetManager'],
       fromRole: 'system',
       notificationType: 'employee',
       subject: 'New Employee Added',
-      message: `New employee "${name}" has been added to ${employee.department.name} department with shift ID ${shiftId}`,
+      message: `New employee "${name}" has been added to ${employee.department?.name || 'unknown'} department with shift ID ${shiftId}`,
       importance: 'Medium',
       relatedEntityId: employee.id
     });
-
     res.status(201).json(employee);
   })
 );
@@ -196,9 +204,9 @@ router.put(
   requireRole(['admin', 'administrator', 'fleetManager']),
   [...employeeIdValidation, ...employeeValidation],
   validateRequest,
-  asyncHandler(async (req: TypedRequest<{ id: string }, EmployeeBody>, res: Response) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
-    const { name, location, departmentId, shiftId, latitude, longitude, assigned } = req.body;
+    const { name, location, departmentId, shiftId, latitude, longitude, assigned } = req.body as Record<string, any>;
 
     const oldEmployee = await prisma.employee.findUnique({
       where: { id },
@@ -270,7 +278,7 @@ router.delete(
   requireRole(['admin', 'administrator']),
   employeeIdValidation,
   validateRequest,
-  asyncHandler(async (req: TypedRequest<EmployeeParams, {}>, res: Response) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const id = req.params.id;
 
     const employee = await prisma.employee.findUnique({
@@ -310,7 +318,7 @@ router.post(
   requireRole(['admin', 'administrator']),
   employeeIdValidation,
   validateRequest,
-  asyncHandler(async (req: TypedRequest<EmployeeParams, {}>, res: Response) => {
+  asyncHandler(async (req: Request, res: Response) => {
     const id = req.params.id;
 
     const employee = await prisma.employee.update({
@@ -453,24 +461,17 @@ router.post(
   requireRole(['admin', 'administrator']),
   asyncHandler(async (req: Request, res: Response, _next: NextFunction): Promise<void> => {
     try {
-      // Check if file was uploaded
-      if (!req.files || Object.keys(req.files).length === 0 || !req.files.file) {
+      const files = (req as any).files as { [key: string]: UploadedFile | UploadedFile[] } | undefined;
+      if (!files || Object.keys(files).length === 0 || !files.file) {
         res.status(400).json({ error: 'No file uploaded' });
         return;
       }
-      
-      // Fix type assertion with properly imported type
-      const file = Array.isArray(req.files.file) 
-        ? req.files.file[0]
-        : req.files.file;
-      
-      // Here you'd parse the file (CSV/Excel)
-      // For simplicity, we'll just return a success message
-      // In a real implementation, you'd process the file contents
-      
+      const file = Array.isArray(files.file)
+        ? files.file[0]
+        : files.file;
       res.json({
         success: true,
-        processedCount: 1, // Replace with actual count
+        processedCount: 1,
         message: 'Employees uploaded successfully',
         filename: file.name
       });
@@ -533,28 +534,28 @@ router.post(
       
       // Get all departments for validation with better normalization
       const departments = await prisma.department.findMany();
-      const departmentsMap = new Map();
+  const departmentsMap = new Map<string, string>();
       
       // Create multiple mappings for each department - exact name and normalized versions
       departments.forEach(d => {
-        const normalized = d.name.toLowerCase().trim().replace(/\s+/g, ' ');
-        departmentsMap.set(d.name.toLowerCase(), d.id); // Original mapping
-        departmentsMap.set(normalized, d.id); // Normalized mapping
+  const normalized = d.name.toLowerCase().trim().replace(/\s+/g, ' ');
+  departmentsMap.set(d.name.toLowerCase(), d.id); // Original mapping
+  departmentsMap.set(normalized, d.id); // Normalized mapping
       });
       
       // Get all shifts for validation
       const shifts = await prisma.shift.findMany();
-      const shiftIds = new Set(shifts.map(s => s.id));
+  const shiftIds = new Set<string>(shifts.map(s => s.id));
       
       // Get all existing employees to check for duplicates - name + location combination
       const existingEmployees = await prisma.employee.findMany({
         where: { deleted: false },
-        select: { name: true, location: true }
+  select: { name: true, location: true }
       });
       
       // Create a set of name+location combinations for faster lookup
       const existingNameLocationCombos = new Set(
-        existingEmployees.map(emp => `${emp.name.toLowerCase()}|${emp.location.toLowerCase()}`)
+        existingEmployees.map(emp => `${emp.name.toLowerCase()}|${(emp.location || '').toLowerCase()}`)
       );
       
       console.log(`Found ${existingEmployees.length} existing employees to check against for duplicates`);
@@ -563,15 +564,15 @@ router.post(
       interface ValidRecord {
         name: string;
         location: string;
-        departmentId: number; // Changed from string | number to number only
-        shiftId: number;
+        departmentId: string;
+        shiftId: string;
         latitude?: number | null;
         longitude?: number | null;
         [key: string]: any; // Allow additional properties
       }
       
       // Process and validate each record with improved department matching
-      const validRecords: ValidRecord[] = [];
+  const validRecords: ValidRecord[] = [];
       const invalidRecords: any[] = [];
       const duplicateRecords: any[] = [];
       
@@ -612,12 +613,9 @@ router.post(
         }
         
         // Validate or lookup department with more robust matching
-        let recordDepartmentId: number | null = null; // Explicitly type as number
+        let recordDepartmentId: string | null = null;
         if (record.departmentId) {
-          // Convert string departmentId to number if needed
-          recordDepartmentId = typeof record.departmentId === 'string' 
-            ? parseInt(record.departmentId, 10) 
-            : record.departmentId;
+          recordDepartmentId = String(record.departmentId);
         } else if (record.department) {
           const normalizedDeptName = record.department.toLowerCase().trim().replace(/\s+/g, ' ');
           
@@ -638,9 +636,9 @@ router.post(
             }
           }
           
-          // Ensure deptId is converted to number
+          // Ensure deptId is a string
           if (deptId) {
-            recordDepartmentId = typeof deptId === 'string' ? parseInt(deptId, 10) : deptId;
+            recordDepartmentId = String(deptId);
           }
         }
         
@@ -653,10 +651,10 @@ router.post(
         }
         
         // Check shift ID
-        let recordShiftId = record.shiftId;
+  let recordShiftId = record.shiftId as string | undefined;
         
         // Validate shift if provided
-        if (recordShiftId && !shiftIds.has(parseInt(String(recordShiftId)))) {
+  if (recordShiftId && !shiftIds.has(String(recordShiftId))) {
           invalidRecords.push({
             record,
             errors: [`Shift with ID ${recordShiftId} does not exist`]
@@ -667,8 +665,8 @@ router.post(
         // Add to valid records for processing
         validRecords.push({
           ...record,
-          departmentId: recordDepartmentId as number, // Ensure it's a number
-          shiftId: parseInt(String(recordShiftId))
+          departmentId: recordDepartmentId as string,
+          shiftId: recordShiftId ? String(recordShiftId) : ''
         });
       }
       
@@ -676,15 +674,18 @@ router.post(
       console.log(`Skipped ${duplicateRecords.length} duplicate employees`);
       
       // Process valid records - create employees and stops
-      const createdEmployees = [];
+  const createdEmployees: any[] = [];
       
       for (const record of validRecords) {
         try {
           // First create a stop for the employee with the location data
+          const tenantId = (req as any).user?.tenantId || 'default-tenant';
           const stop = await prisma.stop.create({
             data: {
-              latitude: record.latitude || 9.0221, // Default to Addis Ababa if not provided
-              longitude: record.longitude || 38.7468,
+              name: `${record.name}-stop`,
+              tenant: { connect: { id: tenantId } },
+              latitude: record.latitude ?? 9.0221,
+              longitude: record.longitude ?? 38.7468,
               sequence: null,
               estimatedArrivalTime: null
             }
@@ -697,12 +698,9 @@ router.post(
               // email field removed
               // phone field removed
               location: record.location,
-              department: { 
-                connect: { id: record.departmentId } // Now always a number
-              },
-              shift: { 
-                connect: { id: record.shiftId } 
-              },
+              tenant: { connect: { id: tenantId } },
+              department: { connect: { id: record.departmentId } },
+              shift: { connect: { id: record.shiftId } },
               stop: { 
                 connect: { id: stop.id } 
               },
