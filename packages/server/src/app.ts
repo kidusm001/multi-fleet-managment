@@ -19,7 +19,6 @@ export function createApp() {
 
   // Routes
   app.use('/auth', authRoutes);
-  // Temporarily disable legacy API routes until tenantized
   // app.use('/api', apiRouter);
 
   // Health check endpoint
