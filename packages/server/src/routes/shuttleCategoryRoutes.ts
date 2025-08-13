@@ -28,6 +28,12 @@ const INITIAL_CATEGORIES = [
 
 // Initialize categories if they don't exist
 const initializeCategories = async () => {
+  // Check if default tenant exists
+  const defaultTenant = await prisma.tenant.findUnique({ where: { id: 'default-tenant' } });
+  if (!defaultTenant) {
+    console.warn('[VehicleCategory Init] Skipped: default tenant not found.');
+    return;
+  }
   for (const category of INITIAL_CATEGORIES) {
     const existing = await prisma.vehicleCategory.findFirst({
       where: { name: category.name }
@@ -40,8 +46,10 @@ const initializeCategories = async () => {
   }
 };
 
-// Call initialization on startup
-initializeCategories().catch(console.error);
+// Initialize only outside test environment to avoid interfering with unit tests
+if (process.env.NODE_ENV !== 'test') {
+  initializeCategories().catch(console.error);
+}
 
 /**
  * @route   GET /shuttle-categories

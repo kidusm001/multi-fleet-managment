@@ -186,8 +186,7 @@ router.patch('/:id',
       .isFloat({ min: 0, max: 5 }).withMessage('Rating must be between 0 and 5'),
     body('vehicleId')
       .optional()
-      .isInt().withMessage('Vehicle ID must be an integer')
-      .toInt()
+      .isString().withMessage('Vehicle ID must be a string')
   ],
   validateRequest,
   asyncHandler(async (req: Request, res: Response) => {

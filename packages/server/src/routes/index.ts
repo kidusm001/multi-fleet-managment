@@ -2,7 +2,8 @@ import express, { RequestHandler } from 'express';
 import shiftRoutes from './shiftRoutes';
 import employeeRoutes from './employeeRoutes';
 import routeRoutes from './routeRoutes';
-import shuttleRoutes from './shuttleRoutes';
+// Vehicle-backed legacy shuttles route
+import shuttlesRoutes from './shuttles';
 import departmentRoutes from './departmentRoutes';
 import driverRoutes from './driverRoutes';
 import shuttleCategoryRoutes from './shuttleCategoryRoutes';
@@ -25,7 +26,7 @@ router.use((req, res, next) => {
 router.use('/shifts', shiftRoutes);
 router.use('/employees', employeeRoutes);
 router.use('/routes', routeRoutes);
-router.use('/shuttles', shuttleRoutes);
+router.use('/shuttles', shuttlesRoutes);
 router.use('/departments', departmentRoutes);
 router.use('/drivers', driverRoutes);
 router.use('/shuttle-categories', shuttleCategoryRoutes);
@@ -42,7 +43,7 @@ const debugRoute: RequestHandler = (req, res) => {
       '/shifts',
       '/employees',
       '/routes',
-      '/shuttles',
+  '/shuttles',
       '/departments',
       '/drivers',
       '/shuttle-categories',

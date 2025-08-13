@@ -2,7 +2,7 @@ import express, { Request, Response, RequestHandler} from 'express';
 import prisma from '../db';
 import asyncHandler from 'express-async-handler';
 import validateRequest from '../middleware/validateRequest';
-import { idValidation, routeValidation, shiftIdValidation, routeEmployeeIdValidation } from '../middleware/validation';
+import { idValidation, routeValidation, shiftIdValidation, routeEmployeeIdValidation, routeIdValidation } from '../middleware/validation';
 import { RouteBody, StopUpdate } from '../types/routeTypes';
 import { getAvailableShuttles } from '../services/shuttleAvailabilityService';
 import { requireRole } from '../middleware/requireRole';
@@ -186,7 +186,7 @@ router.get(
  */
 router.get(
   '/:routeId/stops',
-  idValidation, // Reuse idValidation for routeId
+  routeIdValidation,
   validateRequest,
  requireRole(['admin', 'administrator', 'fleetManager']),
   asyncHandler(async (req: Request<{ routeId: string }>, res: Response) => {

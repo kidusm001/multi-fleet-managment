@@ -18,6 +18,6 @@
     "license": "ISC",
     "packageManager": "pnpm@10.14.0",
     "devDependencies": {
-        "task-master-ai": "^0.23.0"
+        "task-master-ai": "^0.24.0"
     }
 }

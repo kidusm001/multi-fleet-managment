@@ -3,7 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import authRoutes from './routes/auth';
 import { loadSession } from './middleware/auth';
-// import apiRouter from './routes';
+import apiRouter from './routes';
 
 dotenv.config();
 
@@ -20,7 +20,7 @@ export function createApp() {
   // Routes
   app.use('/auth', authRoutes);
   // ...existing code...
-  // app.use('/api', apiRouter);
+  app.use('/api', apiRouter);
 
   // Health check endpoint
   app.get('/health', (req, res) => {

@@ -9,8 +9,8 @@ importers:
   .:
     devDependencies:
       task-master-ai:
-        specifier: ^0.23.0
-        version: 0.23.0(@modelcontextprotocol/sdk@1.17.1)(@types/node@24.2.0)(effect@3.16.12)(react@19.1.1)(ws@8.18.3)
+        specifier: ^0.24.0
+        version: 0.24.0(@modelcontextprotocol/sdk@1.17.1)(@types/node@24.2.0)(effect@3.16.12)(react@19.1.1)(ws@8.18.3)
 
   packages/client:
     dependencies:
@@ -3817,6 +3817,10 @@ packages:
     engines: {node: ^18.0.0 || >=20.0.0}
     hasBin: true
 
+  jsonrepair@3.13.0:
+    resolution: {integrity: sha512-5YRzlAQ7tuzV1nAJu3LvDlrKtBFIALHN2+a+I1MGJCt3ldRDBF/bZuvIPzae8Epot6KBXd0awRZZcuoeAsZ/mw==}
+    hasBin: true
+
   jsonwebtoken@9.0.2:
     resolution: {integrity: sha512-PRp66vJ865SSqOlgqS8hujT5U4AOgMfhrwYIuIhfKaoSCZcirrmASQr8CX7cUg+RMih+hgznrjp99o+W4pJLHQ==}
     engines: {node: '>=12', npm: '>=6'}
@@ -4784,8 +4788,8 @@ packages:
     resolution: {integrity: sha512-MeQTA1r0litLUf0Rp/iisCaL8761lKAZHaimlbGK4j0HysC4PLfqygQj9srcs0m2RdtDYnF8UuYyKpbjHYp7Jw==}
     engines: {node: ^14.18.0 || >=16.0.0}
 
-  task-master-ai@0.23.0:
-    resolution: {integrity: sha512-P6ak8N+HigCF6bMv5ifx+tueNRcjHpC2zhmVBww5nlTXITA2jKJdy41L3XHkSfDl7ihgRtg26miGTP0roxIG2w==}
+  task-master-ai@0.24.0:
+    resolution: {integrity: sha512-mL7qC/6MUiftJS0kS8VSxMRZrjdcfQdNawueTfzqQcFD/3rkcP6JW7bSVTFhbWLhAgkZWahd/JeggH3VOZcw0Q==}
     engines: {node: '>=18.0.0'}
     hasBin: true
 
@@ -9953,6 +9957,8 @@ snapshots:
       chalk: 5.5.0
       diff-match-patch: 1.0.5
 
+  jsonrepair@3.13.0: {}
+
   jsonwebtoken@9.0.2:
     dependencies:
       jws: 3.2.2
@@ -10991,7 +10997,7 @@ snapshots:
     dependencies:
       '@pkgr/core': 0.2.9
 
-  task-master-ai@0.23.0(@modelcontextprotocol/sdk@1.17.1)(@types/node@24.2.0)(effect@3.16.12)(react@19.1.1)(ws@8.18.3):
+  task-master-ai@0.24.0(@modelcontextprotocol/sdk@1.17.1)(@types/node@24.2.0)(effect@3.16.12)(react@19.1.1)(ws@8.18.3):
     dependencies:
       '@ai-sdk/amazon-bedrock': 2.2.12(zod@3.25.76)
       '@ai-sdk/anthropic': 1.2.12(zod@3.25.76)
@@ -11026,6 +11032,7 @@ snapshots:
       helmet: 8.1.0
       inquirer: 12.9.0(@types/node@24.2.0)
       jsonc-parser: 3.3.1
+      jsonrepair: 3.13.0
       jsonwebtoken: 9.0.2
       lru-cache: 10.4.3
       ollama-ai-provider: 1.2.0(zod@3.25.76)

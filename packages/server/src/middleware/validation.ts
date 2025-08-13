@@ -18,6 +18,11 @@ export const shiftIdValidation: ValidationChain[]= [
   param('shiftId').trim().notEmpty().withMessage('Valid shift ID is required')
 ];
 
+// Route ID validation (for paths that use :routeId param)
+export const routeIdValidation: ValidationChain[] = [
+  param('routeId').trim().notEmpty().withMessage('Valid route ID is required')
+];
+
 export const routeEmployeeIdValidation : ValidationChain[] = [
   param('routeId').trim().notEmpty().withMessage('Valid route ID is required'),
   param('employeeId').trim().notEmpty().withMessage('Valid employee ID is required')
@@ -27,7 +32,8 @@ export const routeEmployeeIdValidation : ValidationChain[] = [
 export const vehicleValidation: ValidationChain[] = [
   body('name').trim().notEmpty().withMessage('Name is required'),
   body('licensePlate').trim().notEmpty().withMessage('License plate is required'),
-  body('categoryId').isInt().withMessage('Valid category ID is required'),
+  // Prisma uses cuid() strings for IDs
+  body('categoryId').isString().withMessage('Valid category ID is required'),
   body('dailyRate').isFloat({ min: 0 }).withMessage('Daily rate must be positive')
 ];
 

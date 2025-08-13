@@ -26,6 +26,7 @@ pnpm-debug.log*
 .vscode/
 .cursor/
 .taskmaster/
+.github/
 *.suo
 *.ntvs*
 *.njsproj
@@ -43,11 +44,6 @@ dev-debug.log
 .vscode
 # OS specific
 
-# Task files
-# tasks.json
-# tasks/ 
-
-
 # ai
 # taskmaster
 *.mdc
@@ -55,3 +51,7 @@ dev-debug.log
 # Environment files
 .env
 .env.local
+
+# Task files
+# tasks.json
+# tasks/ 

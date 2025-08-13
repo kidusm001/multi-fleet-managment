@@ -6,7 +6,7 @@ import { admin } from "better-auth/plugins";
 const prisma = new PrismaClient();
 
 export const auth = betterAuth({
-  appName: "Shuttle Management",
+  appName: "multi-fleet-managment",
   database: prismaAdapter(prisma, { provider: "postgresql" }),
   emailAndPassword: {
     enabled: true,
