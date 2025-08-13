@@ -63,7 +63,7 @@ router.get('/',
 router.get('/:id',
   requireRole(['admin', 'administrator', 'fleetManager']),
   [
-    param('id').isInt().withMessage('Department ID must be an integer')
+    param('id').trim().notEmpty().withMessage('Department ID is required')
   ],
   validateRequest,
   asyncHandler(async (req: Request, res: Response) => {
@@ -103,7 +103,7 @@ router.get('/:id',
 router.get('/:id/employees',
   requireRole(['admin', 'administrator', 'fleetManager']),
   [
-    param('id').isInt().withMessage('Department ID must be an integer')
+    param('id').trim().notEmpty().withMessage('Department ID is required')
   ],
   validateRequest,
   asyncHandler(async (req: Request, res: Response) => {
@@ -181,7 +181,7 @@ interface DepartmentUpdateData {
 router.patch('/:id',
   requireRole(['admin', 'administrator']),
   [
-    param('id').isInt().withMessage('Department ID must be an integer'),
+  param('id').trim().notEmpty().withMessage('Department ID is required'),
     body('name')
       .optional()
       .isString().withMessage('Department name must be a string')
@@ -263,7 +263,7 @@ router.patch('/:id',
  */
 router.delete('/:id',
   requireRole(['admin', 'administrator']),
-  [param('id').isInt().withMessage('Department ID must be an integer')],
+  [param('id').trim().notEmpty().withMessage('Department ID is required')],
   validateRequest,
   asyncHandler(async (req: Request, res: Response) => {
   const id = req.params.id;

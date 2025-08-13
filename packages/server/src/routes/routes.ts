@@ -10,7 +10,7 @@ router.use(requireSession);
 
 // Debug logging for route operations
 router.use((req, _res, next) => {
-  console.log(`[routes] ${req.method} ${req.path} - tenantId: ${req.sessionUser?.tenantId}`);
+  // console.log(`[routes] ${req.method} ${req.path} - tenantId: ${req.sessionUser?.tenantId}`);
   next();
 });
 

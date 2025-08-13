@@ -75,6 +75,20 @@ router.get('/', asyncHandler(async (_req: Request, res: Response) => {
   res.json(shuttles);
 }));
 
+// Define specific path before parameterized route to avoid shadowing
+router.get('/deleted', asyncHandler(async (_req: Request, res: Response) => {
+  const deletedShuttles = await prisma.vehicle.findMany({
+    where: {
+      deleted: true
+    },
+    include: {
+      category: true,
+      routes: true
+    }
+  });
+  res.json(deletedShuttles);
+}));
+
 router.get(
   '/:id', 
   idValidation,
@@ -132,7 +146,7 @@ router.put(
   const shuttleId = req.params.id;
     
     try {
-      console.log('PUT /shuttles/:id - Request body:', req.body);
+  // console.log('PUT /shuttles/:id - Request body:', req.body);
 
       // First verify that the shuttle exists
   const existingShuttle = await prisma.vehicle.findUnique({
@@ -140,7 +154,7 @@ router.put(
       });
 
       if (!existingShuttle) {
-        console.log('Shuttle not found:', shuttleId);
+  // console.log('Shuttle not found:', shuttleId);
         res.status(404).json({ error: 'Shuttle not found' });
         return;
       }
@@ -156,7 +170,7 @@ router.put(
         ...(req.body.vendor !== undefined && { vendor: req.body.vendor }) // This will now update even if vendor is null
       };
 
-      console.log('Update data:', updateData);
+  // console.log('Update data:', updateData);
 
   const shuttle = await prisma.vehicle.update({
         where: { id: shuttleId },
@@ -166,7 +180,7 @@ router.put(
         }
       });
 
-      console.log('Updated shuttle:', shuttle);
+  // console.log('Updated shuttle:', shuttle);
       res.json(shuttle);
     } catch (error) {
       console.error('Update error:', error);
@@ -237,18 +251,6 @@ router.post('/:id/restore', idValidation, validate, asyncHandler(async (
   res.json(shuttle);
 }));
 
-// Optional: Add route to get deleted shuttles
-router.get('/deleted', asyncHandler(async (_req: Request, res: Response) => {
-  const deletedShuttles = await prisma.vehicle.findMany({
-    where: {
-      deleted: true
-    },
-    include: {
-      category: true,
-      routes: true
-    }
-  });
-  res.json(deletedShuttles);
-}));
+// (moved '/deleted' route above)
 
 export default router;

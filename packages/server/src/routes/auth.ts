@@ -9,7 +9,7 @@ const router = Router();
 
 // Debug logging for auth routes (can be removed or gated by env in production)
 router.use((req, _res, next) => {
-  console.log(`[auth] ${req.method} ${req.path}`);
+  // console.log(`[auth] ${req.method} ${req.path}`);
   next();
 });
 
@@ -156,7 +156,7 @@ router.get('/protected/any-auth', requireSession, (req, res) => {
 
 // Local 404 handler for unmatched auth subpaths (helps diagnose test 404s)
 router.use((req, res) => {
-  console.log('[auth] 404', req.method, req.path);
+  // console.log('[auth] 404', req.method, req.path);
   res.status(404).json({ error: 'Not Found' });
 });
 

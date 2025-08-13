@@ -17,7 +17,7 @@ const router = express.Router();
 // Debug middleware to log requests only in development and only for non-GET requests
 router.use((req, res, next) => {
   if (process.env.NODE_ENV !== 'production' && req.method !== 'GET') {
-    console.log(`API Request: ${req.method} ${req.baseUrl}${req.path}`);
+  // console.log(`API Request: ${req.method} ${req.baseUrl}${req.path}`);
   }
   next();
 });

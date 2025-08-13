@@ -127,9 +127,9 @@ router.post(
 router.post(
   '/shift/:shiftId/shuttle/:shuttleId',
   (req: Request, res: Response, next: NextFunction) => {
-    console.log('Request params:', req.params);
-    console.log('Request body:', req.body);
-    console.log('Request headers:', req.headers);
+  // console.log('Request params:', req.params);
+  // console.log('Request body:', req.body);
+  // console.log('Request headers:', req.headers);
     next();
   },
   specificVehicleClusterValidation,
@@ -138,10 +138,10 @@ router.post(
     const { shiftId, shuttleId } = req.params;
     const { date } = req.body;
 
-    console.log('Processing request with:', { shiftId, shuttleId, date });
+  // console.log('Processing request with:', { shiftId, shuttleId, date });
 
     if (!shiftId || !shuttleId) {
-      console.log('Missing required params:', { shiftId, shuttleId });
+  // console.log('Missing required params:', { shiftId, shuttleId });
       res.status(400).json({ error: 'Shift ID and Shuttle ID are required' });
       return;
     }
@@ -149,7 +149,7 @@ router.post(
     // Parse the date string to a Date object
     const parsedDate = new Date(date);
     if (isNaN(parsedDate.getTime())) {
-      console.log('Invalid date format:', date);
+  // console.log('Invalid date format:', date);
       res.status(400).json({ error: 'Invalid date format' });
       return;
     }
@@ -161,7 +161,7 @@ router.post(
       });
 
       if (!vehicle) {
-        console.log('Vehicle not found:', shuttleId);
+  // console.log('Vehicle not found:', shuttleId);
         res.status(404).json({ error: 'Vehicle not found' });
         return;
       }
@@ -172,7 +172,7 @@ router.post(
       });
 
       if (!shift) {
-        console.log('Shift not found:', shiftId);
+  // console.log('Shift not found:', shiftId);
         res.status(404).json({ error: 'Shift not found' });
         return;
       }
@@ -187,7 +187,7 @@ router.post(
         }
       });
 
-      console.log('Availability check result:', isAvailable);
+  // console.log('Availability check result:', isAvailable);
 
       if (!isAvailable) {
   res.status(400).json({ error: 'Vehicle is not available for this shift' });
@@ -200,7 +200,7 @@ router.post(
   String(shuttleId)
       );
 
-      console.log('Cluster result:', cluster);
+  // console.log('Cluster result:', cluster);
 
       if (!cluster) {
         res.status(404).json({ error: 'Failed to generate cluster' });

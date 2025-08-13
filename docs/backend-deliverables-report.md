@@ -1,4 +1,4 @@
-# Backend Deliverables Report (Multi-Fleet Management)
+# Backend Deliverables Report — Multi‑Fleet Management (v1.4.3 aligned)
 
 This report aligns with the project deliverables guideline (v1.4.3) for the backend component only. It summarizes scope, architecture, security, testing, seed data, and verification.
 
@@ -54,6 +54,14 @@ This report aligns with the project deliverables guideline (v1.4.3) for the back
 - Recommended: add CI with build, type-check, test, pnpm audit; production run with HTTPS, CORS, and proper logging.
 
 9. Risks & Mitigations
+
+10. Deployment Model Clarification (Self‑Hosted, Multi‑Tenant DB)
+- Hosting: Designed for self‑hosted deployment (Docker or bare‑metal/VM), with environment‑driven configuration for database URL, CORS, rate limiting, and logging.
+- Multi‑Tenant Database: A single logical Postgres database with tenantId column on core tables to isolate data per tenant (a.k.a. pooled single‑DB, row‑level tenant isolation). This keeps operational overhead low while enabling strict access control in code and tests.
+- Alternatives (if required later):
+	- Database‑per‑tenant: higher isolation, higher cost/ops complexity; supported conceptually via Prisma schemas and connection factories, but not implemented in this repo.
+	- Schema‑per‑tenant: middle ground; not implemented.
+- Current Choice Rationale: Single database + tenantId is sufficient for MVP and aligns with our middleware, tests, and seed. We enforce tenant scoping via request context and RBAC, and we added a growing test matrix for cross‑tenant isolation.
 - Risk: Insufficient tests for unverified routers → Mitigation: add suites per Test Gaps doc.
 - Risk: Misconfiguration in prod (CORS, errors) → Mitigation: config toggles, env-driven policies, tests.
 - Risk: Cross-tenant data leakage → Mitigation: middleware and tests per domain.

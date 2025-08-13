@@ -24,25 +24,25 @@ router.get('/', asyncHandler(async (req: Request, res: Response, _next: NextFunc
   
   if (forceRole && typeof forceRole === 'string') {
     role = forceRole;
-    console.log(`Using forced role: ${role}`);
+  // console.log(`Using forced role: ${role}`);
   } else if (queryRole && typeof queryRole === 'string') {
     role = queryRole;
-    console.log(`Using query parameter role: ${role}`);
+  // console.log(`Using query parameter role: ${role}`);
   } else if ((req as any).session?.user?.role) {
     role = (req as any).session?.user?.role;
-    console.log(`Using session role: ${role}`);
+  // console.log(`Using session role: ${role}`);
   } else {
     role = 'user';
-    console.log(`No role found, using default: ${role}`);
+  // console.log(`No role found, using default: ${role}`);
   }
 
   // Check if this is explicitly a route query
   const isExplicitRouteQuery = isRouteQuery === 'true';
   if (isExplicitRouteQuery) {
-    console.log('Explicit route query detected - prioritizing routes');
+  // console.log('Explicit route query detected - prioritizing routes');
   }
 
-  console.log('Search request received:', { 
+  // console.log('Search request received:', { 
     query, 
     limit, 
     role,
@@ -91,7 +91,7 @@ router.get('/', asyncHandler(async (req: Request, res: Response, _next: NextFunc
       
       // For explicit route queries with short search terms, we might just return all routes
       if (isExplicitRouteQuery && searchStr.length <= 2) {
-        console.log('Short route query with explicit route flag - returning all routes');
+  // console.log('Short route query with explicit route flag - returning all routes');
         whereClause = { deleted: false };
       }
 
@@ -109,11 +109,11 @@ router.get('/', asyncHandler(async (req: Request, res: Response, _next: NextFunc
         ]
       });
 
-      console.log(`Found ${routes.length} matching routes for "${searchStr}"`);
+  // console.log(`Found ${routes.length} matching routes for "${searchStr}"`);
       
       // If no routes found but it's a route query or variation, get all routes
       if (routes.length === 0 && shouldFetchAllRoutesIfEmpty) {
-        console.log(`No specific routes found for "${searchStr}", fetching all routes`);
+  // console.log(`No specific routes found for "${searchStr}", fetching all routes`);
         const allRoutes = await prisma.route.findMany({
           where: { deleted: false },
           take: limitNum,
@@ -161,7 +161,7 @@ router.get('/', asyncHandler(async (req: Request, res: Response, _next: NextFunc
         ]
       });
 
-      console.log(`Found ${departments.length} matching departments for "${searchStr}"`);
+  // console.log(`Found ${departments.length} matching departments for "${searchStr}"`);
       
       results.push(...departments.map(department => ({
         id: department.id,
@@ -245,7 +245,7 @@ router.get('/', asyncHandler(async (req: Request, res: Response, _next: NextFunc
           type: 'employee',
           data: employee
         })));
-        console.log(`Found ${employees.length} employees matching "${searchStr}"`);
+  // console.log(`Found ${employees.length} employees matching "${searchStr}"`);
       } catch (error) {
         console.error('Employee search error:', error);
       }
@@ -319,7 +319,7 @@ router.get('/', asyncHandler(async (req: Request, res: Response, _next: NextFunc
   // If this is explicitly a route query, only return routes in the results
   let filteredResults = results;
   if (isExplicitRouteQuery) {
-    console.log('Returning only route results for explicit route query');
+  // console.log('Returning only route results for explicit route query');
     filteredResults = results.filter(result => result.type === 'route');
   }
 
@@ -357,7 +357,7 @@ router.get('/', asyncHandler(async (req: Request, res: Response, _next: NextFunc
     return (typePriority[a.type as string] || 50) - (typePriority[b.type as string] || 50);
   });
 
-  console.log(`Search for "${searchStr}" found ${filteredResults.length} results`);
+  // console.log(`Search for "${searchStr}" found ${filteredResults.length} results`);
 
   res.status(200).json({
     success: true,

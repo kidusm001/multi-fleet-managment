@@ -21,8 +21,8 @@ const handleGoogleCallback = async (req: Request<{}, any, GoogleCallbackBody>, r
   try {
     const { code } = req.body;
     
-    console.log('Received Google callback request');
-    console.log('Authorization code present:', !!code);
+  // console.log('Received Google callback request');
+  // console.log('Authorization code present:', !!code);
     
     if (!code) {
       console.error('No authorization code provided in request body');
@@ -30,12 +30,12 @@ const handleGoogleCallback = async (req: Request<{}, any, GoogleCallbackBody>, r
       return;
     }
 
-    console.log('Attempting to verify Google code...');
+  // console.log('Attempting to verify Google code...');
     const user = await authService.verifyGoogleCode(code);
-    console.log('Google code verified successfully, creating session...');
+  // console.log('Google code verified successfully, creating session...');
     
     authService.createSession(req, user);
-    console.log('Session created successfully');
+  // console.log('Session created successfully');
 
     res.json({ user });
   } catch (error) {

@@ -220,9 +220,9 @@ router.get(
  */
 router.post(
   '/',
+ requireRole(['admin', 'administrator', 'fleetManager']),
   routeValidation,
   validateRequest,
- requireRole(['admin', 'administrator', 'fleetManager']),
   asyncHandler(async (req: Request<{}, {}, RouteBody>, res: Response) => {
     const {
       name,
@@ -234,15 +234,15 @@ router.post(
       employees,
     } = req.body;
 
-    console.log('Route creation request:', {
+    /* console.log('Route creation request:', {
       name,
-  shuttleId,
+      shuttleId,
       shiftId,
       date,
       totalDistance,
       totalTime,
       employeesCount: employees?.length
-    });
+    }); */
 
     // Validate totalTime does not exceed 90 minutes
     if (totalTime > 90) {
@@ -286,7 +286,7 @@ router.post(
       proposedEndTime: endTime,
     });
 
-    console.log('Availability check result:', availabilityCheck);
+  // console.log('Availability check result:', availabilityCheck);
 
     if (!availabilityCheck.available) {
       res.status(400).json({ 
@@ -304,7 +304,7 @@ router.post(
   const employeeIds = employees.map((employee) => employee.employeeId);
   const stopIds = employees.map((employee) => employee.stopId);
 
-    console.log('Processing employees:', { employeeIds, stopIds });
+  // console.log('Processing employees:', { employeeIds, stopIds });
 
     // First check if all employees are available (not assigned)
   const employeeAvailabilityCheck = await prisma.employee.findMany({
@@ -340,7 +340,7 @@ router.post(
       },
     });
 
-    console.log('Found existing stops:', existingStops.length);
+  // console.log('Found existing stops:', existingStops.length);
 
     if (existingStops.length !== stopIds.length) {
       res.status(400).json({ 
@@ -371,7 +371,7 @@ router.post(
           },
         });
 
-        console.log('Created new route:', newRoute.id);
+  // console.log('Created new route:', newRoute.id);
 
         // Update stops to associate them with the new route
   await prisma.stop.updateMany({
@@ -609,7 +609,7 @@ router.put(
  */
 router.put(
   '/:routeId/stops',
-  idValidation, // Validate routeId
+  routeIdValidation, // Validate routeId param specifically
   validateRequest,
  requireRole(['admin', 'administrator', 'fleetManager']),
   asyncHandler(async (req: Request<{ routeId: string }, {}, { stops: StopUpdate[] }>, res: Response) => {
@@ -624,6 +624,7 @@ router.put(
 
       if (!route) {
          res.status(404).json({ error: 'Route not found' });
+         return;
       }
 
       // Extract employeeIds from stops
@@ -638,9 +639,10 @@ router.put(
         },
       });
 
-      if (employeeStops.length !== employeeIds.length) {
-         res.status(404).json({ error: 'One or more employees not found or do not have stops.' });
-      }
+    if (employeeStops.length !== employeeIds.length) {
+      res.status(404).json({ error: 'One or more employees not found or do not have stops.' });
+      return;
+    }
 
       // Map employeeId to their Stop
       const employeeStopMap: Record<string, any> = {};
@@ -652,9 +654,10 @@ router.put(
 
       // Ensure all employees have associated stops
       const allEmployeesHaveStops = employeeIds.every((id) => employeeStopMap[id]);
-      if (!allEmployeesHaveStops) {
-         res.status(400).json({ error: 'All selected employees must have associated stops.' });
-      }
+    if (!allEmployeesHaveStops) {
+      res.status(400).json({ error: 'All selected employees must have associated stops.' });
+      return;
+    }
 
       // Begin transaction to update stops
     await prisma.$transaction(async (prisma) => {
