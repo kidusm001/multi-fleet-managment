@@ -42,7 +42,7 @@ router.get('/', asyncHandler(async (req: Request, res: Response, _next: NextFunc
   // console.log('Explicit route query detected - prioritizing routes');
   }
 
-  // console.log('Search request received:', { 
+  /* console.log('Search request received:', { 
     query, 
     limit, 
     role,
@@ -50,7 +50,7 @@ router.get('/', asyncHandler(async (req: Request, res: Response, _next: NextFunc
     originalUrl: req.originalUrl,
     requestQuery: req.query
   });
-
+*/
   if (!query || typeof query !== 'string') {
     res.status(400).json({ error: 'Invalid search query' });
     return;
