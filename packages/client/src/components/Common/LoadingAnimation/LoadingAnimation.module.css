@@ -1,0 +1,61 @@
+@keyframes carDrive {
+  0% { transform: translateX(-5%); }
+  100% { transform: translateX(800px); }
+}
+
+.container {
+  position: relative;
+  width: 800px;
+  height: 200px;
+  margin: 0 auto;
+  transform: translateY(-30px); /* Adjust this value to move it up more if needed */
+}
+
+.brandText {
+  position: absolute;
+  width: 100%;
+  text-align: center;
+  font-size: 48px;
+  font-weight: 900;
+  letter-spacing: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+}
+
+.letter {
+  color: var(--text-primary); /* Use theme variable for color */
+  opacity: 0.7;
+  transition: all 0.15s ease;
+}
+
+.letter.tech {
+  color: #f3684e;
+  opacity: 1;
+}
+
+.letter.active {
+  transform: translateY(-15px);
+  color: #f3684e;
+  opacity: 1;
+}
+
+.car {
+  position: absolute;
+  width: 60px;
+  height: 20px;
+  top: 55%;
+  transform: translateX(-100%);
+  animation: carDrive 1.5s linear infinite;
+}
+
+/* Theme-specific colors */
+:global(.light) .letter {
+  color: #324048;
+}
+
+:global(.dark) .letter {
+  color: #ffffff;
+}

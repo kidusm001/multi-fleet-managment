@@ -95,9 +95,9 @@ async function handleSignIn(req: any, res: any) {
       res.status(401).json({ error: 'Invalid credentials' });
       return;
     }
-    const session = await createSession(user.id);
+  const session = await createSession(user.id);
     res.cookie('session', session.token, { httpOnly: true, sameSite: 'lax', path: '/' });
-    res.json({ user: { id: user.id, email: user.email, tenantId: user.tenantId } });
+  res.json({ user: { id: user.id, email: user.email, tenantId: user.tenantId, role: user.role } });
   } catch (e) {
     console.error('Sign-in error:', e);
     res.status(500).json({ error: 'Sign-in failed' });
@@ -118,10 +118,30 @@ router.get('/me', async (req, res) => {
       res.status(401).json({ error: 'Not authenticated' });
       return;
     }
-    res.json({ user: { id: session.user.id, email: session.user.email, tenantId: session.user.tenantId } });
+  res.json({ user: { id: session.user.id, email: session.user.email, tenantId: session.user.tenantId, role: session.user.role } });
   } catch (e) {
     console.error('Me endpoint error:', e);
     res.status(500).json({ error: 'Failed to retrieve session' });
+  }
+});
+
+// Logout: clear cookie and delete session if present
+router.post('/logout', async (req, res) => {
+  try {
+    const cookies = parseCookies(req.headers.cookie as string | undefined);
+    const token = cookies.session;
+    if (token) {
+      try {
+        await prisma.session.delete({ where: { token } });
+      } catch {
+        // ignore if already deleted
+      }
+    }
+    res.clearCookie('session', { path: '/' });
+    res.status(200).json({ ok: true });
+  } catch (e) {
+    console.error('Logout error:', e);
+    res.status(500).json({ error: 'Logout failed' });
   }
 });
 

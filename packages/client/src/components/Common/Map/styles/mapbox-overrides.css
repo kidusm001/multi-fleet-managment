@@ -1,0 +1,20 @@
+/* Override Mapbox's deprecated -ms-high-contrast styles with modern forced-colors */
+@media (forced-colors: active) {
+  @supports (forced-color-adjust: none) {
+    .mapboxgl-map {
+      forced-color-adjust: none;
+    }
+
+    .mapboxgl-ctrl-icon {
+      forced-color-adjust: auto;
+    }
+
+    .mapboxgl-ctrl button {
+      forced-color-adjust: auto;
+    }
+
+    .mapboxgl-ctrl-attrib-inner a {
+      forced-color-adjust: auto;
+    }
+  }
+}

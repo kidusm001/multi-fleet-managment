@@ -1,4 +1,5 @@
 import { PrismaClient, ApprovalStatus, VehicleStatus, RouteStatus } from '@prisma/client'
+import bcrypt from 'bcrypt'
 
 const prisma = new PrismaClient()
 
@@ -14,6 +15,10 @@ async function upsertDefaultTenant() {
 async function main() {
   console.log('🌱 Starting database seeding...')
 
+  // Common demo password hash
+  const demoPassword = 'Routegna123!'
+  const passwordHash = await bcrypt.hash(demoPassword, 10)
+
   // Tenants
   const tenant = await upsertDefaultTenant();
   const acme = await prisma.tenant.upsert({
@@ -26,13 +31,13 @@ async function main() {
   // Users
   await prisma.user.upsert({
     where: { email: 'admin@demofleet.com' },
-    update: { role: 'ADMIN', tenantId: tenant.id },
-    create: { email: 'admin@demofleet.com', password: 'hashed_password_here', name: 'Admin User', role: 'ADMIN', tenantId: tenant.id },
+  update: { role: 'ADMIN', tenantId: tenant.id, password: passwordHash },
+  create: { email: 'admin@demofleet.com', password: passwordHash, name: 'Admin User', role: 'ADMIN', tenantId: tenant.id },
   });
   await prisma.user.upsert({
     where: { email: 'manager@acme.com' },
-    update: { role: 'MANAGER', tenantId: acme.id },
-    create: { email: 'manager@acme.com', password: 'hashed_password_here', name: 'ACME Manager', role: 'MANAGER', tenantId: acme.id },
+  update: { role: 'MANAGER', tenantId: acme.id, password: passwordHash },
+  create: { email: 'manager@acme.com', password: passwordHash, name: 'ACME Manager', role: 'MANAGER', tenantId: acme.id },
   });
   console.log('✅ Users ready')
 

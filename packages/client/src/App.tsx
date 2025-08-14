@@ -1,8 +1,9 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import PublicLayout from './layouts/PublicLayout'
 import AppLayout from './layouts/AppLayout'
-import ProtectedRoute from './components/ProtectedRoute'
+import { ProtectedRoute } from './components/Common/ProtectedRoute'
 import Dashboard from './pages/Dashboard'
+import RoutesPage from './pages/Routes'
 import Login from './pages/Login'
 
 // route config using nested Routes elements
@@ -15,12 +16,11 @@ export default function App() {
           <Route path="/login" element={<Login />} />
         </Route>
 
-        <Route element={<ProtectedRoute />}> 
-          <Route element={<AppLayout />}> 
+  <Route element={<ProtectedRoute> <AppLayout /> </ProtectedRoute>}> 
             <Route path="/app" element={<Dashboard />} />
+            <Route path="/app/routes" element={<RoutesPage />} />
             {/* TODO: add more routes: routes, vehicles, departments, employees, shifts, notifications, search */}
-          </Route>
-        </Route>
+  </Route>
 
         <Route path="*" element={<Login />} />
       </Routes>

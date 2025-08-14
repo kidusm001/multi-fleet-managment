@@ -1,0 +1,186 @@
+import { MAPBOX_ACCESS_TOKEN } from '@/config';
+
+// Helper function to calculate distance between two points
+function calculateDistance(point1, point2) {
+  if (!point1 || !point2 || !Array.isArray(point1) || !Array.isArray(point2) || point1.length !== 2 || point2.length !== 2) {
+    console.error('Invalid points provided to calculateDistance:', { point1, point2 });
+    return null;
+  }
+
+  const [lon1, lat1] = point1;
+  const [lon2, lat2] = point2;
+
+  if (typeof lon1 !== 'number' || typeof lat1 !== 'number' || 
+      typeof lon2 !== 'number' || typeof lat2 !== 'number' ||
+      isNaN(lon1) || isNaN(lat1) || isNaN(lon2) || isNaN(lat2)) {
+    console.error('Invalid coordinates in points:', { point1, point2 });
+    return null;
+  }
+
+  const R = 6371; // Earth's radius in km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+}
+
+// Find nearest unvisited point from current position
+function findNearestPoint(current, points, visited) {
+  if (!current || !points || !Array.isArray(points) || !visited || !Array.isArray(visited)) {
+    console.error('Invalid arguments to findNearestPoint:', { current, points, visited });
+    return -1;
+  }
+
+  if (visited.length !== points.length) {
+    console.error('Visited array length does not match points array length');
+    return -1;
+  }
+
+  let minDist = Infinity;
+  let nearestIndex = -1;
+
+  points.forEach((point, index) => {
+    if (visited.hasOwnProperty(index) && !visited[index] && Array.isArray(point) && point.length === 2) {
+      const dist = calculateDistance(current, point);
+      if (dist !== null && dist < minDist && Math.abs(dist - minDist) > Number.EPSILON) {
+        minDist = dist;
+        nearestIndex = index;
+      }
+    }
+  });
+
+  return nearestIndex;
+}
+
+// Initial ordering using nearest neighbor TSP
+function getInitialOrder(hqCoords, dropOffPoints) {
+  if (!hqCoords || !dropOffPoints || !Array.isArray(dropOffPoints) || !Array.isArray(hqCoords)) {
+    console.error('Invalid arguments to getInitialOrder:', { hqCoords, dropOffPoints });
+    return [];
+  }
+
+  const visited = new Array(dropOffPoints.length).fill(false);
+  const order = [];
+  let currentPoint = hqCoords;
+
+  while (order.length < dropOffPoints.length) {
+    const nextIndex = findNearestPoint(currentPoint, dropOffPoints, visited);
+    if (nextIndex === -1) break;
+
+    order.push(nextIndex);
+    visited[nextIndex] = true;
+    currentPoint = dropOffPoints[nextIndex];
+  }
+
+  return order;
+}
+
+export async function optimizeRoute(coordinates) {
+  if (!coordinates || !Array.isArray(coordinates) || coordinates.length < 2) {
+    console.error('Invalid coordinates provided for route optimization:', coordinates);
+    return { coordinates: [], waypoints: [], dropOffOrder: [], distance: 0, duration: 0 };
+  }
+
+  // Validate all coordinates are valid arrays of [longitude, latitude]
+  const validCoordinates = coordinates.every(coord =>
+    Array.isArray(coord) &&
+    coord.length === 2 &&
+    typeof coord[0] === 'number' &&
+    typeof coord[1] === 'number' &&
+    !isNaN(coord[0]) &&
+    !isNaN(coord[1])
+  );
+
+  if (!validCoordinates) {
+    console.error('Invalid coordinate format in array:', coordinates);
+    return { coordinates: [], waypoints: [], dropOffOrder: [], distance: 0, duration: 0 };
+  }
+
+  const [hqCoords, ...dropOffPoints] = coordinates;
+
+  try {
+    // Get initial ordering using TSP
+    const initialOrder = getInitialOrder(hqCoords, dropOffPoints);
+
+    if (!initialOrder.length && dropOffPoints.length > 0) {
+      throw new Error('Failed to generate initial order');
+    }
+
+    // Reorder drop-off points based on TSP
+    const orderedDropOffs = initialOrder.map(index => dropOffPoints[index]);
+
+    // Format waypoints for the Directions API (HQ -> ordered drops -> HQ)
+    const waypointsString = [
+      `${hqCoords[0]},${hqCoords[1]}`,
+      ...orderedDropOffs.map(coord => `${coord[0]},${coord[1]}`),
+      `${hqCoords[0]},${hqCoords[1]}`
+    ].join(';');
+
+    // Get actual route using Mapbox Directions API
+    const directionsUrl = `https://api.mapbox.com/directions/v5/mapbox/driving/${waypointsString}?geometries=geojson&overview=full&access_token=${MAPBOX_ACCESS_TOKEN}`;
+
+    const directionsResponse = await fetch(directionsUrl);
+    if (!directionsResponse.ok) {
+      throw new Error(`Failed to fetch route from Mapbox, status: ${directionsResponse.status}`);
+    }
+
+    const directionsData = await directionsResponse.json();
+
+    if (directionsData.code !== 'Ok' || !directionsData.routes?.[0]?.geometry?.coordinates) {
+      throw new Error(`Failed to get route from Mapbox, code: ${directionsData.code}`);
+    }
+
+    const route = directionsData.routes[0];
+
+    // Create waypoints with proper ordering
+    const waypoints = [
+      { location: hqCoords, originalIndex: 0, newIndex: 0 },
+      ...initialOrder.map((originalIndex, newIndex) => ({
+        location: dropOffPoints[originalIndex],
+        originalIndex: originalIndex + 1,
+        newIndex: newIndex + 1
+      })),
+      { location: hqCoords, originalIndex: 0, newIndex: initialOrder.length + 1 }
+    ];
+
+    return {
+      coordinates: route.geometry.coordinates,
+      waypoints,
+      dropOffOrder: initialOrder.map(i => i + 1),
+      distance: route.distance, // Distance in meters
+      duration: route.duration  // Duration in seconds
+    };
+
+  } catch (error) {
+    console.error('Error in route optimization:', error);
+    // Calculate approximate distance and time for fallback
+    let totalDistance = 0;
+    let totalDuration = 0;
+    const validRoute = [hqCoords, ...dropOffPoints, hqCoords];
+
+    for (let i = 0; i < validRoute.length - 1; i++) {
+      const dist = calculateDistance(validRoute[i], validRoute[i + 1]);
+      if (dist === null) {
+        return { coordinates: [], waypoints: [], dropOffOrder: [], distance: 0, duration: 0 };
+      }
+      totalDistance += dist * 1000; // Convert km to meters
+      totalDuration += (dist / 40) * 3600; // Assume average speed of 40 km/h
+    }
+
+    return {
+      coordinates: validRoute,
+      waypoints: validRoute.map((coord, index) => ({
+        location: coord,
+        originalIndex: index,
+        newIndex: index
+      })),
+      dropOffOrder: dropOffPoints.map((_, i) => i + 1),
+      distance: totalDistance,
+      duration: totalDuration
+    };
+  }
+}

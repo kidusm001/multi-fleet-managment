@@ -1,0 +1,35 @@
+.table-container {
+  width: 100%;
+  overflow-x: auto;
+  border-radius: 0.5rem;
+  border: 1px solid var(--divider);
+  background-color: var(--card-background);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th {
+  background-color: var(--subtle);
+  padding: 0.75rem 1rem;
+  text-align: left;
+  font-weight: 500;
+  color: var(--secondary);
+  border-bottom: 1px solid var(--divider);
+}
+
+.table td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--divider);
+  color: var(--text-primary);
+}
+
+.table tr:hover {
+  background-color: var(--hover-overlay);
+}
+
+.table tr:last-child td {
+  border-bottom: none;
+} 

@@ -1,0 +1,19 @@
+:root {
+  --primary-rgb: 36, 180, 251;
+  --primary-border: rgba(var(--primary-rgb), 0.15);
+  --primary-border-hover: rgba(var(--primary-rgb), 0.1);
+}
+
+.shuttleCard {
+  border: 1px solid var(--primary-border);
+  @supports (color: color-mix(in srgb, red, blue)) {
+    border: 1px solid color-mix(in srgb, var(--primary) 15%, transparent);
+  }
+}
+
+.shuttleCard:hover {
+  border: 1px solid var(--primary-border-hover);
+  @supports (color: color-mix(in srgb, red, blue)) {
+    border: 1px solid color-mix(in srgb, var(--primary) 10%, transparent);
+  }
+} 

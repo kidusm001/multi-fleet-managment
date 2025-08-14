@@ -1,0 +1,67 @@
+.createRouteBtn {
+  width: 180px;
+  height: 50px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  border: none;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  background: hsl(var(--primary));
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.createRouteBtn .text {
+  transform: translateX(35px);
+  color: white;
+  font-weight: 600;
+  font-size: 0.95rem;
+  transition: transform 0.3s ease;
+}
+
+.createRouteBtn .icon {
+  position: absolute;
+  border-left: 1px solid hsla(var(--primary), 0.2);
+  transform: translateX(140px);
+  height: 40px;
+  width: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.createRouteBtn:hover {
+  background: hsl(var(--primary) / 0.9);
+  transform: translateY(-2px);
+}
+
+.createRouteBtn:hover .text {
+  transform: translateX(-100%);
+  opacity: 0;
+}
+
+.createRouteBtn:hover .icon {
+  width: 180px;
+  transform: translateX(0);
+  border-left: none;
+}
+
+.createRouteBtn:active {
+  transform: translateY(0);
+}
+
+.shiftCard {
+  background: linear-gradient(135deg, hsl(var(--card)), hsl(var(--accent) / 0.1));
+  border-radius: 12px;
+  padding: 1.5rem;
+  transition: all 0.3s ease;
+  border: 1px solid hsl(var(--border));
+}
+
+.shiftCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+}

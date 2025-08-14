@@ -1,0 +1,46 @@
+.availableRoutes {
+  /* Container for available routes */
+  padding: 1rem;
+  background-color: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 0.75rem;
+  overflow-y: auto;
+}
+
+.routeOption {
+  /* Style for individual route options */
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid #e5e7eb;
+  background-color: white;
+  border-radius: 0.5rem;
+  transition: background-color 0.2s;
+  cursor: pointer;
+  display: block;
+}
+
+.routeOption:hover {
+  background-color: #f3f4f6;
+}
+
+.selected {
+  /* Highlight for selected route option */
+  background-color: #fff7ed;
+  border-color: #fdba74;
+}
+
+/* Dark mode for outer container */
+:global(.dark) .availableRoutes {
+  background-color: #1e293b; /* dark mode background */
+  border-color: #334155;     /* dark mode border */
+}
+
+/* Dark mode for inner routeOption elements */
+:global(.dark) .routeOption {
+  background-color: #374151; /* darker background */
+  border-color: #4b5563;     /* darker border */
+}
+
+:global(.dark) .routeOption:hover {
+  background-color: #4b5563; /* slightly lighter on hover */
+}

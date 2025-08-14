@@ -14,8 +14,8 @@ export default function Login() {
     setError(null)
     try {
       await api.post('/auth/sign-in/email', { email, password })
-      await refresh()
-      window.location.href = '/app'
+  await refresh()
+  window.location.href = '/app'
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Failed to sign in')
     }

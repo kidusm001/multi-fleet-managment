@@ -1,0 +1,775 @@
+.formContainer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: 1.5rem;
+  min-height: 100vh !important;
+}
+
+.topSection {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 1rem 1.5rem;
+  background: var(--card-background);
+  border-radius: 12px;
+  border: 1px solid var(--border);
+}
+
+.backButtonContainer {
+  display: flex;
+  align-items: center;
+  min-width: 10rem;
+}
+
+.backButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--muted-foreground);
+  font-size: 0.875rem;
+  font-weight: 500;
+  padding: 0.5rem 0.75rem;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  background: transparent;
+}
+
+.backButton:hover {
+  background: var(--hover-overlay);
+  color: var(--foreground);
+  transform: translateX(-4px);
+}
+
+.formHeaderContainer {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+  gap: 2rem;
+}
+
+.routeInfoSection {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 2rem;
+  flex: 1;
+}
+
+.statsSection {
+  display: flex;
+  flex-direction: row;
+  gap: 1rem;
+  align-items: center;
+}
+
+.inputGroup {
+  width: 350px;
+  position: relative;
+}
+
+.inputGroup::before {
+  content: "Route Name";
+  position: absolute;
+  top: -0.75rem;
+  left: 0;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--muted-foreground);
+  background: var(--card-background);
+  padding: 0 0.5rem;
+  z-index: 1;
+}
+
+.suggestButton {
+  position: absolute;
+  right: 0.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 0.4rem 0.8rem;
+  background: var(--primary-lighter);
+  color: var(--primary);
+  border: none;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.inputGroup:hover .suggestButton,
+.routeNameInput:focus + .suggestButton {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.suggestButton:hover {
+  background: var(--primary);
+  color: white;
+  transform: translateY(-50%) scale(1.05);
+}
+
+.routeNameInput {
+  width: 100%;
+  height: 3rem;
+  padding: 0 1rem;
+  padding-right: 7rem;
+  border-radius: 8px;
+  border: 1.5px solid var(--input-border);
+  background: var(--input-background);
+  color: var(--foreground);
+  font-size: 1rem;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.routeNameInput:hover {
+  border-color: var(--primary);
+  background: var(--background);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.routeNameInput:focus {
+  outline: none;
+  border-color: var(--primary);
+  background: var(--background);
+  box-shadow: 0 0 0 3px var(--primary-lighter);
+}
+
+.routeNameInput::placeholder {
+  color: var(--muted-foreground);
+  opacity: 0.7;
+}
+
+.shiftInfo {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 1.25rem;
+  background: var(--primary-lighter);
+  border: 1px solid var(--primary);
+  border-radius: 100px;
+  width: fit-content;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(66, 114, 255, 0.1);
+}
+
+.shiftInfo:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(66, 114, 255, 0.15);
+}
+
+.shiftLabel {
+  color: var(--primary-dark);
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.025em;
+}
+
+.shiftTime {
+  color: var(--primary);
+  font-weight: 600;
+  font-size: 0.875rem;
+  padding-left: 1rem;
+  position: relative;
+}
+
+.shiftTime::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2px;
+  height: 1rem;
+  background: var(--primary);
+  border-radius: 2px;
+  opacity: 0.5;
+}
+
+.mainContent {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 1.5rem;
+  flex: 1;
+  min-height: 0;
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 100%;
+  height: 100%;
+}
+
+.sectionTitle {
+  padding: 1rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--divider);
+}
+
+.shuttleList {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1rem;
+  overflow-y: auto;
+}
+
+.shuttleCard {
+  width: 100%;
+  padding: 1rem;
+  border-radius: 0.75rem;
+  border: 1px solid var(--divider);
+  background: var(--card-background);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.shuttleCard:hover {
+  border-color: var(--primary);
+  background: var(--hover-overlay);
+  transform: translateY(-2px);
+}
+
+.shuttleCard.selected {
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 15%, transparent);
+}
+
+.shuttleCard.recommended {
+  position: relative;
+}
+
+.shuttleCard.recommended::before {
+  content: '';
+  position: absolute;
+  inset: -1px;
+  background: linear-gradient(90deg, 
+    rgba(22, 163, 74, 0.2) 0%,
+    rgba(22, 163, 74, 0.1) 50%,
+    transparent 100%
+  );
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 0;
+}
+
+:global(.dark) .shuttleCard.recommended::before {
+  background: linear-gradient(90deg, 
+    rgba(34, 197, 94, 0.15) 0%,
+    rgba(34, 197, 94, 0.08) 50%,
+    transparent 100%
+  );
+}
+
+/* Ensure content stays above the gradient */
+.shuttleCard > * {
+  position: relative;
+  z-index: 1;
+}
+
+.shuttleInfo {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 0.5rem;
+}
+
+.shuttleDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.shuttleName {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.shuttleType {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.capacityBadge {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.75rem;
+  background: var(--subtle);
+  color: var(--text-primary);
+}
+
+.shuttleRate {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  padding-top: 0.5rem;
+  border-top: 1px dashed var(--divider);
+}
+
+.rateLabel {
+  color: var(--text-secondary);
+}
+
+.rateValue {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.mainArea {
+  display: flex;
+  flex-direction: column;
+  background: var(--card-background);
+  border: 1px solid var(--divider);
+  border-radius: 0.75rem;
+  overflow: hidden;
+}
+
+.tableHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  border-bottom: 1px solid var(--divider);
+}
+
+.tableActions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.clearButton {
+  border: 1.5px solid var(--muted-foreground);
+  background-color: transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  padding: 0.5em 0.8em;
+  transition: all ease-in-out 0.2s;
+  font-size: 14px;
+  color: var(--muted-foreground);
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.clearButton:hover {
+  background-color: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.clearButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.clearButton:disabled:hover {
+  background-color: transparent;
+  color: var(--muted-foreground);
+  border-color: var(--muted-foreground);
+}
+
+.previewButton {
+  border: 1.5px solid var(--primary);
+  background-color: var(--primary);
+  border-radius: 6px;
+  cursor: pointer;
+  padding: 0.5em 0.8em;
+  transition: all ease-in-out 0.2s;
+  font-size: 14px;
+  color: white;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.previewButton:hover {
+  background-color: var(--primary-dark);
+  border-color: var(--primary-dark);
+}
+
+.visualization {
+  padding: 1rem;
+  border-bottom: 1px solid var(--divider);
+  height: 300px;
+  background: var(--card-background);
+}
+
+.tableContainer {
+  flex: 1;
+  overflow: auto;
+  padding: 1rem;
+}
+
+.clusterVisualizationContainer {
+  margin-top: 1.5rem;
+  padding: 1rem;
+  background: var(--background-card);
+  border-radius: 0.75rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.visualizationWrapper {
+  height: 300px;
+  width: 100%;
+  background: var(--background);
+  border-radius: 0.5rem;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  transition: all 0.2s ease-in-out;
+}
+
+.visualizationWrapper:hover {
+  border-color: var(--border-hover);
+  box-shadow: var(--shadow-md);
+}
+
+/* Dark mode adjustments */
+:global(.dark) {
+  .topSection {
+    background: rgba(30, 41, 59, 0.7);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(66, 114, 255, 0.1);
+  }
+
+  .backButton:hover {
+    background: var(--hover-overlay);
+  }
+
+  .inputGroup::before {
+    background: rgba(30, 41, 59, 0.7);
+    color: #6b8fff;
+  }
+
+  .routeNameInput {
+    background: rgba(30, 41, 59, 0.4);
+    border-color: rgba(66, 114, 255, 0.2);
+    color: #f8fafc;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  }
+
+  .routeNameInput:hover {
+    background: rgba(30, 41, 59, 0.6);
+    border-color: rgba(66, 114, 255, 0.3);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  }
+
+  .routeNameInput:focus {
+    background: rgba(30, 41, 59, 0.7);
+    border-color: #4272ff;
+    box-shadow: 0 0 0 2px rgba(66, 114, 255, 0.2);
+  }
+
+  .shiftInfo {
+    background: rgba(66, 114, 255, 0.1);
+    border-color: rgba(66, 114, 255, 0.2);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  }
+
+  .shiftInfo:hover {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  }
+
+  .shiftLabel {
+    color: #6b8fff;
+  }
+
+  .shiftTime {
+    color: #f8fafc;
+  }
+
+  .shiftTime::before {
+    background: rgba(66, 114, 255, 0.4);
+  }
+
+  .shuttleCard {
+    background: rgba(30, 41, 59, 0.4);
+    border-color: rgba(66, 114, 255, 0.1);
+  }
+
+  .shuttleCard:hover {
+    background: rgba(66, 114, 255, 0.1);
+    border-color: #4272ff;
+  }
+
+  .shuttleCard.selected {
+    background: rgba(66, 114, 255, 0.15);
+    border-color: #4272ff;
+  }
+
+  .shuttleCard.recommended::before {
+    background: linear-gradient(90deg, 
+      rgba(34, 197, 94, 0.15) 0%,
+      rgba(34, 197, 94, 0.08) 50%,
+      transparent 100%
+    );
+  }
+
+  .capacityWarning {
+    background: rgba(255, 169, 64, 0.1);
+    border-color: rgba(255, 169, 64, 0.2);
+    color: #ffa375;
+  }
+
+  .departmentStats {
+    background: rgba(66, 114, 255, 0.1);
+    border-color: rgba(66, 114, 255, 0.2);
+  }
+
+  .deptLabel {
+    color: #6b8fff;
+  }
+
+  .deptInfo {
+    color: #f8fafc;
+  }
+
+  .recommendButton {
+    background: rgba(66, 114, 255, 0.1);
+    border-color: rgba(66, 114, 255, 0.2);
+    color: #6b8fff;
+  }
+
+  .recommendButton:hover:not(:disabled) {
+    background: #4272ff;
+    color: white;
+  }
+
+  .clearButton {
+    border-color: rgba(255, 255, 255, 0.2);
+    color: rgba(255, 255, 255, 0.6);
+  }
+
+  .clearButton:hover:not(:disabled) {
+    background: #ff7e42; /* Using accent color directly */
+    border-color: #ff7e42;
+    color: white;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px -2px rgba(255, 126, 66, 0.3);
+  }
+
+  .clearButton:active:not(:disabled) {
+    background: #e65c1c; /* Darker accent for active state */
+    border-color: #e65c1c;
+    transform: translateY(0);
+  }
+
+  .clearButton:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .clearButton:disabled:hover {
+    background: transparent;
+    border-color: rgba(255, 255, 255, 0.2);
+    color: rgba(255, 255, 255, 0.6);
+  }
+
+  .previewButton {
+    background: #4272ff;
+    border-color: #4272ff;
+    color: white;
+  }
+
+  .previewButton:hover {
+    background: #2952d9;
+    border-color: #2952d9;
+  }
+
+  .suggestButton {
+    background: rgba(66, 114, 255, 0.15);
+    color: #6b8fff;
+    border: 1px solid rgba(66, 114, 255, 0.2);
+  }
+
+  .suggestButton:hover {
+    background: #4272ff;
+    border-color: #4272ff;
+    color: white;
+    transform: translateY(-50%) scale(1.05);
+  }
+
+  .visualizationWrapper {
+    background: rgba(30, 41, 59, 0.4);
+    border-color: rgba(66, 114, 255, 0.1);
+  }
+
+  .visualizationWrapper:hover {
+    border-color: rgba(66, 114, 255, 0.3);
+    box-shadow: 0 4px 20px -4px rgba(66, 114, 255, 0.25);
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .mainContent {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    max-height: 300px;
+  }
+}
+
+@media (max-width: 768px) {
+  .topSection {
+    flex-direction: column;
+    gap: 1.5rem;
+    padding: 1rem;
+  }
+
+  .formHeaderContainer {
+    min-width: unset;
+    width: 100%;
+  }
+
+  .routeInfoSection {
+    align-items: stretch;
+  }
+
+  .inputGroup {
+    max-width: 100%;
+  }
+
+  .shiftInfo {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+
+.shiftInfoContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  border-radius: 0.5rem;
+  background-color: var(--background);
+}
+
+.capacityWarning {
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  background: linear-gradient(to right, #fff3dc, #ffe4c4);
+  border: 1px solid #ffa940;
+  color: #873800;
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  box-shadow: 0 2px 4px rgba(255, 169, 64, 0.1);
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.capacityWarning:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(255, 169, 64, 0.2);
+}
+
+.warningText {
+  flex: 1;
+  line-height: 1.5;
+  font-weight: 500;
+}
+
+.departmentStats {
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  background: linear-gradient(
+    to right,
+    var(--primary-lighter),
+    color-mix(in srgb, var(--primary-lighter) 80%, white)
+  );
+  border: 1px solid var(--primary);
+  font-size: 0.875rem;
+  box-shadow: 0 2px 4px rgba(66, 153, 225, 0.1);
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.departmentStats:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(66, 153, 225, 0.2);
+}
+
+.deptLabel {
+  color: var(--primary);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.deptInfo {
+  color: var(--primary-dark);
+  font-weight: 600;
+}
+
+.recommendButton {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 100px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--primary);
+  background-color: var(--primary-lighter);
+  border: 1px solid var(--primary);
+  transition: all 0.2s ease;
+}
+
+.recommendButton:hover:not(:disabled) {
+  background-color: var(--primary);
+  color: white;
+  transform: translateY(-1px);
+}
+
+.recommendButton:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.refreshButton {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  background-color: var(--background);
+  border: 1px solid var(--border);
+  color: var(--foreground);
+  transition: all 0.2s;
+}
+
+.refreshButton:hover {
+  background-color: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.refreshButton svg {
+  height: 1rem;
+  width: 1rem;
+}

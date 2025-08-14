@@ -5,10 +5,23 @@
     "useDefineForClassFields": true,
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "module": "ESNext",
-    "skipLibCheck": true,
+  "skipLibCheck": true,
+  "allowJs": true,
+  "resolveJsonModule": true,
 
     /* Bundler mode */
     "moduleResolution": "bundler",
+    "baseUrl": ".",
+    "paths": {
+      "@components/*": ["src/components/*"],
+      "@lib/*": ["src/lib/*"],
+      "@services/*": ["src/services/*"],
+      "@contexts/*": ["src/contexts/*"],
+  "@data/*": ["src/data/*"],
+  "@utils/*": ["src/utils/*"],
+      "@/components/*": ["src/components/*"],
+      "@/lib/*": ["src/lib/*"]
+    },
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
     "moduleDetection": "force",
