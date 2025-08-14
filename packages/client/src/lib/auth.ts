@@ -1,2 +1,3 @@
-// Re-export TSX implementation to avoid JSX in .ts file
-export { AuthProvider, useAuth } from './auth'
+// Re-export provider component and hook from separate modules
+export { AuthProvider } from './auth.tsx'
+export { useAuth } from './auth-context'

@@ -1,17 +1,6 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { api } from './api'
-
-export type User = { id: string; email: string; tenantId: string }
-
-type AuthState = {
-  user: User | null
-  loading: boolean
-  error: string | null
-  refresh: () => Promise<void>
-  logout: () => Promise<void>
-}
-
-const AuthContext = createContext<AuthState | undefined>(undefined)
+import { AuthContext, type AuthState, type User } from './auth-context.ts'
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
@@ -24,9 +13,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const res = await api.get<{ user: User }>('/auth/me')
       setUser(res.user)
-    } catch (e: any) {
+    } catch (e: unknown) {
       setUser(null)
-      if (e?.status && e.status !== 401) setError(e.message || 'Failed to fetch session')
+      const err = e as { status?: number; message?: string } | undefined
+      if (err?.status && err.status !== 401) setError(err.message || 'Failed to fetch session')
     } finally {
       setLoading(false)
     }
@@ -35,7 +25,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = async () => {
     try {
       await api.post('/auth/logout')
-    } catch (e) {
+    } catch {
       // ignore
     }
     setUser(null)
@@ -47,10 +37,4 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const value = useMemo<AuthState>(() => ({ user, loading, error, refresh, logout }), [user, loading, error])
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
-}
-
-export function useAuth() {
-  const ctx = useContext(AuthContext)
-  if (!ctx) throw new Error('useAuth must be used within AuthProvider')
-  return ctx
 }
