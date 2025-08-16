@@ -20,7 +20,11 @@
   "@data/*": ["src/data/*"],
   "@utils/*": ["src/utils/*"],
       "@/components/*": ["src/components/*"],
-      "@/lib/*": ["src/lib/*"]
+      "@/lib/*": ["src/lib/*"],
+      "@/services/*": ["src/services/*"],
+      "@/contexts/*": ["src/contexts/*"],
+      "@/data/*": ["src/data/*"],
+      "@/utils/*": ["src/utils/*"]
     },
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,

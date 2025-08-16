@@ -1,0 +1,92 @@
+.detailsPanel {
+  max-height: calc(100vh - 12rem); /* Account for header and pagination */
+  min-height: 400px;
+  height: auto;
+  overflow-y: auto;
+  -webkit-scrollbar-width: thin;
+  scrollbar-width: thin;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Webkit scrollbar styling */
+.detailsPanel::-webkit-scrollbar {
+  width: 6px;
+}
+
+.detailsPanel::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.detailsPanel::-webkit-scrollbar-thumb {
+  background-color: rgba(156, 163, 175, 0.5);
+  border-radius: 20px;
+}
+
+/* Firefox scrollbar styling (modern) */
+@supports (scrollbar-color: auto) {
+  .detailsPanel {
+    scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
+  }
+}
+
+.stickyHeader {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: inherit;
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  margin: -1.5rem -1.5rem 1rem -1.5rem;
+  padding: 1.5rem;
+  border-bottom: 1px solid rgba(229, 231, 235, 0.5);
+}
+
+/* Fallback for browsers that don't support backdrop-filter */
+@supports not ((backdrop-filter: blur(8px)) or (-webkit-backdrop-filter: blur(8px))) {
+  .stickyHeader {
+    background: rgba(255, 255, 255, 0.95);
+  }
+  
+  .dark .stickyHeader {
+    background: rgba(17, 24, 39, 0.95);
+  }
+}
+
+.formGrid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+.editModePanel {
+  height: auto;
+  min-height: 500px;
+  max-height: min(700px, calc(100vh - 12rem));
+}
+
+.viewModePanel {
+  height: auto;
+  min-height: 400px;
+  max-height: min(600px, calc(100vh - 12rem));
+}
+
+/* Simple scrollbar fallback for older browsers */
+@media screen and (max-width: 1024px) {
+  .detailsPanel {
+    max-height: 100vh;
+    height: 100vh;
+    /* Ensure momentum scrolling on iOS */
+    overflow-y: scroll;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .editModePanel,
+  .viewModePanel {
+    max-height: none;
+    height: 100vh;
+  }
+}
