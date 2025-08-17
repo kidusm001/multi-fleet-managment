@@ -1,0 +1,285 @@
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@contexts/AuthContext";
+import { Button } from "@components/Common/UI/Button";
+import { Input } from "@/components/Common/UI/Input";
+import { cn } from "@lib/utils";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+
+const videos = [
+  {
+    src: "/assets/videos/1206.mp4",
+    title: "Manage Your Fleet",
+    subtitle: "Streamline Operations with Smart Solutions",
+    thumbnail: "/assets/videos/1206-thumb.jpg",
+    preload: true,
+  },
+  {
+    src: "/assets/videos/1205.mp4",
+    title: "Manage Your Fleet",
+    subtitle: "Streamline Operations with Smart Solutions",
+    thumbnail: "/assets/videos/1206-thumb.jpg",
+    preload: true,
+  }
+];
+
+// Preload videos
+videos.forEach((video) => {
+  const link = document.createElement("link");
+  link.rel = "preload";
+  link.as = "video";
+  link.href = video.src;
+  document.head.appendChild(link);
+});
+
+const inputStyles =
+  "bg-white/10 border-2 border-white/20 text-white placeholder:text-white/50 h-12 px-4 rounded-xl transition-all duration-300 focus:bg-white/15 focus:border-[#f3684e]/50 focus:ring-2 focus:ring-[#f3684e]/20 hover:border-[#f3684e]/30 w-full shadow-lg shadow-black/5 text-base";
+const buttonStyles =
+  "relative overflow-hidden group bg-gradient-to-r from-[#f3684e] to-[#f3684e]/80 hover:from-[#f3684e]/90 hover:to-[#f3684e]/70 text-white py-3.5 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl active:scale-[0.98] w-full";
+
+export default function Login() {
+  const navigate = useNavigate();
+  const { login } = useAuth();
+  const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
+  const [showPassword, setShowPassword] = useState(false);
+  const [formData, setFormData] = useState({
+    email: "",
+    password: ""
+  });
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentVideoIndex((prev) => (prev === 0 ? 1 : 0));
+    }, 15000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleInputChange = (e) => {
+    const { name, value, type } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    
+    if (!formData.email || !formData.password) {
+      setError('Email and password are required');
+      return;
+    }
+  
+    setError(null);
+    setIsLoading(true);
+  
+    try {
+      const result = await login({
+        email: formData.email.trim(),
+        password: formData.password
+      });
+      
+      if (result.success) {
+        navigate('/');
+      } else {
+        setError(result.error || 'Login failed');
+      }
+    } catch (error) {
+      setError(error.message || 'An error occurred');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-gradient-to-br from-slate-950 via-[#1a2327] to-[#1a2327] overflow-hidden">
+      {/* Logo */}
+      <motion.div
+        initial={{ y: -20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        className="mb-8 relative z-10"
+      >
+        <motion.div
+          animate={{
+            scale: [1, 1.1, 1],
+            rotate: [0, -5, 0],
+          }}
+          transition={{ duration: 0.5, times: [0, 0.5, 1] }}
+          className="relative flex items-center bg-white/80 backdrop-blur-sm px-4 py-[0.2rem] rounded-[1.5rem]"
+        >
+          <img
+            src="/assets/images/MMCYTech.png"
+            alt="MMCY Tech"
+            className="h-10 object-contain"
+          />
+        </motion.div>
+      </motion.div>
+
+      {/* Main Container with reduced width */}
+      <motion.div
+        initial={{ scale: 0.95, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        className="w-full max-w-5xl"
+      >
+        <div className="relative flex bg-black/20 backdrop-blur-xl rounded-[2rem] shadow-2xl border border-white/10 overflow-hidden h-[600px]">
+          {/* Video Section */}
+          <div className="w-7/12 h-full relative">
+            <AnimatePresence mode="wait">
+              {videos.map(
+                (video, index) =>
+                  index === currentVideoIndex && (
+                    <motion.div
+                      key={video.src}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.5 }}
+                      className="absolute inset-0"
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/20 to-transparent z-20" />
+                      <video
+                        autoPlay
+                        muted
+                        loop
+                        playsInline
+                        poster={video.thumbnail}
+                        className="absolute inset-0 w-full h-full object-cover"
+                      >
+                        <source src={video.src} type="video/mp4" />
+                      </video>
+                      <div className="absolute bottom-16 left-12 z-30">
+                        <motion.h2
+                          initial={{ y: 20, opacity: 0 }}
+                          animate={{ y: 0, opacity: 1 }}
+                          transition={{ delay: 0.3 }}
+                          className="text-4xl font-bold text-white mb-2"
+                        >
+                          <span className="bg-gradient-to-r from-white to-[#f3684e] bg-clip-text text-transparent">
+                            {video.title}
+                          </span>
+                        </motion.h2>
+                        <motion.p
+                          initial={{ y: 20, opacity: 0 }}
+                          animate={{ y: 0, opacity: 1 }}
+                          transition={{ delay: 0.4 }}
+                          className="text-white/70 text-lg font-light"
+                        >
+                          {video.subtitle}
+                        </motion.p>
+                      </div>
+                    </motion.div>
+                  )
+              )}
+            </AnimatePresence>
+
+            {/* Video Navigation Dots */}
+            <div className="absolute bottom-8 left-12 z-30 flex space-x-2">
+              {videos.map((_, index) => (
+                <button
+                  key={index}
+                  onClick={() => setCurrentVideoIndex(index)}
+                  className={cn(
+                    "w-2 h-2 rounded-full transition-all duration-500",
+                    index === currentVideoIndex
+                      ? "w-8 bg-[#f3684e] shadow-lg shadow-[#f3684e]/20"
+                      : "bg-white/50 hover:bg-white/75"
+                  )}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Login Form Section - centered fields and button */}
+          <div className="w-5/12 h-full p-8 flex flex-col items-center justify-center bg-gradient-to-br from-[#324048]/80 to-[#324048]/40 relative z-10">
+            <motion.h2
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-4xl font-black tracking-tight text-[#f3684e] mb-4"
+            >
+              Shuttle Management
+            </motion.h2>
+            <motion.h1
+              className="text-4xl font-bold text-white mb-8"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+            >
+              Welcome back
+            </motion.h1>
+            <form onSubmit={handleSubmit} className="space-y-6 w-full">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+              >
+                <Input
+                  type="email"
+                  name="email"
+                  value={formData.email || ""}
+                  onChange={handleInputChange}
+                  placeholder="Email"
+                  className={inputStyles}
+                  required
+                />
+              </motion.div>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="relative"
+              >
+                <Input
+                  type={showPassword ? "text" : "password"}
+                  name="password"
+                  value={formData.password || ""}
+                  onChange={handleInputChange}
+                  placeholder="Password"
+                  className={inputStyles}
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-white/50 hover:text-white/80 transition-colors duration-300"
+                >
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              </motion.div>
+            </form>
+            <motion.div
+              className="mt-8 w-full"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+            >
+              <Button
+                onClick={handleSubmit}
+                className={buttonStyles}
+                disabled={isLoading}
+              >
+                <span className="relative z-10 flex items-center justify-center">
+                  {isLoading && (
+                    <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                  )}
+                  {isLoading ? "Signing In..." : "Sign In"}
+                </span>
+                <div className="absolute inset-0 -z-10 bg-gradient-to-r from-[#f3684e]/0 via-white/10 to-[#f3684e]/0 group-hover:via-white/20 transition-all duration-500 translate-x-[-100%] group-hover:translate-x-[100%]" />
+              </Button>
+            </motion.div>
+            {error && (
+              <motion.p
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-red-500 text-sm mt-4 text-center"
+              >
+                {error}
+              </motion.p>
+            )}
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  );
+}

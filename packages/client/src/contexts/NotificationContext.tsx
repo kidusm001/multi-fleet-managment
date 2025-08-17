@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
-import { socketClient } from "@lib/socket";
-import type { ShuttleNotification } from "@lib/socket";
+import { socketClient, ShuttleNotification } from "@lib/socket";
 import { useRole } from "@contexts/RoleContext";
 import { notificationApi } from '@services/notificationApi';
 
@@ -80,7 +79,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     socketClient.subscribeToRole(role);
     log('Subscribed to role channel:', role);
 
-  const unsubNew = socketClient.onNewNotification((notification: ShuttleNotification) => {
+    const unsubNew = socketClient.onNewNotification((notification) => {
       log('Received new notification:', notification);
       // Play notification sound if enabled
       const audio = new Audio('/assets/sounds/notification.mp3');
@@ -103,7 +102,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       }
     });
 
-  const unsubSeen = socketClient.onNotificationSeen(({ notificationId, userId, userName }: { notificationId: string; userId: string; userName: string; }) => {
+    const unsubSeen = socketClient.onNotificationSeen(({ notificationId, userId, userName }) => {
       setNotifications(prev => prev.map(n => 
         n.id === notificationId 
           ? { 
@@ -122,16 +121,16 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       socketClient.subscribeToRole(role); // Resubscribe on reconnection
     });
     
-  socket.on('disconnect', (reason: string) => {
+    socket.on('disconnect', (reason) => {
       log('Socket disconnected:', reason);
       setIsConnected(false);
     });
 
-  socket.on('connect_error', (error: unknown) => {
+    socket.on('connect_error', (error) => {
       log('Socket error:', error);
     });
 
-  socket.io.on('reconnect', (attemptNumber: number) => {
+    socket.io.on('reconnect', (attemptNumber) => {
       log('Socket reconnected after', attemptNumber, 'attempts');
     });
 

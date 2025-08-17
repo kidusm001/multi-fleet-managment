@@ -1,0 +1,624 @@
+import { useState, useEffect } from "react";
+import { useSession } from "@/lib/auth-client";
+import { useTheme } from "@/contexts/ThemeContext";
+import { adminService } from "../../services/adminService";
+import { Plus, Search, Filter, Users, ChevronDown, X, RefreshCw } from "lucide-react";
+import Button from "@/components/Common/UI/Button";
+import { Input } from "@/components/Common/UI/Input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/Common/UI/Select";
+
+// Import our sub-components
+import UsersTable from "./UsersTable";
+import UserDetailsDialog from "./UserDetailsDialog";
+import UserActionDialog from "./UserActionDialog";
+import UserFormDialog from "./UserFormDialog";
+import UserDeleteDialog from "./UserDeleteDialog";
+
+// Import constants
+import { roles } from "./constants";
+
+export default function UserManagement() {
+  const { data: session } = useSession();
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
+  
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [roleFilter, setRoleFilter] = useState("all");
+  const [totalUsers, setTotalUsers] = useState(0);
+  const [availableRoles, setAvailableRoles] = useState([]);
+  
+  // Dialog states
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showActionDialog, setShowActionDialog] = useState(false);
+  const [showUserDetails, setShowUserDetails] = useState(false);
+  
+  // Selected items
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [selectedAction, setSelectedAction] = useState(null);
+  const [editMode, setEditMode] = useState(false);
+  
+  // Form data
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    role: "manager",
+    isActive: true,
+    password: ""
+  });
+
+  // Close all dialogs helper - updated with cleanup
+  const closeAllDialogs = () => {
+    setShowAddModal(false);
+    setShowActionDialog(false);
+    setShowDeleteDialog(false);
+    setShowUserDetails(false);
+    // Reset states
+    setSelectedUser(null);
+    setSelectedAction(null);
+    setEditMode(false);
+    setFormData({
+      name: "",
+      email: "",
+      role: "manager",
+      isActive: true,
+      password: ""
+    });
+  };
+
+  // Load users when component mounts
+  useEffect(() => {
+    if (session?.user) {
+      loadUsers();
+    }
+  }, [session]);
+
+  // Load users with optional query
+  const loadUsers = async (query = {}) => {
+    try {
+      setLoading(true);
+      setError(null);
+      const usersList = await adminService.listUsers({
+        query: {
+          searchField: query.searchField || undefined,
+          searchOperator: query.searchOperator || "contains",
+          searchValue: query.searchValue || searchQuery,
+          limit: 100,
+          offset: 0,
+          sortBy: "createdAt",
+          sortDirection: "desc",
+          filterField: roleFilter !== "all" ? "role" : undefined,
+          filterOperator: "eq",
+          filterValue: roleFilter !== "all" ? roleFilter : undefined
+        }
+      });
+      setUsers(usersList);
+      
+      // Set total count (in a real app you'd get this from an API response)
+      setTotalUsers(usersList.length); 
+      
+      // Extract unique roles from users
+      const roles = [...new Set(usersList.map(user => user.role))];
+      setAvailableRoles(roles);
+      
+      setLoading(false);
+    } catch (error) {
+      console.error("Error loading users:", error);
+      setError("Failed to load users. Please try again.");
+      setLoading(false);
+    }
+  };
+
+  // Add new user
+  const handleAdd = () => {
+    setEditMode(false);
+    setFormData({
+      name: "",
+      email: "",
+      role: "manager",
+      isActive: true,
+      password: ""
+    });
+    setShowAddModal(true);
+  };
+
+  // Edit user
+  const handleEdit = (user) => {
+    setEditMode(true);
+    setFormData({
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      isActive: !user.banned
+    });
+    setShowAddModal(true);
+  };
+
+  // Delete user
+  const handleDelete = (user) => {
+    setSelectedUser(user);
+    setShowDeleteDialog(true);
+  };
+
+  // Confirm delete with cleanup
+  const confirmDelete = async () => {
+    try {
+      await adminService.removeUser({
+        userId: selectedUser.id
+      });
+      setUsers(users.filter(u => u.id !== selectedUser.id));
+      closeAllDialogs();
+      return true;
+    } catch (error) {
+      console.error("Error deleting user:", error);
+      setError("Failed to delete user. Please try again.");
+      return false;
+    }
+  };
+
+  // Submit form (add or edit) with cleanup
+  const handleSubmit = async (formData, editMode) => {
+    try {
+      if (editMode) {
+        const success = await handleEditSubmit(formData);
+        if (success) {
+          closeAllDialogs();
+          await refreshPage();
+        }
+        return success;
+      } else {
+        const success = await handleCreateSubmit(formData);
+        if (success) {
+          closeAllDialogs();
+          await loadUsers();
+        }
+        return success;
+      }
+    } catch (error) {
+      console.error("Error submitting form:", error);
+      setError("Failed to save user. Please try again.");
+      return false;
+    }
+  };
+
+  // Handle edit submit
+  const handleEditSubmit = async (formData) => {
+    if (session?.user?.id === formData.id && formData.role !== 'admin') {
+      setError("You cannot change your own admin role.");
+      return false;
+    }
+
+    try {
+      await adminService.setRole({
+        userId: formData.id,
+        role: formData.role
+      });
+
+      const currentUser = users.find(u => u.id === formData.id);
+      if (!formData.isActive !== currentUser?.banned) {
+        if (!formData.isActive) {
+          await adminService.banUser({
+            userId: formData.id,
+            banReason: "Disabled by admin"
+          });
+        } else {
+          await adminService.unbanUser({
+            userId: formData.id
+          });
+        }
+      }
+      return true;
+    } catch (error) {
+      console.error("Error updating user:", error);
+      setError("Failed to update user. Please try again.");
+      return false;
+    }
+  };
+
+  // Handle create submit
+  const handleCreateSubmit = async (formData) => {
+    try {
+      await adminService.createUser({
+        name: formData.name,
+        email: formData.email,
+        password: formData.password,
+        role: formData.role,
+      });
+      return true;
+    } catch (error) {
+      console.error("Error creating user:", error);
+      setError("Failed to create user. Please try again.");
+      return false;
+    }
+  };
+
+  // User actions (ban, reset password, etc.)
+  const handleUserAction = (user, action) => {
+    setSelectedUser(user);
+    setSelectedAction(action);
+    setShowActionDialog(true);
+  };
+
+  // Refresh page
+  const refreshPage = async () => {
+    setLoading(true);
+    await loadUsers();
+    setLoading(false);
+  };
+
+  // Reset filters
+  const resetFilters = () => {
+    setSearchQuery("");
+    setRoleFilter("all");
+    loadUsers({ searchValue: "", filterField: undefined });
+  };
+
+  // Confirm action with cleanup
+  const confirmAction = async () => {
+    try {
+      switch (selectedAction) {
+        case 'ban':
+          await adminService.banUser({
+            userId: selectedUser.id,
+            banReason: "Banned by administrator"
+          });
+          break;
+        case 'unban':
+          await adminService.unbanUser({
+            userId: selectedUser.id
+          });
+          break;
+        case 'revoke-sessions':
+          await adminService.revokeUserSessions({
+            userId: selectedUser.id
+          });
+          break;
+        case 'reset2fa':
+          // Implement this when API is available
+          break;
+        case 'resetPassword':
+          // Implement this when API is available
+          break;
+      }
+      closeAllDialogs(); // Use the enhanced closeAllDialogs
+      await refreshPage();
+      return true;
+    } catch (error) {
+      console.error("Error performing action:", error);
+      setError(`Failed to ${selectedAction}. Please try again.`);
+      return false;
+    }
+  };
+
+  // Handle dropdown actions with cleanup
+  const handleDropdownAction = (action, user) => {
+    closeAllDialogs(); // First clean up all states
+
+    switch (action) {
+      case 'edit':
+        setEditMode(true);
+        setFormData({
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          isActive: !user.banned
+        });
+        setShowAddModal(true);
+        break;
+      case 'delete':
+        setSelectedUser(user);
+        setShowDeleteDialog(true);
+        break;
+      case 'ban':
+      case 'unban':
+      case 'reset2fa':
+      case 'resetPassword':
+        setSelectedUser(user);
+        setSelectedAction(action);
+        setShowActionDialog(true);
+        break;
+      default:
+        break;
+    }
+  };
+
+  // Filter functionality - client-side filtering
+  const handleSearch = (value) => {
+    setSearchQuery(value);
+  };
+
+  // Role filtering functionality
+  const handleRoleFilter = (role) => {
+    setRoleFilter(role);
+  };
+
+  // Get filtered users based on search query and role filter
+  const getFilteredUsers = () => {
+    return users.filter(user => {
+      const matchesSearch = !searchQuery || 
+        user.name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
+        user.email?.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      const matchesRole = roleFilter === "all" || user.role === roleFilter;
+      
+      return matchesSearch && matchesRole;
+    });
+  };
+
+  return (
+    <div className="space-y-6">
+      {/* Header section */}
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold">User Management</h2>
+        <Button 
+          onClick={handleAdd}
+          className="flex items-center gap-2"
+        >
+          <Plus className="w-4 h-4" />
+          Add User
+        </Button>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className={`flex flex-col p-4 rounded-xl border ${
+          isDark 
+            ? "bg-gray-800/50 border-gray-700/50" 
+            : "bg-white/80 border-gray-100"
+        } transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md`}>
+          <span className="text-[var(--text-secondary)] text-sm font-medium">Total Users</span>
+          <div className="flex items-end gap-2 mt-1">
+            <span className="text-2xl font-bold text-[var(--text-primary)]">{totalUsers}</span>
+            <Users className="w-4 h-4 text-[var(--primary)] mb-1" />
+          </div>
+        </div>
+        
+        <div className={`flex flex-col p-4 rounded-xl border ${
+          isDark 
+            ? "bg-gray-800/50 border-gray-700/50" 
+            : "bg-white/80 border-gray-100"
+        } transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md`}>
+          <span className="text-[var(--text-secondary)] text-sm font-medium">Admin Users</span>
+          <div className="flex items-end gap-2 mt-1">
+            <span className="text-2xl font-bold text-[var(--text-primary)]">
+              {users.filter(u => u.role === 'admin').length}
+            </span>
+            <div className="h-4 w-4 rounded-full bg-rose-500 mb-1 animate-pulse"></div>
+          </div>
+        </div>
+        
+        <div className={`flex flex-col p-4 rounded-xl border ${
+          isDark 
+            ? "bg-gray-800/50 border-gray-700/50" 
+            : "bg-white/80 border-gray-100"
+        } transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md`}>
+          <span className="text-[var(--text-secondary)] text-sm font-medium">Active Users</span>
+          <div className="flex items-end gap-2 mt-1">
+            <span className="text-2xl font-bold text-[var(--text-primary)]">
+              {users.filter(u => !u.banned).length}
+            </span>
+            <div className="h-4 w-4 rounded-full bg-green-500 mb-1 animate-pulse"></div>
+          </div>
+        </div>
+        
+        <div className={`flex flex-col p-4 rounded-xl border ${
+          isDark 
+            ? "bg-gray-800/50 border-gray-700/50" 
+            : "bg-white/80 border-gray-100"
+        } transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md`}>
+          <span className="text-[var(--text-secondary)] text-sm font-medium">Banned Users</span>
+          <div className="flex items-end gap-2 mt-1">
+            <span className="text-2xl font-bold text-[var(--text-primary)]">
+              {users.filter(u => u.banned).length}
+            </span>
+            <div className="h-4 w-4 rounded-full bg-red-500 mb-1 animate-pulse"></div>
+          </div>
+        </div>
+      </div>
+
+      {/* Show error state with improved styling */}
+      {error && (
+        <div className={`p-4 rounded-xl border flex items-center justify-between ${
+          isDark ? "bg-red-950/20 border-red-800/40 text-red-400" : "bg-red-50 border-red-200 text-red-600"
+        } animate-in fade-in-50 duration-300`}>
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-full bg-red-100 dark:bg-red-900/30">
+              <X className="w-4 h-4 text-red-500 dark:text-red-400" />
+            </div>
+            <p>{error}</p>
+          </div>
+          <button 
+            onClick={() => setError(null)} 
+            className={`p-1.5 rounded-md ${isDark ? "hover:bg-red-900/50" : "hover:bg-red-100"}`}
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {/* Enhanced Search and Filters */}
+      <div className={`p-4 rounded-xl border ${
+        isDark 
+          ? "bg-gray-800/30 border-gray-700/50" 
+          : "bg-white border-gray-200/70"
+      } transition-all duration-300 hover:shadow-md shadow-sm`}>
+        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-secondary)]" />
+            <Input
+              placeholder="Search by name or email..."
+              value={searchQuery}
+              onChange={(e) => handleSearch(e.target.value)}
+              className={`pl-10 bg-[var(--input-background)] border-[var(--input-border)] transition-all duration-200 ${
+                isDark ? "text-gray-200 focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/20" : "text-gray-700 focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30"
+              } ${searchQuery ? "pr-10" : ""}`}
+            />
+            {searchQuery && (
+              <button 
+                onClick={() => handleSearch("")}
+                className={`absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full ${
+                  isDark ? "hover:bg-gray-700/80" : "hover:bg-gray-100"
+                } transition-all duration-200`}
+              >
+                <X className="w-3 h-3 text-[var(--text-secondary)]" />
+              </button>
+            )}
+          </div>
+          <Select
+            value={roleFilter}
+            onValueChange={handleRoleFilter}
+          >
+            <SelectTrigger className={`w-[180px] rounded-md transition-all duration-200 bg-[var(--input-background)] border-[var(--input-border)] ${
+              isDark 
+                ? "text-gray-200 hover:bg-gray-700/50 hover:border-gray-600" 
+                : "text-gray-700 hover:bg-gray-50 hover:border-gray-300"
+            } ${roleFilter !== "all" ? "border-blue-500/50 dark:border-blue-500/30 shadow-sm" : ""}`}>
+              <div className="flex items-center">
+                <Filter className="w-3.5 h-3.5 mr-2 text-[var(--text-secondary)]" />
+                <SelectValue placeholder="Filter by role" />
+              </div>
+            </SelectTrigger>
+            <SelectContent className={isDark ? "bg-gray-800 border-gray-700" : ""}>
+              <SelectItem value="all" className={isDark ? "text-gray-200 focus:bg-gray-700" : ""}>
+                All Roles
+              </SelectItem>
+              <SelectItem value="admin" className={isDark ? "text-gray-200 focus:bg-gray-700" : ""}>
+                Admin
+              </SelectItem>
+              <SelectItem value="manager" className={isDark ? "text-gray-200 focus:bg-gray-700" : ""}>
+                Manager
+              </SelectItem>
+              <SelectItem value="recruiter" className={isDark ? "text-gray-200 focus:bg-gray-700" : ""}>
+                Recruiter
+              </SelectItem>
+            </SelectContent>
+          </Select>
+          
+          {/* Refresh and Reset Filter Buttons */}
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              size="icon"
+              onClick={resetFilters}
+              disabled={!searchQuery && roleFilter === "all"}
+              title="Reset filters"
+              className={`transition-all duration-200 ${
+                isDark ? "bg-gray-800 border-gray-700 hover:bg-gray-700" : ""
+              } ${(!searchQuery && roleFilter === "all") ? "opacity-50" : "hover:-translate-y-0.5"}`}
+            >
+              <X className="w-4 h-4" />
+            </Button>
+            <Button 
+              variant="outline" 
+              size="icon"
+              onClick={refreshPage}
+              title="Refresh"
+              className={`transition-all duration-200 ${
+                isDark ? "bg-gray-800 border-gray-700 hover:bg-gray-700" : ""
+              } hover:-translate-y-0.5 hover:shadow-sm`}
+            >
+              <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+            </Button>
+          </div>
+        </div>
+        
+        {/* Active filters display */}
+        {(searchQuery || roleFilter !== "all") && (
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <span className="text-xs text-[var(--text-secondary)]">Active filters:</span>
+            {searchQuery && (
+              <span className={`text-xs px-2 py-1 rounded-full flex items-center gap-1 ${
+                isDark 
+                  ? "bg-gray-700/70 text-gray-300 hover:bg-gray-700"
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200/80"
+              } transition-all cursor-pointer`} onClick={() => handleSearch("")}>
+                Search: {searchQuery}
+                <X className="w-3 h-3" />
+              </span>
+            )}
+            {roleFilter !== "all" && (
+              <span className={`text-xs px-2 py-1 rounded-full flex items-center gap-1 ${
+                isDark 
+                  ? "bg-blue-900/20 text-blue-400 hover:bg-blue-900/30"
+                  : "bg-blue-50 text-blue-600 hover:bg-blue-100"
+              } transition-all cursor-pointer`} onClick={() => handleRoleFilter("all")}>
+                Role: {roleFilter}
+                <X className="w-3 h-3" />
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Users Table */}
+      <UsersTable
+        users={getFilteredUsers()}
+        loading={loading}
+        error={error}
+        session={session}
+        isDark={isDark}
+        onViewDetails={(user) => {
+          closeAllDialogs();
+          setSelectedUser(user);
+          setShowUserDetails(true);
+        }}
+        onAction={handleDropdownAction}
+      />
+      
+      {/* User Details Dialog */}
+      <UserDetailsDialog
+        user={selectedUser}
+        isOpen={showUserDetails}
+        isDark={isDark}
+        onClose={() => {
+          closeAllDialogs();
+        }}
+        onAction={(action) => {
+          setShowUserDetails(false);
+          handleUserAction(selectedUser, action);
+        }}
+      />
+
+      {/* User Action Dialog */}
+      <UserActionDialog
+        isOpen={showActionDialog}
+        isDark={isDark}
+        user={selectedUser}
+        action={selectedAction}
+        onConfirm={confirmAction}
+        onCancel={() => closeAllDialogs()}
+      />
+
+      {/* User Form Dialog */}
+      <UserFormDialog
+        isOpen={showAddModal}
+        isDark={isDark}
+        editMode={editMode}
+        formData={formData}
+        setFormData={setFormData}
+        onSubmit={() => handleSubmit(formData, editMode)}
+        onCancel={() => closeAllDialogs()}
+      />
+
+      {/* User Delete Dialog */}
+      <UserDeleteDialog
+        isOpen={showDeleteDialog}
+        isDark={isDark}
+        user={selectedUser}
+        onConfirm={confirmDelete}
+        onCancel={() => closeAllDialogs()}
+      />
+    </div>
+  );
+}

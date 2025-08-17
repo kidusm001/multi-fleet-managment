@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import { ROLES } from "@data/constants";
-import { useAuth } from "../../lib/auth";
+// Import from our configured client instead of creating a new instance
+import { useSession } from "../../lib/auth-client";
 
 const RoleContext = createContext({
   role: ROLES.MANAGER,
@@ -8,14 +9,20 @@ const RoleContext = createContext({
 });
 
 export function RoleProvider({ children }) {
-  const { user, loading } = useAuth();
+  const {
+    data: session,
+    isPending,
+    error: sessionError,
+    refetch
+  } = useSession();
   const [role, setRole] = useState(ROLES.MANAGER);
 
   useEffect(() => {
-    if (!loading && user) {
-      setRole(user.role || ROLES.MANAGER);
+    if (!isPending && session?.user) {
+      setRole(session.user.role);
+      console.log('Session loaded:', session.user);
     }
-  }, [user, loading]);
+  }, [session, isPending]);
 
   return (
     <RoleContext.Provider value={{ role, setRole }}>

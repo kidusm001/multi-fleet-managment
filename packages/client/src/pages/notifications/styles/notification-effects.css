@@ -1,0 +1,429 @@
+.notification-glow {
+  position: relative;
+  border-radius: 1rem;
+  transition: 
+    transform 0.5s cubic-bezier(0.2, 0, 0.2, 1),
+    box-shadow 0.5s cubic-bezier(0.2, 0, 0.2, 1),
+    opacity 0.4s ease-out;
+  isolation: isolate;
+  cursor: pointer;
+  transition: 
+    transform 0.5s cubic-bezier(0.2, 0, 0.2, 1),
+    box-shadow 0.5s cubic-bezier(0.2, 0, 0.2, 1),
+    opacity 0.4s ease-out,
+    height 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Enhanced modern shadow with more depth */
+.notification-glow {
+  box-shadow: 
+    0 1px 2px rgba(0, 0, 0, 0.03),
+    0 2px 4px rgba(0, 0, 0, 0.02),
+    0 4px 8px rgba(0, 0, 0, 0.01),
+    0 8px 16px rgba(0, 0, 0, 0.01);
+}
+
+/* Dark mode base shadow */
+.dark .notification-glow {
+  box-shadow: 
+    0 1px 2px rgba(0, 0, 0, 0.15),
+    0 2px 4px rgba(0, 0, 0, 0.12),
+    0 4px 8px rgba(0, 0, 0, 0.1),
+    0 8px 16px rgba(0, 0, 0, 0.08);
+}
+
+.notification-glow::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.1),
+    transparent 50%
+  );
+  border-radius: inherit;
+  z-index: 1;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+/* Unread notifications */
+.notification-glow[data-read="false"]::before {
+  opacity: 0.4;
+}
+
+/* Read notifications */
+.notification-glow[data-read="true"] {
+  opacity: 0.65;
+  filter: saturate(0.85) brightness(0.95);
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.notification-glow[data-read="true"]::before {
+  opacity: 0.15;
+}
+
+.notification-glow[data-read="true"]:hover {
+  opacity: 0.85;
+  filter: saturate(0.9) brightness(0.98);
+}
+
+.notification-glow[data-read="true"]:hover::before {
+  opacity: 0.25;
+}
+
+/* Hover interaction */
+.notification-glow:hover {
+  transform: translateY(-2px) translateX(4px);
+  box-shadow:
+    0 4px 16px rgba(var(--glow-color), calc(var(--glow-opacity) * 0.4)),
+    0 8px 24px rgba(var(--glow-color), calc(var(--glow-opacity) * 0.3)),
+    0 12px 32px rgba(var(--glow-color), calc(var(--glow-opacity) * 0.2)),
+    0 0 48px rgba(var(--glow-color), calc(var(--glow-opacity) * 0.1)),
+    0 0 64px rgba(var(--glow-color), calc(var(--glow-opacity) * 0.05)),
+    inset 0 0 0 1px rgba(var(--glow-color), calc(var(--glow-opacity) * 0.1)),
+    inset 0 0 20px rgba(var(--glow-color), calc(var(--glow-opacity) * 0.05));
+  background: 
+    linear-gradient(
+      135deg,
+      rgba(var(--glow-color), 0.08),
+      rgba(var(--glow-color), 0.03)
+    ),
+    linear-gradient(
+      45deg,
+      rgba(var(--glow-color), 0.02),
+      transparent
+    );
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+
+/* Importance-based glow effects */
+.importance-5 {
+  --glow-color: 239, 68, 68;
+  --glow-opacity: 0.25;
+}
+
+.importance-5::before {
+  box-shadow: 0 0 25px var(--glow-color);
+}
+
+.importance-5:hover::before {
+  opacity: 0.8;
+  background: radial-gradient(
+    circle at 50% 50%,
+    rgba(239, 68, 68, 0.15),
+    transparent 70%
+  );
+}
+
+.importance-4 {
+  --glow-color: 249, 115, 22;
+  --glow-opacity: 0.22;
+}
+
+.importance-4::before {
+  box-shadow: 0 0 20px var(--glow-color);
+}
+
+.importance-4:hover::before {
+  opacity: 0.7;
+  background: radial-gradient(
+    circle at 50% 50%,
+    rgba(249, 115, 22, 0.12),
+    transparent 70%
+  );
+}
+
+.importance-3 {
+  --glow-color: 234, 179, 8;
+  --glow-opacity: 0.2;
+}
+
+.importance-3::before {
+  box-shadow: 0 0 15px var(--glow-color);
+}
+
+.importance-3:hover::before {
+  opacity: 0.6;
+  background: radial-gradient(
+    circle at 50% 50%,
+    rgba(234, 179, 8, 0.1),
+    transparent 70%
+  );
+}
+
+.importance-2 {
+  --glow-color: 59, 130, 246;
+  --glow-opacity: 0.18;
+}
+
+.importance-2::before {
+  box-shadow: 0 0 10px var(--glow-color);
+}
+
+.importance-2:hover::before {
+  opacity: 0.5;
+  background: radial-gradient(
+    circle at 50% 50%,
+    rgba(59, 130, 246, 0.08),
+    transparent 70%
+  );
+}
+
+.importance-1 {
+  --glow-color: 107, 114, 128;
+  --glow-opacity: 0.15;
+}
+
+.importance-1::before {
+  box-shadow: 0 0 8px var(--glow-color);
+}
+
+.importance-1:hover::before {
+  opacity: 0.4;
+  background: radial-gradient(
+    circle at 50% 50%,
+    rgba(107, 114, 128, 0.06),
+    transparent 70%
+  );
+}
+
+/* Remove these animation-related sections */
+
+/* Remove this entire keyframe */
+/* @keyframes subtle-pulse {
+  0%, 100% {
+    opacity: 0.2;
+  }
+  50% {
+    opacity: 0.4;
+  }
+} */
+
+/* Remove this section */
+/* .importance-5, .importance-4 {
+  animation: gentle-scale 4s infinite cubic-bezier(0.4, 0, 0.6, 1);
+} */
+
+/* Remove this entire keyframe */
+/* @keyframes gentle-scale {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.002);
+  }
+} */
+
+/* Remove this entire keyframe */
+/* @keyframes elegantPulse {
+  0%, 100% {
+    box-shadow:
+      0 2px 4px rgba(var(--glow-color), 0.06),
+      0 4px 8px rgba(var(--glow-color), 0.08),
+      0 8px 16px rgba(var(--glow-color), calc(var(--glow-opacity) * 0.5));
+  }
+  50% {
+    box-shadow:
+      0 2px 4px rgba(var(--glow-color), 0.08),
+      0 4px 8px rgba(var(--glow-color), 0.12),
+      0 8px 16px rgba(var(--glow-color), var(--glow-opacity)),
+      0 12px 24px rgba(var(--glow-color), calc(var(--glow-opacity) * 0.5));
+  }
+} */
+
+/* Remove this entire keyframe */
+/* @keyframes sophisticatedPulse {
+  0%, 100% {
+    box-shadow:
+      0 2px 4px rgba(var(--glow-color), 0.03),
+      0 4px 8px rgba(var(--glow-color), 0.04),
+      0 8px 16px rgba(var(--glow-color), calc(var(--glow-opacity) * 0.3)),
+      0 12px 24px rgba(var(--glow-color), calc(var(--glow-opacity) * 0.2));
+  }
+  50% {
+    box-shadow:
+      0 2px 4px rgba(var(--glow-color), 0.05),
+      0 4px 8px rgba(var(--glow-color), 0.06),
+      0 8px 16px rgba(var(--glow-color), calc(var(--glow-opacity) * 0.5)),
+      0 12px 24px rgba(var(--glow-color), calc(var(--glow-opacity) * 0.4)),
+      0 16px 32px rgba(var(--glow-color), calc(var(--glow-opacity) * 0.2));
+  }
+} */
+
+/* Remove the duplicate border styles and keep only the glow effect */
+.importance-1,
+.importance-2,
+.importance-3,
+.importance-4,
+.importance-5 {
+  background: transparent;
+  border: none;
+}
+
+/* Super subtle background for the cards */
+.notification-card {
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.01);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+
+/* Modern glass effect */
+.notification-glass {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.08),
+    rgba(255, 255, 255, 0.03)
+  );
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  transition: 
+    transform 0.4s cubic-bezier(0.2, 0, 0.2, 1),
+    box-shadow 0.4s cubic-bezier(0.2, 0, 0.2, 1),
+    background 0.3s cubic-bezier(0.2, 0, 0.2, 1);
+}
+
+.dark .notification-glass {
+  background: linear-gradient(
+    135deg,
+    rgba(30, 41, 59, 0.08),
+    rgba(15, 23, 42, 0.03)
+  );
+}
+
+.notification-glass:hover .badge {
+  transform: translateY(-1px);
+  box-shadow: 
+    0 2px 4px rgba(var(--glow-color), 0.1),
+    0 4px 8px rgba(var(--glow-color), 0.1);
+}
+
+.checkbox-select {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transform-origin: center;
+  border-width: 2px;
+  width: 20px; /* Increased from 16px */
+  height: 20px; /* Increased from 16px */
+  padding: 0; /* Remove padding */
+  min-width: 20px; /* Increased from 16px */
+  min-height: 20px; /* Fixed typo and increased */
+  cursor: pointer;
+  position: relative;
+  background-color: transparent;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden; 
+  border-radius: 9999px !important; /* Force full circle */
+}
+
+/* Add depth effect when unchecked */
+.checkbox-select[data-state="unchecked"] {
+  background: rgba(255, 255, 255, 0.03);
+  box-shadow: 
+    inset 0 1px 2px rgba(0, 0, 0, 0.1),
+    inset 0 -1px 2px rgba(255, 255, 255, 0.1),
+    0 1px 2px rgba(255, 255, 255, 0.05);
+}
+
+.dark .checkbox-select[data-state="unchecked"] {
+  background: rgba(0, 0, 0, 0.2);
+  box-shadow: 
+    inset 0 2px 4px rgba(0, 0, 0, 0.2),
+    inset 0 -1px 2px rgba(255, 255, 255, 0.05),
+    0 1px 2px rgba(255, 255, 255, 0.03);
+}
+
+/* Hover state */
+.checkbox-select:hover {
+  transform: scale(1.05);
+  background-color: rgba(59, 130, 246, 0.1);
+  border-color: rgb(59, 130, 246);
+  box-shadow: 
+    inset 0 2px 4px rgba(59, 130, 246, 0.1),
+    0 0 0 1px rgba(59, 130, 246, 0.2),
+    0 2px 4px rgba(59, 130, 246, 0.1);
+}
+
+.dark .checkbox-select:hover {
+  background-color: rgba(96, 165, 250, 0.15);
+  border-color: rgb(96, 165, 250);
+  box-shadow: 
+    inset 0 2px 4px rgba(96, 165, 250, 0.15),
+    0 0 0 1px rgba(96, 165, 250, 0.3),
+    0 2px 4px rgba(96, 165, 250, 0.1);
+}
+
+/* Checked state */
+.checkbox-select[data-state="checked"] {
+  background-color: rgb(59 130 246) !important; /* Force background color */
+  border-color: transparent;
+  transform: scale(1.05);
+  box-shadow: 
+    0 0 0 1px rgba(59, 130, 246, 0.2),
+    0 2px 4px rgba(59, 130, 246, 0.2);
+}
+
+.checkbox-select[data-state="checked"]:hover {
+  transform: scale(1.1);
+  background-color: rgb(37, 99, 235);
+  box-shadow: 
+    0 0 0 2px rgba(59, 130, 246, 0.25),
+    0 4px 6px rgba(59, 130, 246, 0.2);
+}
+
+.dark .checkbox-select[data-state="checked"] {
+  background-color: rgb(96 165 250);
+  border-color: rgb(96, 165, 250);
+  box-shadow: 
+    0 0 0 2px rgba(96, 165, 250, 0.25),
+    0 2px 4px rgba(96, 165, 250, 0.2);
+}
+
+.dark .checkbox-select[data-state="checked"]:hover {
+  background-color: rgb(59, 130, 246);
+  box-shadow: 
+    0 0 0 2px rgba(96, 165, 250, 0.3),
+    0 4px 6px rgba(96, 165, 250, 0.25);
+}
+
+/* Checkmark icon */
+.checkbox-select svg {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  opacity: 0;
+  transform: scale(0.5);
+  width: 14px; /* Increased from 10px */
+  height: 14px; /* Increased from 10px */
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, 0.1));
+}
+
+.checkbox-select[data-state="checked"] svg {
+  color: white;
+  opacity: 1;
+  transform: scale(0.85);
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.2));
+}
+
+/* @keyframes checkPulse {
+  0% { transform: scale(1.05); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1.05); }
+} */
+
+/* @keyframes checkmarkGrow {
+  0% { 
+    transform: scale(0.5);
+    opacity: 0;
+  }
+  50% { 
+    transform: scale(1.2);
+    opacity: 0.8;
+  }
+  100% { 
+    transform: scale(1);
+    opacity: 1;
+  }
+} */

@@ -1,0 +1,710 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    .notifications-page {
+        --page-bg: #f8fafc;
+        --card-bg: rgba(255, 255, 255, 0.7);
+        --notification-bg: rgba(255, 255, 255, 0.95);
+        --notification-border: rgba(0, 0, 0, 0.1);
+        --notification-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        --notification-hover-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        --notification-backdrop-blur: blur(12px);
+
+        /* Importance gradients and effects */
+        --importance-1-gradient: linear-gradient(135deg, rgba(59, 130, 246, 0.05), rgba(59, 130, 246, 0.02));
+        --importance-2-gradient: linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(99, 102, 241, 0.04));
+        --importance-3-gradient: linear-gradient(135deg, rgba(234, 179, 8, 0.1), rgba(234, 179, 8, 0.05));
+        --importance-4-gradient: linear-gradient(135deg, rgba(249, 115, 22, 0.15), rgba(249, 115, 22, 0.08));
+        --importance-5-gradient: linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(239, 68, 68, 0.1));
+
+        /* Tab colors - updated for better visibility */
+        --tab-bg: rgba(255, 255, 255, 0.8);
+        --tab-hover: rgba(59, 130, 246, 0.1);
+        --tab-active: #3b82f6;
+        --tab-active-text: #ffffff;
+        --tab-text: #64748b;
+        --tab-hover-text: #3b82f6;
+        --tab-border: rgba(59, 130, 246, 0.2);
+        --tab-active-bg: linear-gradient(to right, #3b82f6, #2563eb);
+        --tab-active-hover: linear-gradient(to right, #2563eb, #1d4ed8);
+
+        /* Date picker colors */
+        --date-selected: #3b82f6;
+        --date-selected-text: #ffffff;
+        --date-hover: rgba(59, 130, 246, 0.1);
+        --date-range-bg: rgba(59, 130, 246, 0.1);
+        --date-today: #f8fafc;
+        --date-today-border: #3b82f6;
+
+        /* Expandable tab colors */
+        --tab-separator: rgba(226, 232, 240, 0.8);
+        --tab-bg: rgba(255, 255, 255, 0.5);
+        --tab-border: rgba(59, 130, 246, 0.2);
+        --tab-text: #64748b;
+        --tab-hover-bg: rgba(59, 130, 246, 0.1);
+        --tab-hover-text: #3b82f6;
+        --tab-active-start: #3b82f6;
+        --tab-active-end: #2563eb;
+        --tab-active-text: #ffffff;
+        --tab-active-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+        --tab-active-glow: rgba(59, 130, 246, 0.2);
+    }
+
+    .dark .notifications-page {
+        --page-bg: #0f172a;
+        --card-bg: rgba(30, 41, 59, 0.7);
+        --notification-bg: rgba(30, 41, 59, 0.95);
+        --notification-border: rgba(255, 255, 255, 0.1);
+        --notification-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+        --notification-hover-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
+
+        /* Dark mode importance gradients */
+        --importance-1-gradient: linear-gradient(135deg, rgba(59, 130, 246, 0.15), rgba(59, 130, 246, 0.08));
+        --importance-2-gradient: linear-gradient(135deg, rgba(99, 102, 241, 0.2), rgba(99, 102, 241, 0.1));
+        --importance-3-gradient: linear-gradient(135deg, rgba(234, 179, 8, 0.25), rgba(234, 179, 8, 0.15));
+        --importance-4-gradient: linear-gradient(135deg, rgba(249, 115, 22, 0.3), rgba(249, 115, 22, 0.2));
+        --importance-5-gradient: linear-gradient(135deg, rgba(239, 68, 68, 0.35), rgba(239, 68, 68, 0.25));
+
+        /* Dark mode tab colors - updated for better visibility */
+        --tab-bg: rgba(30, 41, 59, 0.8);
+        --tab-hover: rgba(59, 130, 246, 0.2);
+        --tab-active: #3b82f6;
+        --tab-active-text: #ffffff;
+        --tab-text: #94a3b8;
+        --tab-hover-text: #60a5fa;
+        --tab-border: rgba(59, 130, 246, 0.3);
+        --tab-active-bg: linear-gradient(to right, #3b82f6, #2563eb);
+        --tab-active-hover: linear-gradient(to right, #2563eb, #1d4ed8);
+
+        /* Dark mode date picker colors */
+        --date-selected: #3b82f6;
+        --date-selected-text: #ffffff;
+        --date-hover: rgba(59, 130, 246, 0.2);
+        --date-range-bg: rgba(59, 130, 246, 0.15);
+        --date-today: #1e293b;
+        --date-today-border: #3b82f6;
+
+        /* Dark mode expandable tab colors */
+        --tab-separator: rgba(226, 232, 240, 0.2);
+        --tab-bg: rgba(30, 41, 59, 0.5);
+        --tab-border: rgba(59, 130, 246, 0.3);
+        --tab-text: #94a3b8;
+        --tab-hover-bg: rgba(59, 130, 246, 0.15);
+        --tab-hover-text: #60a5fa;
+        --tab-active-start: #3b82f6;
+        --tab-active-end: #2563eb;
+        --tab-active-text: #ffffff;
+        --tab-active-shadow: 0 2px 4px rgba(59, 130, 246, 0.4);
+        --tab-active-glow: rgba(59, 130, 246, 0.3);
+    }
+
+    :root {
+        --glow-color: rgba(59, 130, 246, 0.2);
+
+        /* Date Range Picker Colors */
+        --date-picker-selected: hsl(var(--primary));
+        --date-picker-selected-text: hsl(var(--primary-foreground));
+        --date-picker-range-bg: hsl(var(--accent) / 0.3);
+        --date-picker-range-text: hsl(var(--accent-foreground));
+        --date-picker-today: hsl(var(--accent) / 0.5);
+        --date-picker-today-text: hsl(var(--accent-foreground));
+
+        /* Date Range Picker Specific Colors */
+        --date-range-selected: hsl(221.2 83.2% 53.3%);
+        --date-range-selected-text: hsl(210 40% 98%);
+        --date-range-middle: hsl(221.2 83.2% 53.3% / 0.15);
+        --date-range-middle-text: hsl(221.2 83.2% 53.3%);
+        --date-range-hover: hsl(221.2 83.2% 53.3% / 0.1);
+    }
+
+    .dark {
+        /* Dark Mode Date Range Picker Colors */
+        --date-picker-range-bg: hsl(var(--accent) / 0.4);
+        --date-picker-today: hsl(var(--accent) / 0.6);
+
+        /* Dark Mode Date Range Colors */
+        --date-range-middle: hsl(217.2 91.2% 59.8% / 0.25);
+        --date-range-middle-text: hsl(210 40% 98%);
+        --date-range-hover: hsl(217.2 91.2% 59.8% / 0.2);
+    }
+}
+
+@layer components {
+    .notifications-page {
+        background-color: var(--page-bg);
+    }
+
+    .notification-card {
+        @apply relative overflow-hidden transition-all duration-300;
+        background: var(--notification-bg);
+        border: 1px solid var(--notification-border);
+        box-shadow: var(--notification-shadow);
+        -webkit-backdrop-filter: var(--notification-backdrop-blur);
+        backdrop-filter: var(--notification-backdrop-blur);
+    }
+
+    .notification-card[data-read="true"] {
+        opacity: 0.4;
+        filter: grayscale(0.3);
+    }
+
+    .notification-card[data-read="true"]:hover {
+        opacity: 0.8;
+        filter: grayscale(0);
+    }
+
+    .notification-card:hover {
+        box-shadow: var(--notification-hover-shadow);
+    }
+
+    .notification-toolbar {
+        @apply sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b;
+        border-color: var(--notification-border);
+        background: rgba(255, 255, 255, 0.95);
+        -webkit-backdrop-filter: blur(12px);
+        backdrop-filter: blur(12px);
+        border-bottom: 1px solid rgba(226, 232, 240, 0.5);
+    }
+
+    .toolbar-counter {
+        background: rgba(59, 130, 246, 0.1);
+        color: #3b82f6;
+        border: 1px solid rgba(59, 130, 246, 0.2);
+    }
+
+    .notification-filters {
+        @apply bg-background/95 backdrop-blur-sm;
+    }
+
+    .notification-list {
+        @apply space-y-4 py-4;
+    }
+
+    /* Enhanced importance styling */
+    .importance-1 {
+        background: var(--importance-1-gradient);
+        @apply border-l-4 border-gray-400 shadow-[0_0_20px_rgba(107, 114, 128, 0.1)];
+    }
+
+    .importance-2 {
+        background: var(--importance-2-gradient);
+        @apply border-l-4 border-blue-400 shadow-[0_0_20px_rgba(59, 130, 246, 0.15)];
+    }
+
+    .importance-3 {
+        background: var(--importance-3-gradient);
+        @apply border-l-4 border-amber-400 shadow-[0_0_20px_rgba(245, 158, 11, 0.2)];
+    }
+
+    .importance-4 {
+        background: var(--importance-4-gradient);
+        @apply border-l-4 border-orange-400 shadow-[0_0_20px_rgba(249, 115, 22, 0.25)];
+    }
+
+    .importance-5 {
+        background: var(--importance-5-gradient);
+        @apply border-l-4 border-red-400 shadow-[0_0_20px_rgba(239, 68, 68, 0.3)] animate-pulse;
+    }
+
+    /* Enhanced tabs styling with better visibility */
+    .notification-tabs-list {
+        @apply p-1 rounded-lg relative;
+        background: var(--tab-bg);
+        background: var(--tab-active-bg);
+        color: var(--tab-active-text) !important;
+    }
+
+    .notification-tab[data-state="active"]:hover {
+        background: var(--tab-active-hover);
+    }
+
+    /* Date picker enhancements */
+    .date-range-calendar {
+        @apply p-3 rounded-lg shadow-lg;
+        background: var(--card-bg);
+        -webkit-backdrop-filter: var(--notification-backdrop-blur);
+        backdrop-filter: var(--notification-backdrop-blur);
+    }
+
+    .date-range-day {
+        @apply h-9 w-9 p-0 font-normal rounded-md transition-colors;
+    }
+
+    .date-range-day:hover:not([data-selected="true"]) {
+        background: var(--date-hover);
+    }
+
+    .date-range-day[data-selected="true"] {
+        background: var(--date-selected) !important;
+        color: var(--date-selected-text) !important;
+    }
+
+    .date-range-day[data-today="true"] {
+        background: var(--date-today);
+        border: 2px solid var(--date-today-border);
+    }
+
+    .date-range-between {
+        background: var(--date-range-bg);
+    }
+
+    /* Enhanced toolbar buttons */
+    .toolbar-button {
+        @apply px-3 py-1.5 rounded-md transition-all duration-200 text-sm font-medium;
+        @apply hover:bg-accent/50 focus:ring-2 focus:ring-ring focus:ring-offset-1;
+        @apply disabled:opacity-50 disabled:cursor-not-allowed;
+    }
+
+    .toolbar-button-primary {
+        @apply bg-primary text-primary-foreground hover:bg-primary/90;
+    }
+
+    .toolbar-button-secondary {
+        @apply bg-secondary text-secondary-foreground hover:bg-secondary/80;
+    }
+
+    /* Expandable tab styles - updated for better visibility */
+    .expandable-tabs-container {
+        @apply flex flex-wrap items-center gap-2 rounded-xl border px-1 py-1;
+        background: var(--tab-bg);
+        border-color: var(--tab-border);
+        box-shadow: 0 1px 2px var(--tab-active-glow);
+        -webkit-backdrop-filter: blur(8px);
+        backdrop-filter: blur(8px);
+    }
+
+    .expandable-tabs-wrapper {
+        background: rgba(255, 255, 255, 0.5);
+        border-color: rgba(59, 130, 246, 0.2);
+    }
+
+    .expandable-tab {
+        @apply relative flex items-center rounded-lg px-3 py-1.5 text-sm font-medium;
+        @apply transition-all duration-300;
+        color: var(--tab-text);
+    }
+
+    .expandable-tab:hover {
+        background: var(--tab-hover);
+        color: var(--tab-hover-text);
+    }
+
+    .expandable-tab[data-state="active"] {
+        background: var(--tab-active-bg);
+        color: var(--tab-active-text) !important;
+        box-shadow: var(--tab-active-shadow);
+    }
+
+    .expandable-tab[data-state="active"]:hover {
+        background: var(--tab-active-hover);
+    }
+
+    .expandable-tab-separator {
+        @apply mx-1 h-[24px] w-[1.2px];
+        background: var(--tab-separator);
+    }
+
+    .expandable-tab-active {
+        box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+    }
+
+    .expandable-tab-glow {
+        @apply absolute inset-0 rounded-lg;
+        background: radial-gradient(circle at center,
+                var(--tab-active-glow) 0%,
+                transparent 70%);
+        opacity: 0;
+        transition: opacity 0.2s ease;
+    }
+
+    .expandable-tab[data-state="active"] .expandable-tab-glow {
+        opacity: 0.4;
+    }
+
+    /* Dashboard styles */
+    .notifications-dashboard {
+        background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    }
+
+    .dashboard-card {
+        background: rgba(255, 255, 255, 0.95);
+        -webkit-backdrop-filter: blur(12px);
+        backdrop-filter: blur(12px);
+        border-color: rgba(226, 232, 240, 0.5);
+    }
+
+    .dashboard-header {
+        background: linear-gradient(to right, #3b82f6 0%, #2563eb 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    /* Toolbar styles */
+    .toolbar-sort-button {
+        background: rgba(255, 255, 255, 0.5);
+        border-color: rgba(59, 130, 246, 0.2);
+    }
+
+    .toolbar-separator {
+        background-color: rgba(226, 232, 240, 0.8);
+    }
+
+    /* List container styles */
+    .notification-list-container {
+        background: rgba(255, 255, 255, 0.8);
+        -webkit-backdrop-filter: blur(12px);
+        backdrop-filter: blur(12px);
+        border-color: rgba(226, 232, 240, 0.5);
+    }
+
+    .notification-list-content {
+        background: rgba(255, 255, 255, 0.6);
+        -webkit-backdrop-filter: blur(8px);
+        backdrop-filter: blur(8px);
+    }
+
+    /* Expandable tabs styles */
+    .expandable-tabs {
+        background: rgba(255, 255, 255, 0.5);
+        border-color: rgba(59, 130, 246, 0.2);
+    }
+
+    .expandable-tab-selected {
+        box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+    }
+
+    /* Dark mode variants */
+    .dark .notification-toolbar {
+        background: rgba(30, 41, 59, 0.95);
+        border-bottom: 1px solid rgba(226, 232, 240, 0.1);
+    }
+
+    .dark .expandable-tabs-wrapper {
+        background: rgba(30, 41, 59, 0.5);
+        border-color: rgba(59, 130, 246, 0.3);
+    }
+
+    /* Dashboard page background */
+    .notifications-page {
+        background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    }
+
+    /* Card with background and backdrop */
+    .dashboard-notification-card {
+        background: rgba(255, 255, 255, 0.95);
+        -webkit-backdrop-filter: blur(12px);
+        backdrop-filter: blur(12px);
+        border-color: rgba(226, 232, 240, 0.5);
+    }
+
+    /* Gradient text header */
+    .gradient-text-header {
+        background: linear-gradient(to right, #3b82f6 0%, #2563eb 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    /* Sort trigger styles */
+    .sort-trigger {
+        background: rgba(255, 255, 255, 0.5);
+        border-color: rgba(59, 130, 246, 0.2);
+    }
+
+    /* List container with blur */
+    .list-container {
+        border-color: rgba(226, 232, 240, 0.5);
+        background: rgba(255, 255, 255, 0.8);
+        -webkit-backdrop-filter: blur(12px);
+        backdrop-filter: blur(12px);
+
+    }
+
+    /* List content background */
+    .list-content {
+        background: rgba(255, 255, 255, 0.6);
+        -webkit-backdrop-filter: blur(8px);
+        backdrop-filter: blur(8px);
+    }
+
+    /* Navigation button styles */
+    .nav-button {
+        border-color: rgba(59, 130, 246, 0.2);
+        background: rgba(255, 255, 255, 0.5);
+    }
+
+    /* Dark mode variants */
+    .dark {
+
+        /* Add dark mode styles if needed */
+        .dashboard-notification-card {
+            background: rgba(30, 41, 59, 0.95);
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .list-container {
+            background: rgba(30, 41, 59, 0.8);
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .list-content {
+            background: rgba(30, 41, 59, 0.6);
+        }
+
+        .nav-button {
+            background: rgba(30, 41, 59, 0.5);
+            border-color: rgba(59, 130, 246, 0.3);
+        }
+
+        .notification-card[data-read="true"] {
+            opacity: 0.35; /* Slightly more dimmed in dark mode for better contrast */
+        }
+
+        .notification-card[data-read="true"]:hover {
+            opacity: 0.75;
+        }
+    }
+
+    /* Only keeping styles that can't be easily done with Tailwind */
+    .importance-gradient-1 {
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.05), rgba(59, 130, 246, 0.02));
+    }
+
+    .importance-gradient-2 {
+        background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(99, 102, 241, 0.04));
+    }
+
+    .importance-gradient-3 {
+        background: linear-gradient(135deg, rgba(234, 179, 8, 0.1), rgba(234, 179, 8, 0.05));
+    }
+
+    .importance-gradient-4 {
+        background: linear-gradient(135deg, rgba(249, 115, 22, 0.15), rgba(249, 115, 22, 0.08));
+    }
+
+    .importance-gradient-5 {
+        background: linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(239, 68, 68, 0.1));
+    }
+
+    /* Dashboard header gradient */
+    .gradient-text {
+        @apply bg-gradient-to-r from-blue-500 to-blue-600 bg-clip-text text-transparent;
+    }
+
+    /* Glow colors for importance levels */
+    .glow-1 {
+        --glow-color: rgba(59, 130, 246, 0.1);
+    }
+
+    .glow-2 {
+        --glow-color: rgba(99, 102, 241, 0.15);
+    }
+
+    .glow-3 {
+        --glow-color: rgba(234, 179, 8, 0.2);
+    }
+
+    .glow-4 {
+        --glow-color: rgba(249, 115, 22, 0.25);
+    }
+
+    .glow-5 {
+        --glow-color: rgba(239, 68, 68, 0.3);
+    }
+
+    /* Updated importance styling with smoother animations */
+    .importance-gradient {
+        position: relative;
+        overflow: hidden;
+    }
+
+    .importance-gradient::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 200%;
+        height: 100%;
+        opacity: 0.2;
+        transition: opacity 0.3s ease;
+    }
+
+    .importance-1 {
+        @apply border-l-4 border-gray-400;
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.05), rgba(59, 130, 246, 0.02));
+    }
+
+    .importance-2 {
+        @apply border-l-4 border-blue-400;
+        background: linear-gradient(135deg, rgba(99, 102, 241, 0.08), rgba(99, 102, 241, 0.04));
+    }
+
+    .importance-3 {
+        @apply border-l-4 border-amber-400;
+        background: linear-gradient(135deg, rgba(234, 179, 8, 0.1), rgba(234, 179, 8, 0.05));
+    }
+
+    .importance-4 {
+        @apply border-l-4 border-orange-400;
+        background: linear-gradient(135deg, rgba(249, 115, 22, 0.15), rgba(249, 115, 22, 0.08));
+    }
+
+    .importance-5 {
+        @apply border-l-4 border-red-400;
+        background: linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(239, 68, 68, 0.1));
+    }
+
+    /* New subtle animations for different importance levels */
+    @keyframes gentle-wave {
+        0% { transform: translateX(-100%); }
+        50% { transform: translateX(0); }
+        100% { transform: translateX(100%); }
+    }
+
+    .importance-5::before {
+        background: linear-gradient(90deg, transparent, rgba(239, 68, 68, 0.2), transparent);
+        animation: gentle-wave 3s infinite;
+    }
+
+    .importance-4::before {
+        background: linear-gradient(90deg, transparent, rgba(249, 115, 22, 0.15), transparent);
+        animation: gentle-wave 4s infinite;
+    }
+
+    /* Replace the existing glow animations with these subtle ones */
+    @keyframes subtle-glow {
+        0%, 100% { box-shadow: 0 0 15px var(--glow-color); }
+        50% { box-shadow: 0 0 20px var(--glow-color); }
+    }
+
+    .importance-glow-5 {
+        --glow-color: rgba(239, 68, 68, 0.2);
+        animation: subtle-glow 2s infinite;
+    }
+
+    .importance-glow-4 {
+        --glow-color: rgba(249, 115, 22, 0.15);
+        animation: subtle-glow 3s infinite;
+    }
+
+   
+
+    /* High specificity selectors for calendar dates */
+    .selected-date,
+    .selected-date:hover,
+    .selected-date:focus,
+    .range-start-date,
+    .range-start-date:hover,
+    .range-start-date:focus,
+    .range-end-date,
+    .range-end-date:hover,
+    .range-end-date:focus {
+        background-color: darkOrange !important;
+        color: white !important;
+    }
+
+    /* Add these specific calendar styles with high specificity */
+    .calendar-selected-date {
+        background-color: darkOrange !important;
+        color: white !important;
+    }
+
+    .calendar-range-start {
+        background-color: darkOrange !important;
+        color: white !important;
+    }
+
+    .calendar-range-end {
+        background-color: darkOrange !important;
+        color: white !important;
+    }
+
+
+}
+
+/* Add at the root level for highest specificity */
+.rdp-day_selected,
+.rdp-day_range_start,
+.rdp-day_range_end {
+    background-color: darkOrange !important;
+    color: white !important;
+}
+
+.rdp-day_selected:hover,
+.rdp-day_range_start:hover,
+.rdp-day_range_end:hover {
+    background-color: darkOrange !important;
+    color: white !important;
+}
+
+/* Remove all other conflicting calendar styles */
+.dark .rdp-day_selected,
+.dark .rdp-day_range_start,
+.dark .rdp-day_range_end,
+.rdp button.rdp-day_range_start,
+.rdp button.rdp-day_range_end {
+    background-color: darkOrange !important;
+    color: white !important;
+}
+
+/* Remove all conflicting middle range styles */
+
+/* Only keep calendar-specific styles at root level for highest specificity */
+.rdp-day_selected,
+.rdp-day_range_start,
+.rdp-day_range_end {
+    background-color: rgb(253 186 116) !important;
+    color: white !important;
+}
+
+.rdp-day_range_start {
+    border-top-left-radius: 0.375rem !important;
+    border-bottom-left-radius: 0.375rem !important;
+    border-top-right-radius: 0 !important;
+    border-bottom-right-radius: 0 !important;
+}
+
+.rdp-day_range_end {
+    border-top-right-radius: 0.375rem !important;
+    border-bottom-right-radius: 0.375rem !important;
+    border-top-left-radius: 0 !important;
+    border-bottom-left-radius: 0 !important;
+
+}
+
+@keyframes gentle-glow {
+
+    0%,
+    100% {
+        box-shadow: 0 0 15px var(--glow-color);
+    }
+
+    50% {
+        box-shadow: 0 0 25px var(--glow-color);
+    }
+}
+
+.importance-glow {
+    animation: gentle-glow 2s infinite;
+}
+
+.importance-5 {
+    --glow-color: rgba(239, 68, 68, 0.3);
+}
+
+.importance-4 {
+    --glow-color: rgba(249, 115, 22, 0.25);
+}
+
+.importance-3 {
+    --glow-color: rgba(245, 158, 11, 0.2);
+}
+
+.importance-2 {
+    --glow-color: rgba(59, 130, 246, 0.15);
+}
+
+.importance-1 {
+    --glow-color: rgba(107, 114, 128, 0.1);
+}

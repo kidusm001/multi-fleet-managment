@@ -6,7 +6,7 @@ export const MAP_STYLES = {
 };
 
 export const HQ_LOCATION = {
-    name: "Routegna TECH ADDIS (HQ)",
+    name: "MMCY TECH ADDIS (HQ)",
     coords: [38.76856893855111, 9.016465390275195]
 };
 

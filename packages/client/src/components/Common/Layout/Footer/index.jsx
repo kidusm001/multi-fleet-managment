@@ -51,7 +51,7 @@ const Footer = () => {
         >
           <motion.div className="footer-section" variants={itemVariants}>
             <div className="footer-brand">
-              <h2>Routegna TECH</h2>
+              <h2>MMCY TECH</h2>
               <p className="footer-tagline">
                 Enterprise Shuttle Management System
               </p>
@@ -63,7 +63,7 @@ const Footer = () => {
               </motion.div>
               <motion.div className="contact-item" whileHover={{ x: 5 }}>
                 <Mail size={16} />
-                <a href="mailto:contact@routegnatech.com">contact@routegnatech.com</a>
+                <a href="mailto:contact@mmcytech.com">contact@mmcytech.com</a>
               </motion.div>
               <motion.div className="contact-item" whileHover={{ x: 5 }}>
                 <Phone size={16} />
@@ -102,7 +102,7 @@ const Footer = () => {
             <h3>Connect With Us</h3>
             <div className="social-links">
               <motion.a
-                href="https://facebook.com/routegnatech"
+                href="https://facebook.com/mmcytech"
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="Facebook"
@@ -112,7 +112,7 @@ const Footer = () => {
                 <Facebook size={20} />
               </motion.a>
               <motion.a
-                href="https://twitter.com/routegnatech"
+                href="https://twitter.com/mmcytech"
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="Twitter"
@@ -122,7 +122,7 @@ const Footer = () => {
                 <Twitter size={20} />
               </motion.a>
               <motion.a
-                href="https://linkedin.com/company/routegnatech"
+                href="https://linkedin.com/company/mmcytech"
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="LinkedIn"
@@ -144,7 +144,7 @@ const Footer = () => {
         >
           <div className="footer-bottom-content">
             <p className="copyright">
-              © {currentYear} Routegna TECH. All rights reserved.
+              © {currentYear} MMCY TECH. All rights reserved.
             </p>
             <div className="footer-legal">
               <Link to="/privacy">Privacy Policy</Link>

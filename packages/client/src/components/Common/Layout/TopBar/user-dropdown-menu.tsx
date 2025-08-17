@@ -1,10 +1,11 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@lib/utils";
 import { User, Settings, LogOut, ChevronDown } from "lucide-react";
 import { authClient } from "@lib/auth-client";
 import { useTheme } from "@contexts/ThemeContext";
-// role is passed as prop from parent; no direct context import needed here
+import { useRole } from "@contexts/RoleContext";
+import { ROLE_LABELS } from "@data/constants";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -250,6 +251,7 @@ const UserButtonCss = ({ theme }: { theme: string }) => {
 };
 
 const UserButton = ({ username, email, role }: { username: string; email: string; role: string }) => {
+  const { theme } = useTheme();
   const roleLabel = role; // Use the role passed from props
 
   return (
@@ -306,9 +308,7 @@ export function UserDropdown({ username, email, role }: UserDropdownProps) {
 
   return (
     <>
-  <UserButtonCss theme={theme} />
-  {/* use theme to satisfy TS noUnusedLocals */}
-  <div className={theme === 'dark' ? 'hidden' : 'hidden'} />
+      <UserButtonCss theme={theme} />
       <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
         <DropdownMenuTrigger asChild>
           <div>

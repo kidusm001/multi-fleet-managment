@@ -128,12 +128,12 @@ const Sidebar = () => {
               )}
             >
               <img
-                src="/assets/images/RoutegnaTech.png"
-                alt="Routegna Tech"
+                src="/assets/images/MMCYTech.png"
+                alt="MMCY Tech"
                 className="h-8 w-8 object-contain"
               />
               <span className="ml-2 text-xl font-bold whitespace-nowrap bg-gradient-to-r from-[#f3684e] to-[#ff965b] bg-clip-text text-transparent">
-                Routegna Tech
+                MMCY Tech
               </span>
             </div>
             <button

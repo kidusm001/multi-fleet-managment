@@ -1,0 +1,402 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Primary Colors - Blue Theme */
+  --primary: #4272ff;
+  --primary-dark: #2952d9;
+  --primary-light: #6b8fff;
+  --primary-lighter: #e6ecff;
+
+  /* Accent Colors - Orange Theme */
+  --accent: #ff7e42;
+  --accent-dark: #e65c1c;
+  --accent-light: #ffa375;
+  --accent-lighter: #fff0e8;
+
+  /* Success Colors */
+  --success: #16a34a;
+  --success-dark: #15803d;
+  --success-light: #22c55e;
+  --success-lighter: #dcfce7;
+
+  /* Warning Colors */
+  --warning: #fbbf24;
+  --warning-dark: #d97706;
+  --warning-light: #fcd34d;
+  --warning-lighter: #fef3c7;
+
+  /* Error Colors */
+  --error: #dc2626;
+  --error-dark: #b91c1c;
+  --error-light: #ef4444;
+  --error-lighter: #fee2e2;
+
+  /* Background & Text */
+  --background: #ffffff;
+  --text-primary: #4272ff;
+  --text-secondary: #6b8fff;
+
+  /* Component Colors */
+  --card-background: #ffffff;
+  --input-background: var(--primary-lighter);
+  --input-border: var(--primary-light);
+  --button-hover: var(--primary-dark);
+  --divider: var(--primary-lighter);
+
+  /* Interactive States */
+  --hover-overlay: rgba(66, 114, 255, 0.1);
+  --active-overlay: rgba(66, 114, 255, 0.2);
+  --disabled-opacity: 0.5;
+
+  /* Subtle Colors */
+  --subtle: #bdddfc;
+  --subtle-hover: #a3cffb;
+  --subtle-active: #89c1fa;
+
+  /* Layout */
+  --sidebar-width: 256px;
+  --sidebar-width-collapsed: 80px;
+  --topbar-height: 2rem;
+  /* --footer-height: 400px; */
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+
+  /* Updated theme variables */
+  --card-bg-light: rgba(255, 255, 255, 0.2);
+  --card-bg-dark: rgba(0, 0, 0, 0.2);
+  --backdrop-blur: blur(12px);
+}
+
+/* Dark Mode Colors */
+.dark {
+  --background: #0f172a;
+  --text-primary: #f8fafc;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
+
+  --card-background: #1e293b;
+  --input-background: #1e293b;
+  --input-border: #334155;
+  --button-hover: #5483ff;
+  --divider: #334155;
+
+  /* Updated select dropdown colors */
+  --select-background: rgba(30, 41, 59, 0.95);
+  --select-border: transparent;
+  --select-hover: rgba(66, 114, 255, 0.15);
+  --select-selected: rgba(66, 114, 255, 0.25);
+
+  --hover-overlay: rgba(66, 114, 255, 0.15);
+  --active-overlay: rgba(66, 114, 255, 0.25);
+
+  --subtle: #384959;
+  --subtle-hover: #465b6f;
+  --subtle-active: #546b82;
+
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
+}
+
+.app-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  /* Remove any bottom padding/margin that might push content down */
+  padding-bottom: 0;
+  margin-bottom: 0;
+}
+
+.main-content {
+  display: flex;
+  flex: 1;
+  margin-top: var(--topbar-height);
+  min-height: calc(100vh - var(--topbar-height));
+  position: relative;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+/* Add these new styles */
+.sidebar {
+  position: fixed;
+  top: var(--topbar-height);
+  left: 0;
+  bottom: 0;
+  width: var(--sidebar-width);
+  transition: width 0.3s ease-in-out;
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border-right: 1px solid;
+  /* min-height: calc(100% + var(--footer-height)); */
+}
+
+.dark .sidebar {
+  background: rgba(0, 0, 0, 0.2);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.light .sidebar {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+.content-area {
+  flex: 1;
+  padding: 1rem 2rem;
+  margin-left: var(--sidebar-width-collapsed);
+  transition: all 0.3s ease-in-out;
+  width: calc(100% - var(--sidebar-width-collapsed));
+  position: relative;
+}
+
+[data-sidebar-collapsed="true"] .content-area {
+  margin-left: var(--sidebar-width);
+  width: calc(100% - var(--sidebar-width));
+}
+
+.card {
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border: 1px solid;
+  transition: all 0.3s;
+}
+
+.dark .card {
+  background: rgba(0, 0, 0, 0.2);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.light .card {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+/* Updated component styles without @apply */
+.button-primary {
+  position: relative;
+  overflow: hidden;
+  background-image: linear-gradient(
+    to right,
+    rgb(243, 104, 78),
+    rgba(243, 104, 78, 0.8)
+  );
+  color: white;
+  padding: 0.875rem 2rem;
+  border-radius: 0.75rem;
+  transition: all 0.3s;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+.button-primary:hover {
+  background-image: linear-gradient(
+    to right,
+    rgba(243, 104, 78, 0.9),
+    rgba(243, 104, 78, 0.7)
+  );
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+.button-primary:active {
+  transform: scale(0.98);
+}
+
+.button-secondary {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(243, 104, 78, 0.2);
+  background: rgba(255, 255, 255, 0.05);
+  padding: 0.875rem 2rem;
+  border-radius: 0.75rem;
+  transition: all 0.3s;
+  color: rgb(15, 23, 42);
+}
+
+.dark .button-secondary {
+  color: white;
+}
+
+.button-secondary:hover {
+  border-color: rgba(243, 104, 78, 0.3);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.input-field {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: white;
+  height: 3rem;
+  padding: 0 1rem;
+  border-radius: 0.75rem;
+  transition: all 0.3s;
+  width: 100%;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.input-field::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.input-field:focus {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(243, 104, 78, 0.5);
+  box-shadow: 0 0 0 2px rgba(243, 104, 78, 0.2);
+}
+
+.input-field:hover {
+  border-color: rgba(243, 104, 78, 0.3);
+}
+
+/* Glass-morphism styles */
+.glass-card {
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border: 1px solid;
+  border-radius: 2rem;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  overflow: hidden;
+  transition: all 0.3s;
+}
+
+.dark .glass-card {
+  background: rgba(0, 0, 0, 0.2);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.light .glass-card {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+/* Dark mode styles */
+.dark body {
+  background-color: var(--background);
+  color: var(--text-primary);
+}
+
+footer {
+  position: relative;
+  z-index: 10;
+  margin-top: auto;
+  /* Remove any padding that might create space */
+  padding-bottom: 0;
+}
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%;
+
+    /* Card colors */
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    /* Popover colors */
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    /* Primary colors - Using our blue theme */
+    --primary: 224 100% 63%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary colors - Using our subtle blue */
+    --secondary: 210 24% 54%;
+    --secondary-foreground: 0 0% 100%;
+
+    /* Muted colors */
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    /* Accent colors - Using our orange theme */
+    --accent: 24 100% 63%;
+    --accent-foreground: 0 0% 100%;
+
+    /* Destructive colors */
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+
+    /* Border and input colors */
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 224 100% 63%;
+
+    /* Chart colors - Using our vibrant palette */
+    --chart-1: 224 100% 63%;
+    --chart-2: 210 24% 54%;
+    --chart-3: 24 100% 63%;
+    --chart-4: 142 72% 29%;
+    --chart-5: 48 96% 53%;
+
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    --background: 222 47% 11%;
+    --foreground: 210 40% 98%;
+
+    /* Card colors */
+    --card: 222 47% 11%;
+    --card-foreground: 210 40% 98%;
+
+    /* Popover colors */
+    --popover: 222 47% 11%;
+    --popover-foreground: 210 40% 98%;
+
+    /* Primary colors - Brighter in dark mode */
+    --primary: 224 100% 68%;
+    --primary-foreground: 0 0% 100%;
+
+    /* Secondary colors */
+    --secondary: 217 32% 17%;
+    --secondary-foreground: 210 40% 98%;
+
+    /* Muted colors */
+    --muted: 217 32% 17%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    /* Accent colors - Brighter in dark mode */
+    --accent: 24 100% 68%;
+    --accent-foreground: 0 0% 100%;
+
+    /* Destructive colors */
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    /* Border and input colors */
+    --border: 217 32% 17%;
+    --input: 217 32% 17%;
+    --ring: 224 100% 68%;
+
+    /* Chart colors - Brighter in dark mode */
+    --chart-1: 224 100% 68%;
+    --chart-2: 210 24% 64%;
+    --chart-3: 24 100% 68%;
+    --chart-4: 142 72% 39%;
+    --chart-5: 48 96% 63%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}

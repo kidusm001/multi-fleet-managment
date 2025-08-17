@@ -1,29 +1,15 @@
 import { Navigate, useLocation } from 'react-router-dom';
 import { useRole } from '@contexts/RoleContext';
-import { useAuth } from '../../../lib/auth';
 import { useState, useEffect } from 'react';
 
 export function ProtectedRoute({ children, allowedRoles = [] }) {
   const { role } = useRole();
-  const { user, loading } = useAuth();
   const location = useLocation();
   const [isChecking, setIsChecking] = useState(true);
   const [isAuthorized, setIsAuthorized] = useState(false);
 
   useEffect(() => {
     const checkAuthorization = () => {
-      if (loading) return; // wait for auth
-      if (!user) {
-        setIsAuthorized(false);
-        setIsChecking(false);
-        return;
-      }
-      // If no specific roles are required, just ensure user is authenticated via role presence
-      if (!allowedRoles || allowedRoles.length === 0) {
-        setIsAuthorized(true);
-        setIsChecking(false);
-        return;
-      }
       const hasPermission = allowedRoles.includes(role);
       setIsAuthorized(hasPermission);
       setIsChecking(false);
@@ -34,7 +20,7 @@ export function ProtectedRoute({ children, allowedRoles = [] }) {
     };
 
     checkAuthorization();
-  }, [role, allowedRoles, user, loading]);
+  }, [role, allowedRoles]);
 
   if (isChecking) {
     return (
@@ -45,9 +31,7 @@ export function ProtectedRoute({ children, allowedRoles = [] }) {
   }
 
   if (!isAuthorized) {
-    // If no role yet, redirect to login. Else, unauthorized page.
-    const to = user ? "/unauthorized" : "/login";
-    return <Navigate to={to} state={{ from: location }} replace />;
+    return <Navigate to="/unauthorized" state={{ from: location }} replace />;
   }
 
   return children;

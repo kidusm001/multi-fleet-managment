@@ -29,7 +29,7 @@ export function HQMarker({ map }) {
     focusAfterOpen: false,
   }).setHTML(`
     <div style="padding: 8px; min-width: 150px;">
-      <div style="color: #10B981; font-weight: bold; margin-bottom: 4px;">Routegna TECH HQ</div>
+      <div style="color: #10B981; font-weight: bold; margin-bottom: 4px;">MMCY TECH HQ</div>
       <div style="margin: 0; font-size: 12px;">Addis Ababa, Ethiopia</div>
     </div>
   `);

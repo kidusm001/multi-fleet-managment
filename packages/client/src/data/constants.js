@@ -1,6 +1,6 @@
 export const MAP_CONFIG = {
   HQ_LOCATION: {
-    name: import.meta.env.VITE_HQ_NAME || "Routegna Tech (HQ)",
+    name: import.meta.env.VITE_HQ_NAME || "MMCY Tech (HQ)",
     coords: [
       parseFloat(import.meta.env.VITE_HQ_LONGITUDE),
       parseFloat(import.meta.env.VITE_HQ_LATITUDE)

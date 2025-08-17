@@ -1,0 +1,21 @@
+Name	Contact	Email	Department	Location
+Amanuel Tesfaye	+251911234567	amanuel@company.com	Engineering	Bole
+Selamawit Bekele	+251911234568	selamawit@company.com	Marketing	Gerji
+Henok Alemu	+251911234569	henok@company.com	Finance	CMC
+Mehret Tadesse	+251911234570	mehret@company.com	HR	Megenagna
+Abebe Kebede	+251911234571	abebe@company.com	Engineering	Summit
+Tigist Haile	+251911234572	tigist@company.com	Marketing	Ayat
+Dawit Mengistu	+251911234573	dawit@company.com	Finance	Kirkos
+Bethlehem Tadesse	+251911234574	bethlehem@company.com	HR	Sarbet
+Kidus Solomon	+251911234575	kidus@company.com	Engineering	Piassa
+Meron Alemu	+251911234576	meron@company.com	Marketing	Kazanchis
+Bereket Girma	+251911234577	bereket@company.com	Finance	Bole
+Rahel Tekle	+251911234578	rahel@company.com	HR	CMC
+Yohannes Gebre	+251911234579	yohannes@company.com	Engineering	Gerji
+Hirut Desta	+251911234580	hirut@company.com	Marketing	Megenagna
+Kidist Solomon	+251911234581	kidist@company.com	Finance	Summit
+Mulu Solomon	+251911234582	mulu@company.com	HR	Ayat
+Mekdes Solomon	+251911234583	mekdes@company.com	Engineering	Kirkos
+Mulu Solomon	+251911234584	mulu@company.com	Marketing	Sarbet
+Mekdes Solomon	+251911234585	mekdes@company.com	Finance	Piassa
+Mulu Solomon	+251911234586	mulu@company.com	HR	Kazanchis

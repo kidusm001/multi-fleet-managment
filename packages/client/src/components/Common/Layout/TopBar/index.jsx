@@ -165,8 +165,8 @@ function TopBar() {
         <div className="flex items-center gap-6">
           <Link to="/" className="flex items-center gap-2">
             <img
-              src="/assets/images/RoutegnaTech.png"
-              alt="Routegna Tech"
+              src="/assets/images/MMCYTech.png"
+              alt="MMCY Tech"
               className="h-8 w-auto"
             />
           </Link>

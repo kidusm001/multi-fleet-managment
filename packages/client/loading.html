@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MMCY TECH - Premium Loader</title>
+    <style>
+        :root {
+            --mmcy-color: #324048;
+            --tech-color: #f3684e;
+            --animation-duration: 1.5s;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background-color: #ffffff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+        }
+
+        .loader-container {
+            position: relative;
+            width: 800px;
+            height: 200px;
+        }
+
+        .brand-text {
+            position: absolute;
+            width: 100%;
+            text-align: center;
+            font-size: 48px;
+            font-weight: 900;
+            letter-spacing: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+        }
+
+        .letter {
+            color: var(--mmcy-color);
+            transition: all 0.15s ease;
+        }
+
+        .letter.tech {
+            color: var(--tech-color);
+        }
+
+        .letter.active {
+            transform: translateY(-15px);
+            color: var(--tech-color);
+        }
+
+        .shuttle-car {
+            position: absolute;
+            width: 60px;
+            height: 20px;
+            top: 55%;
+            transform: translateX(-100%);
+            animation: carDrive var(--animation-duration) linear infinite;
+        }
+
+        .car-body {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+        }
+
+        @keyframes carDrive {
+            0% { transform: translateX(-5%); }
+            100% { transform: translateX(800px); }
+        }
+    </style>
+</head>
+<body>
+    <div class="loader-container">
+        <div class="brand-text">
+            <span class="letter">M</span>
+            <span class="letter">M</span>
+            <span class="letter">C</span>
+            <span class="letter">Y</span>
+            <span class="letter tech">T</span>
+            <span class="letter tech">E</span>
+            <span class="letter tech">C</span>
+            <span class="letter tech">H</span>
+        </div>
+        
+        <svg class="shuttle-car" viewBox="0 0 60 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <g class="car-body">
+                <!-- Main sleek body -->
+                <path d="M4 15 L15 5 H45 L56 15 L45 18 H15 Z" fill="#324048"/>
+                <!-- Top accent -->
+                <path d="M15 5 L19 10 H41 L45 5" fill="#f3684e"/>
+                <!-- Windshield -->
+                <path d="M21 7 L24 9 H36 L39 7" fill="rgba(255,255,255,0.9)"/>
+                <!-- Bottom accent -->
+                <path d="M12 15 L15 18 H45 L48 15" fill="#f3684e"/>
+                <!-- Wheels -->
+                <circle cx="19" cy="16" r="2" fill="#f3684e"/>
+                <circle cx="41" cy="16" r="2" fill="#f3684e"/>
+                <!-- Front light -->
+                <path d="M56 15 L58 15 L57 16 Z" fill="#f3684e">
+                    <animate attributeName="opacity" values="1;0.4;1" dur="0.3s" repeatCount="indefinite"/>
+                </path>
+            </g>
+        </svg>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const letters = document.querySelectorAll('.letter');
+            const car = document.querySelector('.shuttle-car');
+            
+            function animateLetters() {
+                const carRect = car.getBoundingClientRect();
+                const carCenter = carRect.left + (carRect.width / 2);
+                
+                letters.forEach(letter => {
+                    const letterRect = letter.getBoundingClientRect();
+                    const letterCenter = letterRect.left + (letterRect.width / 2);
+                    
+                    if (Math.abs(carCenter - letterCenter) < 30) {
+                        letter.classList.add('active');
+                    } else {
+                        letter.classList.remove('active');
+                    }
+                });
+
+                requestAnimationFrame(animateLetters);
+            }
+
+            animateLetters();
+        });
+    </script>
+</body>
+</html>
