@@ -256,8 +256,8 @@ export default function UsersTable({
                             ? "bg-gray-800 border-gray-700 hover:bg-gray-700 text-gray-200" 
                             : "bg-gray-50 border-gray-200 hover:bg-gray-100"}`}
                           onClick={() => {
-                            handleSearch("");
-                            handleRoleFilter("all");
+                            // handleSearch("");
+                            // handleRoleFilter("all");
                           }}
                         >
                           <Search className="w-3.5 h-3.5" />
@@ -266,7 +266,7 @@ export default function UsersTable({
                         <Button 
                           className="gap-2 px-4 py-1.5 text-xs shadow-sm hover:shadow-md bg-[var(--primary)] hover:bg-[var(--button-hover)] text-white hover:-translate-y-0.5 transition-all duration-200"
                           size="sm"
-                          onClick={handleAdd}
+                          onClick={() => {/* handleAdd */}}
                         >
                           <Plus className="w-3.5 h-3.5" />
                           Add User

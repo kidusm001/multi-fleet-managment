@@ -24,7 +24,7 @@ function Dashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [, setError] = useState(null);
   const mapRefreshCounter = useRef(0);
 
   // Fetch routes data on component mount

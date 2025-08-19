@@ -3,16 +3,6 @@ import { MAPBOX_ACCESS_TOKEN } from '@/config';
 // Create a web worker instance
 let worker = null;
 
-// Initialize the worker
-function initWorker() {
-    if (!worker) {
-        worker = new Worker(
-            new URL('../workers/routeOptimizer.worker.js', import.meta.url),
-            { type: 'module' }
-        );
-    }
-    return worker;
-}
 
 /**
  * Optimizes a route using Mapbox Directions API and returns precise travel metrics

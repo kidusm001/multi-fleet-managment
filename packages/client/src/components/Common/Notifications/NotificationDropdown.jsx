@@ -1,14 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Button } from "@components/Common/UI/Button";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/Common/UI/popover";
 import { ScrollArea } from "@components/Common/UI/scroll-area";
-import { Badge } from "@/components/Common/UI/Badge";
+// import { Badge } from "@/components/Common/UI/Badge";
 import { cn } from "@lib/utils";
 import { useNavigate } from "react-router-dom";
-import { getImportanceLevel } from "@pages/notifications/lib/importance-levels";
+// import { getImportanceLevel } from "@pages/notifications/lib/importance-levels";
 import { useTheme } from "@contexts/ThemeContext";
 
-import { Bell, Check, User, Calendar, Route, Bus, Package, Users } from "lucide-react";
+import { Check, Package, Bus, Route, Users } from "lucide-react";
 import { useNotifications } from "@contexts/NotificationContext";
 
 // Helper functions
@@ -133,7 +133,7 @@ function NotificationDropdown() {
       </PopoverTrigger>
 
 
-      <style jsx="true">{`
+  <style>{`
         @keyframes bellRing {
           0%, 100% { transform-origin: top; transform: rotate(0); }
           15% { transform: rotate(8deg); }

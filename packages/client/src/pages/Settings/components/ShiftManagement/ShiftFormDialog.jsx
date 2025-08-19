@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Clock, AlertCircle, Sunrise, Sunset, Sun, Moon, Wand2 } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import Button from "@/components/Common/UI/Button";
 import { Input } from "@/components/Common/UI/Input";
@@ -79,17 +80,7 @@ const getSuggestedName = (startTime, endTime, timeZone) => {
   return `${zoneName} ${period} (${startFormatted} - ${endFormatted})`;
 };
 
-// Improve the name suggestion button
-const handleNameSuggestion = () => {
-  const suggestedName = getSuggestedName(startTime, endTime, timeZone);
-  if (suggestedName) {
-    setFormData(prev => ({ ...prev, name: suggestedName }));
-    toast({
-      title: "Name Generated",
-      description: `Shift name set to "${suggestedName}"`,
-    });
-  }
-};
+
 
 /**
  * Shift Form Dialog Component
@@ -205,6 +196,15 @@ export default function ShiftFormDialog({
     }
   };
 
+  // Improve the name suggestion button
+  const handleNameSuggestion = () => {
+    const suggestedName = getSuggestedName(formData.startTime, formData.endTime, formData.timeZone || DEFAULT_TIMEZONE);
+    if (suggestedName) {
+      setFormData(prev => ({ ...prev, name: suggestedName }));
+      toast.success(`Shift name set to "${suggestedName}"`);
+    }
+  };
+
   // Handle validation
   const validate = () => {
     const errors = {};
@@ -279,7 +279,7 @@ export default function ShiftFormDialog({
         hour: 'numeric',
         minute: '2-digit',
         hour12: true,
-        timeZone: userTimeZone
+        timeZone: DEFAULT_TIMEZONE
       });
     } catch (error) {
       return "";
@@ -443,7 +443,7 @@ export default function ShiftFormDialog({
             <p className={`text-xs ${isDark ? "text-gray-400" : "text-gray-500"}`}>
               {formData.timeZone 
                 ? `Selected time zone will be used to store and display shift times.` 
-                : `Your device's time zone is ${userTimeZone}`}
+                : `Your device's time zone is ${DEFAULT_TIMEZONE}`}
             </p>
           </div>
           

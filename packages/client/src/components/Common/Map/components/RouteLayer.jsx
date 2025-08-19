@@ -1,5 +1,4 @@
 import PropTypes from "prop-types";
-import mapboxgl from "mapbox-gl";
 
 import { optimizeRoute } from "../services/routeOptimization";
 import { HQ_LOCATION } from "@/config";

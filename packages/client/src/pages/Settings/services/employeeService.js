@@ -1,7 +1,6 @@
 import api from '@/services/api';
 import mainEmployeeService from '@/services/employeeService';
 import { AsyncHandler } from '@/utils/asyncHandler';
-import { formatPhoneNumber } from '@/utils/validators'; // Import the formatPhoneNumber function
 
 /**
  * Employee Management Service
@@ -621,15 +620,7 @@ class EmployeeService {
     };
   });
 
-  /**
-   * Backwards compatibility method for listEmployees
-   * @param {boolean} useCache Whether to use cached data
-   * @returns {Promise<Array>} List of employees
-   */
-  listEmployees = AsyncHandler(async (useCache = true) => {
-    const response = await this.listEmployeesWithFilters({}, 1, 1000, useCache);
-    return response.data;
-  });
+
 
   /**
    * Get employee growth data for charts

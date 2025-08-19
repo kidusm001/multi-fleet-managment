@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { departmentService } from "../../services/departmentService";
 import { Building2, Search, Plus, RefreshCw } from "lucide-react";

@@ -1,4 +1,3 @@
-import api from './api';
 import axios from 'axios';
 
 // Create a separate axios instance for FastAPI requests

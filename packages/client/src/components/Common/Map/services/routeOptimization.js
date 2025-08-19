@@ -44,7 +44,7 @@ function findNearestPoint(current, points, visited) {
   let nearestIndex = -1;
 
   points.forEach((point, index) => {
-    if (visited.hasOwnProperty(index) && !visited[index] && Array.isArray(point) && point.length === 2) {
+    if (Object.prototype.hasOwnProperty.call(visited, index) && !visited[index] && Array.isArray(point) && point.length === 2) {
       const dist = calculateDistance(current, point);
       if (dist !== null && dist < minDist && Math.abs(dist - minDist) > Number.EPSILON) {
         minDist = dist;

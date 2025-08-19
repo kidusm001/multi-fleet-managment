@@ -2,8 +2,7 @@ import {
   routeService,
   employeeService,
   clusterService,
-  shuttleAvailabilityService,
-  shiftService
+  shuttleAvailabilityService
 } from '../index';
 
 describe('Service Integration Tests', () => {
@@ -11,7 +10,6 @@ describe('Service Integration Tests', () => {
   const testShiftId = '1';
   const testShuttleId = '1';
   const testDate = new Date().toISOString();
-  const testRouteId = '1';
 
   describe('Route Service', () => {
     test('should get all routes', async () => {

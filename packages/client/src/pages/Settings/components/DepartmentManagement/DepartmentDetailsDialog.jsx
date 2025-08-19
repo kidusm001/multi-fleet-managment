@@ -19,8 +19,6 @@ export default function DepartmentDetailsDialog({
   isDark, 
   onClose 
 }) {
-  const [loading, setLoading] = useState(false);
-
   if (!department) return null;
 
   return (

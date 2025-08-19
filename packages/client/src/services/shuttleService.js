@@ -1,5 +1,4 @@
 import api from './api';
-import { AsyncHandler } from '../utils/asyncHandler';
 
 class ShuttleService {
   constructor() {

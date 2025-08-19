@@ -37,7 +37,7 @@ const ThemeToggle = () => {
         )} />
       )}
 
-      <style jsx="true">{`
+  <style>{`
         button {
           transform-style: preserve-3d;
           transform: perspective(800px);

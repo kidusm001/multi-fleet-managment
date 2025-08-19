@@ -6,37 +6,20 @@ import { useNavigate, Link } from "react-router-dom";
 import ThemeToggle from "@components/Common/UI/ThemeToggle";
 import {
   Search,
-  LogOut,
   X,
-  ArrowRight,
   Clock,
   MapPin,
-  Calendar,
   Car,
-  User,
   FileText,
+  User,
+  LayoutGrid
 } from "lucide-react";
 import { ROLES, ROLE_LABELS } from "@data/constants";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@components/Common/UI/Select";
 import { cn } from "@lib/utils";
-import { Badge } from "@/components/Common/UI/Badge";
 import { NotificationDropdown } from "@components/Common/Notifications/NotificationDropdown";
-import { authClient } from "@lib/auth-client"; // Import authClient
 import { UserDropdown } from "@/components/Common/Layout/TopBar/user-dropdown-menu";
-import { useUser } from "@contexts/UserContext";
-import { Button } from "@components/Common/UI/Button";
 import { Loader2 } from "lucide-react";
-import { toast } from "sonner";
-import { Layout, Bus } from "lucide-react";
 import { useClickOutside } from "../../../../hooks/useClickOutside";
-import { Input } from "@/components/Common/UI/Input";
-import { Bug } from "lucide-react";
 import { searchService } from "../../../../services/searchService";
 
 const { useSession } = createAuthClient();
@@ -57,7 +40,7 @@ const TypeIcon = ({ type }) => {
     case "shift":
       return <Clock className="w-4 h-4" />;
     case "department":
-      return <Layout className="w-4 h-4" />;
+      return <LayoutGrid className="w-4 h-4" />;
     case "candidate":
       return <User className="w-4 h-4 text-blue-500" />;
     default:
@@ -67,7 +50,7 @@ const TypeIcon = ({ type }) => {
 
 function TopBar() {
   const { theme } = useTheme();
-  const { role, setRole } = useRole();
+  const { role } = useRole();
   const navigate = useNavigate();
   const isDark = theme === "dark";
   const [searchInput, setSearchInput] = useState("");
@@ -80,8 +63,6 @@ function TopBar() {
   const {
     data: session,
     isPending,
-    error: sessionError,
-    refetch,
   } = useSession();
 
   const [username, setUsername] = useState("Loading...");

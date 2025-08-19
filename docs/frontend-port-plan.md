@@ -1,6 +1,6 @@
-Frontend Port Plan — Post-Copy Migration (Routegna)
+Frontend Port Plan — Integration & Cleanup (Routegna)
 
-Goal: We have copied the legacy Shuttle Management frontend wholesale into `packages/client`. Now we will systematically rebrand, integrate, and harden it to work in this monorepo and with our backend. All references to MMCY (names, logos, assets, data) must be removed or replaced with Routegna.
+Goal: The legacy Shuttle Management frontend has been copied into `packages/client`. We are now systematically fixing linting issues, rebranding from MMCY to Routegna, and integrating with our backend. The focus is on making the existing code work properly in our monorepo environment.
 
 Guiding Principles
 - Rebrand fully: replace all MMCY references (case variants) with Routegna; swap logos/assets and visible copy.
@@ -10,93 +10,120 @@ Guiding Principles
 - Make incremental, verifiable changes: page-by-page, service-by-service.
 
 Current State Snapshot
-- Copied legacy frontend into `packages/client` (includes its own tooling configs and possibly `node_modules`).
-- Repo uses pnpm and a monorepo structure; server is under `packages/server` (or `server/` here). We will align client dependencies and scripts to pnpm.
+- ✅ Legacy frontend copied into `packages/client` with existing tooling configs
+- ✅ ESLint configuration fixed (.eslintrc.js → .eslintrc.cjs) and working with ES modules
+- ✅ Major lint errors reduced from 398 to 250 (37% improvement)
+- ✅ Critical issues fixed: hasOwnProperty usage, duplicate functions, undefined variables
+- 🔄 Repo uses pnpm and monorepo structure; client dependencies aligned
+- 🔄 Need to complete rebranding from MMCY to Routegna across all files
+- 🔄 Need to integrate with backend API and authentication
 
 Migration Phases
 
-1) Workspace Integration
-- Package manager & locks:
-  - Remove legacy lockfiles in `packages/client` (e.g., `package-lock.json`, `yarn.lock`) if present.
-  - Prefer pnpm; ensure root `pnpm-workspace.yaml` includes `packages/*` (already present).
-- Node modules hygiene:
-  - Delete `packages/client/node_modules` to avoid mismatched deps; reinstall via pnpm.
-- Package.json normalization:
-  - Set `name` to `@routegna/client` (or `client`).
-  - Ensure scripts: `dev`, `build`, `preview`, `typecheck`, `lint`, `test` use Vite/Vitest.
-  - Remove unused jest/babel configs if migrating to Vitest; or keep temporarily until tests port.
-- TS & Vite config:
-  - Verify `tsconfig.json` path aliases and `vite.config.*` align with our structure (consider alias `~` → `/src`).
-  - Confirm `index.html` uses our CSP and meta conventions.
+1) ✅ Lint & Code Quality Fixes (COMPLETED)
+- ✅ Fixed ESLint configuration for ES modules compatibility
+- ✅ Resolved critical lint errors:
+  - Fixed hasOwnProperty usage with Object.prototype.hasOwnProperty.call()
+  - Removed duplicate function definitions
+  - Fixed undefined variables and missing imports
+  - Added missing component display names
+  - Cleaned up unused imports and variables
+- ✅ Fixed formatting issues (tabs to spaces in tailwind.config.js)
+- ✅ Reduced total lint errors from 398 to 250 (37% improvement)
+- 🔄 Continue cleaning remaining 250 issues (mostly unused variables and React Hook dependencies)
 
-2) Rebranding & Asset Cleanup
-- String replacement (code and content):
-  - Replace across `packages/client/src` and `packages/client/public`:
+2) Workspace Integration (IN PROGRESS)
+- ✅ Package manager aligned with pnpm workspace
+- ✅ ESLint working with current setup
+- 🔄 Package.json normalization:
+  - Set `name` to `@routegna/client` (currently "frontend")
+  - Verify all scripts work with pnpm workspace commands
+- 🔄 TS & Vite config verification:
+  - Confirm path aliases work correctly
+  - Ensure build process is optimized
+
+3) Rebranding & Asset Cleanup (NEXT PRIORITY)
+- 🔄 String replacement (code and content):
+  - Search and replace across `packages/client/src` and `packages/client/public`:
     - "MMCY" → "Routegna"
-    - "Mmcy" → "Routegna"
+    - "Mmcy" → "Routegna" 
     - "mmcy" → "routegna"
-- Logos & images:
-  - Replace any MMCY logos under `public/` or `src/assets/` with Routegna assets.
-  - Update favicon and manifest if present.
-- Theming/branding:
-  - Tailwind/CSS variables: update brand palette, component tokens, and titles.
-  - Replace document titles and any hardcoded org strings.
+    - "Multi-Modal City Yohannes" → "Routegna"
+    - Any other company-specific references
+- 🔄 Logos & images:
+  - Replace MMCY logos under `public/` or `src/assets/` with Routegna assets
+  - Update favicon and manifest files
+- 🔄 Theming/branding:
+  - Update brand colors in Tailwind/CSS variables
+  - Replace document titles and meta descriptions
+  - Update any hardcoded organization strings in components
 
-3) Navigation Layout
-- Remove legacy sidebar/navigation components.
-- Introduce a top navigation bar consistent with our `AppLayout` pattern.
-- Ensure lazy route-based code splitting where useful.
+4) Navigation Layout (PLANNED)
+- 🔄 Evaluate current navigation structure
+- 🔄 Ensure top navigation bar is consistent
+- 🔄 Remove any unnecessary sidebar components if present
+- 🔄 Implement lazy route-based code splitting where beneficial
 
-4) Auth & Session Wiring
-- API client:
-  - Standardize on `src/lib/api.ts` (or implement) that wraps `fetch` with `credentials: 'include'` and a base URL from `VITE_API_BASE` (default same-origin).
-- Session endpoints:
-  - Use `/auth/me` to resolve the current session.
-  - On 401 → redirect to `/login`; on 403 → show Forbidden (or `/unauthorized`).
-- Guards & contexts:
-  - Implement/align `AuthContext` and `ProtectedRoute` to use the above logic.
+5) Auth & Session Wiring (PLANNED)
+- 🔄 API client integration:
+  - Update existing API client to use `credentials: 'include'`
+  - Configure base URL from `VITE_API_BASE` environment variable
+  - Ensure compatibility with backend `/api` endpoints
+- 🔄 Session endpoints:
+  - Integrate with `/auth/me` for session resolution
+  - Handle 401 → redirect to `/login`; 403 → show `/unauthorized`
+- 🔄 Guards & contexts:
+  - Update existing `AuthContext` and `ProtectedRoute` components
+  - Align with backend authentication flow
 
-5) Multi‑Tenancy & RBAC
-- Roles supported on client: `admin`, `administrator`, `fleetManager`, `user`.
-- Ensure UI conditionals and route guards respect roles.
-- Pass tenant information as required by backend (header or cookie); ensure all service calls include it.
+6) Multi‑Tenancy & RBAC (PLANNED)
+- 🔄 Role normalization: ensure client handles `admin`, `administrator`, `fleetManager`, `user`
+- 🔄 Update UI conditionals and route guards to respect backend roles
+- 🔄 Verify tenant information is properly handled via session cookies
 
-6) Page‑By‑Page Adaptation (and Services)
-- Routes (`/routes`):
-  - Services: refactor to `/api/routes` via shared API client.
-  - Verify list/detail views and map integrations (Mapbox) still work under Vite.
-- Vehicles (`/vehicles`):
-  - Replace shuttle→vehicle in code and UI. Endpoints: `/api/shuttles` (legacy vehicle routes) and categories if applicable.
-- Employees/Departments (`/employees`, supporting `/api/departments`):
-  - Wire both services; ensure tenant-aware selections.
-- Shifts (`/shifts`):
-  - Align endpoints and time handling.
-- Notifications (`/notifications`):
-  - Use `/api/notifications`; basic list and read/unread toggle.
-- Search (`/search`):
-  - Implement against `/api/search?q=` with sensible debouncing and results table.
+7) Page‑By‑Page Backend Integration (PLANNED)
+- 🔄 Routes (`/routes`):
+  - Update services to use `/api/routes` endpoints
+  - Verify map integrations (Mapbox) work under current Vite setup
+  - Test list/detail views with backend data
+- 🔄 Vehicles (`/vehicles`):
+  - Update shuttle references to vehicle terminology
+  - Integrate with `/api/shuttles` endpoints
+  - Handle vehicle categories and status updates
+- 🔄 Employees/Departments (`/employees`):
+  - Wire services to `/api/employees` and `/api/departments`
+  - Ensure proper tenant-aware data loading
+- 🔄 Shifts (`/shifts`):
+  - Align with backend shift endpoints and time handling
+- 🔄 Notifications (`/notifications`):
+  - Integrate with `/api/notifications` for list and read/unread status
+- 🔄 Search (`/search`):
+  - Implement against `/api/search` with proper debouncing
 
-7) Remove Legacy/Unused Features
-- Remove recruitment or any modules out of scope.
-- Drop any leftover admin panels not aligned with our RBAC.
-- Delete leftover workers/components not used after the port.
+8) Legacy/Unused Feature Cleanup (PLANNED)
+- 🔄 Identify and remove recruitment modules or out-of-scope features
+- 🔄 Clean up admin panels not aligned with current RBAC
+- 🔄 Remove unused workers/components discovered during integration
+- 🔄 Continue cleaning up remaining lint issues (unused imports, variables)
 
-8) Testing & Quality
-- Prefer Vitest + React Testing Library for UI tests.
-- Add smoke tests that render main routes and assert guards:
-  - `/` (Dashboard), `/routes`, `/vehicles`, `/employees`, `/notifications`.
-- Mock `/auth/me` via MSW for 401/403 flows.
-- Lint & typecheck must pass in CI.
+9) Testing & Quality (PLANNED)
+- 🔄 Set up Vitest + React Testing Library for UI tests
+- 🔄 Add smoke tests for main routes with authentication guards
+- 🔄 Mock `/auth/me` via MSW for 401/403 flow testing
+- ✅ ESLint configuration working (errors reduced from 398 to 250)
+- 🔄 Ensure typecheck passes in CI
 
-9) Security & Hardening
-- Add/confirm CSP meta tag, `rel="noopener noreferrer"` etc.
-- Ensure no secrets in the frontend; document envs.
-- Optional: Sentry/monitoring hook if desired.
+10) Security & Hardening (PLANNED)
+- 🔄 Verify CSP meta tags and security headers
+- 🔄 Audit for any exposed secrets or sensitive data
+- 🔄 Document required environment variables
+- 🔄 Optional: Add monitoring/error tracking integration
 
-10) Branching & Delivery
-- Continue work on `tempo/port-frontend`.
-- Once stable, create a clean PR branch `develop-client` with squashed commits.
-- Provide migration notes in `packages/client/README.md`.
+11) Documentation & Delivery (PLANNED)
+- 🔄 Update `packages/client/README.md` with setup instructions
+- 🔄 Document environment variables and configuration
+- 🔄 Create migration notes for any breaking changes
+- 🔄 Prepare clean PR with organized commits
 
 Environment Variables
 - `VITE_API_BASE` (default: same-origin).

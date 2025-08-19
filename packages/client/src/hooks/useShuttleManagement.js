@@ -7,7 +7,7 @@ export const useShuttleManagement = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  const refreshShuttles = useCallback(async (force = false) => {
+  const refreshShuttles = useCallback(async () => {
     try {
       setLoading(true);
       // The service now handles caching internally
