@@ -1,18 +1,4 @@
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@components/Common/UI/Card";
-import { Progress } from "@components/Common/UI/Progress";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@components/Common/UI/Select";
-import { Calendar, TrendingUp, DollarSign } from "lucide-react";
+// trimmed unused imports
 import PropTypes from "prop-types";
 import { CalendarIcon } from "lucide-react";
 import { formatCurrency, formatNumber, formatPercent } from "@/utils/formatters";
@@ -20,7 +6,7 @@ import { ExpensesCalculator } from "./ExpensesCalculator";
 
 export function TotalPayrollCard({
   selectedMonth,
-  setSelectedMonth,
+  setSelectedMonth: _setSelectedMonth,
   monthlyPayrollData,
 }) {
   const currentMonthData = monthlyPayrollData.find(

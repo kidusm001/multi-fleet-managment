@@ -1,9 +1,9 @@
 // EnhancedShuttlePayrollDashboard.jsx
-import { Download, Activity, Award, Target, Zap, Calendar } from "lucide-react";
-import { useState, useEffect } from "react";
+import { Download } from "lucide-react";
+import { useState, useEffect, useMemo } from "react";
 import { useTheme } from "@contexts/ThemeContext";
 import { payrollService } from "@/services/payrollService";
-import { formatCurrency, formatPercent } from "@/utils/formatters";
+// removed unused formatters
 import { useToast } from "@/components/Common/UI/use-toast";
 
 import { Badge } from "@/components/Common/UI/Badge";
@@ -15,11 +15,7 @@ import {
   CardTitle,
 } from "@/components/Common/UI/Card";
 
-import {
-  QuickMetricCard,
-  AlertsCard,
-  TimelineCard,
-} from "./components/DashboardComponents";
+// removed unused dashboard components
 import { MonthlyPayrollChart } from "./components/MonthlyPayrollChart";
 import { PayrollDistributionChart } from "./components/PayrollDistributionChart";
 import { PayrollFilters } from "./components/PayrollFilters";
@@ -45,7 +41,7 @@ export default function EnhancedShuttlePayrollDashboard() {
   const [costRangeFilter, setCostRangeFilter] = useState([2000, 4000]); // Updated to realistic ETB range
   const [payrollDistributionData, setPayrollDistributionData] = useState([]);
   const [monthlyPayrollData, setMonthlyPayrollData] = useState([]);
-  const [performanceMetrics, setPerformanceMetrics] = useState({
+  const [_performanceMetrics, setPerformanceMetrics] = useState({
     efficiency: 0,
     utilization: 0,
     costOptimization: 0,
@@ -55,7 +51,7 @@ export default function EnhancedShuttlePayrollDashboard() {
   const [error, setError] = useState(null);
 
   // Sample shuttle data for fallback
-  const sampleShuttleData = [
+  const sampleShuttleData = useMemo(() => [
     {
       id: "SH001",
       type: "Owned",
@@ -92,7 +88,7 @@ export default function EnhancedShuttlePayrollDashboard() {
       status: "PROCESSED",
       efficiency: 95,
     },
-  ];
+  ], []);
 
   useEffect(() => {
     const loadPayrollData = async () => {
@@ -237,7 +233,7 @@ export default function EnhancedShuttlePayrollDashboard() {
     };
 
     loadPayrollData();
-  }, []);
+  }, [sampleShuttleData]);
 
   const calculateAverageEfficiency = (shuttles) => {
     if (shuttles.length === 0) return 0;

@@ -3,7 +3,6 @@ import { useState, useEffect } from 'react'
 import PropTypes from 'prop-types'
 import { employees } from '@data/routeAssignmentData'
 import AssignmentModal from './AssignmentModal'
-import { Bell } from 'lucide-react'
 
 function DataSection({
   selectedShift,

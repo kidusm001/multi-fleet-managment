@@ -173,9 +173,9 @@ function CostBreakdown({ shuttle }) {
   );
 }
 
-function CostBreakdownItem({ label, percentage, cost }) {
+function CostBreakdownItem({ label, percentage: _percentage, cost }) {
   return (
-    <div className="flex justify-between">
+  <div className="flex justify-between">
       <span>{label}:</span>
       <span>{formatCurrency(cost)}/day</span>
     </div>

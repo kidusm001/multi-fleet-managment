@@ -27,12 +27,12 @@ export default function CreateRouteForm({
   employees,
   shiftEndTime = "",
   isPreviewMode = false,
-  shifts = [],
+  shifts: _shifts = [],
 }) {
   const [selectedShuttle, setSelectedShuttle] = useState(null);
   const [shuttleClusters, setShuttleClusters] = useState({});
   const [originalClusters, setOriginalClusters] = useState({});
-  const [swappedEmployees, setSwappedEmployees] = useState({});
+  const [_swappedEmployees, setSwappedEmployees] = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const [sortConfig, setSortConfig] = useState({
     key: null,
@@ -46,7 +46,7 @@ export default function CreateRouteForm({
   const [pendingEmployeeSelection, setPendingEmployeeSelection] =
     useState(null);
   const initialFetchDone = useRef(false);
-  const [existingRoutes, setExistingRoutes] = useState([]);
+  const [_existingRoutes, setExistingRoutes] = useState([]);
   const [formErrors, setFormErrors] = useState({});
   const [hasClusterResults, setHasClusterResults] = useState(false);
   const [highlightKey, setHighlightKey] = useState(0); // Force re-render key
@@ -86,7 +86,7 @@ export default function CreateRouteForm({
       initialFetchDone.current = false;
       
       // Reset route data on shift change
-      setRouteData((prev) => ({
+  setRouteData((prev) => ({
         ...prev,
         selectedShuttle: null,
         selectedEmployees: [],
@@ -275,7 +275,7 @@ export default function CreateRouteForm({
     }
 
     setPendingEmployeeSelection(null);
-  }, [pendingEmployeeSelection]);
+  }, [pendingEmployeeSelection, setRouteData]);
 
   const handleEmployeeSelect = (employee) => {
     if (!selectedShuttle) {
@@ -307,21 +307,10 @@ export default function CreateRouteForm({
     });
   };
 
-  const handleSubmit = useCallback(
-    (e) => {
-      e.preventDefault();
-      if (
-        routeData.selectedEmployees.length > 0 &&
-        e.nativeEvent.submitter?.className?.includes("previewButton")
-      ) {
-        onPreview();
-      }
-    },
-    [routeData.selectedEmployees.length, onPreview]
-  );
+  // removed unused handleSubmit (form uses handlePreview instead)
 
   // Generate suggested route name
-  const getSuggestedRouteName = () => {
+  const getSuggestedRouteName = useCallback(() => {
     if (!routeData.selectedEmployees.length) return "";
 
     // Use company HQ location from environment variables
@@ -361,10 +350,10 @@ export default function CreateRouteForm({
       : '';
       
     return `${furthestArea}${shiftTime}`;
-  };
+  }, [routeData.selectedEmployees, shiftEndTime]);
 
   // Handle route name suggestion
-  const handleNameSuggestion = () => {
+  const handleNameSuggestion = useCallback(() => {
     const suggestedName = getSuggestedRouteName();
     if (suggestedName) {
       setRouteData((prev) => ({ ...prev, name: suggestedName }));
@@ -373,7 +362,7 @@ export default function CreateRouteForm({
         description: "Route name has been updated based on the furthest stop.",
       });
     }
-  };
+  }, [getSuggestedRouteName, setRouteData, toast]);
 
   // Sort employees
   const sortedEmployees = useMemo(() => {

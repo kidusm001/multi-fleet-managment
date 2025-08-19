@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { MapPin, Search, Loader2, Copy, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Input } from "@/components/Common/UI/Input";
@@ -12,7 +12,6 @@ export default function LocationMapPicker({
 }) {
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
-  const markerRef = useRef(null);
   const [address, setAddress] = useState("");
   const [searchValue, setSearchValue] = useState("");
   const [loading, setLoading] = useState(true);
@@ -22,53 +21,37 @@ export default function LocationMapPicker({
   const [manualCoords, setManualCoords] = useState("");
   const [showManualInput, setShowManualInput] = useState(false);
 
-  // Initialize the map
-  useEffect(() => {
-    // Create a script element to load Mapbox GL JS dynamically
-    initMapWithoutExternalScripts();
-    
-    // Clean up map on component unmount
-    return () => {
-      if (mapInstanceRef.current) {
-        mapInstanceRef.current.remove();
-      }
-    };
-  }, []);
-
   // Handle map initialization without external scripts
-  const initMapWithoutExternalScripts = async () => {
+  const initMapWithoutExternalScripts = useCallback(async () => {
     try {
-      // Use the Mapbox access token from environment variables
-      const token = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
-      
-      // Create a new div element for the map
+      const _token = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
       const mapContainer = mapRef.current;
       if (!mapContainer) return;
-      
-      // Set up the map container with inline styles
       mapContainer.style.width = '100%';
       mapContainer.style.height = '100%';
       mapContainer.style.backgroundColor = isDark ? '#1a1b26' : '#e9edf0';
-      
-      // Initialize a basic map fallback with controls for manual coordinate entry
       setLoading(false);
-      
-      // Display message about CSP blocking Mapbox
       setError("Map loading is blocked by Content-Security-Policy. Please use manual coordinate input instead.");
-      
-      // Set initial marker position
       updateCoordinateDisplay(initialPosition.lat, initialPosition.lng);
-      
-      // Show manual coordinate input
       setShowManualInput(true);
-      
     } catch (error) {
       console.error("Error initializing map:", error);
       setError("Failed to load map. Please enter coordinates manually.");
       setLoading(false);
       setShowManualInput(true);
     }
-  };
+  }, [initialPosition.lat, initialPosition.lng, isDark]);
+
+  // Initialize the map
+  useEffect(() => {
+    initMapWithoutExternalScripts();
+    const localInstance = mapInstanceRef.current;
+    return () => {
+      if (localInstance) {
+        localInstance.remove?.();
+      }
+    };
+  }, [initMapWithoutExternalScripts]);
 
   // Update coordinate display
   const updateCoordinateDisplay = (lat, lng) => {
@@ -202,16 +185,7 @@ export default function LocationMapPicker({
     onLocationSelect(lat, lng, address || `${lat}, ${lng}`);
   };
 
-  // Parse coordinates from string
-  const parseCoordinates = (coordString) => {
-    try {
-      const [lat, lng] = coordString.split(',').map(coord => parseFloat(coord.trim()));
-      if (isNaN(lat) || isNaN(lng)) return null;
-      return { lat, lng };
-    } catch (error) {
-      return null;
-    }
-  };
+  // (Removed unused parseCoordinates)
 
   return (
     <div className="flex flex-col h-[500px]">

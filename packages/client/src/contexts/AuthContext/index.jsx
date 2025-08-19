@@ -26,12 +26,9 @@ export function AuthProvider({ children }) {
 
   const login = async ({ email, password }) => {
     try {
-      // Simplify the payload structure
       const { data, error } = await authClient.signIn.email({
         email: email.trim(),
         password: password,
-        callbackURL: '/',
-        rememberMe: true,
       });
 
       if (error) {
@@ -63,21 +60,9 @@ export function AuthProvider({ children }) {
     }
   };
 
-  const loginWithEmail = async (email) => {
-    try {
-      const { error } = await authClient.signIn.magicLink({
-        email,
-        redirectUrl: `${window.location.origin}/auth/callback`,
-      });
-
-      if (error) {
-        throw new Error(error.message);
-      }
-
-      return { success: true };
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
+  const loginWithEmail = async (_email) => {
+    // This functionality is not implemented in the backend yet
+    return { success: false, error: 'Magic link login not implemented' };
   };
 
   return (

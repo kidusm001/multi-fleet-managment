@@ -39,7 +39,7 @@ export default function EmployeeUploadSection({
   navigateToDepartmentManagement,
   navigateToShiftManagement,
 }) {
-  const navigate = useNavigate();
+  const _navigate = useNavigate();
   
   // State for file upload and data preview
   const [selectedFile, setSelectedFile] = useState(null);
@@ -104,7 +104,7 @@ export default function EmployeeUploadSection({
     
     fetchDepartmentsAndShifts();
     return resetComponent;
-  }, []);
+  }, [resetComponent]);
 
   // Reset component state
   const resetComponent = useCallback(() => {

@@ -5,7 +5,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogFooter,
 } from "@components/Common/UI/dialog";
 import { Button } from "@components/Common/UI/Button";
 import {

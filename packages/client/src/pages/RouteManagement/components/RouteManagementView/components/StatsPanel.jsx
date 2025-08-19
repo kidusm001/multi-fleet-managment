@@ -104,7 +104,7 @@ const StatsPanel = ({ routes, shifts, shuttles }) => {
     };
     
     const activeShuttleIds = new Set();
-    let totalCapacity = 0;
+  const _totalCapacity = 0;
     let maxCapacityShuttle = 0;
     
     routes.forEach(route => {
@@ -115,7 +115,6 @@ const StatsPanel = ({ routes, shifts, shuttles }) => {
         const shuttle = shuttles.find(s => s.id === route.shuttleId);
         if (shuttle?.capacity) {
           maxCapacityShuttle = Math.max(maxCapacityShuttle, shuttle.capacity);
-          totalCapacity += shuttle.capacity;
         }
       }
     });

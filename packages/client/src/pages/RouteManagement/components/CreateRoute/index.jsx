@@ -1,8 +1,6 @@
-import { useState, useEffect } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
 import PropTypes from "prop-types";
 
-function CreateRoute({ onRouteCreated }) {
+function CreateRoute({ onRouteCreated: _onRouteCreated }) {
   // ...existing code...
 }
 

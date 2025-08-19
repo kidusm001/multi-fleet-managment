@@ -56,7 +56,7 @@ export default function PreviewTable({
   onUpload,
   onPageChange,
   onClear,
-  validationErrors
+  _validationErrors
 }) {
   // Check for duplicates in the preview data
   const duplicates = useDetectDuplicates(previewData);

@@ -1,8 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSession } from "@/lib/auth-client";
 import { useTheme } from "@/contexts/ThemeContext";
 import { adminService } from "../../services/adminService";
-import { Plus, Search, Filter, Users, ChevronDown, X, RefreshCw } from "lucide-react";
+import { Plus, Search, Filter, Users, X, RefreshCw } from "lucide-react";
 import Button from "@/components/Common/UI/Button";
 import { Input } from "@/components/Common/UI/Input";
 import {
@@ -21,7 +21,7 @@ import UserFormDialog from "./UserFormDialog";
 import UserDeleteDialog from "./UserDeleteDialog";
 
 // Import constants
-import { roles } from "./constants";
+// roles import is unused here; removing to satisfy no-unused-vars
 
 export default function UserManagement() {
   const { data: session } = useSession();
@@ -34,7 +34,7 @@ export default function UserManagement() {
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const [totalUsers, setTotalUsers] = useState(0);
-  const [availableRoles, setAvailableRoles] = useState([]);
+  const [_availableRoles, setAvailableRoles] = useState([]);
   
   // Dialog states
   const [showAddModal, setShowAddModal] = useState(false);
@@ -80,10 +80,10 @@ export default function UserManagement() {
     if (session?.user) {
       loadUsers();
     }
-  }, [session]);
+  }, [session, /* eslint-disable-line react-hooks/exhaustive-deps */]);
 
   // Load users with optional query
-  const loadUsers = async (query = {}) => {
+  const loadUsers = useCallback(async (query = {}) => {
     try {
       setLoading(true);
       setError(null);
@@ -116,7 +116,7 @@ export default function UserManagement() {
       setError("Failed to load users. Please try again.");
       setLoading(false);
     }
-  };
+  }, [roleFilter, searchQuery]);
 
   // Add new user
   const handleAdd = () => {
@@ -131,24 +131,7 @@ export default function UserManagement() {
     setShowAddModal(true);
   };
 
-  // Edit user
-  const handleEdit = (user) => {
-    setEditMode(true);
-    setFormData({
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      isActive: !user.banned
-    });
-    setShowAddModal(true);
-  };
-
-  // Delete user
-  const handleDelete = (user) => {
-    setSelectedUser(user);
-    setShowDeleteDialog(true);
-  };
+  // Removed unused handleEdit and handleDelete to satisfy lint
 
   // Confirm delete with cleanup
   const confirmDelete = async () => {

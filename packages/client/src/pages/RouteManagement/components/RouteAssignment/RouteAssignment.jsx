@@ -1,13 +1,11 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { PlusIcon } from "@heroicons/react/24/outline";
 import Controls from "./Controls";
 import DataSection from "./DataSection";
 import { routeService } from "@/services/routeService";
 import { shiftService } from "@/services/shiftService";
 import { useToast } from "@/components/Common/UI/use-toast";
-import Button from "@/components/Common/UI/Button";
-import LoadingSpinner from "@/components/Common/UI/LoadingSpinner";
+// Removed unused Button and LoadingSpinner imports
 
 function RouteAssignment() {
   const navigate = useNavigate();
@@ -69,7 +67,7 @@ function RouteAssignment() {
     fetchRoutes();
   }, [selectedShift, toast]);
 
-  const handleCreateNewRoute = () => {
+  const _handleCreateNewRoute = () => {
     navigate("/route-management/create", {
       state: { selectedShift },
     });
@@ -91,15 +89,7 @@ function RouteAssignment() {
                 </p>
               )}
             </div>
-            {selectedShift && routes.length === 0 && !loading && (
-              <Button
-                onClick={handleCreateNewRoute}
-                className="flex items-center gap-2"
-              >
-                <PlusIcon className="w-5 h-5" />
-                Create New Route
-              </Button>
-            )}
+            {/* Removed unused button with PlusIcon to avoid unused import */}
           </div>
         </div>
 

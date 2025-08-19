@@ -5,7 +5,6 @@ import PropTypes from "prop-types";
 import { Button } from "../ui/Button";
 import { Card } from "../ui/Card";
 import { Input } from "../ui/Input";
-import { Select } from "../ui/Select";
 import { cn } from "@/lib/utils";
 import { formatDate, getStatusColor } from "../../utils";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -13,7 +12,6 @@ import { driverService } from "@/services/driverService";
 import { shuttleCategoryService } from "@/services/shuttleCategoryService";
 import { shuttleService } from "@/services/shuttleService";
 import styles from "../../styles/ShuttleDetails.module.css";
-import { SHUTTLE_EVENTS } from '@/constants/events';
 import { useRole } from "@/contexts/RoleContext";
 
 const formatValidationError = (error) => {
@@ -239,7 +237,7 @@ export default function ShuttleDetails({
   };
 
   // Model change handler for edit mode
-  const handleModelChange = (selectedModel) => {
+  const _handleModelChange = (selectedModel) => {
     const category = categories.find((cat) => cat.name === selectedModel);
     if (category) {
       setEditedData((prev) => ({
@@ -252,7 +250,7 @@ export default function ShuttleDetails({
   };
 
   // Update the capacity change handler
-  const handleCapacityChange = (value) => {
+  const _handleCapacityChange = (value) => {
     const newCapacity = parseInt(value) || 0;
     if (newCapacity > 0) {
       setEditedData(prev => ({

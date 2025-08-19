@@ -360,7 +360,7 @@ function handleNextStop(map, currentRoute, button, currentStopIndex) {
  * @param {boolean} isDark - Whether dark mode is enabled
  * @returns {Object} The added control
  */
-export function addNavigationControl(map, position = "bottom-left", isDark = false) {
+export function addNavigationControl(map, position = "bottom-left", _isDark = false) {
   if (!map) return;
   
   // Apply theme styles - efficient DOM operations
@@ -374,7 +374,7 @@ export function addNavigationControl(map, position = "bottom-left", isDark = fal
   }
   
   // Only update if necessary to avoid unnecessary reflows
-  const newStyles = getThemeStyles(isDark);
+  const newStyles = getThemeStyles(_isDark);
   if (styleEl.textContent !== newStyles) {
     styleEl.textContent = newStyles;
   }
@@ -524,7 +524,7 @@ export function addFullscreenControl(map, position = "bottom-left") {
  * @param {boolean} isDark - Whether dark mode is enabled
  * @returns {Object} The added control
  */
-export function addCenterControl(map, currentRoute, position = "bottom-left", isDark = false) {
+export function addCenterControl(map, currentRoute, position = "bottom-left", _isDark = false) {
   if (!map) return;
 
   class CustomCenterControl {
@@ -596,7 +596,7 @@ export function addCenterControl(map, currentRoute, position = "bottom-left", is
  * @param {boolean} isDark - Whether dark mode is enabled
  * @returns {Object} The added control
  */
-export function add3DViewControl(map, position = "bottom-left", isDark = false) {
+export function add3DViewControl(map, position = "bottom-left", _isDark = false) {
   if (!map) return;
 
   class Custom3DViewControl {

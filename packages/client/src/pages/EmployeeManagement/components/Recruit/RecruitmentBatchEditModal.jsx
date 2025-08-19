@@ -7,7 +7,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogFooter,
 } from "@components/Common/UI/dialog";
 import { Button } from "@components/Common/UI/Button";
 import {
@@ -616,7 +615,7 @@ export function RecruitmentBatchEditModal({
                                 colSpan={7}
                                 className="h-32 text-center text-gray-500 dark:text-gray-400"
                               >
-                                No candidates in this batch. Click "Add Candidate" to add new candidates.
+                                No candidates in this batch. Click &quot;Add Candidate&quot; to add new candidates.
                               </TableCell>
                             </TableRow>
                           ) : (

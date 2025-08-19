@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Clock, AlertCircle, Sunrise, Sunset, Sun, Moon, Wand2 } from "lucide-react";
+import { Clock, AlertCircle, Sunrise, Sunset, Moon, Wand2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import Button from "@/components/Common/UI/Button";
@@ -103,7 +103,7 @@ export default function ShiftFormDialog({
   // Set Addis Ababa as the default timezone
   const DEFAULT_TIMEZONE = "Africa/Addis_Ababa";
   // Always use Addis Ababa as reference timezone
-  const referenceTimeZone = "Africa/Addis_Ababa";
+  // Note: referenceTimeZone not needed in logic currently
 
   // Initialize form with Addis Ababa timezone
   useEffect(() => {
@@ -120,7 +120,7 @@ export default function ShiftFormDialog({
         })()
       }));
     }
-  }, [isOpen, editMode]);
+  }, [isOpen, editMode, setFormData]);
 
   // Check if overnight shift based on start and end times when component loads
   useEffect(() => {
@@ -143,7 +143,7 @@ export default function ShiftFormDialog({
       const suggestion = getSuggestedName(formData.startTime, formData.endTime);
       setFormData(prev => ({ ...prev, name: suggestion }));
     }
-  }, [formData.startTime, formData.endTime, editMode]);
+  }, [formData.startTime, formData.endTime, formData.name, editMode, setFormData]);
 
   // Input styles - derived based on theme
   const labelClass = isDark ? "text-gray-300" : "text-gray-700";
@@ -160,41 +160,7 @@ export default function ShiftFormDialog({
   const titleClass = isDark ? "text-blue-300" : "text-blue-700"; // Improved title color for dark mode
   const headerIconClass = isDark ? "text-blue-300" : "text-blue-600"; // Matching icon color
 
-  // Convert time string to time format for input fields
-  const formatTimeForInput = (timeStr) => {
-    if (!timeStr) return "";
-    try {
-      const date = new Date(timeStr);
-      // Ensures format is HH:MM with leading zeros
-      return date.toLocaleTimeString('en-GB', {
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false
-      });
-    } catch (error) {
-      console.error("Error formatting time:", error);
-      return "";
-    }
-  };
-
-  // Parse time input and create full date string
-  const parseTimeInput = (timeStr) => {
-    if (!timeStr) return null;
-    
-    try {
-      // If it's already an ISO string, just return it
-      if (timeStr.includes('Z')) {
-        return timeStr;
-      }
-
-      // For time strings, create a new date
-      const now = new Date();
-      return now.toISOString();
-    } catch (error) {
-      console.error("Error parsing time:", error);
-      return null;
-    }
-  };
+  
 
   // Improve the name suggestion button
   const handleNameSuggestion = () => {
@@ -270,21 +236,7 @@ export default function ShiftFormDialog({
     }
   };
 
-  // Update time conversion display
-  const getTimeInUserZone = (time) => {
-    if (!time) return "";
-    try {
-      const date = new Date(time);
-      return date.toLocaleTimeString('en-US', {
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true,
-        timeZone: DEFAULT_TIMEZONE
-      });
-    } catch (error) {
-      return "";
-    }
-  };
+  
 
   // Show conversion only when selected timezone is not Addis Ababa
   const shouldShowConversion = () => {
@@ -393,7 +345,7 @@ export default function ShiftFormDialog({
                     </TooltipTrigger>
                     <TooltipContent className={`p-3 max-w-sm ${isDark ? "bg-gray-800 text-gray-200" : ""}`}>
                       Select the time zone where this shift is physically located. Times will be stored and displayed
-                      according to this time zone, with automatic conversion to the user's local time when needed.
+                      according to this time zone, with automatic conversion to the user&#39;s local time when needed.
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -443,7 +395,7 @@ export default function ShiftFormDialog({
             <p className={`text-xs ${isDark ? "text-gray-400" : "text-gray-500"}`}>
               {formData.timeZone 
                 ? `Selected time zone will be used to store and display shift times.` 
-                : `Your device's time zone is ${DEFAULT_TIMEZONE}`}
+                : `Your device&#39;s time zone is ${DEFAULT_TIMEZONE}`}
             </p>
           </div>
           

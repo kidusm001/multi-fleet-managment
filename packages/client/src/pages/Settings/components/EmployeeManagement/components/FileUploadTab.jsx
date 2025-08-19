@@ -14,7 +14,7 @@ import {
 
 export default function FileUploadTab({ 
   isDark, 
-  onSubmit, 
+  onSubmit: _onSubmit, 
   isLoading,
   onPreview,
   shifts = [],

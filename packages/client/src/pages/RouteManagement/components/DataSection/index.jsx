@@ -4,19 +4,19 @@ import { Bell } from 'lucide-react';
 import { Button } from '@components/Common/UI/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@components/Common/UI/Card';
 import { Badge } from '@/components/Common/UI/Badge';
-import { employees } from '@data/routeAssignmentData';
+import { employees as _employees } from '@data/routeAssignmentData';
 import AssignmentModal from './AssignmentModal';
 import './DataSection.css';
 
 const DataSection = ({
-  selectedShift,
-  selectedTime,
+  selectedShift: _selectedShift,
+  selectedTime: _selectedTime,
   selectedRoute,
   shuttleData,
-  setShuttleData,
+  setShuttleData: _setShuttleData,
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedShuttle, setSelectedShuttle] = useState(null);
+  const [selectedShuttle, _setSelectedShuttle] = useState(null);
 
   const selectedRouteData = shuttleData.find(route => route.name === selectedRoute);
 

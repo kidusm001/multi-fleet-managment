@@ -30,7 +30,7 @@ export const useShuttleManagement = () => {
   // Only fetch on mount
   useEffect(() => {
     refreshShuttles();
-  }, []);
+  }, [refreshShuttles]);
 
   const addShuttle = async (shuttleData) => {
     try {

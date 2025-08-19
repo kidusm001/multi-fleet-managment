@@ -3,23 +3,21 @@ import PropTypes from "prop-types";
 import { BatchesList } from "@/pages/EmployeeManagement/components/Review/BatchesList";
 import { batchService } from "@/services/batchService";
 import { useToast } from "@components/Common/UI/use-toast";
-import { Button } from "@components/Common/UI/Button";
-import { RefreshCw } from "lucide-react";
 import { DeleteBatchModal } from "./DeleteBatchModal";
 import { RecruitmentBatchEditModal } from "./RecruitmentBatchEditModal";
 
 export function RecruitmentBatchesSection({
   batchHistory,
-  handleEditBatch,
+  handleEditBatch: _handleEditBatch,
   handleDownloadResults,
   editingMode,
   isLoading: parentIsLoading,
-  onBatchesUpdated,
+  onBatchesUpdated: _onBatchesUpdated,
   onBatchListUpdate
 }) {
   const [localBatchHistory, setLocalBatchHistory] = useState(batchHistory);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, _setError] = useState(null);
   const { toast } = useToast();
   const [deleteModalState, setDeleteModalState] = useState({
     isOpen: false,
@@ -40,50 +38,7 @@ export function RecruitmentBatchesSection({
     }
   }, [batchHistory]);
 
-  // Refresh batches function
-  const refreshBatches = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      // Get user ID from local storage
-      const userId = localStorage.getItem('userId');
-      
-      if (userId) {
-        // Get batches submitted by this user
-        const batches = await batchService.getBatchesBySubmitter(userId);
-        setLocalBatchHistory(batches);
-        
-        // Notify parent component of the update if callback exists
-        if (onBatchesUpdated) {
-          onBatchesUpdated(batches);
-        }
-      } else {
-        // Fallback to all batches if no user ID (shouldn't normally happen)
-        const batches = await batchService.getAllBatches();
-        setLocalBatchHistory(batches);
-        
-        if (onBatchesUpdated) {
-          onBatchesUpdated(batches);
-        }
-      }
-      
-      toast({
-        title: "Refreshed",
-        description: "Batch list has been updated",
-        duration: 2000,
-      });
-    } catch (err) {
-      console.error("Failed to refresh batches:", err);
-      setError("Failed to refresh batches");
-      toast({
-        title: "Error",
-        description: err.message || "Failed to refresh batches",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [toast, onBatchesUpdated]);
+  // (Removed unused refreshBatches function)
 
   // Handle download with proper error handling
   const handleDownload = useCallback(async (batchId) => {

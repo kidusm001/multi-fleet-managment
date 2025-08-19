@@ -1,4 +1,4 @@
-/* eslint-disable no-restricted-globals */
+
 
 // Constants for optimization
 const EARTH_RADIUS = 6371; // Earth's radius in kilometers

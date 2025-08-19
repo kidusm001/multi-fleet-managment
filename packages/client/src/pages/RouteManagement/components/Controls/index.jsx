@@ -14,8 +14,6 @@ import './Controls.css';
 const Controls = ({
   selectedShift,
   setSelectedShift,
-  selectedTime,
-  setSelectedTime,
   selectedRoute,
   setSelectedRoute,
   shuttleData,

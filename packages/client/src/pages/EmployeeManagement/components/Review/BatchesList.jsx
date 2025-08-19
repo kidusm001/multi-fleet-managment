@@ -1,12 +1,11 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import PropTypes from "prop-types";
-import { format, parseISO, startOfDay, endOfDay, subDays, startOfMonth, endOfMonth, isWithinInterval, isAfter } from "date-fns";
+import { format, parseISO, startOfDay, endOfDay, subDays, isWithinInterval, isAfter } from "date-fns";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useToast } from "@/components/Common/UI/use-toast";
 import { Button } from "@/components/Common/UI/Button";
 import { Badge } from "@/components/Common/UI/Badge";
 import { Calendar as CalendarComponent } from "@/components/Common/UI/calendar";
-import { DeleteBatchModal } from "../Recruit/DeleteBatchModal";
 import {
   Select,
   SelectContent,
@@ -73,7 +72,7 @@ export function BatchesList({
   const [localLoading, setLocalLoading] = useState(false);
   const [expandedBatchData, setExpandedBatchData] = useState(null);
   const [localBatches, setLocalBatches] = useState(batches); // New state to track batches locally
-  const { theme } = useTheme();
+  const { theme: _theme } = useTheme();
   const { toast } = useToast();
   const ITEMS_PER_PAGE = 5;
 

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useImperativeHandle, forwardRef } from "react";
+import React, { useState, useRef } from "react";
 import {
   createColumnHelper,
   flexRender,

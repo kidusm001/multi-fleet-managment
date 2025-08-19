@@ -13,7 +13,7 @@ function Controls({
   setSelectedShift,
   routes = [],
   shifts = [],
-  loading = false,
+  _loading = false,
   stats = {
     unassignedInShift: 0,
     totalRoutes: 0,

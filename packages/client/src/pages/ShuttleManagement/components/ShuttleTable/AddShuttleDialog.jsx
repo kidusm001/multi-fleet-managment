@@ -6,22 +6,10 @@ import { Input } from "../../components/ui/Input";
 import { Select } from "../../components/ui/Select";
 import { Card } from "../../components/ui/Card";
 import { cn } from "@/lib/utils";
-import { calculateNextMaintenanceDate } from "../../utils";
 import { useTheme } from "@/contexts/ThemeContext";
 import { shuttleCategoryService } from "@/services/shuttleCategoryService";
 import { useRole } from "@/contexts/RoleContext";
 
-// Common vehicle models with their capacities
-const COMMON_MODELS = [
-  { name: "Toyota Hiace", capacity: 14 },
-  { name: "Toyota Coaster", capacity: 22 },
-  { name: "Toyota Land Cruiser", capacity: 7 },
-  { name: "Toyota Probox", capacity: 4 },
-  { name: "Hyundai H1", capacity: 8 },
-  { name: "Hyundai County", capacity: 25 },
-  { name: "Suzuki Dzire", capacity: 4 },
-  { name: "Toyota Vitz", capacity: 4 },
-];
 
 const initialFormState = {
   name: "",

@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import StatsCard from '../StatsCard';
 import MaintenanceSchedule from '../MaintenanceSchedule';
 import DriverStatus from '../DriverStatus';
 import ShuttleTable from '../ShuttleTable';
@@ -8,7 +7,7 @@ import { useShuttleManagement } from '@/hooks/useShuttleManagement';
 import { useRole } from '@/contexts/RoleContext';
 import { cn } from '@/lib/utils';
 import styles from '../../styles/index.module.css';
-import { Activity, Clock, AlertTriangle, Bus } from 'lucide-react';
+import { Activity, AlertTriangle, Bus } from 'lucide-react';
 import { shuttleService } from '@/services/shuttleService';
 
 export default function ShuttlePage() {

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import NotificationItem from "./NotificationItem";
 import { Bell } from "lucide-react";
 import { ROLES } from "@data/constants";
@@ -7,14 +7,7 @@ export default function NotificationList({ role }) {
   const [notifications, setNotifications] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
 
-  const addNotification = (notification) => {
-    // Filter notifications based on role
-    if (shouldShowNotification(notification, role)) {
-      setNotifications((prev) => [notification, ...prev].slice(0, 5)); // Keep last 5 notifications
-    }
-  };
-
-  const shouldShowNotification = (notification, userRole) => {
+  const shouldShowNotification = useCallback((notification, userRole) => {
     // Define which roles can see which notification types
     const roleAccess = {
       [ROLES.ADMIN]: ["route", "employee", "shuttle", "system"],
@@ -30,14 +23,24 @@ export default function NotificationList({ role }) {
 
     // Check if user's role has access to this notification type
     return roleAccess[userRole]?.includes(notification.type) ?? false;
-  };
+  }, []);
+
+  const addNotification = useCallback(
+    (notification) => {
+      // Filter notifications based on role
+      if (shouldShowNotification(notification, role)) {
+        setNotifications((prev) => [notification, ...prev].slice(0, 5)); // Keep last 5 notifications
+      }
+    },
+    [role, shouldShowNotification]
+  );
 
   // Filter existing notifications when role changes
   useEffect(() => {
     setNotifications((prev) =>
       prev.filter((notif) => shouldShowNotification(notif, role))
     );
-  }, [role]);
+  }, [role, shouldShowNotification]);
 
   // Expose addNotification to window for global access
   useEffect(() => {
@@ -45,7 +48,7 @@ export default function NotificationList({ role }) {
     return () => {
       delete window.addNotification;
     };
-  }, [role]);
+  }, [addNotification]);
 
   return (
     <div className="relative">

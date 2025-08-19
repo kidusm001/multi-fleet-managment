@@ -1,5 +1,4 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/Common/UI/Card";
 import { Overview } from "./Overview";
@@ -11,6 +10,7 @@ import { shiftService } from "../services/shiftService";
 import { activityService } from "../services/activityService";
 import { Skeleton } from "@/components/Common/UI/skeleton";
 import { ArrowUp, ArrowDown, Minus } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 /**
  * Settings Dashboard Component
@@ -21,7 +21,7 @@ import { ArrowUp, ArrowDown, Minus } from "lucide-react";
 export default function Dashboard() {
   const navigate = useNavigate();
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
-  const [isLoading, setIsLoading] = useState(true);
+  const [_isLoading, setIsLoading] = useState(true);
   const [showAdminContent, setShowAdminContent] = useState(false);
   const [stats, setStats] = useState({
     employees: { total: 0, trend: 0 },
@@ -34,28 +34,31 @@ export default function Dashboard() {
   const [activities, setActivities] = useState([]);
 
   // Verify user is authenticated and has admin privileges
+  const checkPermissions = useCallback(() => {
+    // Check if user has admin role - checking both common role formats
+    const isAdmin = 
+      (user?.role === "admin") || 
+      (user?.role?.toLowerCase?.() === "admin") ||
+      (user?.roles?.includes?.("admin")) || 
+      (user?.isAdmin === true);
+
+    // Only redirect if we're certain the user is authenticated but NOT an admin
+    if (isAuthenticated === true && !isAdmin) {
+      navigate("/unauthorized", { replace: true });
+    }
+
+    // If authenticated and is admin, set flag to show admin content
+    if (isAuthenticated === true && isAdmin) {
+      setShowAdminContent(true);
+    }
+  }, [isAuthenticated, navigate, user]);
+
   useEffect(() => {
     // Only check permissions after authentication has fully loaded
     if (!authLoading) {
-      // Check if user has admin role - checking both common role formats
-      const isAdmin = 
-        (user?.role === "admin") || 
-        (user?.role?.toLowerCase?.() === "admin") ||
-        (user?.roles?.includes?.("admin")) || 
-        (user?.isAdmin === true);
-      
-      // Only redirect if we're certain the user is authenticated but NOT an admin
-      if (isAuthenticated === true && !isAdmin) {
-        console.log("User is authenticated but doesn't have admin role, redirecting");
-        navigate("/unauthorized", { replace: true });
-      }
-      
-      // If authenticated and is admin, set flag to show admin content
-      if (isAuthenticated === true && isAdmin) {
-        setShowAdminContent(true);
-      }
+      checkPermissions();
     }
-  }, [authLoading, isAuthenticated, user, navigate]);
+  }, [authLoading, checkPermissions]);
 
   // Load dashboard data - only fetch when we're sure the user is an admin
   useEffect(() => {

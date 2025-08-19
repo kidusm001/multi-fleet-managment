@@ -197,21 +197,7 @@ export function BatchReviewTable({
     }
   }, [isConfirming]);
 
-  // Get current status of a candidate (from existing status or selection state)
-  const getCandidateStatus = useCallback((candidate) => {
-    // If candidate already has a status, use that first
-    if (candidate.status) {
-      if (candidate.status === "APPROVED" || candidate.status === "Approved") {
-        return "Approved";
-      }
-      if (candidate.status === "REJECTED" || candidate.status === "Denied") {
-        return "Denied";
-      }
-    }
-    
-    // Otherwise use the current selection state
-    return selectedCandidates[candidate.id] ? "Approved" : "Denied";
-  }, [selectedCandidates]);
+  // removed unused getCandidateStatus helper
 
   return (
     <div className="space-y-4">

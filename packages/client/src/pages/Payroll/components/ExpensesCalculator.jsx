@@ -1,6 +1,6 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import PropTypes from "prop-types";
-import { Calculator, DollarSign, TrendingDown, Calendar, AlertTriangle, Plus, Trash2, Info } from "lucide-react";
+import { Calculator, AlertTriangle, Plus, Trash2, Info } from "lucide-react";
 import { Button } from "@/components/Common/UI/Button";
 import { Input } from "@/components/Common/UI/Input";
 import {
@@ -23,7 +23,6 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-  CardFooter,
   CardDescription,
 } from "@/components/Common/UI/Card";
 import {
@@ -39,11 +38,11 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { payrollService } from "@/services/payrollService";
 
 export function ExpensesCalculator({ shuttleData, selectedMonth }) {
-  const { toast } = useToast();
+  const { toast: _toast } = useToast();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   // State for calculator inputs
-  const [selectedTab, setSelectedTab] = useState("projection");
+  const [selectedTab, _setSelectedTab] = useState("projection");
   const [numShuttles, setNumShuttles] = useState(1);
   const [shuttleType, setShuttleType] = useState("Owned");
   const [daysPerMonth, setDaysPerMonth] = useState(22);
@@ -106,7 +105,7 @@ export function ExpensesCalculator({ shuttleData, selectedMonth }) {
       savingsPercent: 0
     }
   });
-  const [showCalculator, setShowCalculator] = useState(false);
+  
   const [customExpenses, setCustomExpenses] = useState([]);
   const [selectedShuttleId, setSelectedShuttleId] = useState("");
   const [shuttleSpecificExpenses, setShuttleSpecificExpenses] = useState({});
@@ -118,15 +117,6 @@ export function ExpensesCalculator({ shuttleData, selectedMonth }) {
   const avgOwnedRate = getAverageCostPerDay("Owned", shuttleData);
   const avgOutsourcedRate = getAverageCostPerDay("Outsourced", shuttleData);
   
-  // Calculate stats when inputs change
-  useEffect(() => {
-    if (selectedTab === "projection") {
-      calculateExpenseProjection();
-    } else if (selectedTab === "optimization") {
-      calculateOptimization();
-    }
-  }, [numShuttles, shuttleType, daysPerMonth, fuelPrice, maintenanceLevel, routeDistance, selectedTab, customExpenses]);
-  
   // Get average cost per day for a shuttle type
   function getAverageCostPerDay(type, data) {
     const filtered = data.filter(shuttle => shuttle.type === type);
@@ -134,8 +124,8 @@ export function ExpensesCalculator({ shuttleData, selectedMonth }) {
     
     return Math.round(filtered.reduce((sum, s) => sum + s.costPerDay, 0) / filtered.length);
   }
-  
-  function calculateOptimization() {
+
+  const calculateOptimization = useCallback(() => {
     // Current setup costs
     const currentDailyRate = shuttleType === "Owned" ? avgOwnedRate : avgOutsourcedRate;
     const currentMonthlyTotal = currentDailyRate * numShuttles * daysPerMonth;
@@ -198,16 +188,9 @@ export function ExpensesCalculator({ shuttleData, selectedMonth }) {
         savingsPercent: 10,
       }
     });
-  }
+  }, [avgOwnedRate, avgOutsourcedRate, daysPerMonth, fuelPrice, numShuttles, routeDistance, shuttleType]);
   
-  function estimateFuelCost(distance, days, pricePerLiter) {
-    // Assume average 8 km/liter for a shuttle
-    const averageFuelEfficiency = 8;
-    const litersPerDay = distance / averageFuelEfficiency;
-    return Math.round(litersPerDay * pricePerLiter * days);
-  }
-  
-  function calculateExpenseProjection() {
+  const calculateExpenseProjection = useCallback(() => {
     const baseDailyRate = shuttleType === "Owned" ? avgOwnedRate : avgOutsourcedRate;
     const monthlyBaseCost = baseDailyRate * numShuttles * daysPerMonth;
     
@@ -252,11 +235,25 @@ export function ExpensesCalculator({ shuttleData, selectedMonth }) {
       annualProjection,
       costPerKm: totalCost / (routeDistance * daysPerMonth * numShuttles)
     });
+  }, [avgOwnedRate, avgOutsourcedRate, daysPerMonth, fuelPrice, maintenanceLevel, numShuttles, routeDistance, shuttleType]);
+  
+  function estimateFuelCost(distance, days, pricePerLiter) {
+    // Assume average 8 km/liter for a shuttle
+    const averageFuelEfficiency = 8;
+    const litersPerDay = distance / averageFuelEfficiency;
+    return Math.round(litersPerDay * pricePerLiter * days);
   }
   
-  const toggleCalculator = () => {
-    setShowCalculator(!showCalculator);
-  };
+  // Calculate stats when inputs change
+  useEffect(() => {
+    if (selectedTab === "projection") {
+      calculateExpenseProjection();
+    } else if (selectedTab === "optimization") {
+      calculateOptimization();
+    }
+  }, [selectedTab, calculateExpenseProjection, calculateOptimization]);
+  
+  
 
   const handleAddCustomExpense = () => {
     const newExpense = {
@@ -281,31 +278,31 @@ export function ExpensesCalculator({ shuttleData, selectedMonth }) {
   };
 
   // Calculate total custom expenses
-  const calculateTotalCustomExpenses = () => {
+  const calculateTotalCustomExpenses = useCallback(() => {
     return customExpenses.reduce((total, expense) => {
       const amount = parseFloat(expense.amount) || 0;
       return total + amount;
     }, 0);
-  };
+  }, [customExpenses]);
 
   // Add custom expenses to the total calculation
   useEffect(() => {
-    if (calculationResults) {
+    setCalculationResults(prev => {
       const totalCustom = calculateTotalCustomExpenses();
-      const newTotalMonthlyCost = calculationResults.monthlyBaseCost + 
-        calculationResults.maintenanceCost + 
-        calculationResults.fuelCost + 
-        calculationResults.insuranceCost + 
-        calculationResults.otherCosts +
+      const newTotalMonthlyCost = prev.monthlyBaseCost + 
+        prev.maintenanceCost + 
+        prev.fuelCost + 
+        prev.insuranceCost + 
+        prev.otherCosts +
         totalCustom;
 
-      setCalculationResults(prev => ({
+      return {
         ...prev,
         customExpenses: totalCustom,
         totalMonthlyCost: newTotalMonthlyCost
-      }));
-    }
-  }, [customExpenses]);
+      };
+    });
+  }, [calculateTotalCustomExpenses]);
 
   const costOptimizationTips = [
     {
@@ -337,7 +334,7 @@ export function ExpensesCalculator({ shuttleData, selectedMonth }) {
     }
   ];
 
-  const calculateWithBackend = async () => {
+  const calculateWithBackend = useCallback(async () => {
     try {
       setIsLoading(true);
       const currentYear = new Date().getFullYear();
@@ -377,12 +374,12 @@ export function ExpensesCalculator({ shuttleData, selectedMonth }) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [selectedMonth]);
 
   // Call backend calculation when component mounts
   useEffect(() => {
     calculateWithBackend();
-  }, [selectedMonth]);
+  }, [calculateWithBackend]);
 
   return (
     <Dialog>

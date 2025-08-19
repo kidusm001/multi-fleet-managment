@@ -9,12 +9,7 @@ const RoleContext = createContext({
 });
 
 export function RoleProvider({ children }) {
-  const {
-    data: session,
-    isPending,
-    error: sessionError,
-    refetch
-  } = useSession();
+  const { data: session, isPending } = useSession();
   const [role, setRole] = useState(ROLES.MANAGER);
 
   useEffect(() => {

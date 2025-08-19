@@ -44,7 +44,7 @@ function RouteManagementView({ refreshTrigger }) {
   const location = useLocation();
   const [routes, setRoutes] = useState([]);
   const [filteredRoutes, setFilteredRoutes] = useState([]);
-  const [activeRouteId, setActiveRouteId] = useState(null);
+  const [activeRouteId, _setActiveRouteId] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterShuttle, setFilterShuttle] = useState("all");

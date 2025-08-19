@@ -8,7 +8,7 @@ export default function ShiftInfoCard({
   selectedShift,
   shiftEndTime,
   employees,
-  availableShuttles,
+  availableShuttles: _availableShuttles,
   totalCapacity,
   totalEmployees,
 }) {

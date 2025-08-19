@@ -1,10 +1,9 @@
-import { motion } from "framer-motion";
 import { Button } from "@components/Common/UI/Button";
 import { ChevronLeft, ChevronRight, MoreHorizontal } from "lucide-react";
 import { cn } from "@lib/utils";
 import PropTypes from "prop-types";
 
-const Pagination = ({ currentPage, totalPages, onPageChange, totalItems }) => {
+const Pagination = ({ currentPage, totalPages, onPageChange }) => {
   if (totalPages <= 1) return null;
 
   // Function to generate the array of page numbers to display
@@ -110,7 +109,6 @@ Pagination.propTypes = {
   currentPage: PropTypes.number.isRequired,
   totalPages: PropTypes.number.isRequired,
   onPageChange: PropTypes.func.isRequired,
-  totalItems: PropTypes.number.isRequired,
 };
 
 export default Pagination;

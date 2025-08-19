@@ -1,7 +1,5 @@
 import { Navigate, useLocation } from 'react-router-dom';
-import { createAuthClient } from 'better-auth/react';
-
-const { useSession } = createAuthClient();
+import { useSession } from '@/lib/auth-client';
 
 export function AuthRoute({ children }) {
   const { data: session, isPending } = useSession();

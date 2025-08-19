@@ -19,7 +19,6 @@ import { ChevronUp, ChevronDown, Users } from "lucide-react";
 import { cn } from "@lib/utils";
 import { format } from "date-fns";
 import PropTypes from "prop-types";
-import { routeService } from "@services/routeService";
 import { shuttleService } from "@services/shuttleService";
 import { shiftService } from "@services/shiftService";
 import { departmentService } from "@services/departmentService";
@@ -27,7 +26,7 @@ import Pagination from "./Pagination";
 import ExportPopup from "@components/ExportPopup";
 import { downloadExcel } from "@utils/exportUtils";
 
-const RouteTable = ({ routes, onRouteClick, onExportClick }) => {
+const RouteTable = ({ routes, onRouteClick }) => {
   const [sortColumn, setSortColumn] = useState("routeName");
   const [sortOrder, setSortOrder] = useState("asc");
   const [pageSize, setPageSize] = useState(20);
@@ -460,7 +459,6 @@ const RouteTable = ({ routes, onRouteClick, onExportClick }) => {
 RouteTable.propTypes = {
   routes: PropTypes.array.isRequired,
   onRouteClick: PropTypes.func.isRequired,
-  onExportClick: PropTypes.func.isRequired,
 };
 
 export default RouteTable;

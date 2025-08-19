@@ -3,14 +3,12 @@ import { useState, useCallback, useEffect } from "react";
 import PropTypes from "prop-types";
 import { Badge } from "@/components/Common/UI/Badge";
 import { Button } from "@components/Common/UI/Button";
-import { Checkbox } from "@components/Common/UI/Checkbox";
 import { BatchReviewTable } from "./BatchReviewTable";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
   DialogDescription,
 } from "@components/Common/UI/dialog";
 import { useTheme } from "@contexts/ThemeContext";

@@ -1,7 +1,6 @@
 import PropTypes from "prop-types";
 import { Badge } from "@/components/Common/UI/Badge";
 import { Button } from "@components/Common/UI/Button";
-import { useToast } from "@components/Common/UI/use-toast";
 import {
   Table,
   TableBody,
@@ -628,7 +627,6 @@ export function EmployeeTable({
 
 // Add BatchReviewTable component
 function BatchReviewTable({ candidates, onApprove, onDeny }) {
-  const { toast } = useToast();
   const [selectedForApproval, setSelectedForApproval] = useState({});
   const [isConfirming, setIsConfirming] = useState(false);
 

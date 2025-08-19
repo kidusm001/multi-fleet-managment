@@ -9,7 +9,7 @@ export default function Unauthorized() {
       <div className="text-center">
         <h1 className="text-4xl font-bold text-white mb-4">Access Denied</h1>
         <p className="text-white/70 mb-8">
-          You don't have permission to access this page.
+          You don&#39;t have permission to access this page.
         </p>
         <Button
           onClick={() => navigate('/', { replace: true })}

@@ -12,10 +12,8 @@ import {
 } from "@components/Common/UI/dialog";
 import { useToast } from "@components/Common/UI/use-toast";
 import { useTheme } from "@contexts/ThemeContext";
-import { candidateService } from "@/services/candidateService";
 
 import {
-  validateCandidateData,
   validatePhoneNumber,
   validateEmail,
 } from "@/utils/validators";

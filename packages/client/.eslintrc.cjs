@@ -24,10 +24,11 @@ module.exports = {
   'react-refresh/only-export-components': 'off',
     'react/react-in-jsx-scope': 'off',
     'react/prop-types': 'off',
-  // Silence noisy rules during migration; we'll re-tighten later
-  'no-unused-vars': 'off',
-  'react/no-unescaped-entities': 'off',
-  'react-hooks/exhaustive-deps': 'off',
+  // Tighten rules as requested
+  'no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', ignoreRestSiblings: true }],
+  'react/no-unescaped-entities': 'error',
+  // We'll fix and then elevate to error after initial pass
+  'react-hooks/exhaustive-deps': 'warn',
   },
   settings: {
     react: {

@@ -1,34 +1,19 @@
 import { useState, useCallback, useEffect } from "react";
 import { useRole } from "@contexts/RoleContext";
 import { useToast } from "@components/Common/UI/use-toast";
-import * as XLSX from "xlsx";
+// removed unused XLSX
 import { ROLES } from "@data/constants";
-import {
-  getAllEmployees,
-  deactivateEmployee,
-} from "@services/employeeService";
+// imports trimmed
 import { employeeService } from "@pages/Settings/services/employeeService";
 import { 
   getAllCandidates, 
-  createCandidate,
-  updateCandidate,
-  deleteCandidate,
-  updateCandidateStatus,
-  createCandidatesInBatch,
   candidateService
 } from "@services/candidateService";
-import {
-  getAllBatches,
-  getBatchById,
-  createBatch,
-  updateBatch,
-  updateBatchStatus,
-  batchService
-} from "@services/batchService";
+import { batchService } from "@services/batchService";
 import { exportToCSV } from "@utils/parseClipboard";
-import ExcelUpload from "@components/Common/UI/ExcelUpload";
+// removed unused ExcelUpload
 import LoadingWrapper from "@components/Common/LoadingAnimation/LoadingWrapper";
-import api from '@/services/api';
+// removed unused api
 
 import { RoleSelector } from "./components/RoleSelector";
 import { StatsSection } from "./components/StatsSection";
@@ -45,7 +30,7 @@ export default function EmployeeManagement() {
   const [batches, setBatches] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [activeTab, setActiveTab] = useState("candidates");
+  const [activeTab, _setActiveTab] = useState("candidates");
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [assignmentFilter, setAssignmentFilter] = useState("all");
@@ -53,11 +38,11 @@ export default function EmployeeManagement() {
   const [shiftFilter, setShiftFilter] = useState("all");
   const [departments, setDepartments] = useState([]);
   const [shifts, setShifts] = useState([]);
-  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [_showUploadModal, _setShowUploadModal] = useState(false);
   const [selectedBatch, setSelectedBatch] = useState(null);
   const [currentBatchId, setCurrentBatchId] = useState(null);
   const { toast } = useToast();
-  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [_isReviewModalOpen, _setIsReviewModalOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [totalEmployees, setTotalEmployees] = useState(0);
@@ -130,7 +115,7 @@ export default function EmployeeManagement() {
   // Apply filters when filter values change
   useEffect(() => {
     applyFilters(employees);
-  }, [departmentFilter, shiftFilter, statusFilter, assignmentFilter, searchTerm, employees, currentPage, itemsPerPage]);
+  }, [departmentFilter, shiftFilter, statusFilter, assignmentFilter, searchTerm, employees, currentPage, itemsPerPage, applyFilters]);
 
   // Apply filters to employees
   const applyFilters = useCallback((employeesList) => {
@@ -327,7 +312,7 @@ export default function EmployeeManagement() {
             throw new Error("User session not found. Please log in again.");
           }
 
-          const result = await candidateService.updateCandidateStatus(
+          await candidateService.updateCandidateStatus(
             candidateId, 
             status, 
             userId
@@ -614,23 +599,7 @@ export default function EmployeeManagement() {
     [role, toast]
   );
 
-  const handleEditBatch = useCallback(async (batch) => {
-    try {
-      setIsLoading(true);
-      // Fetch the latest version of the batch
-      const latestBatch = await batchService.getBatchById(batch.id);
-      setSelectedBatch(latestBatch);
-    } catch (error) {
-      console.error("Error fetching batch details:", error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to fetch batch details",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [toast]);
+  // removed unused handleEditBatch (using handleBatchAction instead)
 
   const handleBatchApprove = useCallback(
     async (approvedIds) => {

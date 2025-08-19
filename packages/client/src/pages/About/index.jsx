@@ -94,7 +94,7 @@ export default function About() {
           className="about-subtitle"
         >
           MMCY TECH delivers a comprehensive enterprise solution for managing
-          your organization's shuttle operations efficiently and securely.
+          your organization&#39;s shuttle operations efficiently and securely.
         </motion.p>
       </motion.div>
 

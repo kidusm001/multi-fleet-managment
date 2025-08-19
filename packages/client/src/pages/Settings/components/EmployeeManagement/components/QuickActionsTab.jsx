@@ -7,7 +7,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/Common/UI/dropdown-menu";
-import Button from "@/components/Common/UI/Button";
 
 const QUICK_ACTION_CARDS = [
   {
@@ -44,7 +43,7 @@ export default function QuickActionsTab({
   onDownloadTemplate,
   onManageEmployeesClick
 }) {
-  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [_dropdownOpen, _setDropdownOpen] = useState(false);
   
   const getColorClasses = (color) => {
     const baseClasses = "relative p-6 rounded-lg border transition-all cursor-pointer";

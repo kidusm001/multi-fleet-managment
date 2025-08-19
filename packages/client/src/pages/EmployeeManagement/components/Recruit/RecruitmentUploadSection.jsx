@@ -34,13 +34,12 @@ export function RecruitmentUploadSection({
   setPastedData,
   handlePasteData,
   previewTableData,
-  setPreviewTableData,
   handlePreviewSubmit,
   isLoading
 }) {
   // State for pagination
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [itemsPerPage, _setItemsPerPage] = useState(10);
 
   // Calculate pagination values
   const totalPages = Math.ceil(previewTableData.length / itemsPerPage);
@@ -348,7 +347,6 @@ RecruitmentUploadSection.propTypes = {
   setPastedData: PropTypes.func.isRequired,
   handlePasteData: PropTypes.func.isRequired,
   previewTableData: PropTypes.array.isRequired,
-  setPreviewTableData: PropTypes.func.isRequired,
   handlePreviewSubmit: PropTypes.func.isRequired,
   isLoading: PropTypes.bool
 };

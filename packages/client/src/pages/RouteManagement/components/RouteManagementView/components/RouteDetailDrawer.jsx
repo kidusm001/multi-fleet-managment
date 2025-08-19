@@ -26,7 +26,6 @@ import {
   UserMinus,
   X,
   Check,
-  AlertTriangle,
   Trash2,
 } from "lucide-react";
 import PropTypes from "prop-types";
@@ -85,7 +84,7 @@ const RouteDetailDrawer = ({
 
   if (!route) return null;
 
-  const updateRouteMetrics = async (stops) => {
+  const _updateRouteMetrics = async (stops) => {
     try {
       // Filter out stops without employees
       const activeStops = stops.filter((stop) => stop.employee);
@@ -149,7 +148,7 @@ const RouteDetailDrawer = ({
         }
       } else if (remainingEmployees.length === 1) {
         // If only one employee will remain, calculate distance from HQ to that employee and back
-        const lastEmployee = remainingEmployees[0];
+  const _lastEmployee = remainingEmployees[0];
         await onRemoveEmployee({
           ...employeeData,
           totalDistance: 0, // These will be updated by backend
@@ -522,7 +521,7 @@ const RouteDetailDrawer = ({
             <AlertDialogTitle>Remove Employee</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to remove {employeeToRemove?.employee?.name}{" "}
-              from this route? This will recalculate the route's distance and
+              from this route? This will recalculate the route&#39;s distance and
               time.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -549,7 +548,7 @@ const RouteDetailDrawer = ({
             <AlertDialogTitle>Remove Selected Employees</AlertDialogTitle>
             <AlertDialogDescription>
               Are you sure you want to remove {selectedEmployees.length}{" "}
-              employees from this route? This will recalculate the route's
+              employees from this route? This will recalculate the route&#39;s
               distance and time.
             </AlertDialogDescription>
           </AlertDialogHeader>

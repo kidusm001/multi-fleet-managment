@@ -1,27 +1,15 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import PropTypes from "prop-types";
 import { useNavigate } from "react-router-dom";
-import {
-  PlusIcon,
-  UserGroupIcon,
-  ClockIcon,
-  MapIcon,
-  TruckIcon,
-} from "@heroicons/react/24/outline";
 import { Badge } from "@/components/Common/UI/Badge";
 import { Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Controls from "./Controls";
 import DataSection from "./DataSection";
-import { routeService } from "@/services/routeService";
-import { shiftService } from "@/services/shiftService";
 import { shuttleService } from "@/services/shuttleService";
-import {
-  getUnassignedEmployeesByShift,
-  getRoutesByShift,
-} from "@/services/api";
+import { shiftService } from "@/services/shiftService";
+import { getUnassignedEmployeesByShift, getRoutesByShift } from "@/services/api";
 import { useToast } from "@/components/Common/UI/use-toast";
-import Button from "@/components/Common/UI/Button";
 import LoadingAnimation from "@/components/Common/LoadingAnimation";
 import styles from "./RouteAssignment.module.css";
 
@@ -41,17 +29,7 @@ function RouteAssignment({ refreshTrigger }) {
     availableSeats: 0,
   });
 
-  // Fetch shifts on component mount and when refresh triggered
-  useEffect(() => {
-    fetchShifts();
-  }, [toast, refreshTrigger]);
-
-  // Fetch routes and stats when shift is selected or when refresh triggered
-  useEffect(() => {
-    fetchRoutesAndStats();
-  }, [selectedShift, toast, refreshTrigger]);
-
-  async function fetchShifts() {
+  const fetchShifts = useCallback(async () => {
     try {
       const shiftsData = await shiftService.getAllShifts();
       // Format shift times
@@ -77,9 +55,9 @@ function RouteAssignment({ refreshTrigger }) {
         variant: "destructive",
       });
     }
-  }
+  }, [toast]);
 
-  async function fetchRoutesAndStats() {
+  const fetchRoutesAndStats = useCallback(async () => {
     if (!selectedShift) {
       setRoutes([]);
       setStats({
@@ -142,14 +120,24 @@ function RouteAssignment({ refreshTrigger }) {
     } finally {
       setLoading(false);
     }
-  }
+  }, [selectedShift, toast]);
+
+  // Fetch shifts on component mount and when refresh triggered
+  useEffect(() => {
+    fetchShifts();
+  }, [fetchShifts, refreshTrigger]);
+
+  // Fetch routes and stats when shift is selected or when refresh triggered
+  useEffect(() => {
+    fetchRoutesAndStats();
+  }, [fetchRoutesAndStats, refreshTrigger]);
 
   // Add: filter out routes that are full based on stops count vs shuttle capacity
   const availableRoutes = routes.filter(
     (route) => route.stops.length < route.shuttle.capacity
   );
 
-  const handleCreateNewRoute = () => {
+  const _handleCreateNewRoute = () => {
     navigate("/route-management/create", {
       state: { selectedShift },
     });

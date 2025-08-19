@@ -3,6 +3,7 @@ import axios from 'axios';
 export const api = axios.create({
   baseURL: '/api',
   timeout: 10000,
+  withCredentials: true, // Include cookies for authentication
   headers: {
     'Content-Type': 'application/json'
   }

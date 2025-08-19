@@ -1,5 +1,4 @@
-import { Clock, Users, Globe, Calendar } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Clock, Users, Globe } from "lucide-react";
 import Button from "@/components/Common/UI/Button";
 import {
   Dialog,
@@ -61,10 +60,10 @@ export default function ShiftDetailsDialog({
     }
   };
 
-  // Get the user's current time zone
+  // Get the user&#39;s current time zone
   const userTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone;
   
-  // Check if shift uses a different time zone than the user's device
+  // Check if shift uses a different time zone than the user&#39;s device
   const isDifferentTimeZone = shift.timeZone && shift.timeZone !== userTimeZone;
 
   return (

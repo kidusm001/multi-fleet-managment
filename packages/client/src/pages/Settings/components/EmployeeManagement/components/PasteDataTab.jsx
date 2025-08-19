@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { FileSpreadsheet, Clipboard, ArrowRight, ChevronLeft, ChevronRight, CheckCircle } from 'lucide-react';
+import { Clipboard, ArrowRight, ChevronLeft, ChevronRight, CheckCircle } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import Button from "@/components/Common/UI/Button";
 import { toast } from 'sonner';
@@ -227,7 +227,7 @@ export default function PasteDataTab({
         <div className="relative">
           <textarea
             value={pastedData}
-            onChange={onPasteChange}
+            onChange={handlePasteData}
             onKeyDown={handleKeyDown}
             rows={10}
             placeholder={TEMPLATE_DATA}

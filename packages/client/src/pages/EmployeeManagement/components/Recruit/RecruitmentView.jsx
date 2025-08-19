@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect } from "react";
 import PropTypes from "prop-types";
 import { read, utils } from "xlsx";
 import { useToast } from "@components/Common/UI/use-toast";
@@ -16,12 +16,9 @@ import { RecruitmentEmployeeList } from "./RecruitmentEmployeeList";
 
 // Utils & Constants
 import {
-  parseTabSeparatedData,
   validateCandidateData,
-  isValidFileType,
   validateEmail,
   validateFileUpload,
-  validateFileContents,
   validatePhoneNumber
 } from "@/utils/validators";
 
@@ -50,14 +47,7 @@ const getNextCandidateId = (existingCandidates, processedCandidates = []) => {
   return newId;
 };
 
-const getNextBatchId = (existingBatches) => {
-  const existingIds = existingBatches
-    .map((b) => b.id)
-    .filter((id) => id && id.startsWith("B"))
-    .map((id) => parseInt(id.replace("B", "")));
-  const maxId = Math.max(0, ...existingIds);
-  return `B${String(maxId + 1).padStart(3, "0")}`;
-};
+// removed unused getNextBatchId
 
 const checkForDuplicates = (candidate, existingCandidates) => {
   return existingCandidates.find(
@@ -165,16 +155,16 @@ export function RecruitmentView({
   setStatusFilter,
   getFilteredEmployees,
   getFilteredCandidates,
-  exportCandidatesData,
+  exportCandidatesData: _exportCandidatesData,
   shuttleRoutes,
   existingCandidates,
   onAddCandidates,
   onRemoveCandidate,
-  role,
+  role: _role,
   onUpdateBatch,
 }) {
   const { toast } = useToast();
-  const [candidatesPage, setCandidatesPage] = useState(1);
+  const [candidatesPage, _setCandidatesPage] = useState(1);
   const [employeesPage, setEmployeesPage] = useState(1);
   const [pastedData, setPastedData] = useState("");
   const [previewCandidates, setPreviewCandidates] = useState(null);
@@ -237,9 +227,9 @@ export function RecruitmentView({
   // Data processing remains unchanged
   const filteredCandidates = getFilteredCandidates();
   const filteredEmployees = getFilteredEmployees();
-  const candidatesPages = Math.ceil(filteredCandidates.length / ITEMS_PER_PAGE);
+  const _candidatesPages = Math.ceil(filteredCandidates.length / ITEMS_PER_PAGE);
   const employeesPages = Math.ceil(filteredEmployees.length / ITEMS_PER_PAGE);
-  const paginatedCandidates = filteredCandidates.slice(
+  const _paginatedCandidates = filteredCandidates.slice(
     (candidatesPage - 1) * ITEMS_PER_PAGE,
     candidatesPage * ITEMS_PER_PAGE
   );
@@ -780,17 +770,7 @@ export function RecruitmentView({
   }, [handleFileSelect]);
 
   // Helper function to normalize status values
-  const normalizeStatus = useCallback((status) => {
-    if (!status) return "Pending";
-    
-    // Convert backend status to frontend format
-    status = status.toUpperCase();
-    if (status === "APPROVED") return "Approved";
-    if (status === "REJECTED") return "Denied";
-    if (status === "DUPLICATE") return "Duplicate";
-    
-    return "Pending";
-  }, []);
+  // removed unused normalizeStatus
 
   // Enhanced download results function with proper backend integration
   const handleDownloadResults = useCallback(async (batch) => {

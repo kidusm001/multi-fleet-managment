@@ -12,7 +12,7 @@ import {
 import Modal from '@components/Common/UI/Modal';
 import './AssignmentModal.css';
 
-const AssignmentModal = ({ isOpen, onClose, selectedShuttle, onAssign }) => {
+const AssignmentModal = ({ isOpen, onClose, selectedShuttle: _selectedShuttle, onAssign }) => {
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Assign Shuttle">
       <div className="space-y-4">

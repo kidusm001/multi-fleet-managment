@@ -58,7 +58,7 @@ export default function Login() {
   }, []);
 
   const handleInputChange = (e) => {
-    const { name, value, type } = e.target;
+    const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
       [name]: value

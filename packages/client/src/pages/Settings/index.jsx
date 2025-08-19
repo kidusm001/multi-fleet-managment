@@ -11,7 +11,6 @@ import {
   LayoutDashboard,
   UserCog
 } from "lucide-react";
-import Button from "@components/Common/UI/Button";
 import { cn } from "@/lib/utils";
 
 // Import settings components
@@ -33,8 +32,7 @@ const tabs = [
 ];
 
 export default function Settings() {
-  const { theme } = useTheme();
-  const isDark = theme === "dark";
+  useTheme();
   const navigate = useNavigate();
   const location = useLocation();
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -85,7 +83,7 @@ export default function Settings() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-[var(--text-primary)]">Admin Settings</h1>
         <p className="text-[var(--text-secondary)] mt-2">
-          Manage your organization's settings and configurations
+          Manage your organization&#39;s settings and configurations
         </p>
       </div>
 

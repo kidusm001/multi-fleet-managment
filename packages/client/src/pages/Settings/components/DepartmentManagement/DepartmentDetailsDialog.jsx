@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Building2, Users } from "lucide-react";
 import Button from "@/components/Common/UI/Button";
 import { Badge } from "@/components/Common/UI/Badge";
@@ -83,7 +82,7 @@ export default function DepartmentDetailsDialog({
                 </p>
               ) : (
                 <p className="mt-2">
-                  This department doesn't have any employees assigned to it yet.
+                  This department doesn&#39;t have any employees assigned to it yet.
                 </p>
               )}
             </div>
