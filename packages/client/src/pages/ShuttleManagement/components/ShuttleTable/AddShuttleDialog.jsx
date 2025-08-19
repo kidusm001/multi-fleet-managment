@@ -171,7 +171,7 @@ export default function AddShuttleDialog({ onClose, onAdd }) {
                 <div className="grid gap-6 md:grid-cols-1">
                   <Input
                     label="Shuttle Name"
-                    placeholder="e.g., MMCY Express 3"
+                    placeholder="e.g., Routegna Express 3"
                     value={formData.name}
                     onChange={(e) =>
                       setFormData({ ...formData, name: e.target.value })

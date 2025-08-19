@@ -17,8 +17,21 @@ api.interceptors.request.use(async (config) => {
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    if (error.response?.status === 401) {
-      await authClient.signOut();
+  if (error.response?.status === 401) {
+      await authClient.signOut().catch(() => undefined);
+      if (typeof window !== 'undefined') {
+        const { pathname, search, hash } = window.location;
+        if (!pathname.startsWith('/auth/login')) {
+          const next = `${pathname}${search || ''}${hash || ''}`;
+          const target = `/auth/login?next=${encodeURIComponent(next)}`;
+          window.location.assign(target);
+        }
+      }
+    }
+    if (error.response?.status === 403 && typeof window !== 'undefined') {
+      if (!window.location.pathname.startsWith('/unauthorized')) {
+        window.location.assign('/unauthorized');
+      }
     }
     return Promise.reject(error);
   }

@@ -42,21 +42,38 @@ Migration Phases
   - Confirm path aliases work correctly
   - Ensure build process is optimized
 
-3) Rebranding & Asset Cleanup (NEXT PRIORITY)
-- 🔄 String replacement (code and content):
-  - Search and replace across `packages/client/src` and `packages/client/public`:
-    - "MMCY" → "Routegna"
-    - "Mmcy" → "Routegna" 
-    - "mmcy" → "routegna"
-    - "Multi-Modal City Yohannes" → "Routegna"
-    - Any other company-specific references
-- 🔄 Logos & images:
-  - Replace MMCY logos under `public/` or `src/assets/` with Routegna assets
-  - Update favicon and manifest files
-- 🔄 Theming/branding:
-  - Update brand colors in Tailwind/CSS variables
-  - Replace document titles and meta descriptions
-  - Update any hardcoded organization strings in components
+3) Rebranding & Asset Cleanup (IN PROGRESS)
+- ✅ Assets: Added `logo-dark.PNG` and `logo-light.png` under `packages/client/public/assets/images/`
+- ✅ Header/Sidebar/Login/Home: Switched to theme-aware Routegna logos and alt text
+- ✅ Copy updates: Replaced prominent MMCY strings in About, Footer, RouteList, Map popups
+- ✅ Env defaults: Updated `packages/client/.env` → `VITE_HQ_NAME="Routegna (HQ)"`
+- ✅ UI placeholders: Updated Shuttle dialog placeholder to "Routegna Express 3"
+- 🔄 Sweep remaining references (README and loading.html)
+- 🔄 Favicon and manifest updates
+  
+Branding Assets
+- Favicon/Manifest: updated app title and added minimal web manifest — DONE
+- 🔄 Theming fine-tuning in Tailwind/CSS variables
+
+Page-by-Page Branding Plan
+- TopBar: use theme-aware logos and "Routegna" alt/labels — DONE
+- Login: use new logo, update title/subtitle copy — DONE
+- Home: hero logo updated, copy neutral — DONE
+- Sidebar: logo + label switched to Routegna — DONE
+- Footer: company name/contacts/social links → Routegna — DONE
+- About: replace MMCY mention in subtitle — DONE
+- Dashboard/RouteList: header label → Routegna — DONE
+- Map HQ popup: label → Routegna HQ — DONE
+- Loading animation: default text → ROUTEGNA — DONE
+- Loading screen (`loading.html`): update title and brand letters — TODO
+- README: rebrand project name and credits — TODO
+  
+Status Update — Rebranding Sweep
+- Loading screen (`loading.html`): title and letters updated to ROUTEGNA — DONE
+- README (`packages/client/README.md`): rebranded project name, team, clone path — DONE
+- .env and `VITE_HQ_NAME`: set default to "Routegna (HQ)" — DONE
+- AddShuttleDialog: placeholder texts and examples — DONE
+- Remaining images/assets: update if any MMCY logos remain — TODO
 
 4) Navigation Layout (PLANNED)
 - 🔄 Evaluate current navigation structure
@@ -64,20 +81,21 @@ Migration Phases
 - 🔄 Remove any unnecessary sidebar components if present
 - 🔄 Implement lazy route-based code splitting where beneficial
 
-5) Auth & Session Wiring (PLANNED)
+5) Auth & Session Wiring (IN PROGRESS)
 - 🔄 API client integration:
   - Update existing API client to use `credentials: 'include'`
   - Configure base URL from `VITE_API_BASE` environment variable
   - Ensure compatibility with backend `/api` endpoints
 - 🔄 Session endpoints:
   - Integrate with `/auth/me` for session resolution
-  - Handle 401 → redirect to `/login`; 403 → show `/unauthorized`
+  - ✅ Global 401 → redirect to `/auth/login` implemented via axios interceptor (preserves `next=`)
+  - ✅ Global 403 → redirect to `/unauthorized` implemented across axios clients
 - 🔄 Guards & contexts:
   - Update existing `AuthContext` and `ProtectedRoute` components
   - Align with backend authentication flow
 
 6) Multi‑Tenancy & RBAC (PLANNED)
-- 🔄 Role normalization: ensure client handles `admin`, `administrator`, `fleetManager`, `user`
+- ✅ Role normalization: backend `ADMIN`/`MANAGER`/`FLEET_MANAGER` map to frontend `admin`/`fleetManager`; UI labels normalized
 - 🔄 Update UI conditionals and route guards to respect backend roles
 - 🔄 Verify tenant information is properly handled via session cookies
 
@@ -143,8 +161,8 @@ pnpm -C packages/client dev
 
 Global Rebranding Sweep (fish)
 ```fish
-rg -n "MMCY|Mmcy|mmcy" packages/client || true
-# Replace carefully (confirm each change or run scoped replacements per folder/filetype)
+rg -n "MMCY|Mmcy|mmcy|MMCY Tech|MMCYTech" packages/client -g '!dist' || true
+# Replace carefully (confirm each change or run scoped replacements per folder/filetype). Avoid touching built files under dist.
 ```
 
 Page Verification Loop (per page)
@@ -156,7 +174,7 @@ pnpm -C packages/client dev
 
 Deliverables
 - Client runs with Vite (pnpm) and loads core routes.
-- No MMCY references (names, logos, copy) remain.
+- No MMCY references (names, logos, copy) remain. (IN PROGRESS)
 - Navbar replaces sidebar; layout consistent with Routegna.
 - API client uses cookie sessions; tenant/rbac working on guarded routes.
 - Smoke tests and basic docs updated.
@@ -164,8 +182,8 @@ Deliverables
 Progress Tracker
 - [ ] Workspace integrated (pnpm, configs aligned)
 - [ ] Rebranding sweep (strings, assets, titles)
-- [ ] Top navigation in place (sidebar removed)
-- [ ] Auth/session wired (401/403 flows)
+- [x] Top navigation in place (sidebar removed)
+- [x] Auth/session wiring — proxy fix in place; global 401 redirect implemented
 - [ ] Routes page adapted
 - [ ] Vehicles page adapted
 - [ ] Employees/Departments adapted
@@ -280,9 +298,17 @@ Update Log — 2025-08-19
 - Verified ESLint clean for JS/JSX; build compiles TS/TSX without blocking errors.
 - Backend auth routes confirmed: `/auth/sign-in`, `/auth/sign-in/email`, `/auth/me`, `/auth/logout` (port 3001). Client `authClient` uses `credentials: 'include'` and `API_BASE` default http://localhost:3001.
 - Added debug logging in `AuthContext` login flow to surface server errors while validating credentials.
+ - Rebranding progress: replaced logos in TopBar, Sidebar, Login, Home; updated texts in Footer, About, RouteList; map HQ label; loading animation text. Added `logo-dark.PNG` and `logo-light.png` assets.
+ - Updated `packages/client/.env` to set `VITE_HQ_NAME="Routegna (HQ)"`.
+ - Updated Shuttle Add dialog placeholder to "Routegna Express 3".
+
+Update Log — 2025-08-20
+- Implemented global 401 redirect with `next=` and added global 403 redirect to `/unauthorized` in all axios clients (`api.js`, settings `apiService.js`, and `clusterService.js`).
+- Normalized roles in `RoleContext` to map uppercase backend roles to frontend canonical roles; hardened user dropdown role display and badge.
+- Increased logo sizes across UI for better visibility (TopBar, Sidebar, Home, Login).
 
 Next Actions
-- Rebranding: replace MMCY branding (strings and logos) with Routegna; update login page title and logo asset.
+- Rebranding: confirm no MMCY images remain in `public/assets`; final sweep with ripgrep excluding `dist`.
 - Backend integration polish: ensure session persists across refresh; implement redirect-to-login on 401 globally.
 - Warnings: address large chunk warning and `MapComponent.jsx` mixed static/dynamic imports; consider lazy loading and `manualChunks`.
 - Testing: add a happy-path auth test exercising sign-in → `/auth/me` → logout, and basic protected route guard checks.

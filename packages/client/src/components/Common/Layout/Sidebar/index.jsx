@@ -92,6 +92,9 @@ const Sidebar = () => {
   const { role } = useRole();
 
   const isDark = theme === "dark";
+  const logoSrc = isDark
+    ? "/assets/images/logo-light.png"
+    : "/assets/images/logo-dark.PNG";
   const menuItems = getMenuItems(role);
 
   return (
@@ -128,12 +131,12 @@ const Sidebar = () => {
               )}
             >
               <img
-                src="/assets/images/MMCYTech.png"
-                alt="MMCY Tech"
-                className="h-8 w-8 object-contain"
+                src={logoSrc}
+                alt="Routegna"
+                className="h-12 w-12 object-contain"
               />
               <span className="ml-2 text-xl font-bold whitespace-nowrap bg-gradient-to-r from-[#f3684e] to-[#ff965b] bg-clip-text text-transparent">
-                MMCY Tech
+                Routegna
               </span>
             </div>
             <button

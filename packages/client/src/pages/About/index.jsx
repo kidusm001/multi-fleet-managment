@@ -93,7 +93,7 @@ export default function About() {
           transition={{ delay: 0.3 }}
           className="about-subtitle"
         >
-          MMCY TECH delivers a comprehensive enterprise solution for managing
+          Routegna delivers a comprehensive enterprise solution for managing
           your organization&#39;s shuttle operations efficiently and securely.
         </motion.p>
       </motion.div>

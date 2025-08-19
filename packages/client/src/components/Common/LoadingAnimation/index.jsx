@@ -3,7 +3,7 @@ import PropTypes from "prop-types";
 
 import styles from "./LoadingAnimation.module.css";
 
-const LoadingAnimation = ({ text = "MMCY TECH", splitIndex = 4 }) => {
+const LoadingAnimation = ({ text = "ROUTEGNA", splitIndex = 4 }) => {
   const letters = text.split("");
   const carRef = useRef(null);
   const lettersRef = useRef([]);

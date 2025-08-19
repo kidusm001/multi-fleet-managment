@@ -4,10 +4,32 @@ import axios from 'axios';
 const fastApi = axios.create({
   baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3001', // Use Express backend
   timeout: 60000, // Increased timeout to 60 seconds
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json'
   }
 });
+
+// Global 401 handling for clustering requests
+fastApi.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401 && typeof window !== 'undefined') {
+      const { pathname, search, hash } = window.location;
+      if (!pathname.startsWith('/auth/login')) {
+        const next = `${pathname}${search || ''}${hash || ''}`;
+        const target = `/auth/login?next=${encodeURIComponent(next)}`;
+        window.location.assign(target);
+      }
+    }
+    if (error.response?.status === 403 && typeof window !== 'undefined') {
+      if (!window.location.pathname.startsWith('/unauthorized')) {
+        window.location.assign('/unauthorized');
+      }
+    }
+    return Promise.reject(error);
+  }
+);
 
 // Store the current request cancel token
 let currentOptimizeRequest = null;

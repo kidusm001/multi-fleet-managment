@@ -1,10 +1,11 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "@contexts/AuthContext";
 import { Button } from "@components/Common/UI/Button";
 import { Input } from "@/components/Common/UI/Input";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
+import { useTheme } from "@/contexts/ThemeContext";
 
 const inputStyles =
   "bg-white/10 border-2 border-white/20 text-white placeholder:text-white/50 h-12 px-4 rounded-xl transition-all duration-300 focus:bg-white/15 focus:border-[#f3684e]/50 focus:ring-2 focus:ring-[#f3684e]/20 hover:border-[#f3684e]/30 w-full shadow-lg shadow-black/5 text-base";
@@ -12,7 +13,25 @@ const buttonStyles =
   "relative overflow-hidden group bg-gradient-to-r from-[#f3684e] to-[#f3684e]/80 hover:from-[#f3684e]/90 hover:to-[#f3684e]/70 text-white py-3.5 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl active:scale-[0.98] w-full";
 
 export default function Login() {
+  const { theme } = useTheme();
+  const isDark = theme === 'dark';
+  const logoSrc = isDark
+    ? "/assets/images/logo-light.png"
+    : "/assets/images/logo-dark.PNG";
   const navigate = useNavigate();
+  const location = useLocation();
+  const nextPath = useMemo(() => {
+    try {
+      const params = new URLSearchParams(location.search);
+      const n = params.get('next');
+      if (!n) return '/';
+      // Basic safety: prevent open redirects
+      if (n.startsWith('http://') || n.startsWith('https://')) return '/';
+      return n;
+    } catch {
+      return '/';
+    }
+  }, [location.search]);
   const { login } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
@@ -48,7 +67,7 @@ export default function Login() {
       });
       
       if (result.success) {
-        navigate('/');
+        navigate(nextPath);
       } else {
         setError(result.error || 'Login failed');
       }
@@ -63,7 +82,7 @@ export default function Login() {
     <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-gradient-to-br from-slate-950 via-[#1a2327] to-[#1a2327] overflow-hidden">
       <motion.div initial={{ y: -10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="mb-8 relative z-10">
         <div className="relative flex items-center bg-white/80 backdrop-blur-sm px-4 py-[0.2rem] rounded-[1.5rem]">
-          <img src="/assets/images/MMCYTech.png" alt="Routegna" className="h-10 object-contain" />
+          <img src={logoSrc} alt="Routegna" className="h-14 object-contain" />
         </div>
       </motion.div>
 

@@ -14,7 +14,7 @@ import {
 interface UserDropdownProps {
   username: string;
   email: string;
-  role: string;
+  role?: string;
 }
 
 // User button styles as CSS variables in a style tag (no external dependency)
@@ -248,8 +248,27 @@ const UserButtonCss = ({ theme }: { theme: string }) => {
   return <style dangerouslySetInnerHTML={{ __html: styles }} />;
 };
 
-const UserButton = ({ username, email, role }: { username: string; email: string; role: string }) => {
-  const roleLabel = role; // Use the role passed from props
+const UserButton = ({ username, email, role }: { username: string; email: string; role?: string }) => {
+  const roleLabel = React.useMemo(() => {
+    const raw = (role ?? '').toString();
+    if (!raw) return 'User';
+    const upper = raw.toUpperCase();
+    const map: Record<string, string> = {
+      ADMIN: 'Admin',
+      ADMINISTRATOR: 'Administrator',
+      MANAGER: 'Manager',
+      FLEET_MANAGER: 'Fleet Manager',
+      FLEETMANAGER: 'Fleet Manager',
+      FLEET: 'Fleet',
+      USER: 'User'
+    };
+    if (map[upper]) return map[upper];
+    // Fallback: title-case and replace underscores
+    return raw
+      .replace(/_/g, ' ')
+      .toLowerCase()
+      .replace(/\b\w/g, (c) => c.toUpperCase());
+  }, [role]);
 
   return (
     <button className="button-user">
@@ -264,7 +283,7 @@ const UserButton = ({ username, email, role }: { username: string; email: string
       <div className="notice-content">
         <div className="username">{username}</div>
         <div className="label-role">
-          {roleLabel}<span className="role-badge">{roleLabel.charAt(0)}</span>
+          {roleLabel}<span className="role-badge">{roleLabel ? roleLabel.charAt(0) : 'U'}</span>
         </div>
         <div className="user-id">{email}</div>
       </div>

@@ -14,6 +14,9 @@ const buttonStyles = {
 export default function Home() {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
+  const logoSrc = isDark
+    ? "/assets/images/logo-light.png"
+    : "/assets/images/logo-dark.PNG";
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -47,9 +50,9 @@ export default function Home() {
             } backdrop-blur-sm px-4 py-[0.2rem] rounded-[1.5rem]`}
           >
             <img
-              src="/assets/images/MMCYTech.png"
-              alt="MMCY Tech"
-              className="h-12 object-contain"
+              src={logoSrc}
+              alt="Routegna"
+              className="h-16 object-contain"
             />
           </motion.div>
           <motion.div

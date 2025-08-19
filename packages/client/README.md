@@ -1,8 +1,8 @@
-# MMCY Tech Shuttle Management System - Frontend
+# Routegna Shuttle Management System - Frontend
 
 <div align="center">
 <h3>Enterprise Transportation Management UI</h3>
-<p>Developed by MMCY Tech Internship Team | Addis Ababa, Ethiopia</p>
+<p>Developed by the Routegna Team | Addis Ababa, Ethiopia</p>
 </div>
 
 ## Table of Contents
@@ -21,7 +21,7 @@
 
 ## Overview
 
-The frontend of the Shuttle Management System provides an intuitive and responsive user interface for MMCY Tech's employee transportation management solution. It offers comprehensive tools for managing routes, shuttles, employees, and drivers while featuring role-based access control, interactive maps, and real-time optimization.
+The frontend of the Shuttle Management System provides an intuitive and responsive user interface for Routegna’s employee transportation management solution. It offers comprehensive tools for managing routes, shuttles, employees, and drivers while featuring role-based access control, interactive maps, and real-time optimization.
 
 ### Technology Stack
 
@@ -332,8 +332,8 @@ The application uses React Context API for global state management:
 
 ```bash
 # Clone the repository
-git clone https://github.com/mmcytech/shuttle-management.git
-cd shuttle-management/packages/frontend
+git clone https://github.com/kidusm001/multi-fleet-managment.git
+cd multi-fleet-managment/packages/client
 
 # Install dependencies
 pnpm install
@@ -367,14 +367,14 @@ pnpm dlx shadcn-ui@latest add card
 
 ## Contributors
 
-This project was developed by interns at MMCY Tech:
+This project is developed by the Routegna team:
 
 - Leul Tewodros Agonafer
 - Kidus Mesfin
 - Yohannes Negash
 
-Under the supervision of the MMCY Tech engineering team.
+Maintained by the Routegna engineering team.
 
 ## License
 
-Copyright © 2024 MMCY Tech. All rights reserved. 
+Copyright © 2025 Routegna. All rights reserved.

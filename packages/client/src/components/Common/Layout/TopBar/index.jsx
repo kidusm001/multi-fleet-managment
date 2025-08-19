@@ -53,6 +53,9 @@ function TopBar() {
   const { role } = useRole();
   const navigate = useNavigate();
   const isDark = theme === "dark";
+  const logoSrc = isDark
+    ? "/assets/images/logo-light.png"
+    : "/assets/images/logo-dark.PNG";
   const [searchInput, setSearchInput] = useState("");
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -69,7 +72,8 @@ function TopBar() {
 
   useEffect(() => {
     if (!isPending && session?.user) {
-      setUsername(session.user.name);
+      const fallbackName = session.user.email?.split('@')[0] || 'User';
+      setUsername(session.user.name || fallbackName);
       console.log("Session loaded:", session.user);
     }
   }, [session, isPending]);
@@ -146,9 +150,9 @@ function TopBar() {
         <div className="flex items-center gap-6">
           <Link to="/" className="flex items-center gap-2">
             <img
-              src="/assets/images/MMCYTech.png"
-              alt="MMCY Tech"
-              className="h-8 w-auto"
+              src={logoSrc}
+              alt="Routegna"
+              className="h-14 w-auto"
             />
           </Link>
 

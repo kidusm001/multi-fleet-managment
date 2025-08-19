@@ -51,10 +51,8 @@ const Footer = () => {
         >
           <motion.div className="footer-section" variants={itemVariants}>
             <div className="footer-brand">
-              <h2>MMCY TECH</h2>
-              <p className="footer-tagline">
-                Enterprise Shuttle Management System
-              </p>
+              <h2>Routegna</h2>
+              <p className="footer-tagline">Enterprise Fleet & Shuttle Platform</p>
             </div>
             <div className="footer-contact">
               <motion.div className="contact-item" whileHover={{ x: 5 }}>
@@ -63,7 +61,7 @@ const Footer = () => {
               </motion.div>
               <motion.div className="contact-item" whileHover={{ x: 5 }}>
                 <Mail size={16} />
-                <a href="mailto:contact@mmcytech.com">contact@mmcytech.com</a>
+                <a href="mailto:hello@routegna.com">hello@routegna.com</a>
               </motion.div>
               <motion.div className="contact-item" whileHover={{ x: 5 }}>
                 <Phone size={16} />
@@ -102,7 +100,7 @@ const Footer = () => {
             <h3>Connect With Us</h3>
             <div className="social-links">
               <motion.a
-                href="https://facebook.com/mmcytech"
+                href="https://facebook.com/routegna"
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="Facebook"
@@ -112,7 +110,7 @@ const Footer = () => {
                 <Facebook size={20} />
               </motion.a>
               <motion.a
-                href="https://twitter.com/mmcytech"
+                href="https://twitter.com/routegna"
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="Twitter"
@@ -122,7 +120,7 @@ const Footer = () => {
                 <Twitter size={20} />
               </motion.a>
               <motion.a
-                href="https://linkedin.com/company/mmcytech"
+                href="https://linkedin.com/company/routegna"
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="LinkedIn"
@@ -143,9 +141,7 @@ const Footer = () => {
           viewport={{ once: true }}
         >
           <div className="footer-bottom-content">
-            <p className="copyright">
-              © {currentYear} MMCY TECH. All rights reserved.
-            </p>
+            <p className="copyright">© {currentYear} Routegna. All rights reserved.</p>
             <div className="footer-legal">
               <Link to="/privacy">Privacy Policy</Link>
               <button onClick={() => setShowTerms(true)}>

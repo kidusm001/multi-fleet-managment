@@ -12,9 +12,21 @@ export function RoleProvider({ children }) {
   const { data: session, isPending } = useSession();
   const [role, setRole] = useState(ROLES.MANAGER);
 
+  const normalizeRole = (raw) => {
+    if (!raw || typeof raw !== 'string') return ROLES.MANAGER;
+    const upper = raw.toUpperCase();
+    // Map various backend role variants to our canonical front-end roles
+    if (upper === 'ADMIN' || upper === 'ADMINISTRATOR') return ROLES.ADMIN;
+    if (upper === 'MANAGER' || upper === 'FLEET_MANAGER' || upper === 'FLEETMANAGER') return ROLES.MANAGER;
+    if (upper === 'RECRUITER' || upper === 'RECRUITMENT') return ROLES.RECRUITMENT;
+    // Fallback for already-lowercase canonical values
+    if (raw === ROLES.ADMIN || raw === ROLES.MANAGER || raw === ROLES.RECRUITMENT) return raw;
+    return ROLES.MANAGER;
+  };
+
   useEffect(() => {
     if (!isPending && session?.user) {
-      setRole(session.user.role);
+      setRole(normalizeRole(session.user.role));
       console.log('Session loaded:', session.user);
     }
   }, [session, isPending]);

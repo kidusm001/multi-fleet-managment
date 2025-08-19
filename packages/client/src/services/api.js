@@ -26,6 +26,27 @@ api.interceptors.response.use(
         data: error.response.data,
         headers: error.response.headers
       });
+
+  // Global auth handling: redirect to login on 401 from API calls
+      if (error.response.status === 401 && typeof window !== 'undefined') {
+        try {
+          const { pathname, search, hash } = window.location;
+          // Avoid redirect loop if we're already on the login page
+          if (!pathname.startsWith('/auth/login')) {
+            const next = `${pathname}${search || ''}${hash || ''}`;
+            const target = `/auth/login?next=${encodeURIComponent(next)}`;
+            window.location.assign(target);
+          }
+        } catch (_) {
+          // ignore any window access errors in non-browser contexts
+        }
+      }
+      // Global forbidden handling: go to unauthorized on 403
+      if (error.response.status === 403 && typeof window !== 'undefined') {
+        if (!window.location.pathname.startsWith('/unauthorized')) {
+          window.location.assign('/unauthorized');
+        }
+      }
     }
     throw error;
   }
