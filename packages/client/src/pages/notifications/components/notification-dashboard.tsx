@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Bell, ChevronLeft, ChevronRight, Route, Bus, Users, Package } from "lucide-react";
+import { Bell, ChevronLeft, ChevronRight, Route, Bus } from "lucide-react";
 import { UserRole, NotificationSource, NotificationType } from "../types/notifications";
 import { DateRange } from "react-day-picker";
 import { DateRangePicker } from "./ui/date-range-picker";
@@ -268,8 +268,6 @@ export function NotificationDashboard({ userRole: _userRole = "admin" }: Notific
     { title: "Routes", icon: Route },
     { type: "separator" as const },
     { title: "Shuttles", icon: Bus },
-    { title: "Recruitment", icon: Users },
-    { title: "Batches", icon: Package },
   ];
 
   const handleTabChange = (index: number | null) => {
@@ -278,8 +276,6 @@ export function NotificationDashboard({ userRole: _userRole = "admin" }: Notific
       0: "all",
       1: "route",
       3: "shuttle",
-      4: "recruitment",
-      5: "batch"
     };
     setTypeFilter(tabTypes[index ?? 0] || "all");
     setPagination(prev => ({ ...prev, currentPage: 1 }));

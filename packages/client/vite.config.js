@@ -11,10 +11,10 @@ export default defineConfig({
   open: 'http://localhost:5173',
     proxy: {
       '/api': {
-  target: 'http://localhost:3001',
+    target: 'http://localhost:3001',
         changeOrigin: true,
-  secure: false,
-  rewrite: (path) => path.replace(/^\/api/, '')
+    secure: false,
+    rewrite: (path) => path.replace(/^\/api/, '')
       }
     }
   },
@@ -45,4 +45,16 @@ export default defineConfig({
       external: [],
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          react: ['react', 'react-dom', 'react-router-dom'],
+          mapbox: ['mapbox-gl'],
+          charts: ['recharts', 'chart.js'],
+          motion: ['framer-motion'],
+        }
+      }
+    }
+  }
 })

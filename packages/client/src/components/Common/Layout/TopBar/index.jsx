@@ -41,8 +41,9 @@ const TypeIcon = ({ type }) => {
       return <Clock className="w-4 h-4" />;
     case "department":
       return <LayoutGrid className="w-4 h-4" />;
+    // candidate removed; default to User icon
     case "candidate":
-      return <User className="w-4 h-4 text-blue-500" />;
+      return <User className="w-4 h-4" />;
     default:
       return <FileText className="w-4 h-4" />;
   }
@@ -196,8 +197,6 @@ function TopBar() {
                     ? "Search routes, employees, shuttles... (Ctrl+K)"
                     : role === ROLES.MANAGER
                     ? "Search routes and shuttles... (Ctrl+K)"
-                    : role === ROLES.RECRUITMENT
-                    ? "Search candidates, employees, routes... (Ctrl+K)"
                     : "Search routes... (Ctrl+K)"
                 }
                 value={searchInput}

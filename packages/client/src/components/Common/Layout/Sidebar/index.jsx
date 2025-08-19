@@ -26,14 +26,6 @@ const getMenuItems = (role) => {
   ];
 
   const roleSpecificItems = {
-    [ROLES.RECRUITMENT]: [
-      {
-        id: "employees",
-        title: "Employees",
-        icon: Users,
-        path: ROUTES.EMPLOYEES,
-      },
-    ],
     [ROLES.ADMIN]: [
       {
         id: "routes",
@@ -78,6 +70,12 @@ const getMenuItems = (role) => {
         title: "Shuttles",
         icon: Truck,
         path: ROUTES.SHUTTLES,
+      },
+      {
+        id: "employees",
+        title: "Employees",
+        icon: Users,
+        path: ROUTES.EMPLOYEES,
       },
     ],
   };

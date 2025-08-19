@@ -22,14 +22,10 @@ import { ChevronRight, ChevronLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export function EmployeeTable({
-  activeTab,
   role,
-  filteredCandidates,
   filteredEmployees,
-  handleApproveLocation,
-  handleDenyLocation,
   handleDeactivateEmployee,
-  handleActivateEmployee, // Add this prop for activating employees
+  handleActivateEmployee,
   // Filters
   departmentFilter,
   setDepartmentFilter,
@@ -49,29 +45,11 @@ export function EmployeeTable({
   onPageChange,
   onItemsPerPageChange,
 }) {
-  const [selectedBatch, setSelectedBatch] = useState(null);
   // Add sort configuration state
   const [sortConfig, setSortConfig] = useState({
     key: null,
     direction: "ascending",
   });
-
-  // Group candidates by batch
-  const candidatesByBatch = filteredCandidates.reduce((acc, candidate) => {
-    if (!acc[candidate.batchId]) {
-      acc[candidate.batchId] = {
-        submittedAt: candidate.submittedAt,
-        candidates: [],
-      };
-    }
-    acc[candidate.batchId].candidates.push(candidate);
-    return acc;
-  }, {});
-
-  // Sort batches by timestamp (newest first)
-  const sortedBatches = Object.entries(candidatesByBatch).sort(
-    ([, a], [, b]) => new Date(b.submittedAt) - new Date(a.submittedAt)
-  );
 
   // Function to handle sorting
   const requestSort = (key) => {
@@ -128,10 +106,6 @@ export function EmployeeTable({
 
   // Get sorted employees
   const sortedEmployees = getSortedEmployees();
-
-  const handleBatchSelect = (batchId) => {
-    setSelectedBatch(selectedBatch === batchId ? null : batchId);
-  };
 
   // Add sort indicator component
   const SortIndicator = ({ columnKey }) => {
@@ -253,125 +227,8 @@ export function EmployeeTable({
 
   return (
     <div className="space-y-6">
-      {activeTab === "candidates" ? (
-        role === ROLES.MANAGER || role === ROLES.ADMIN ? (
-          // Batch view for manager/admin
-          <div>
-            {sortedBatches.map(([batchId, batch]) => (
-              <div
-                key={batchId}
-                className={cn(
-                  "mb-8 bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-[var(--divider)]",
-                  selectedBatch === batchId &&
-                    "ring-2 ring-[var(--primary)] ring-opacity-50",
-                  batch.needsReview && "bg-amber-50/30 dark:bg-amber-900/10"
-                )}
-              >
-                <div className="p-4 border-b flex justify-between items-center">
-                  <div>
-                    <h3 className="text-lg font-semibold flex items-center gap-2">
-                      Batch #{batchId}
-                      {batch.needsReview && (
-                        <Badge variant="warning" className="text-xs">
-                          Needs Review
-                        </Badge>
-                      )}
-                    </h3>
-                    <p className="text-sm text-[var(--text-secondary)]">
-                      Submitted: {new Date(batch.submittedAt).toLocaleString()}
-                    </p>
-                    {batch.lastEditedAt && (
-                      <p className="text-sm text-amber-500">
-                        Last edited:{" "}
-                        {new Date(batch.lastEditedAt).toLocaleString()}
-                      </p>
-                    )}
-                  </div>
-                  <Button
-                    onClick={() => handleBatchSelect(batchId)}
-                    className={cn(
-                      "transition-all duration-200",
-                      selectedBatch === batchId
-                        ? "bg-[var(--accent-background)] text-[var(--text-primary)]"
-                        : "bg-[var(--primary)] text-white hover:bg-[var(--primary-hover)]"
-                    )}
-                  >
-                    {selectedBatch === batchId ? "Close Batch" : "Review Batch"}
-                  </Button>
-                </div>
-
-                {selectedBatch === batchId && (
-                  <div className="p-6 bg-[var(--accent-background)]/50">
-                    <BatchReviewTable
-                      candidates={batch.candidates}
-                      onApprove={() => handleApproveLocation(batchId)}
-                      onDeny={() => handleDenyLocation(batchId)}
-                    />
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        ) : (
-          // Individual candidate view for recruiter
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>ID</TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>Contact</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Department</TableHead>
-                <TableHead>Location</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Submitted</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredCandidates.map((item) => (
-                <TableRow key={item.id} className="border-[var(--divider)]">
-                  <TableCell className="text-[var(--text-primary)]">
-                    {item.id}
-                  </TableCell>
-                  <TableCell className="text-[var(--text-primary)]">
-                    {item.name}
-                  </TableCell>
-                  <TableCell className="text-[var(--text-primary)]">
-                    {item.contact}
-                  </TableCell>
-                  <TableCell className="text-[var(--text-primary)]">
-                    {item.email}
-                  </TableCell>
-                  <TableCell className="text-[var(--text-primary)]">
-                    {item.department}
-                  </TableCell>
-                  <TableCell className="text-[var(--text-primary)]">
-                    {item.location}
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={
-                        item.status === "Location Approved"
-                          ? "success"
-                          : item.status === "Location Denied"
-                          ? "destructive"
-                          : "default"
-                      }
-                    >
-                      {item.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-[var(--text-primary)]">
-                    {item.submittedAt}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )
-      ) : (
-        // Employee table with enhanced filtering and pagination
-        <div className="space-y-4">
+      {/* Employee table with enhanced filtering and pagination */}
+      <div className="space-y-4">
           {/* Filters for employee list */}
           <div className="flex flex-wrap gap-3 items-center mb-4">
             {/* Department filter */}
@@ -560,7 +417,7 @@ export function EmployeeTable({
             </TableBody>
           </Table>
 
-          {/* Updated pagination controls based on Pagination.jsx */}
+      {/* Updated pagination controls based on Pagination.jsx */}
           {totalItems > 0 && (
             <div className="sticky bottom-0 left-0 right-0 mt-auto flex items-center justify-between px-6 py-4 border-t border-gray-200/50 dark:border-border/50 bg-indigo-50/50 dark:bg-card rounded-lg">
               <div className="text-sm text-gray-500 dark:text-muted-foreground">
@@ -619,180 +476,13 @@ export function EmployeeTable({
               </div>
             </div>
           )}
-        </div>
-      )}
+    </div>
     </div>
   );
 }
-
-// Add BatchReviewTable component
-function BatchReviewTable({ candidates, onApprove, onDeny }) {
-  const [selectedForApproval, setSelectedForApproval] = useState({});
-  const [isConfirming, setIsConfirming] = useState(false);
-
-  const selectedCount =
-    Object.values(selectedForApproval).filter(Boolean).length;
-
-  const handleRowClick = (candidateId) => {
-    setSelectedForApproval((prev) => ({
-      ...prev,
-      [candidateId]: !prev[candidateId],
-    }));
-  };
-
-  const handleSubmitBatch = () => {
-    if (!isConfirming) {
-      setIsConfirming(true);
-      return;
-    }
-
-    // Get IDs of selected and unselected candidates
-    const approvedIds = [];
-    const deniedIds = [];
-
-    candidates.forEach((candidate) => {
-      if (selectedForApproval[candidate.id]) {
-        approvedIds.push(candidate.id);
-      } else {
-        deniedIds.push(candidate.id);
-      }
-    });
-
-    // Call the appropriate handlers
-    if (approvedIds.length > 0) {
-      onApprove(approvedIds);
-    }
-    if (deniedIds.length > 0) {
-      onDeny(deniedIds);
-    }
-
-    setIsConfirming(false);
-  };
-
-  const handleClearSelection = () => {
-    setSelectedForApproval({});
-    setIsConfirming(false);
-  };
-
-  return (
-    <div className="p-6">
-      <div className="mb-6 flex items-center justify-between bg-gray-50 dark:bg-slate-800 p-4 rounded-lg">
-        <div className="space-y-1">
-          <h4 className="font-medium">Batch Review</h4>
-          <p className="text-sm text-gray-500">
-            Selected for approval: {selectedCount} of {candidates.length}
-          </p>
-        </div>
-        <div className="flex gap-3">
-          <Button
-            variant="outline"
-            onClick={handleClearSelection}
-            className="border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700"
-          >
-            Clear Selection
-          </Button>
-          <Button
-            onClick={handleSubmitBatch}
-            className={cn(
-              "text-white font-medium shadow-lg",
-              isConfirming
-                ? "bg-red-500 hover:bg-red-600"
-                : "bg-green-500 hover:bg-green-600"
-            )}
-          >
-            {isConfirming
-              ? `Confirm (${selectedCount} approve, ${
-                  candidates.length - selectedCount
-                } deny)`
-              : `Submit Decisions`}
-          </Button>
-        </div>
-      </div>
-
-      <Table>
-        <TableHeader>
-          <TableRow className="bg-gray-50/50 dark:bg-slate-800/50">
-            <TableHead>Name</TableHead>
-            <TableHead>Contact</TableHead>
-            <TableHead>Location</TableHead>
-            <TableHead>Department</TableHead>
-            <TableHead className="text-center">Status</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {candidates.map((candidate) => (
-            <TableRow
-              key={candidate.id}
-              className={cn(
-                "cursor-pointer transition-all",
-                selectedForApproval[candidate.id]
-                  ? "bg-green-50/50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30"
-                  : "hover:bg-red-50/50 dark:hover:bg-red-900/20"
-              )}
-              onClick={() => handleRowClick(candidate.id)}
-            >
-              <TableCell className="font-medium">{candidate.name}</TableCell>
-              <TableCell>{candidate.contact}</TableCell>
-              <TableCell>{candidate.location}</TableCell>
-              <TableCell>{candidate.department}</TableCell>
-              <TableCell className="text-center">
-                <Badge
-                  className={cn(
-                    "transition-colors",
-                    selectedForApproval[candidate.id]
-                      ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                      : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400"
-                  )}
-                >
-                  {selectedForApproval[candidate.id]
-                    ? "Will Approve"
-                    : "Will Deny"}
-                </Badge>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-
-      <p className="mt-4 text-sm text-gray-500 italic">
-        Click on rows to toggle approval status. Unselected candidates will be
-        automatically denied.
-      </p>
-    </div>
-  );
-}
-
-BatchReviewTable.propTypes = {
-  candidates: PropTypes.arrayOf(
-    PropTypes.shape({
-      id: PropTypes.string.isRequired,
-      name: PropTypes.string.isRequired,
-      contact: PropTypes.string.isRequired,
-      department: PropTypes.string, // Made optional
-      location: PropTypes.string.isRequired,
-      status: PropTypes.string.isRequired,
-    })
-  ).isRequired,
-  onApprove: PropTypes.func.isRequired,
-  onDeny: PropTypes.func.isRequired,
-};
 
 EmployeeTable.propTypes = {
-  activeTab: PropTypes.string.isRequired,
   role: PropTypes.string.isRequired,
-  filteredCandidates: PropTypes.arrayOf(
-    PropTypes.shape({
-      id: PropTypes.string.isRequired,
-      name: PropTypes.string.isRequired,
-      contact: PropTypes.string,
-      email: PropTypes.string,
-      department: PropTypes.string,
-      location: PropTypes.string.isRequired,
-      status: PropTypes.string.isRequired,
-      submittedAt: PropTypes.string,
-      batchId: PropTypes.string,
-    })
-  ).isRequired,
   filteredEmployees: PropTypes.arrayOf(
     PropTypes.shape({
       id: PropTypes.string.isRequired,
@@ -807,10 +497,8 @@ EmployeeTable.propTypes = {
       status: PropTypes.string,
     })
   ).isRequired,
-  handleApproveLocation: PropTypes.func.isRequired,
-  handleDenyLocation: PropTypes.func.isRequired,
   handleDeactivateEmployee: PropTypes.func.isRequired,
-  handleActivateEmployee: PropTypes.func.isRequired, // Add prop validation
+  handleActivateEmployee: PropTypes.func.isRequired,
   // New prop types for filters
   departmentFilter: PropTypes.string,
   setDepartmentFilter: PropTypes.func,

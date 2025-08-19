@@ -13,13 +13,11 @@ export const MAP_CONFIG = {
 export const MAPBOX_ACCESS_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
 
 export const ROLES = {
-  RECRUITMENT: 'recruiter',
   ADMIN: 'admin',
   MANAGER: 'fleetManager'
 };
 
 export const ROLE_LABELS = {
-  [ROLES.RECRUITMENT]: 'Recruiter',
   [ROLES.ADMIN]: 'Administrator',
   [ROLES.MANAGER]: 'Fleet Manager'
 };

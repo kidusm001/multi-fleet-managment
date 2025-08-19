@@ -14,7 +14,7 @@ async function signInAdmin() {
   // but in this Node script we'll extract a token from the response.
   const response = await authClient.signIn.email({
     email: "admin2@example.com", // Replace with your admin email
-    password: "RecruiterPassword123!", // Replace with your admin password
+  password: "AdminPassword123!", // Replace with your admin password
   });
 
   if (response.error) {
@@ -40,7 +40,7 @@ async function createUser(adminToken) {
       name: "Test User",
       email: "test@example.com",
       password: "password123",
-      role: "user", // Set the role for the new user (e.g., "user" or "Recruiter" as desired)
+  role: "user", // Set the role for the new user (e.g., "user" or "manager" as desired)
       data: {
         customField: "customValue",
       },

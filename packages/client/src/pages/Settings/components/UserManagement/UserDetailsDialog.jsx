@@ -124,9 +124,7 @@ export default function UserDetailsDialog({ user, isOpen, isDark, onClose, onAct
                       detailedUser.role === "manager" && (isDark 
                         ? "border-blue-400/70 text-blue-400 bg-blue-950/20" 
                         : "border-blue-500/30 text-blue-600 bg-blue-50"),
-                      detailedUser.role === "recruiter" && (isDark 
-                        ? "border-green-400/70 text-green-400 bg-green-950/20" 
-                        : "border-green-500/30 text-green-600 bg-green-50")
+                       false
                     )}>
                       {detailedUser.role}
                     </Badge>

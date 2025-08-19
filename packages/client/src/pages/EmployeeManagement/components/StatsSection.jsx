@@ -1,9 +1,9 @@
 import PropTypes from "prop-types";
-import { Briefcase, Users, MapPin, Activity } from "lucide-react";
+import { Users, MapPin, Activity } from "lucide-react";
 
 import { StatsCard } from "./StatsCard";
 
-export function StatsSection({ candidates, employees, getEmployeeStats }) {
+export function StatsSection({ employees, getEmployeeStats }) {
   const stats = getEmployeeStats();
 
   return (
@@ -11,14 +11,7 @@ export function StatsSection({ candidates, employees, getEmployeeStats }) {
       <h2 className="text-xl font-bold mb-6 text-[var(--text-primary)]">
         Overview
       </h2>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatsCard
-          title="Total Candidates"
-          value={candidates.length}
-          change="+12"
-          icon={<Briefcase className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />}
-          iconBg="bg-indigo-100 dark:bg-indigo-500/20"
-        />
+  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <StatsCard
           title="Total Employees"
           value={employees.length}
@@ -47,16 +40,6 @@ export function StatsSection({ candidates, employees, getEmployeeStats }) {
 }
 
 StatsSection.propTypes = {
-  candidates: PropTypes.arrayOf(
-    PropTypes.shape({
-      id: PropTypes.string.isRequired,
-      name: PropTypes.string.isRequired,
-      location: PropTypes.string.isRequired,
-      status: PropTypes.string.isRequired,
-      submittedAt: PropTypes.string,
-      batchId: PropTypes.string,
-    })
-  ).isRequired,
   employees: PropTypes.arrayOf(
     PropTypes.shape({
       id: PropTypes.string.isRequired,

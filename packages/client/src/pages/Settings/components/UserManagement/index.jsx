@@ -482,9 +482,6 @@ export default function UserManagement() {
               <SelectItem value="manager" className={isDark ? "text-gray-200 focus:bg-gray-700" : ""}>
                 Manager
               </SelectItem>
-              <SelectItem value="recruiter" className={isDark ? "text-gray-200 focus:bg-gray-700" : ""}>
-                Recruiter
-              </SelectItem>
             </SelectContent>
           </Select>
           

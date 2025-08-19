@@ -1,5 +1,5 @@
 import { cn } from "@lib/utils";
-import { Route, Bus, Users, Package, MessageSquare } from "lucide-react";
+import { Route, Bus, Package, MessageSquare } from "lucide-react";
 import { Badge } from "@/components/Common/UI/Badge";
 import { memo, useState } from 'react';
 import { useNotifications } from '@contexts/NotificationContext';
@@ -8,7 +8,6 @@ import { useNotifications } from '@contexts/NotificationContext';
 const typeIcons = {
   route: Route,
   shuttle: Bus,
-  recruitment: Users,
   batch: Package,
   default: MessageSquare
 };

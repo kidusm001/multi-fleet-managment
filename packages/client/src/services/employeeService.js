@@ -35,13 +35,6 @@ const employeeService = {
     return response.data;
   },
 
-  processCandidate: async (candidateId, status, location) => {
-    const response = await api.post(`/employees/${candidateId}/process`, {
-      status,
-      location,
-    });
-    return response.data;
-  },
 
   deactivateEmployee: async (employeeId) => {
     const response = await api.post(`/employees/${employeeId}/deactivate`);
@@ -64,7 +57,6 @@ export const {
   deleteEmployee,
   getEmployeesByCompany,
   getEmployeesByDepartment,
-  processCandidate,
   deactivateEmployee,
   suggestRoutes,
 } = employeeService;

@@ -1,8 +1,10 @@
 import axios from 'axios';
 
 // Create a separate axios instance for FastAPI requests
+const ORIGIN = import.meta.env.VITE_API_BASE || import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const BASE = import.meta.env.DEV ? '/api' : `${ORIGIN.replace(/\/$/, '')}/api`;
 const fastApi = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3001', // Use Express backend
+  baseURL: BASE, // Express backend mounts FastAPI under /fastapi
   timeout: 60000, // Increased timeout to 60 seconds
   withCredentials: true,
   headers: {

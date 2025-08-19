@@ -1,9 +1,9 @@
-export const roles = ["admin", "manager", "recruiter"];
+export const roles = ["admin", "manager"];
 
 export const permissions = {
   admin: ["all"],
   manager: ["manage_employees", "manage_drivers", "manage_shifts"],
-  recruiter: ["manage_employees", "view_drivers"]
+  
 };
 
 export const formatDate = (dateString) => {

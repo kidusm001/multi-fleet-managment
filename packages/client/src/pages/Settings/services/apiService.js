@@ -1,10 +1,11 @@
 import axios from 'axios';
 import { authClient } from '@/lib/auth-client';
 
-const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const ORIGIN = import.meta.env.VITE_API_BASE || import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const baseURL = import.meta.env.DEV ? '/api' : `${ORIGIN.replace(/\/$/, '')}/api`;
 
 // Create axios instance with auth interceptor
-const api = axios.create({ baseURL });
+const api = axios.create({ baseURL, withCredentials: true, headers: { 'Content-Type': 'application/json' } });
 
 api.interceptors.request.use(async (config) => {
   const session = await authClient.getSession();

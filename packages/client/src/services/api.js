@@ -1,7 +1,12 @@
 import axios from 'axios';
 
+// Build API base: in dev use Vite proxy at /api; otherwise use configured backend origin + /api
+const API_BASE = import.meta.env.DEV
+  ? '/api'
+  : `${(import.meta.env.VITE_API_BASE || import.meta.env.VITE_API_URL || '').replace(/\/$/, '')}/api`;
+
 export const api = axios.create({
-  baseURL: '/api',
+  baseURL: API_BASE,
   timeout: 10000,
   withCredentials: true, // Include cookies for authentication
   headers: {
@@ -109,23 +114,6 @@ export const getOptimalRoute = (employees) =>
     }))
   });
 
-// Candidates
-export const getAllCandidates = () => api.get('/candidates');
-export const getCandidateById = (id) => api.get(`/candidates/${id}`);
-export const createCandidate = (data) => api.post('/candidates', data);
-export const createCandidatesInBatch = (data) => api.post('/candidates/batch', data);
-export const updateCandidate = (id, data) => api.put(`/candidates/${id}`, data);
-export const updateCandidateStatus = (id, status, reviewedById) => 
-  api.patch(`/candidates/${id}/status`, { status, reviewedById });
-export const deleteCandidate = (id) => api.delete(`/candidates/${id}`);
-
-// Batches
-export const getAllBatches = () => api.get('/batches');
-export const getBatchById = (id) => api.get(`/batches/${id}`);
-export const createBatch = (data) => api.post('/batches', data);
-export const updateBatch = (id, data) => api.put(`/batches/${id}`, data);
-export const updateBatchStatus = (id, status) => api.patch(`/batches/${id}/status`, { status });
-export const deleteBatch = (id) => api.delete(`/batches/${id}`);
 
 // Departments
 export const getDepartments = () => api.get('/departments');

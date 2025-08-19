@@ -65,7 +65,7 @@ class SocketManager {
     }
 
     log('Creating new socket connection');
-  const base = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+  const base = import.meta.env.VITE_API_BASE || import.meta.env.VITE_API_URL || 'http://localhost:3001';
   this.socket = io(base, {
       withCredentials: true,
       reconnection: true,

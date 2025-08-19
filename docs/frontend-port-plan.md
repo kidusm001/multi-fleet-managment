@@ -36,7 +36,7 @@ Migration Phases
 - ✅ Package manager aligned with pnpm workspace
 - ✅ ESLint working with current setup
 - 🔄 Package.json normalization:
-  - Set `name` to `@routegna/client` (currently "frontend")
+  - ✅ Set `name` to `@routegna/client`
   - Verify all scripts work with pnpm workspace commands
 - 🔄 TS & Vite config verification:
   - Confirm path aliases work correctly
@@ -83,11 +83,11 @@ Status Update — Rebranding Sweep
 
 5) Auth & Session Wiring (IN PROGRESS)
 - 🔄 API client integration:
-  - Update existing API client to use `credentials: 'include'`
-  - Configure base URL from `VITE_API_BASE` environment variable
+  - ✅ All clients use `credentials: 'include'`
+  - ✅ Configured base URL from `VITE_API_BASE` (fallback to `VITE_API_URL`) and `/api` in dev via proxy
   - Ensure compatibility with backend `/api` endpoints
 - 🔄 Session endpoints:
-  - Integrate with `/auth/me` for session resolution
+  - ✅ Integrated with `/auth/me` via `authClient.getSession()` and `UserContext`
   - ✅ Global 401 → redirect to `/auth/login` implemented via axios interceptor (preserves `next=`)
   - ✅ Global 403 → redirect to `/unauthorized` implemented across axios clients
 - 🔄 Guards & contexts:
@@ -119,7 +119,7 @@ Status Update — Rebranding Sweep
   - Implement against `/api/search` with proper debouncing
 
 8) Legacy/Unused Feature Cleanup (PLANNED)
-- 🔄 Identify and remove recruitment modules or out-of-scope features
+- ✅ Fully removed recruitment/candidate/batch modules and UI
 - 🔄 Clean up admin panels not aligned with current RBAC
 - 🔄 Remove unused workers/components discovered during integration
 - 🔄 Continue cleaning up remaining lint issues (unused imports, variables)
@@ -144,7 +144,8 @@ Status Update — Rebranding Sweep
 - 🔄 Prepare clean PR with organized commits
 
 Environment Variables
-- `VITE_API_BASE` (default: same-origin).
+- `VITE_API_BASE` (default: `http://localhost:3001` in `.env`; same-origin in dev via proxy).
+- `VITE_API_URL` (legacy compatibility; used as fallback).
 - `VITE_ENABLE_MSW` (optional, for local mocks).
 
 Operational Checklists
@@ -161,7 +162,7 @@ pnpm -C packages/client dev
 
 Global Rebranding Sweep (fish)
 ```fish
-rg -n "MMCY|Mmcy|mmcy|MMCY Tech|MMCYTech" packages/client -g '!dist' || true
+rg -n "MMCY|Mmcy|mmcy|MMCY Tech|MMCYTech" packages/client -g '!dist' '!**/dist/**' || true
 # Replace carefully (confirm each change or run scoped replacements per folder/filetype). Avoid touching built files under dist.
 ```
 
@@ -186,7 +187,7 @@ Progress Tracker
 - [x] Auth/session wiring — proxy fix in place; global 401 redirect implemented
 - [ ] Routes page adapted
 - [ ] Vehicles page adapted
-- [ ] Employees/Departments adapted
+- [x] Employees/Departments adapted — employees-only; recruitment removed
 - [ ] Shifts adapted
 - [ ] Notifications adapted
 - [ ] Search adapted
@@ -306,6 +307,19 @@ Update Log — 2025-08-20
 - Implemented global 401 redirect with `next=` and added global 403 redirect to `/unauthorized` in all axios clients (`api.js`, settings `apiService.js`, and `clusterService.js`).
 - Normalized roles in `RoleContext` to map uppercase backend roles to frontend canonical roles; hardened user dropdown role display and badge.
 - Increased logo sizes across UI for better visibility (TopBar, Sidebar, Home, Login).
+
+Update Log — 2025-08-20 (cont.)
+- Standardized API base handling across clients: `api.js`, `clusterService.js`, `settings/apiService.js` now use `VITE_API_BASE` (fallback `VITE_API_URL`) and `/api` via dev proxy. All send `withCredentials`.
+- Refactored `UserContext` to rely on `authClient.getSession()` (`/auth/me`), removed legacy `/api/auth/get-session` call and unsafe casts.
+- Added manualChunks to Vite build for heavy libs (`mapbox-gl`, `recharts`, `chart.js`, `framer-motion`, React libs).
+- Renamed package to `@routegna/client` per plan.
+- Added `VITE_API_BASE` to `.env`.
+
+Update Log — 2025-08-21
+- Removed all recruitment/candidate/batch features from UI, services, notifications, and search.
+- Refactored EmployeeManagement to employees-only with filters, sorting, pagination, and activate/deactivate.
+- Simplified `EmployeeTable.jsx`; deleted dead candidate/batch code paths.
+- Updated EmployeeManagement README to reflect the new scope.
 
 Next Actions
 - Rebranding: confirm no MMCY images remain in `public/assets`; final sweep with ripgrep excluding `dist`.

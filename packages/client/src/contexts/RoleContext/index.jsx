@@ -18,9 +18,8 @@ export function RoleProvider({ children }) {
     // Map various backend role variants to our canonical front-end roles
     if (upper === 'ADMIN' || upper === 'ADMINISTRATOR') return ROLES.ADMIN;
     if (upper === 'MANAGER' || upper === 'FLEET_MANAGER' || upper === 'FLEETMANAGER') return ROLES.MANAGER;
-    if (upper === 'RECRUITER' || upper === 'RECRUITMENT') return ROLES.RECRUITMENT;
     // Fallback for already-lowercase canonical values
-    if (raw === ROLES.ADMIN || raw === ROLES.MANAGER || raw === ROLES.RECRUITMENT) return raw;
+  if (raw === ROLES.ADMIN || raw === ROLES.MANAGER) return raw;
     return ROLES.MANAGER;
   };
 

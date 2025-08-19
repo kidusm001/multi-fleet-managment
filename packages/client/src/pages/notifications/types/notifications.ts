@@ -1,8 +1,8 @@
-export type NotificationType = "route" | "shuttle" | "recruitment" | "batch";
+export type NotificationType = "route" | "shuttle";
 
-export type UserRole = "admin" | "shuttle_manager" | "recruiter" | "driver" | "administrator" | "fleetManager";
+export type UserRole = "admin" | "shuttle_manager" | "driver" | "administrator" | "fleetManager";
 
-export type NotificationSource = "system" | "admin" | "manager" | "recruiter";
+export type NotificationSource = "system" | "admin" | "manager";
 
 export type ImportanceLevel = {
   level: 1 | 2 | 3 | 4 | 5;
@@ -14,17 +14,10 @@ export type ImportanceLevel = {
   animation?: string;
 };
 
-export interface Candidate {
-  id: string;
-  name: string;
-}
-
 export interface NotificationMetadata {
-  batchId?: string;
   shuttleId?: string;
   routeId?: string;
   relatedEntityId?: string;
-  candidates?: Candidate[];
 }
 
 export interface NotificationItem {

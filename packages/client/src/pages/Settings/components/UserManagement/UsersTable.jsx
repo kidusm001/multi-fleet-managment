@@ -142,9 +142,7 @@ export default function UsersTable({
                             user.role === "manager" && (isDark 
                               ? "border-blue-400/40 text-blue-400 bg-blue-900/20 shadow-sm shadow-blue-950/20"
                               : "border-blue-300 text-blue-600 bg-blue-50 shadow-sm"),
-                            user.role === "recruiter" && (isDark 
-                              ? "border-green-400/40 text-green-400 bg-green-900/20 shadow-sm shadow-green-950/20"
-                              : "border-green-300 text-green-600 bg-green-50 shadow-sm")
+                            
                           )}
                         >
                           {user.role.charAt(0).toUpperCase() + user.role.slice(1)}

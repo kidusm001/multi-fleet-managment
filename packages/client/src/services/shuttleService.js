@@ -231,16 +231,6 @@ class ShuttleService {
 export const shuttleService = new ShuttleService();
 
 export const updateShuttle = async (shuttle) => {
-  const response = await fetch(`/api/shuttles/${shuttle.id}`, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(shuttle)
-  });
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(errorText);
-  }
-  return response.json();
+  const response = await api.put(`/shuttles/${shuttle.id}`, shuttle);
+  return response.data;
 };

@@ -5,12 +5,7 @@ import { useToast } from "@components/Common/UI/use-toast";
 import { ROLES } from "@data/constants";
 // imports trimmed
 import { employeeService } from "@pages/Settings/services/employeeService";
-import { 
-  getAllCandidates, 
-  candidateService
-} from "@services/candidateService";
-import { batchService } from "@services/batchService";
-import { exportToCSV } from "@utils/parseClipboard";
+// Removed candidate/batch services and CSV utilities
 // removed unused ExcelUpload
 import LoadingWrapper from "@components/Common/LoadingAnimation/LoadingWrapper";
 // removed unused api
@@ -18,31 +13,22 @@ import LoadingWrapper from "@components/Common/LoadingAnimation/LoadingWrapper";
 import { RoleSelector } from "./components/RoleSelector";
 import { StatsSection } from "./components/StatsSection";
 import { EmployeeTable } from "./components/EmployeeTable";
-import { RecruitmentView } from "./components/Recruit/RecruitmentView";
-import { BatchesList } from "@/pages/EmployeeManagement/components/Review/BatchesList";
-import { BatchReviewModal } from "./components/Review/BatchReviewModal";
+// Removed recruitment and batch review components
 
 export default function EmployeeManagement() {
   const { role, setRole } = useRole();
-  const [candidates, setCandidates] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [filteredEmployees, setFilteredEmployees] = useState([]);
-  const [batches, setBatches] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [activeTab, _setActiveTab] = useState("candidates");
-  const [searchTerm, setSearchTerm] = useState("");
+  const [_searchTerm, _setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [assignmentFilter, setAssignmentFilter] = useState("all");
   const [departmentFilter, setDepartmentFilter] = useState("all");
   const [shiftFilter, setShiftFilter] = useState("all");
   const [departments, setDepartments] = useState([]);
   const [shifts, setShifts] = useState([]);
-  const [_showUploadModal, _setShowUploadModal] = useState(false);
-  const [selectedBatch, setSelectedBatch] = useState(null);
-  const [currentBatchId, setCurrentBatchId] = useState(null);
   const { toast } = useToast();
-  const [_isReviewModalOpen, _setIsReviewModalOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [totalEmployees, setTotalEmployees] = useState(0);
@@ -115,7 +101,7 @@ export default function EmployeeManagement() {
   // Apply filters when filter values change
   useEffect(() => {
     applyFilters(employees);
-  }, [departmentFilter, shiftFilter, statusFilter, assignmentFilter, searchTerm, employees, currentPage, itemsPerPage, applyFilters]);
+  }, [departmentFilter, shiftFilter, statusFilter, assignmentFilter, employees, currentPage, itemsPerPage, applyFilters]);
 
   // Apply filters to employees
   const applyFilters = useCallback((employeesList) => {
@@ -150,15 +136,7 @@ export default function EmployeeManagement() {
     }
 
     // Search term
-    if (searchTerm) {
-      filtered = filtered.filter(
-        (item) =>
-          item.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          item.id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          item.location?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          item.department?.name?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
+  // Search removed
     
     // Update pagination data
     setTotalEmployees(filtered.length);
@@ -169,106 +147,14 @@ export default function EmployeeManagement() {
     const paginatedData = filtered.slice(startIndex, startIndex + itemsPerPage);
     
     setFilteredEmployees(paginatedData);
-  }, [departmentFilter, shiftFilter, statusFilter, assignmentFilter, searchTerm, currentPage, itemsPerPage]);
+  }, [departmentFilter, shiftFilter, statusFilter, assignmentFilter, currentPage, itemsPerPage]);
 
   // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [departmentFilter, shiftFilter, statusFilter, assignmentFilter, searchTerm]);
+  }, [departmentFilter, shiftFilter, statusFilter, assignmentFilter]);
 
-  // Fetch candidates with proper error handling
-  useEffect(() => {
-    const controller = new AbortController();
-    let isMounted = true;
-
-    const fetchCandidates = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-        const data = await getAllCandidates();
-
-        if (isMounted) {
-          setCandidates(data || []);
-        }
-      } catch (error) {
-        if (isMounted) {
-          console.error("Error fetching candidates:", error);
-          setError(error.message);
-          toast({
-            title: "Error",
-            description: error.message || "Failed to fetch candidates",
-            variant: "destructive",
-          });
-        }
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
-      }
-    };
-
-    fetchCandidates();
-
-    return () => {
-      isMounted = false;
-      controller.abort();
-    };
-  }, [toast]);
-
-  // Fetch batches directly from API with better error handling
-  useEffect(() => {
-    const controller = new AbortController();
-    let isMounted = true;
-
-    const fetchBatches = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-        const data = await batchService.getAllBatches();
-
-        if (isMounted) {
-          setBatches(data || []);
-        }
-      } catch (error) {
-        if (isMounted) {
-          console.error("Error fetching batches:", error);
-          setError(error.message);
-          toast({
-            title: "Error",
-            description: error.message || "Failed to fetch batches",
-            variant: "destructive",
-          });
-        }
-      } finally {
-        if (isMounted) {
-          setIsLoading(false);
-        }
-      }
-    };
-
-    fetchBatches();
-
-    return () => {
-      isMounted = false;
-      controller.abort();
-    };
-  }, [toast]);
-
-  const getFilteredCandidates = useCallback(() => {
-    let filtered = candidates;
-    if (statusFilter !== "all") {
-      filtered = filtered.filter((c) => c.status === statusFilter);
-    }
-    if (searchTerm) {
-      filtered = filtered.filter(
-        (item) =>
-          item.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          item.id?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          item.location?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-    }
-    return filtered;
-  }, [candidates, statusFilter, searchTerm]);
+  // Removed candidate fetching and filtering
 
   // No longer need to filter in this function - we're using the filteredEmployees state
   const getFilteredEmployees = useCallback(() => {
@@ -300,57 +186,7 @@ export default function EmployeeManagement() {
     };
   }, [employees]);
 
-  const handleCandidateAction = useCallback(
-    async (candidateId, action) => {
-      if (role === ROLES.MANAGER || role === ROLES.ADMIN) {
-        try {
-          setIsLoading(true);
-          const status = action === "approve" ? "APPROVED" : "REJECTED";
-          const userId = localStorage.getItem('userId');
-
-          if (!userId) {
-            throw new Error("User session not found. Please log in again.");
-          }
-
-          await candidateService.updateCandidateStatus(
-            candidateId, 
-            status, 
-            userId
-          );
-          
-          // Update local state
-          setCandidates(prev =>
-            prev.map(c =>
-              c.id === candidateId
-                ? { ...c, status, reviewedById: userId, reviewDate: new Date().toISOString() }
-                : c
-            )
-          );
-          
-          toast({
-            title: "Success",
-            description: `Candidate ${action === "approve" ? "approved" : "denied"} successfully`,
-            variant: "default",
-          });
-          
-          // Refresh batches to reflect status changes
-          const updatedBatches = await batchService.getAllBatches();
-          setBatches(updatedBatches);
-          
-        } catch (error) {
-          console.error(`Error ${action}ing candidate:`, error);
-          toast({
-            title: "Error",
-            description: error.message || `Failed to ${action} candidate`,
-            variant: "destructive",
-          });
-        } finally {
-          setIsLoading(false);
-        }
-      }
-    },
-    [role, toast]
-  );
+  // Removed candidate actions
 
   const handleDeactivateEmployee = useCallback(
     async (employeeId) => {
@@ -422,422 +258,9 @@ export default function EmployeeManagement() {
     [role, toast]
   );
 
-  const handleExport = useCallback(() => {
-    try {
-      const dataToExport = activeTab === "candidates" ? candidates : employees;
-      exportToCSV(dataToExport, `${activeTab}-data.csv`);
-      
-      toast({
-        title: "Export Complete",
-        description: `Successfully exported ${dataToExport.length} records to CSV`,
-      });
-    } catch (error) {
-      console.error("Error exporting data:", error);
-      toast({
-        title: "Export Failed",
-        description: error.message || "Failed to export data",
-        variant: "destructive",
-      });
-    }
-  }, [activeTab, candidates, employees, toast]);
+  // Removed export and batch handlers
 
-  const handleAddCandidates = useCallback(
-    async (newCandidates) => {
-      try {
-        setIsLoading(true);
-        
-        // Update local state immediately for better UX
-        const updatedCandidates = [...candidates, ...newCandidates];
-        setCandidates(updatedCandidates);
-        
-        // Refresh data from server to ensure consistency
-        const latestCandidates = await getAllCandidates();
-        setCandidates(latestCandidates);
-        
-        const latestBatches = await batchService.getAllBatches();
-        setBatches(latestBatches);
-        
-        toast({
-          title: "Success",
-          description: `Added ${newCandidates.length} new candidates`,
-          variant: "default",
-        });
-      } catch (error) {
-        console.error("Error adding candidates:", error);
-        toast({
-          title: "Error",
-          description: error.message || "Failed to add candidates",
-          variant: "destructive",
-        });
-        
-        // Refresh to ensure UI state matches server state
-        const latestCandidates = await getAllCandidates();
-        setCandidates(latestCandidates);
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [candidates, toast]
-  );
-
-  const handleEditCandidate = useCallback(
-    async (candidateId, updatedData) => {
-      try {
-        setIsLoading(true);
-        const result = await candidateService.updateCandidateWithReviewCheck(
-          candidateId, 
-          updatedData
-        );
-        
-        // Update local state
-        setCandidates(prev =>
-          prev.map(c => c.id === candidateId ? { ...c, ...updatedData } : c)
-        );
-        
-        // If candidate was in a reviewed batch that now needs re-review
-        if (result.requiresReReview) {
-          toast({
-            title: "Batch Needs Re-Review",
-            description: "The batch containing this candidate will need to be reviewed again",
-            duration: 5000,
-          });
-          
-          // Update batches to reflect new status
-          const updatedBatches = await batchService.getAllBatches();
-          setBatches(updatedBatches);
-        } else {
-          toast({
-            title: "Success",
-            description: "Candidate updated successfully",
-          });
-        }
-      } catch (error) {
-        console.error("Error updating candidate:", error);
-        toast({
-          title: "Error",
-          description: error.message || "Failed to update candidate",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [toast]
-  );
-
-  const handleRemoveCandidate = useCallback(
-    async (candidateId) => {
-      try {
-        setIsLoading(true);
-        
-        // First check if candidate is part of a batch
-        const candidate = await candidateService.getCandidateById(candidateId);
-        const batchId = candidate.batchId;
-        const wasReviewed = candidate.batch?.status === "REVIEWED";
-        
-        await candidateService.deleteCandidate(candidateId);
-        
-        // Update local state
-        setCandidates(prev => prev.filter(c => c.id !== candidateId));
-        
-        // If candidate was in a reviewed batch, update batch status
-        if (batchId && wasReviewed) {
-          await batchService.updateBatch(batchId, {
-            status: "Needs_reReview",
-            lastEditedAt: new Date().toISOString()
-          });
-          
-          // Update batches list
-          const updatedBatches = await batchService.getAllBatches();
-          setBatches(updatedBatches);
-          
-          toast({
-            title: "Candidate Removed",
-            description: "The batch will need to be reviewed again",
-          });
-        } else {
-          toast({
-            title: "Success",
-            description: "Candidate removed successfully",
-          });
-        }
-      } catch (error) {
-        console.error("Error removing candidate:", error);
-        toast({
-          title: "Error",
-          description: error.message || "Failed to remove candidate",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [toast]
-  );
-
-  const handleBatchAction = useCallback(
-    async (batch) => {
-      if (role === ROLES.MANAGER || role === ROLES.ADMIN) {
-        try {
-          setIsLoading(true);
-          // Fetch the latest version of the batch
-          const latestBatch = await batchService.getBatchById(batch.id);
-          setSelectedBatch(latestBatch);
-          setCurrentBatchId(batch.id);
-        } catch (error) {
-          console.error("Error fetching batch details:", error);
-          toast({
-            title: "Error",
-            description: error.message || "Failed to fetch batch details",
-            variant: "destructive",
-          });
-        } finally {
-          setIsLoading(false);
-        }
-      }
-    },
-    [role, toast]
-  );
-
-  // removed unused handleEditBatch (using handleBatchAction instead)
-
-  const handleBatchApprove = useCallback(
-    async (approvedIds) => {
-      if (!selectedBatch) return;
-
-      try {
-        setIsLoading(true);
-        const userId = localStorage.getItem('userId');
-        
-        if (!userId) {
-          throw new Error("User session not found. Please log in again.");
-        }
-        
-        // Update all approved candidates
-        await Promise.all(
-          approvedIds.map(candidateId => 
-            candidateService.updateCandidateStatus(candidateId, "APPROVED", userId)
-          )
-        );
-        
-        // If all candidates in the batch have been processed
-        if (approvedIds.length === selectedBatch.candidates.length) {
-          // Update batch status to REVIEWED
-          await batchService.updateBatchStatus(selectedBatch.id, "REVIEWED");
-        }
-        
-        // Refresh data
-        const updatedCandidates = await getAllCandidates();
-        setCandidates(updatedCandidates);
-        
-        const updatedBatches = await batchService.getAllBatches();
-        setBatches(updatedBatches);
-
-        toast({
-          title: "Batch Review Complete",
-          description: `Approved ${approvedIds.length} candidates`,
-          variant: "success",
-        });
-
-        setSelectedBatch(null);
-        setCurrentBatchId(null);
-      } catch (error) {
-        console.error("Error approving batch:", error);
-        toast({
-          title: "Error",
-          description: error.message || "Failed to approve batch",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [selectedBatch, toast]
-  );
-
-  const handleBatchDeny = useCallback(
-    async (deniedIds) => {
-      if (!selectedBatch) return;
-
-      try {
-        setIsLoading(true);
-        const userId = localStorage.getItem('userId');
-        
-        if (!userId) {
-          throw new Error("User session not found. Please log in again.");
-        }
-        
-        // Update all denied candidates
-        await Promise.all(
-          deniedIds.map(candidateId => 
-            candidateService.updateCandidateStatus(candidateId, "REJECTED", userId)
-          )
-        );
-        
-        // If all candidates have now been processed
-        const totalProcessed = selectedBatch.candidates.length;
-        const allCandidatesProcessed = deniedIds.length === totalProcessed;
-        
-        if (allCandidatesProcessed) {
-          // Update batch status to REVIEWED
-          await batchService.updateBatchStatus(selectedBatch.id, "REVIEWED");
-        }
-        
-        // Refresh data
-        const updatedCandidates = await getAllCandidates();
-        setCandidates(updatedCandidates);
-        
-        const updatedBatches = await batchService.getAllBatches();
-        setBatches(updatedBatches);
-        
-        toast({
-          title: "Candidates Denied",
-          description: `${deniedIds.length} candidates have been denied`,
-          variant: "default",
-        });
-        
-        if (allCandidatesProcessed) {
-          setSelectedBatch(null);
-          setCurrentBatchId(null);
-        }
-      } catch (error) {
-        console.error("Error denying candidates:", error);
-        toast({
-          title: "Error",
-          description: error.message || "Failed to deny candidates",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [selectedBatch, toast]
-  );
-
-  const handleDownloadResults = useCallback(async (batch) => {
-    try {
-      setIsLoading(true);
-      
-      // Get fresh batch data to ensure up-to-date information
-      const latestBatch = await batchService.getBatchById(batch.id);
-      
-      if (!latestBatch.candidates || latestBatch.candidates.length === 0) {
-        toast({
-          title: "No Data",
-          description: "This batch doesn't contain any candidates to download.",
-          variant: "warning",
-        });
-        return;
-      }
-      
-      // Format data for CSV export
-      const results = latestBatch.candidates.map(candidate => ({
-        ID: candidate.id,
-        Name: candidate.name,
-        Email: candidate.email || "-",
-        Contact: candidate.contact || "-",
-        Location: candidate.location,
-        Department: candidate.department || "-",
-        Status: candidate.status || "PENDING_REVIEW",
-        "Batch Name": latestBatch.name || `Batch #${latestBatch.id}`,
-        "Submitted Date": new Date(latestBatch.createdAt).toLocaleDateString(),
-        "Review Date": candidate.reviewDate
-          ? new Date(candidate.reviewDate).toLocaleDateString()
-          : "-",
-        "Last Edited": candidate.lastEditedAt
-          ? new Date(candidate.lastEditedAt).toLocaleDateString()
-          : "-"
-      }));
-      
-      // Use the exportToCSV utility
-      exportToCSV(results, `batch-${latestBatch.name || latestBatch.id}-results.csv`);
-      
-      toast({
-        title: "Download Complete",
-        description: `Downloaded ${results.length} candidate records`,
-        variant: "default",
-      });
-    } catch (error) {
-      console.error("Error downloading results:", error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to download batch results",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [toast]);
-
-  const handleUpdateBatch = useCallback(
-    async (updatedBatch) => {
-      try {
-        setIsLoading(true);
-        
-        // Update batch in backend
-        await batchService.updateBatch(updatedBatch.id, {
-          ...updatedBatch,
-          lastEditedAt: new Date().toISOString(),
-          needsReview: true,
-        });
-        
-        // Refresh data
-        const updatedCandidates = await getAllCandidates();
-        setCandidates(updatedCandidates);
-        
-        const updatedBatches = await batchService.getAllBatches();
-        setBatches(updatedBatches);
-
-        toast({
-          title: "Batch Updated",
-          description:
-            "The batch has been updated and will need to be reviewed again.",
-          variant: "default",
-        });
-      } catch (error) {
-        console.error("Error updating batch:", error);
-        toast({
-          title: "Error",
-          description: error.message || "Failed to update batch",
-          variant: "destructive",
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [toast]
-  );
-
-  const refreshBatches = useCallback(async () => {
-    try {
-      setIsLoading(true);
-      const updatedBatches = await batchService.getAllBatches();
-      setBatches(updatedBatches);
-    } catch (error) {
-      console.error("Error refreshing batches:", error);
-      toast({
-        title: "Error",
-        description: "Failed to refresh batch data",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  }, [toast]);
-
-  const handleReviewComplete = useCallback(async () => {
-    // Refresh the batches list
-    await refreshBatches();
-  }, [refreshBatches]);
-
-  const handleBatchDelete = useCallback(async (batchId) => {
-    try {
-      // Update local state by removing the deleted batch
-      setBatches(prev => prev.filter(batch => batch.id !== batchId));
-    } catch (error) {
-      console.error("Error updating batches after deletion:", error);
-    }
-  }, []);
+  // Removed all batch handlers and state
 
   // Handle page change
   const handlePageChange = (newPage) => {
@@ -870,106 +293,44 @@ export default function EmployeeManagement() {
               ) : (
                 <div className="space-y-6">
                   <StatsSection
-                    candidates={candidates}
                     employees={employees}
                     getEmployeeStats={getEmployeeStats}
                   />
 
-                  {role === ROLES.RECRUITMENT ? (
-                    <RecruitmentView
-                      getEmployeeStats={getEmployeeStats}
-                      assignmentFilter={assignmentFilter}
-                      setAssignmentFilter={setAssignmentFilter}
-                      searchTerm={searchTerm}
-                      setSearchTerm={setSearchTerm}
+                  {/* Employees Section */}
+                  <div className="rounded-2xl border border-[var(--divider)] bg-[var(--card-background)] shadow-lg p-6">
+                    <h2 className="text-xl font-bold mb-6 text-[var(--text-primary)]">
+                      Employee List
+                    </h2>
+                    <EmployeeTable
+                      role={role}
+                      filteredEmployees={getFilteredEmployees()}
+                      handleDeactivateEmployee={handleDeactivateEmployee}
+                      handleActivateEmployee={handleActivateEmployee}
+                      departmentFilter={departmentFilter}
+                      setDepartmentFilter={setDepartmentFilter}
+                      shiftFilter={shiftFilter}
+                      setShiftFilter={setShiftFilter}
                       statusFilter={statusFilter}
                       setStatusFilter={setStatusFilter}
-                      getFilteredEmployees={getFilteredEmployees}
-                      getFilteredCandidates={getFilteredCandidates}
-                      exportCandidatesData={handleExport}
-                      shuttleRoutes={[]}
-                      existingCandidates={candidates}
-                      onAddCandidates={handleAddCandidates}
-                      onEditCandidate={handleEditCandidate}
-                      onRemoveCandidate={handleRemoveCandidate}
-                      onUpdateBatch={handleUpdateBatch}
-                      role={role}
+                      assignmentFilter={assignmentFilter}
+                      setAssignmentFilter={setAssignmentFilter}
+                      departments={departments}
+                      shifts={shifts}
+                      currentPage={currentPage}
+                      totalPages={totalPages}
+                      totalItems={totalEmployees}
+                      itemsPerPage={itemsPerPage}
+                      onPageChange={handlePageChange}
+                      onItemsPerPageChange={handleItemsPerPageChange}
                     />
-                  ) : (
-                    <div className="space-y-6">
-                      {/* Recent Batches Section */}
-                      <div className="rounded-2xl border border-[var(--divider)] bg-[var(--card-background)] shadow-lg p-6">
-                        <h2 className="text-xl font-bold mb-6 text-[var(--text-primary)]">
-                          Recent Batches
-                        </h2>
-                        <BatchesList
-                          batches={batches}
-                          onEditBatch={handleBatchAction}
-                          onDownloadResults={handleDownloadResults}
-                          currentBatchId={currentBatchId}
-                          role={role.toLowerCase()}
-                          onBatchDelete={handleBatchDelete}
-                        />
-                      </div>
-
-                      {/* Employees Section */}
-                      <div className="rounded-2xl border border-[var(--divider)] bg-[var(--card-background)] shadow-lg p-6">
-                        <h2 className="text-xl font-bold mb-6 text-[var(--text-primary)]">
-                          Employee List
-                        </h2>
-                        <EmployeeTable
-                          activeTab="employees"
-                          role={role}
-                          filteredEmployees={getFilteredEmployees()}
-                          filteredCandidates={getFilteredCandidates()}
-                          handleApproveLocation={(id) =>
-                            handleCandidateAction(id, "approve")
-                          }
-                          handleDenyLocation={(id) =>
-                            handleCandidateAction(id, "deny")
-                          }
-                          handleDeactivateEmployee={handleDeactivateEmployee}
-                          handleActivateEmployee={handleActivateEmployee} // Add the activate handler
-                          departmentFilter={departmentFilter}
-                          setDepartmentFilter={setDepartmentFilter}
-                          shiftFilter={shiftFilter}
-                          setShiftFilter={setShiftFilter}
-                          statusFilter={statusFilter}
-                          setStatusFilter={setStatusFilter}
-                          assignmentFilter={assignmentFilter}
-                          setAssignmentFilter={setAssignmentFilter}
-                          departments={departments}
-                          shifts={shifts}
-                          // Add pagination props
-                          currentPage={currentPage}
-                          totalPages={totalPages}
-                          totalItems={totalEmployees}
-                          itemsPerPage={itemsPerPage}
-                          onPageChange={handlePageChange}
-                          onItemsPerPageChange={handleItemsPerPageChange}
-                        />
-                      </div>
-                    </div>
-                  )}
+                  </div>
                 </div>
               )}
             </div>
           </div>
         </div>
       </main>
-
-      {selectedBatch && (
-        <BatchReviewModal
-          batch={selectedBatch}
-          onApprove={handleBatchApprove}
-          onDeny={handleBatchDeny}
-          onClose={() => {
-            setSelectedBatch(null);
-            setCurrentBatchId(null);
-          }}
-          onReviewComplete={handleReviewComplete}
-        />
-      )}
     </LoadingWrapper>
   );
 }

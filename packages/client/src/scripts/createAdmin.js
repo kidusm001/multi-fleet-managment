@@ -69,18 +69,12 @@ async function signUpUsers() {
   });
 
   await upsertUser({
-    email: "recruiter@example.com",
-    password: "RecruiterPass123!",
-    name: "Recruiter User",
-    role: "recruiter", // spelled in lowercase
-  });
-
-  await upsertUser({
     email: "manager@example.com",
     password: "ManagerPass123!",
     name: "Manager User",
     role: "manager",
   });
+  // Recruiter role removed from system; no recruiter seeding.
 }
 
 signUpUsers();

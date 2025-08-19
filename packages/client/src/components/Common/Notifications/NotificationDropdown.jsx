@@ -8,7 +8,7 @@ import { useNavigate } from "react-router-dom";
 // import { getImportanceLevel } from "@pages/notifications/lib/importance-levels";
 import { useTheme } from "@contexts/ThemeContext";
 
-import { Check, Package, Bus, Route, Users } from "lucide-react";
+import { Check, Package, Bus, Route } from "lucide-react";
 import { useNotifications } from "@contexts/NotificationContext";
 
 // Helper functions
@@ -20,8 +20,6 @@ const mapTypeToIcon = (type) => {
       return 'bus';
     case 'route':
       return 'route';
-    case 'recruitment':
-      return 'users';
     default:
       return 'user';
   }
@@ -301,8 +299,6 @@ function NotificationDropdown() {
                           <Bus className="h-3 w-3 text-white" />
                         ) : iconType === "route" ? (
                           <Route className="h-3 w-3 text-white" />
-                        ) : iconType === "recruitment" ? (
-                          <Users className="h-3 w-3 text-white" />
                         ) : null }
 
                       </div>

@@ -1,31 +1,5 @@
 import { createContext, useContext, useEffect, useState } from "react";
-
-interface SessionResponse {
-  session: {
-    id: string;
-    expiresAt: string;
-    token: string;
-    createdAt: string;
-    updatedAt: string;
-    ipAddress: string;
-    userAgent: string;
-    userId: string;
-    impersonatedBy: string | null;
-  };
-  user: {
-    id: string;
-    name: string;
-    email: string;
-    emailVerified: boolean;
-    image: string | null;
-    createdAt: string;
-    updatedAt: string;
-    role: string;
-    banned: boolean | null;
-    banReason: string | null;
-    banExpires: string | null;
-  };
-}
+import { authClient } from "@/lib/auth-client";
 
 interface User {
   id: string;
@@ -67,40 +41,20 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
     try {
       setIsLoading(true);
       setError(null);
-      
-  const base = import.meta.env.VITE_API_URL || 'http://localhost:3001';
-  const response = await fetch(`${base}/api/auth/get-session`, {
-        credentials: 'include',
-        headers: {
-          'Accept': 'application/json'
-        }
-      });
-
-      console.log('Raw Response:', response); // Debug log
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch session: ${response.status}`);
-      }
-
-      const responseText = await response.text(); // Get raw response text
-      console.log('Raw Response Text:', responseText); // Debug log
-
-      const data = JSON.parse(responseText) as SessionResponse;
-      console.log('Parsed Session Data:', data); // Debug log
-
-      if (data?.user) {
+    const data = await authClient.getSession();
+    if (data?.user) {
         const userData: User = {
           id: data.user.id,
           email: data.user.email,
-          emailVerified: data.user.emailVerified,
-          name: data.user.name,
-          createdAt: new Date(data.user.createdAt),
-          updatedAt: new Date(data.user.updatedAt),
-          image: data.user.image,
-          banned: data.user.banned,
-          role: data.user.role,
-          banReason: data.user.banReason ?? undefined,
-          banExpires: data.user.banExpires ? new Date(data.user.banExpires) : undefined
+          emailVerified: false,
+          name: data.user.email.split("@")[0] || "User",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          image: null,
+          banned: null,
+          role: data.user.role || "user",
+          banReason: undefined,
+          banExpires: undefined
         };
         
         console.log('Setting user data:', userData); // Debug log

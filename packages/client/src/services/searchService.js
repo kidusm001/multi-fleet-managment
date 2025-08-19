@@ -40,14 +40,8 @@ class SearchService {
             (term.length > 2 && term.startsWith(cleanQuery))
         );
 
-        // For candidate-related searches, ensure we use the recruiter role
-        const candidateTerms = ['candidate', 'applicant', 'recruitment', 'hire'];
-        const mightBeCandidate = candidateTerms.some(term => cleanQuery.includes(term));
-        const effectiveRole = mightBeCandidate ? 'recruiter' : role;
-
-        if (mightBeCandidate && effectiveRole !== role) {
-            console.log(`[SEARCH] Query "${cleanQuery}" might be candidate-related, using recruiter role instead of ${role}`);
-        }
+    // Remove candidate-specific behavior; use provided role as-is
+    const effectiveRole = role;
 
         // Log if search appears to be route-related
         if (isRouteQuery) {
@@ -60,10 +54,9 @@ class SearchService {
                 query,
                 limit,
                 role: effectiveRole,
-                forceRole: mightBeCandidate ? 'recruiter' : undefined,
                 isRouteQuery: isRouteQuery
             };
-            console.log(`[SEARCH] Making API search request: /api/search with params:`, requestParams);
+            console.log(`[SEARCH] Making API search request: search with params:`, requestParams);
 
             // Force direct API fetch to bypass any potential axios issues
             try {
@@ -71,11 +64,6 @@ class SearchService {
                 url.searchParams.append('query', query);
                 url.searchParams.append('limit', limit);
                 url.searchParams.append('role', effectiveRole);
-
-                // Add forceRole parameter if needed
-                if (mightBeCandidate) {
-                    url.searchParams.append('forceRole', 'recruiter');
-                }
 
                 // Add isRouteQuery parameter if detected
                 if (isRouteQuery) {
@@ -114,7 +102,7 @@ class SearchService {
             }
 
             // If fetch approach failed, try the regular axios approach
-            const response = await api.get('/api/search', {
+            const response = await api.get('/search', {
                 params: requestParams
             });
 
@@ -179,8 +167,7 @@ class SearchService {
                     pathname: '/settings',
                     state: { activeTab: 'shifts' }
                 }; // Shifts go to /settings with shifts tab active
-            case "candidate":
-                return `/employees`; // Candidates go to /employees (no ID)
+            // Candidate type removed
             case "department":
                 return {
                     pathname: '/settings',

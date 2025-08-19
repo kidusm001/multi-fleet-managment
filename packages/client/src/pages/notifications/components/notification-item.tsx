@@ -11,7 +11,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "./ui/tooltip";
-import { Route, Bus, Users, Package, ChevronUp, ChevronDown, Bell } from "lucide-react";
+import { Route, Bus, ChevronUp, ChevronDown, Bell } from "lucide-react";
 import { useState } from "react";
 
 export interface NotificationItemProps extends INotificationItem {
@@ -23,8 +23,6 @@ export interface NotificationItemProps extends INotificationItem {
 const typeIcons = {
   route: Route,
   shuttle: Bus,
-  recruitment: Users,
-  batch: Package
 };
 
 const TypeIcon = ({ type }: { type: string }) => {
@@ -49,7 +47,6 @@ export function NotificationItem({
   isRead = false,
   isSelected = false,
   onSelect,
-  metadata,
   source = "system",
 }: NotificationItemProps) {
   const { theme } = useTheme();
@@ -57,7 +54,7 @@ export function NotificationItem({
   const [isExpanded, setIsExpanded] = useState(false);
   
   // Add this function to check content length
-  const hasExpandableContent = description?.length > 120 || (metadata?.candidates && metadata.candidates.length > 0);
+  const hasExpandableContent = description?.length > 120;
 
   const config = {
     1: {
@@ -218,30 +215,7 @@ export function NotificationItem({
               {description}
             </div>
           )}
-          {metadata?.candidates && isExpanded && (
-            <div className="mt-3 space-y-2">
-              <p className={cn(
-                "text-sm font-medium",
-                isDark ? "text-gray-200" : "text-gray-700",
-                "group-hover:text-primary"
-              )}>
-                Candidates:
-              </p>
-              <ul className="grid gap-1.5">
-                {metadata.candidates.map((candidate) => (
-                  <li
-                    key={candidate.id}
-                    className={cn(
-                      "text-sm transition-colors duration-200",
-                      isDark ? "text-gray-400" : "text-gray-600",
-                      "group-hover:text-gray-900 dark:group-hover:text-gray-100"
-                    )}>
-                    {candidate.name}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
+          {/* recruitment/batch metadata removed */}
           {/* Only show expand button if there's more content */}
           {hasExpandableContent && (
             <button

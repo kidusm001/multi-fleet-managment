@@ -12,7 +12,6 @@ export default function NotificationList({ role }) {
     const roleAccess = {
       [ROLES.ADMIN]: ["route", "employee", "shuttle", "system"],
       [ROLES.MANAGER]: ["route", "shuttle"],
-      [ROLES.RECRUITMENT]: ["employee"],
       [ROLES.DRIVER]: ["route"],
     };
 

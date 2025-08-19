@@ -5,6 +5,6 @@ export { departmentService } from './departmentService';
 export { shiftService } from './shiftService';
 export { default as clusterService } from './clusterService';
 export { default as shuttleAvailabilityService } from './shuttleAvailabilityService';
-export { batchService } from './batchService';
-export { candidateService } from './candidateService';
+// export { batchService } from './batchService';
+// export { candidateService } from './candidateService';
 export { searchService } from './searchService';

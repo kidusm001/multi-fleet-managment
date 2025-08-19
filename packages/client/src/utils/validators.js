@@ -6,66 +6,6 @@ export const validatePhoneNumber = (phone) => {
   return Boolean(cleanPhone.match(/^(?:\+251|251|0)?9\d{8}$/));
 };
 
-export const parseTabSeparatedData = (data) => {
-  try {
-    const rows = data.trim().split('\n');
-    // Skip header row if it exists
-    const dataRows = rows.length > 1 ? rows.slice(1) : rows;
-    
-    return dataRows.map(row => {
-      const [name, contact, email, department, location] = row.split('\t').map(cell => cell?.trim() || '');
-      
-      // Only return rows that have at least a name and location
-      if (!name || !location) {
-        return null;
-      }
-
-      return {
-        name,
-        contact,
-        email,
-        department,
-        location
-      };
-    }).filter(Boolean); // Remove any null entries
-  } catch (error) {
-    console.error("Error parsing tab-separated data:", error);
-    return [];
-  }
-};
-
-export const formatPhoneNumber = (phone) => {
-  // If phone is null, undefined, or empty string, return empty string
-  if (!phone) return '';
-
-  const cleanPhone = phone.replace(/[^\d+]/g, ''); // Remove non-digit characters except '+'
-  
-  // If already in international format with +251, return it
-  if (cleanPhone.startsWith('+251') && cleanPhone.length === 13) {
-    return cleanPhone;
-  } 
-  
-  // If starts with 251 (no plus)
-  else if (cleanPhone.startsWith('251') && cleanPhone.length === 12) {
-    return `+${cleanPhone}`; // Add "+" if it starts with "251" and has 12 digits
-  } 
-  
-  // If starts with 0
-  else if (cleanPhone.startsWith('0') && cleanPhone.length === 10) {
-    return `+251${cleanPhone.substring(1)}`; // Replace leading "0" with "+251"
-  } 
-  
-  // If starts with 9 and is 9 digits
-  else if (cleanPhone.startsWith('9') && cleanPhone.length === 9) {
-    return `+251${cleanPhone}`; // Add "+251" if it starts with "9" and has 9 digits
-  } 
-  
-  // Return original if no transformation applies
-  else {
-    return phone;
-  }
-};
-
 // Add email regex
 export const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
