@@ -60,12 +60,12 @@ const transition = {
 export function ExpandableTabs({
   tabs,
   className,
-  activeColor = "text-white",
+  activeColor: _activeColor = "text-white",
   onChange,
   initialTab = 0,  // Default to first tab
 }: ExpandableTabsProps) {
   const [selected, setSelected] = React.useState<number | null>(initialTab);
-  const outsideClickRef = React.useRef(null);
+  const outsideClickRef = React.useRef<HTMLDivElement | null>(null);
 
   useOnClickOutside(outsideClickRef, () => {
     setSelected(null);
@@ -75,7 +75,7 @@ export function ExpandableTabs({
   // Call onChange with initial tab on mount
   React.useEffect(() => {
     onChange?.(initialTab);
-  }, []);
+  }, [onChange, initialTab]);
 
   const handleSelect = (index: number) => {
     setSelected(index);

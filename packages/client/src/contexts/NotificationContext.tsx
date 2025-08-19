@@ -2,11 +2,14 @@ import React, { createContext, useContext, useState, useCallback, useEffect } fr
 import { socketClient, ShuttleNotification } from "@lib/socket";
 import { useRole } from "@contexts/RoleContext";
 import { notificationApi } from '@services/notificationApi';
+import { useAuth } from '@contexts/AuthContext';
 
 const STORAGE_KEY = 'shuttle_notifications';
 const MAX_STORED_NOTIFICATIONS = 50;
-const DEBUG = true;
-const log = (...args: any[]) => DEBUG && console.log('[NotificationContext]:', ...args);
+const DEBUG = false;
+const log = (...args: unknown[]) => {
+  if (DEBUG) console.log('[NotificationContext]:', ...args);
+};
 
 interface NotificationContextType {
   notifications: ShuttleNotification[];
@@ -37,9 +40,14 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const [unreadCount, setUnreadCount] = useState(0);
   const [isConnected, setIsConnected] = useState(false);
   const { role } = useRole();
+  const { isAuthenticated } = useAuth();
 
-  // Load initial notifications
+  // Load initial notifications only when authenticated
   useEffect(() => {
+    if (!isAuthenticated) {
+      log('Not authenticated, skipping initial notifications fetch');
+      return;
+    }
     const loadNotifications = async () => {
       try {
         const { notifications: initialNotifications } = await notificationApi.getAll();
@@ -52,7 +60,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     };
 
     loadNotifications();
-  }, []);
+  }, [isAuthenticated]);
 
   // Persist notifications to local storage
   useEffect(() => {
@@ -61,8 +69,12 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(limitedNotifications));
   }, [notifications]);
 
-  // Initialize socket connection and listeners
+  // Initialize socket connection and listeners only when authenticated
   useEffect(() => {
+    if (!isAuthenticated) {
+      log('Not authenticated, skipping socket connection');
+      return;
+    }
     if (!role) {
       log('No role available, skipping socket connection');
       return;
@@ -143,7 +155,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         socketClient.disconnect();
       }
     };
-  }, [role]);
+  }, [role, isAuthenticated]);
 
   const markAsSeen = useCallback(async (notificationId: string) => {
     try {
@@ -165,7 +177,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     } catch (error) {
       console.error('Failed to mark all notifications as seen:', error);
     }
-  }, [notifications]);
+  }, []);
 
   const clearAll = useCallback(() => {
     setNotifications([]);

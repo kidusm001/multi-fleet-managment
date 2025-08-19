@@ -1,37 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@contexts/AuthContext";
 import { Button } from "@components/Common/UI/Button";
 import { Input } from "@/components/Common/UI/Input";
-import { cn } from "@lib/utils";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
-
-const videos = [
-  {
-    src: "/assets/videos/1206.mp4",
-    title: "Manage Your Fleet",
-    subtitle: "Streamline Operations with Smart Solutions",
-    thumbnail: "/assets/videos/1206-thumb.jpg",
-    preload: true,
-  },
-  {
-    src: "/assets/videos/1205.mp4",
-    title: "Manage Your Fleet",
-    subtitle: "Streamline Operations with Smart Solutions",
-    thumbnail: "/assets/videos/1206-thumb.jpg",
-    preload: true,
-  }
-];
-
-// Preload videos
-videos.forEach((video) => {
-  const link = document.createElement("link");
-  link.rel = "preload";
-  link.as = "video";
-  link.href = video.src;
-  document.head.appendChild(link);
-});
+import { motion } from "framer-motion";
 
 const inputStyles =
   "bg-white/10 border-2 border-white/20 text-white placeholder:text-white/50 h-12 px-4 rounded-xl transition-all duration-300 focus:bg-white/15 focus:border-[#f3684e]/50 focus:ring-2 focus:ring-[#f3684e]/20 hover:border-[#f3684e]/30 w-full shadow-lg shadow-black/5 text-base";
@@ -41,7 +14,6 @@ const buttonStyles =
 export default function Login() {
   const navigate = useNavigate();
   const { login } = useAuth();
-  const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     email: "",
@@ -49,13 +21,6 @@ export default function Login() {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentVideoIndex((prev) => (prev === 0 ? 1 : 0));
-    }, 15000);
-    return () => clearInterval(interval);
-  }, []);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -96,110 +61,34 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-gradient-to-br from-slate-950 via-[#1a2327] to-[#1a2327] overflow-hidden">
-      {/* Logo */}
-      <motion.div
-        initial={{ y: -20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        className="mb-8 relative z-10"
-      >
-        <motion.div
-          animate={{
-            scale: [1, 1.1, 1],
-            rotate: [0, -5, 0],
-          }}
-          transition={{ duration: 0.5, times: [0, 0.5, 1] }}
-          className="relative flex items-center bg-white/80 backdrop-blur-sm px-4 py-[0.2rem] rounded-[1.5rem]"
-        >
-          <img
-            src="/assets/images/MMCYTech.png"
-            alt="MMCY Tech"
-            className="h-10 object-contain"
-          />
-        </motion.div>
+      <motion.div initial={{ y: -10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="mb-8 relative z-10">
+        <div className="relative flex items-center bg-white/80 backdrop-blur-sm px-4 py-[0.2rem] rounded-[1.5rem]">
+          <img src="/assets/images/MMCYTech.png" alt="Routegna" className="h-10 object-contain" />
+        </div>
       </motion.div>
 
-      {/* Main Container with reduced width */}
-      <motion.div
-        initial={{ scale: 0.95, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        className="w-full max-w-5xl"
-      >
-        <div className="relative flex bg-black/20 backdrop-blur-xl rounded-[2rem] shadow-2xl border border-white/10 overflow-hidden h-[600px]">
-          {/* Video Section */}
-          <div className="w-7/12 h-full relative">
-            <AnimatePresence mode="wait">
-              {videos.map(
-                (video, index) =>
-                  index === currentVideoIndex && (
-                    <motion.div
-                      key={video.src}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.5 }}
-                      className="absolute inset-0"
-                    >
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/20 to-transparent z-20" />
-                      <video
-                        autoPlay
-                        muted
-                        loop
-                        playsInline
-                        poster={video.thumbnail}
-                        className="absolute inset-0 w-full h-full object-cover"
-                      >
-                        <source src={video.src} type="video/mp4" />
-                      </video>
-                      <div className="absolute bottom-16 left-12 z-30">
-                        <motion.h2
-                          initial={{ y: 20, opacity: 0 }}
-                          animate={{ y: 0, opacity: 1 }}
-                          transition={{ delay: 0.3 }}
-                          className="text-4xl font-bold text-white mb-2"
-                        >
-                          <span className="bg-gradient-to-r from-white to-[#f3684e] bg-clip-text text-transparent">
-                            {video.title}
-                          </span>
-                        </motion.h2>
-                        <motion.p
-                          initial={{ y: 20, opacity: 0 }}
-                          animate={{ y: 0, opacity: 1 }}
-                          transition={{ delay: 0.4 }}
-                          className="text-white/70 text-lg font-light"
-                        >
-                          {video.subtitle}
-                        </motion.p>
-                      </div>
-                    </motion.div>
-                  )
-              )}
-            </AnimatePresence>
-
-            {/* Video Navigation Dots */}
-            <div className="absolute bottom-8 left-12 z-30 flex space-x-2">
-              {videos.map((_, index) => (
-                <button
-                  key={index}
-                  onClick={() => setCurrentVideoIndex(index)}
-                  className={cn(
-                    "w-2 h-2 rounded-full transition-all duration-500",
-                    index === currentVideoIndex
-                      ? "w-8 bg-[#f3684e] shadow-lg shadow-[#f3684e]/20"
-                      : "bg-white/50 hover:bg-white/75"
-                  )}
-                />
-              ))}
+      <motion.div initial={{ scale: 0.98, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="w-full max-w-5xl">
+        <div className="relative grid grid-cols-1 md:grid-cols-2 bg-black/20 backdrop-blur-xl rounded-[2rem] shadow-2xl border border-white/10 overflow-hidden">
+          <div className="hidden md:block relative min-h-[520px]">
+            <img src="/assets/images/login-hero.jpg" alt="Fleet operations" className="absolute inset-0 w-full h-full object-cover" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/20 to-transparent z-10" />
+            <div className="absolute bottom-10 left-10 z-20">
+              <motion.h2 initial={{ y: 12, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="text-4xl font-bold text-white mb-2">
+                <span className="bg-gradient-to-r from-white to-[#f3684e] bg-clip-text text-transparent">Manage Your Fleet</span>
+              </motion.h2>
+              <motion.p initial={{ y: 12, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: 0.1 }} className="text-white/70 text-lg font-light">
+                Streamline operations with smart solutions
+              </motion.p>
             </div>
           </div>
 
-          {/* Login Form Section - centered fields and button */}
-          <div className="w-5/12 h-full p-8 flex flex-col items-center justify-center bg-gradient-to-br from-[#324048]/80 to-[#324048]/40 relative z-10">
+          <div className="p-8 flex flex-col items-center justify-center bg-gradient-to-br from-[#324048]/80 to-[#324048]/40 relative z-10 min-h-[520px]">
             <motion.h2
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               className="text-4xl font-black tracking-tight text-[#f3684e] mb-4"
             >
-              Shuttle Management
+              Routegna Platform
             </motion.h2>
             <motion.h1
               className="text-4xl font-bold text-white mb-8"

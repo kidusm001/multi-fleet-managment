@@ -27,8 +27,8 @@ module.exports = {
   // Tighten rules as requested
   'no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', ignoreRestSiblings: true }],
   'react/no-unescaped-entities': 'error',
-  // We'll fix and then elevate to error after initial pass
-  'react-hooks/exhaustive-deps': 'warn',
+  // Enforce stable hook dependencies
+  'react-hooks/exhaustive-deps': 'error',
   },
   settings: {
     react: {
@@ -41,6 +41,17 @@ module.exports = {
       env: { jest: true, node: true, browser: true },
       rules: {
         'no-undef': 'off'
+      }
+    },
+    {
+      files: ['**/*.ts', '**/*.tsx'],
+      parser: '@typescript-eslint/parser',
+      plugins: ['@typescript-eslint'],
+      extends: ['plugin:@typescript-eslint/recommended'],
+      rules: {
+        // Prefer TS-aware unused vars rule and mirror underscore conventions
+        'no-unused-vars': 'off',
+        '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', ignoreRestSiblings: true }],
       }
     }
   ]

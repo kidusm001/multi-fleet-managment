@@ -11,10 +11,10 @@ import {
   CSSProperties,
 } from 'react';
 
+type ChildProps = React.HTMLAttributes<HTMLElement> & { 'data-id': string };
+
 type AnimatedBackgroundProps = {
-  children:
-    | ReactElement<{ 'data-id': string }>[]
-    | ReactElement<{ 'data-id': string }>;
+  children: ReactElement<ChildProps>[] | ReactElement<ChildProps>;
   defaultValue?: string;
   onValueChange?: (newActiveId: string | null) => void;
   className?: string;
@@ -49,7 +49,7 @@ export default function AnimatedBackground({
     }
   }, [defaultValue]);
 
-  return Children.map(children, (child: any, index) => {
+  return Children.map(children, (child: ReactElement<ChildProps>, index) => {
     const id = child.props['data-id'];
 
     const interactionProps = enableHover
@@ -67,7 +67,6 @@ export default function AnimatedBackground({
         key: index,
         className: cn('relative inline-flex', child.props.className),
         'aria-selected': activeId === id,
-        'data-checked': activeId === id ? 'true' : 'false',
         ...interactionProps,
       },
       <>

@@ -16,11 +16,11 @@ const createClient = () => {
       'Origin': 'http://localhost:5173'
     },
     interceptors: {
-      request: async (config: any) => {
+  request: async (config: Record<string, unknown>) => {
         const token = globalThis.__authToken;
         if (token) {
           config.headers = {
-            ...config.headers,
+            ...(config.headers as Record<string, string>),
             'Cookie': `better-auth.session_token=${token}`
           };
         }

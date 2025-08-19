@@ -8,16 +8,17 @@ import Sidebar from "@components/Common/Layout/Sidebar";
 import Footer from "@components/Common/Layout/Footer";
 import TopBar from "@components/Common/Layout/TopBar";
 // Pages
-import Home from "@pages/Home";
-import About from "@pages/About";
-import Dashboard from "@pages/Dashboard";
-import RouteManagement from "@pages/RouteManagement";
-import ShuttleManagement from "@pages/ShuttleManagement";
-import EmployeeManagement from "@pages/EmployeeManagement";
-import Payroll from "@pages/Payroll";
-import Settings from "@pages/Settings";
-import Login from "@pages/Auth/Login";
-import { NotificationDashboard } from "@pages/notifications/components/notification-dashboard";
+import { Suspense, lazy } from 'react';
+const Home = lazy(() => import('@pages/Home'));
+const About = lazy(() => import('@pages/About'));
+const Dashboard = lazy(() => import('@pages/Dashboard'));
+const RouteManagement = lazy(() => import('@pages/RouteManagement'));
+const ShuttleManagement = lazy(() => import('@pages/ShuttleManagement'));
+const EmployeeManagement = lazy(() => import('@pages/EmployeeManagement'));
+const Payroll = lazy(() => import('@pages/Payroll'));
+const Settings = lazy(() => import('@pages/Settings'));
+const Login = lazy(() => import('@pages/Auth/Login'));
+const NotificationDashboard = lazy(() => import('@pages/notifications/components/notification-dashboard').then(m => ({ default: m.NotificationDashboard })));
 // Context
 import { SidebarProvider, useSidebar } from "@contexts/SidebarContext";
 import { RoleProvider } from "@contexts/RoleContext";
@@ -43,7 +44,11 @@ function AppContent() {
     >
       <Routes>
         {/* Public Routes */}
-        <Route path="/auth/login" element={<Login />} />
+        <Route path="/auth/login" element={
+          <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading…</div>}>
+            <Login />
+          </Suspense>
+        } />
         <Route path="/unauthorized" element={<Unauthorized />} />
 
         {/* Protected Routes - Require Authentication */}
@@ -51,33 +56,36 @@ function AppContent() {
           path="*"
           element={
             <AuthRoute>
-              <div className={`min-h-screen ${isDark ? "bg-slate-900" : "bg-gray-50"} transition-colors duration-300`}>
-                <TopBar />
-                <div className={`main-content backdrop-blur-xl ${isDark ? "bg-black/20" : "bg-white/20"}`}>
-                  <Sidebar />
-                  <main className={`content-area ${isDark ? "text-gray-100" : "text-gray-900"}`}>
-                    <Routes>
-                      <Route path="/" element={<Home />} />
-                      <Route path="/about" element={<About />} />
-                      <Route path="/dashboard" element={<Dashboard />} />
-                      <Route 
-                        path="/routes" 
-                        element={
-                          <ProtectedRoute allowedRoles={[ROLES.MANAGER, ROLES.ADMIN]}>
-                            <RouteManagement />
-                          </ProtectedRoute>
-                        } 
-                      />
-                      <Route path="/shuttles" element={<ShuttleManagement />} />
-                      <Route path="/employees" element={<EmployeeManagement />} />
-                      <Route path="/payroll" element={<Payroll />} />
-                      <Route path="/notifications" element={<NotificationDashboard />} />
-                      <Route path="/settings" element={<Settings />} />
-                    </Routes>
-                    <Footer />
-                  </main>
+              <NotificationProvider>
+                <NotificationSound />
+                <div className={`min-h-screen ${isDark ? "bg-slate-900" : "bg-gray-50"} transition-colors duration-300`}>
+                  <TopBar />
+                  <div className={`main-content backdrop-blur-xl ${isDark ? "bg-black/20" : "bg-white/20"}`}>
+                    <Sidebar />
+                    <main className={`content-area ${isDark ? "text-gray-100" : "text-gray-900"}`}>
+                        <Routes>
+                          <Route path="/" element={<Suspense fallback={<div />}> <Home /> </Suspense>} />
+                          <Route path="/about" element={<Suspense fallback={<div />}> <About /> </Suspense>} />
+                          <Route path="/dashboard" element={<Suspense fallback={<div />}> <Dashboard /> </Suspense>} />
+                        <Route 
+                          path="/routes" 
+                          element={
+                            <ProtectedRoute allowedRoles={[ROLES.MANAGER, ROLES.ADMIN]}>
+                                <Suspense fallback={<div />}> <RouteManagement /> </Suspense>
+                            </ProtectedRoute>
+                          } 
+                        />
+                          <Route path="/shuttles" element={<Suspense fallback={<div />}> <ShuttleManagement /> </Suspense>} />
+                          <Route path="/employees" element={<Suspense fallback={<div />}> <EmployeeManagement /> </Suspense>} />
+                          <Route path="/payroll" element={<Suspense fallback={<div />}> <Payroll /> </Suspense>} />
+                          <Route path="/notifications" element={<Suspense fallback={<div />}> <NotificationDashboard /> </Suspense>} />
+                          <Route path="/settings" element={<Suspense fallback={<div />}> <Settings /> </Suspense>} />
+                      </Routes>
+                      <Footer />
+                    </main>
+                  </div>
                 </div>
-              </div>
+              </NotificationProvider>
             </AuthRoute>
           }
         />
@@ -94,23 +102,20 @@ function App() {
         <RoleProvider>
           <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
             <SidebarProvider>
-              <NotificationProvider>
-                <NotificationSound />
-                <AppContent />
-                <Toaster 
-                  position="bottom-right" 
-                  expand={true} 
-                  richColors
-                  toastOptions={{
-                    duration: 4000,
-                    style: {
-                      background: 'var(--card-background, #ffffff)',
-                      color: 'var(--text-primary, #000000)',
-                      border: '1px solid var(--divider, #e5e7eb)'
-                    },
-                  }}
-                />
-              </NotificationProvider>
+              <AppContent />
+              <Toaster 
+                position="bottom-right" 
+                expand={true} 
+                richColors
+                toastOptions={{
+                  duration: 4000,
+                  style: {
+                    background: 'var(--card-background, #ffffff)',
+                    color: 'var(--text-primary, #000000)',
+                    border: '1px solid var(--divider, #e5e7eb)'
+                  },
+                }}
+              />
             </SidebarProvider>
           </Router>
         </RoleProvider>

@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from 'react';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+const API_BASE = import.meta.env.DEV
+  ? '/api'
+  : (import.meta.env.VITE_API_URL || 'http://localhost:3001');
 
 export interface User {
   id: string;
@@ -36,7 +38,7 @@ export const authClient = {
         }
 
         return { data: { user: data.user }, error: null };
-      } catch (error) {
+      } catch {
         return { data: null, error: { message: 'Network error' } };
       }
     },
@@ -48,7 +50,7 @@ export const authClient = {
         credentials: 'include',
       });
       return { error: null };
-    } catch (error) {
+    } catch {
       return { error: { message: 'Logout failed' } };
     }
   },
@@ -64,7 +66,7 @@ export const authClient = {
 
       const data = await response.json();
       return { user: data.user };
-    } catch (error) {
+    } catch {
       return null;
     }
   },
@@ -92,5 +94,5 @@ export function useSession() {
   };
 }
 
-export type { Session };
+// Note: Session interface is defined above and used locally; no re-export to avoid conflicts.
 

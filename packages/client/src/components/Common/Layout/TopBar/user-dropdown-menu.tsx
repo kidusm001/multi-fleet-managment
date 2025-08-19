@@ -4,8 +4,6 @@ import { cn } from "@lib/utils";
 import { User, Settings, LogOut, ChevronDown } from "lucide-react";
 import { authClient } from "@lib/auth-client";
 import { useTheme } from "@contexts/ThemeContext";
-import { useRole } from "@contexts/RoleContext";
-import { ROLE_LABELS } from "@data/constants";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -251,7 +249,6 @@ const UserButtonCss = ({ theme }: { theme: string }) => {
 };
 
 const UserButton = ({ username, email, role }: { username: string; email: string; role: string }) => {
-  const { theme } = useTheme();
   const roleLabel = role; // Use the role passed from props
 
   return (
@@ -284,13 +281,8 @@ export function UserDropdown({ username, email, role }: UserDropdownProps) {
 
   const handleLogout = async () => {
     try {
-      await authClient.signOut({
-        fetchOptions: {
-          onSuccess: () => {
-            navigate("/auth/login");
-          },
-        },
-      });
+  await authClient.signOut();
+  navigate("/auth/login");
     } catch (error) {
       console.error("Error signing out:", error);
     }

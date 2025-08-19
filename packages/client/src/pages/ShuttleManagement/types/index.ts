@@ -41,7 +41,7 @@ export interface Driver {
   route?: string;
 }
 
-export interface MaintenanceSchedule extends Pick<
+export type MaintenanceSchedule = Pick<
   Shuttle,
   'id' | 'name' | 'licensePlate' | 'lastMaintenance' | 'nextMaintenance'
-> {}
+>;

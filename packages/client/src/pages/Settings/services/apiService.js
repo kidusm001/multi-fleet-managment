@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { authClient } from '@/lib/auth-client';
 
-const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 // Create axios instance with auth interceptor
 const api = axios.create({ baseURL });

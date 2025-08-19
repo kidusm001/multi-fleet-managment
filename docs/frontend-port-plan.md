@@ -274,3 +274,16 @@ Testing Additions (based on backend)
 - Routes creation client validation mirrors server constraints; unit test DTO mapping (`vehicleId`→`shuttleId`).
 - Search integration test: assert mixed result types are rendered correctly.
 
+
+Update Log — 2025-08-19
+- Resolved remaining TypeScript compile issues (animated tabs typing, auth client export conflict, global test token typing).
+- Verified ESLint clean for JS/JSX; build compiles TS/TSX without blocking errors.
+- Backend auth routes confirmed: `/auth/sign-in`, `/auth/sign-in/email`, `/auth/me`, `/auth/logout` (port 3001). Client `authClient` uses `credentials: 'include'` and `API_BASE` default http://localhost:3001.
+- Added debug logging in `AuthContext` login flow to surface server errors while validating credentials.
+
+Next Actions
+- Rebranding: replace MMCY branding (strings and logos) with Routegna; update login page title and logo asset.
+- Backend integration polish: ensure session persists across refresh; implement redirect-to-login on 401 globally.
+- Warnings: address large chunk warning and `MapComponent.jsx` mixed static/dynamic imports; consider lazy loading and `manualChunks`.
+- Testing: add a happy-path auth test exercising sign-in → `/auth/me` → logout, and basic protected route guard checks.
+

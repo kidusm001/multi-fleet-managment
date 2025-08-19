@@ -1,7 +1,7 @@
 import { io, Socket } from 'socket.io-client';
 
 const DEBUG = true;
-const log = (...args: any[]) => DEBUG && console.log('[SocketClient]:', ...args);
+const log = (...args: unknown[]) => DEBUG && console.log('[SocketClient]:', ...args);
 
 // Update notification types to match Prisma model
 export interface ShuttleNotification {
@@ -65,7 +65,8 @@ class SocketManager {
     }
 
     log('Creating new socket connection');
-    this.socket = io('http://localhost:3000', {
+  const base = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+  this.socket = io(base, {
       withCredentials: true,
       reconnection: true,
       reconnectionDelay: 1000,
@@ -95,24 +96,24 @@ class SocketManager {
       log('Reconnection failed');
     });
 
-    this.socket.on('connect_error', (error) => {
-      log('Socket error:', error);
+    this.socket.on('connect_error', (error: Error) => {
+      log('Socket error:', error.message);
     });
 
-    this.socket.on('disconnect', (reason) => {
+    this.socket.on('disconnect', (reason: Socket.DisconnectReason) => {
       console.log('Disconnected from shuttle management system:', reason);
-    });
-
-    this.socket.on('connect_error', (error) => {
-      console.error('Connection error:', error.message);
     });
 
     // Add debug event listener for all incoming events
     if (DEBUG) {
-      this.socket.onAny((event, ...args) => {
+      this.socket.onAny((event: string, ...args: unknown[]) => {
         log('Received event:', event, 'with data:', args);
         if (event === 'notification' || event === 'notification:new') {
-          log('Notification data:', JSON.stringify(args[0], null, 2));
+          try {
+            log('Notification data:', JSON.stringify(args[0], null, 2));
+          } catch {
+            // ignore stringify errors
+          }
         }
       });
     }

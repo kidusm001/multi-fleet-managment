@@ -53,7 +53,7 @@ interface NotificationDashboardProps {
   userRole?: UserRole;
 }
 
-export function NotificationDashboard({ userRole = "admin" }: NotificationDashboardProps) {
+export function NotificationDashboard({ userRole: _userRole = "admin" }: NotificationDashboardProps) {
   const [readFilter, setReadFilter] = useState("all");
   const [sortBy, setSortBy] = useState<SortOption>("time");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);

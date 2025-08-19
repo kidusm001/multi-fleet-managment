@@ -17,7 +17,6 @@ interface NotificationToolbarProps {
 
 export function NotificationToolbar({
   selectedCount,
-  totalCount,
   onMarkRead,
   onMarkUnread,
   onSelectAll,

@@ -1,9 +1,5 @@
 import { authClient } from './auth-test-client';
 
-declare global {
-  var __authToken: string;
-}
-
 async function testAuthEndpoints() {
   try {
     console.log('Testing auth endpoints...');

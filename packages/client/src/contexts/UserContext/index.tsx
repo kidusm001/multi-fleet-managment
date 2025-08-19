@@ -68,7 +68,8 @@ export function UserProvider({ children }: { children: React.ReactNode }) {
       setIsLoading(true);
       setError(null);
       
-      const response = await fetch('http://localhost:3000/api/auth/get-session', {
+  const base = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+  const response = await fetch(`${base}/api/auth/get-session`, {
         credentials: 'include',
         headers: {
           'Accept': 'application/json'

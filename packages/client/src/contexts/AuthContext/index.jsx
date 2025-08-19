@@ -32,6 +32,12 @@ export function AuthProvider({ children }) {
       });
 
       if (error) {
+        console.debug('[auth] signIn.error', error);
+      } else {
+        console.debug('[auth] signIn.data', data);
+      }
+
+      if (error) {
         console.error('Auth error:', error);
         return { success: false, error: error.message };
       }
@@ -40,11 +46,11 @@ export function AuthProvider({ children }) {
         return { success: false, error: 'No user data received' };
       }
 
-      setUser(data.user);
+  setUser(data.user);
       setIsAuthenticated(true);
       return { success: true };
     } catch (error) {
-      console.error('Login error:', error);
+  console.error('Login error:', error);
       return { success: false, error: error.message || 'An error occurred during login' };
     }
   };

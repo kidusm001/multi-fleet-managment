@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // Create a separate axios instance for FastAPI requests
 const fastApi = axios.create({
-  baseURL: 'http://localhost:3000', // Use Express backend
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3001', // Use Express backend
   timeout: 60000, // Increased timeout to 60 seconds
   headers: {
     'Content-Type': 'application/json'

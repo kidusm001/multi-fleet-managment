@@ -1,4 +1,4 @@
-import { authClient } from '@/lib/auth-client';
+import { authClient } from '@/test/auth-test-client';
 
 export interface UserData {
   id: string;
@@ -26,7 +26,7 @@ export interface UserQuery {
   sortDirection?: "asc" | "desc";
   filterField?: string;
   filterOperator?: "eq" | "ne" | "lt" | "lte" | "gt" | "gte";
-  filterValue?: any;
+  filterValue?: unknown;
 }
 
 export const adminService = {
@@ -62,8 +62,8 @@ export const adminService = {
     name: string;
     email: string;
     password: string;
-    role: string;
-    data?: Record<string, any>;
+    role: 'user' | 'admin';
+    data?: Record<string, unknown>;
   }) {
     try {
       const response = await authClient.admin.createUser(userData);
@@ -74,7 +74,7 @@ export const adminService = {
     }
   },
 
-  async setRole(params: { userId: string; role: string }) {
+  async setRole(params: { userId: string; role: 'user' | 'admin' }) {
     try {
       const response = await authClient.admin.setRole(params);
       return response;
