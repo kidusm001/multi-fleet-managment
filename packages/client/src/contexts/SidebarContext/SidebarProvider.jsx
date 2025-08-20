@@ -1,12 +1,4 @@
-import { useState } from 'react';
-import SidebarContext from './SidebarContext';
-
+// Deprecated: SidebarProvider was removed. Keeping file for path stability if imported elsewhere.
 export default function SidebarProvider({ children }) {
-  const [isCollapsed, setIsCollapsed] = useState(false);
-
-  return (
-    <SidebarContext.Provider value={{ isCollapsed, setIsCollapsed }}>
-      {children}
-    </SidebarContext.Provider>
-  );
-} 
+  return children;
+}

@@ -5,8 +5,6 @@ import { useRole } from "@contexts/RoleContext";
 import { useNavigate, Link } from "react-router-dom";
 import ThemeToggle from "@components/Common/UI/ThemeToggle";
 import {
-  Search,
-  X,
   Clock,
   MapPin,
   Car,
@@ -14,12 +12,13 @@ import {
   User,
   LayoutGrid
 } from "lucide-react";
-import { ROLES, ROLE_LABELS } from "@data/constants";
+import { ROLE_LABELS } from "@data/constants";
 import { cn } from "@lib/utils";
 import { NotificationDropdown } from "@components/Common/Notifications/NotificationDropdown";
 import { UserDropdown } from "@/components/Common/Layout/TopBar/user-dropdown-menu";
-import { Loader2 } from "lucide-react";
 import { useClickOutside } from "../../../../hooks/useClickOutside";
+import MainNav from "./MainNav";
+import SearchBar from "./SearchBar";
 import { searchService } from "../../../../services/searchService";
 
 
@@ -66,6 +65,12 @@ function TopBar() {
   } = useSession();
 
   const [username, setUsername] = useState("Loading...");
+  const handleNavKeyDown = (e) => {
+    if (e.key === 'Escape') {
+      const el = document.activeElement;
+      if (el && typeof el.blur === 'function') el.blur();
+    }
+  };
 
   useEffect(() => {
     if (!isPending && session?.user) {
@@ -143,133 +148,40 @@ function TopBar() {
       )}
     >
       <div className="flex items-center justify-between px-6 h-full max-w-[2000px] mx-auto">
-        {/* Left section */}
-        <div className="flex items-center gap-6">
-          <Link to="/" className="flex items-center gap-2">
-            <img
-              src={logoSrc}
-              alt="Routegna"
-              className="h-14 w-auto"
+        {/* Left section: Logo */}
+        <Link to="/" className="flex items-center gap-2">
+          <img
+            src={logoSrc}
+            alt="Routegna"
+            className="h-14 w-auto"
+          />
+        </Link>
+
+        {/* Center section: MainNav and SearchBar */}
+        <div className="flex-1 flex items-center justify-between">
+          <MainNav isDark={isDark} onKeyDown={handleNavKeyDown} />
+          <div className="flex-1 flex justify-center">
+            <SearchBar
+              isDark={isDark}
+              searchInput={searchInput}
+              setSearchInput={setSearchInput}
+              isSearching={isSearching}
+              searchInputRef={searchInputRef}
+              searchResultsRef={searchResultsRef}
+              showSearchResults={showSearchResults}
+              searchResults={searchResults}
+              handleSearchInputChange={handleSearchInputChange}
+              handleSearchResultClick={handleSearchResultClick}
+              role={role}
+              TypeIcon={TypeIcon}
             />
-          </Link>
-
-          <div className="relative search-container">
-            <div
-              className={cn(
-                "flex items-center rounded-xl px-3 py-1.5 transition-all duration-200",
-                isDark
-                  ? "bg-white/5 hover:bg-white/10"
-                  : "bg-black/5 hover:bg-black/10"
-              )}
-            >
-              <button className="flex items-center">
-                {isSearching ? (
-                  <Loader2
-                    className={cn(
-                      "w-4 h-4 animate-spin",
-                      isDark ? "text-white/40" : "text-black/40"
-                    )}
-                  />
-                ) : (
-                  <Search
-                    className={cn(
-                      "w-4 h-4",
-                      isDark ? "text-white/40" : "text-black/40"
-                    )}
-                  />
-                )}
-              </button>
-              <input
-                ref={searchInputRef}
-                className={cn(
-                  "bg-transparent border-none outline-none pl-2 pr-8 text-sm w-64 transition-all duration-200",
-                  isDark
-                    ? "placeholder:text-white/40 text-white"
-                    : "placeholder:text-black/40 text-black",
-                  "focus:w-80"
-                )}
-                placeholder={
-                  role === ROLES.ADMIN
-                    ? "Search routes, employees, shuttles... (Ctrl+K)"
-                    : role === ROLES.MANAGER
-                    ? "Search routes and shuttles... (Ctrl+K)"
-                    : "Search routes... (Ctrl+K)"
-                }
-                value={searchInput}
-                onChange={handleSearchInputChange}
-                style={{ colorScheme: isDark ? "dark" : "light" }}
-              />
-              {searchInput ? (
-                <button
-                  onClick={() => setSearchInput("")}
-                  className={cn(
-                    "absolute right-3 top-1/2 -translate-y-1/2",
-                    isDark ? "text-white/40" : "text-black/40",
-                    "hover:text-opacity-100 transition-opacity"
-                  )}
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              ) : (
-                <span
-                  className={cn(
-                    "absolute right-3 top-1/2 -translate-y-1/2 text-xs",
-                    isDark ? "text-white/40" : "text-black/40"
-                  )}
-                >
-                  ⌘K
-                </span>
-              )}
-            </div>
-
-            {/* Search Results Dropdown */}
-            {showSearchResults && (
-              <div
-                ref={searchResultsRef}
-                className={cn(
-                  "absolute top-full mt-1 w-full rounded-md border bg-popover p-2 shadow-md",
-                  isDark
-                    ? "bg-gray-800/90 border-gray-700"
-                    : "bg-white/90 border-gray-200"
-                )}
-              >
-                {isSearching ? (
-                  <div className="flex items-center justify-center py-2">
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    <span>Searching...</span>
-                  </div>
-                ) : searchResults.length === 0 ? (
-                  <div className="py-2 text-center text-muted-foreground">
-                    No results found. Try a different search term.
-                  </div>
-                ) : (
-                  <div className="max-h-[300px] overflow-y-auto">
-                    {searchResults.map((result, index) => (
-                      <div
-                        key={`${result.type}-${result.id || index}`}
-                        className="flex cursor-pointer items-center rounded-sm px-2 py-1.5 hover:bg-accent"
-                        onClick={() => handleSearchResultClick(result)}
-                      >
-                        <TypeIcon type={result.type} />
-                        <div className="ml-2">
-                          <div className="font-medium">{result.title}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {result.subtitle}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
           </div>
+          <div className="w-[200px]"></div> {/* Spacer to balance the layout */}
         </div>
 
-        {/* Right section */}
+        {/* Right section: User/Notifications/Theme */}
         <div className="flex items-center gap-4">
           <NotificationDropdown />
-
           <ThemeToggle />
           <UserDropdown
             username={username}

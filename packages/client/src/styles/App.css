@@ -56,9 +56,7 @@
   --subtle-active: #89c1fa;
 
   /* Layout */
-  --sidebar-width: 256px;
-  --sidebar-width-collapsed: 80px;
-  --topbar-height: 2rem;
+  --topbar-height: 60px;
   /* --footer-height: 400px; */
 
   /* Shadows */
@@ -122,42 +120,11 @@
   padding-bottom: 0;
 }
 
-/* Add these new styles */
-.sidebar {
-  position: fixed;
-  top: var(--topbar-height);
-  left: 0;
-  bottom: 0;
-  width: var(--sidebar-width);
-  transition: width 0.3s ease-in-out;
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
-  border-right: 1px solid;
-  /* min-height: calc(100% + var(--footer-height)); */
-}
-
-.dark .sidebar {
-  background: rgba(0, 0, 0, 0.2);
-  border-color: rgba(255, 255, 255, 0.1);
-}
-
-.light .sidebar {
-  background: rgba(255, 255, 255, 0.2);
-  border-color: rgba(0, 0, 0, 0.1);
-}
-
 .content-area {
   flex: 1;
   padding: 1rem 2rem;
-  margin-left: var(--sidebar-width-collapsed);
   transition: all 0.3s ease-in-out;
-  width: calc(100% - var(--sidebar-width-collapsed));
   position: relative;
-}
-
-[data-sidebar-collapsed="true"] .content-area {
-  margin-left: var(--sidebar-width);
-  width: calc(100% - var(--sidebar-width));
 }
 
 .card {
@@ -381,11 +348,4 @@ footer {
   }
 }
 
-@layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
-}
+/* Tailwind layer directives remain in index.css */

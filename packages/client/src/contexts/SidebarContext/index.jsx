@@ -1,30 +1,12 @@
-import { createContext, useContext, useState } from 'react';
+// SidebarContext has been removed. These are compatibility stubs.
 
-const SidebarContext = createContext({
-  isOpen: true,
-  toggleSidebar: () => {},
-});
-
+// Sidebar context removed per navigation overhaul. No-op exports remain for safety.
 export function SidebarProvider({ children }) {
-  const [isOpen, setIsOpen] = useState(true);
-
-  const toggleSidebar = () => {
-    setIsOpen(!isOpen);
-  };
-
-  return (
-    <SidebarContext.Provider value={{ isOpen, toggleSidebar }}>
-      {children}
-    </SidebarContext.Provider>
-  );
+  return children;
 }
 
 export function useSidebar() {
-  const context = useContext(SidebarContext);
-  if (context === undefined) {
-    throw new Error('useSidebar must be used within a SidebarProvider');
-  }
-  return context;
+  return { isOpen: false, toggleSidebar: () => {} };
 }
 
-export default SidebarContext; 
+export default null;

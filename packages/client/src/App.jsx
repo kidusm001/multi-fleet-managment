@@ -4,7 +4,7 @@ import { ProtectedRoute } from '@components/Common/ProtectedRoute';
 import { ROLES } from '@data/constants';
 import { AuthRoute } from '@components/Common/AuthRoute';
 // Layout Components
-import Sidebar from "@components/Common/Layout/Sidebar";
+// Sidebar removed; replaced by top navigation
 import Footer from "@components/Common/Layout/Footer";
 import TopBar from "@components/Common/Layout/TopBar";
 // Pages
@@ -21,7 +21,7 @@ const Settings = lazy(() => import('@pages/Settings'));
 const Login = lazy(() => import('@pages/Auth/Login'));
 const NotificationDashboard = lazy(() => import('@pages/notifications/components/notification-dashboard').then(m => ({ default: m.NotificationDashboard })));
 // Context
-import { SidebarProvider, useSidebar } from "@contexts/SidebarContext";
+// Sidebar context removed
 import { RoleProvider } from "@contexts/RoleContext";
 import { ThemeProvider, useTheme } from "@contexts/ThemeContext";
 import { AuthProvider } from "@contexts/AuthContext";
@@ -35,14 +35,10 @@ import "@styles/App.css";
 
 function AppContent() {
   const { theme } = useTheme();
-  const { isOpen } = useSidebar();
   const isDark = theme === "dark";
 
   return (
-    <div
-      className={`app-container ${isDark ? "dark" : ""}`}
-      data-sidebar-collapsed={!isOpen}
-    >
+  <div className={`app-container ${isDark ? "dark" : ""}`}>
       <Routes>
         {/* Public Routes */}
         <Route path="/auth/login" element={
@@ -62,8 +58,7 @@ function AppContent() {
                 <div className={`min-h-screen ${isDark ? "bg-slate-900" : "bg-gray-50"} transition-colors duration-300`}>
                   <TopBar />
                   <div className={`main-content backdrop-blur-xl ${isDark ? "bg-black/20" : "bg-white/20"}`}>
-                    <Sidebar />
-                    <main id="main" className={`content-area ${isDark ? "text-gray-100" : "text-gray-900"}`}>
+                    <main id="main" className={`content-area ${isDark ? "text-gray-100" : "text-gray-900"} pt-[60px]`}>
                         <Routes>
                           <Route path="/" element={<Suspense fallback={<div />}> <Home /> </Suspense>} />
                           <Route path="/about" element={<Suspense fallback={<div />}> <About /> </Suspense>} />
@@ -92,7 +87,6 @@ function AppContent() {
           }
         />
       </Routes>
-      <Toaster />
     </div>
   );
 }
@@ -103,22 +97,8 @@ function App() {
       <AuthProvider>
         <RoleProvider>
           <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-            <SidebarProvider>
-              <AppContent />
-              <Toaster 
-                position="bottom-right" 
-                expand={true} 
-                richColors
-                toastOptions={{
-                  duration: 4000,
-                  style: {
-                    background: 'var(--card-background, #ffffff)',
-                    color: 'var(--text-primary, #000000)',
-                    border: '1px solid var(--divider, #e5e7eb)'
-                  },
-                }}
-              />
-            </SidebarProvider>
+            <AppContent />
+            <Toaster />
           </Router>
         </RoleProvider>
       </AuthProvider>

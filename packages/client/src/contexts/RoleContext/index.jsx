@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect } from "react";
 import { ROLES } from "@data/constants";
 // Import from our configured client instead of creating a new instance
 import { useSession } from "../../lib/auth-client";
+import { useAuth } from "@/contexts/AuthContext";
 
 const RoleContext = createContext({
   role: null,
@@ -11,6 +12,7 @@ const RoleContext = createContext({
 
 export function RoleProvider({ children }) {
   const { data: session, isPending } = useSession();
+  const { user: authUser } = useAuth();
   const [role, setRole] = useState(null);
 
   const normalizeRole = (raw) => {
@@ -25,18 +27,26 @@ export function RoleProvider({ children }) {
   };
 
   useEffect(() => {
-    if (isPending) return;
-    if (session?.user) {
-      const next = normalizeRole(session.user.role);
+    // Priority 1: If AuthContext already has a user (immediately after login), use it
+    if (authUser?.role) {
+      const next = normalizeRole(authUser.role);
       setRole(next);
-      console.log('Session loaded:', session.user);
-    } else {
+      return;
+    }
+
+    // Priority 2: Fall back to session hook once it finishes
+    if (!isPending) {
+      if (session?.user?.role) {
+        const next = normalizeRole(session.user.role);
+        setRole(next);
+        return;
+      }
       setRole(null);
     }
-  }, [session, isPending]);
+  }, [authUser, session, isPending]);
 
   return (
-    <RoleContext.Provider value={{ role, isReady: !isPending, setRole }}>
+    <RoleContext.Provider value={{ role, isReady: !isPending || !!authUser, setRole }}>
       {children}
     </RoleContext.Provider>
   );
