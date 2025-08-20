@@ -82,6 +82,26 @@ export default function EmployeeUploadSection({
     ...DEFAULT_POSITION
   });
 
+  // Reset component state
+  const resetComponent = useCallback(() => {
+    setSelectedFile(null);
+    setPastedData("");
+    setPreviewData([]);
+    setErrorMessage("");
+    setCurrentPage(1);
+    setIsLoading(false);
+    setSingleEmployee({
+      name: "",
+      email: "",
+      phone: "",
+      departmentId: "",
+      shiftId: "",
+      position: "",
+      location: "",
+      ...DEFAULT_POSITION
+    });
+  }, []);
+
   // Load initial data
   useEffect(() => {
     const fetchDepartmentsAndShifts = async () => {
@@ -105,26 +125,6 @@ export default function EmployeeUploadSection({
     fetchDepartmentsAndShifts();
     return resetComponent;
   }, [resetComponent]);
-
-  // Reset component state
-  const resetComponent = useCallback(() => {
-    setSelectedFile(null);
-    setPastedData("");
-    setPreviewData([]);
-    setErrorMessage("");
-    setCurrentPage(1);
-    setIsLoading(false);
-    setSingleEmployee({
-      name: "",
-      email: "",
-      phone: "",
-      departmentId: "",
-      shiftId: "",
-      position: "",
-      location: "",
-      ...DEFAULT_POSITION
-    });
-  }, []);
 
   // Handlers for single employee form
   const handleEmployeeChange = useCallback((e) => {

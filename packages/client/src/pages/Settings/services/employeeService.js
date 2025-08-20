@@ -640,61 +640,45 @@ class EmployeeService {
     }
     
     try {
-      // Get data from API
-      const [employeeData, driverData] = await Promise.all([
-        api.get('/employees/history'),
-        api.get('/drivers/history')
+      // Build growth from existing data since /employees|drivers/history endpoints are unavailable
+      const [employees, drivers] = await Promise.all([
+        this.listEmployees(false),
+        // Import driverService lazily to avoid circular deps
+        import('./driverService').then(m => m.driverService.listDrivers(false)).catch(() => [])
       ]);
-      
-      // Process data to get monthly counts
+
       const currentDate = new Date();
-      const monthsToShow = 6; // Show 6 months of history
-      
-      // Create array of last 6 months (including current)
+      const monthsToShow = 6;
+
       const months = Array.from({ length: monthsToShow }, (_, i) => {
         const date = new Date();
         date.setMonth(currentDate.getMonth() - (monthsToShow - 1 - i));
         return {
-          month: date.toLocaleString('default', { month: 'short' }),
-          year: date.getFullYear(),
-          timestamp: date.getTime()
+          label: `${date.toLocaleString('default', { month: 'short' })}${date.getFullYear() !== currentDate.getFullYear() ? ' ' + date.getFullYear() : ''}`,
+          y: date.getFullYear(),
+          m: date.getMonth(),
         };
       });
-      
-      // Map employee and driver counts to each month
-      const growthData = months.map(monthItem => {
-        const monthLabel = `${monthItem.month} ${monthItem.year !== currentDate.getFullYear() ? monthItem.year : ''}`;
-        
-        // Find employee count for this month
-        const employeeCount = employeeData.data?.find(item => 
-          new Date(item.date).getMonth() === new Date(monthItem.timestamp).getMonth() &&
-          new Date(item.date).getFullYear() === new Date(monthItem.timestamp).getFullYear()
-        )?.count || 0;
-        
-        // Find driver count for this month
-        const driverCount = driverData.data?.find(item => 
-          new Date(item.date).getMonth() === new Date(monthItem.timestamp).getMonth() &&
-          new Date(item.date).getFullYear() === new Date(monthItem.timestamp).getFullYear()
-        )?.count || 0;
-        
-        return {
-          month: monthLabel,
-          employeeCount,
-          driverCount
-        };
-      });
-      
-      // Save to cache
-      this.cache.employeeDetails.set(cacheKey, {
-        data: growthData,
-        timestamp: Date.now()
-      });
-      
+
+      const countByMonth = (items) => (y, m) => items.filter(it => {
+        if (!it?.createdAt) return false;
+        const dt = new Date(it.createdAt);
+        return dt.getFullYear() === y && dt.getMonth() === m;
+      }).length;
+
+      const employeeCountFor = countByMonth(employees);
+      const driverCountFor = Array.isArray(drivers) ? countByMonth(drivers) : () => 0;
+
+      const growthData = months.map(({ label, y, m }) => ({
+        month: label,
+        employeeCount: employeeCountFor(y, m),
+        driverCount: driverCountFor(y, m),
+      }));
+
+      this.cache.employeeDetails.set(cacheKey, { data: growthData, timestamp: Date.now() });
       return growthData;
     } catch (error) {
-      console.error("Error fetching employee growth data:", error);
-      
-      // Return fallback data if API fails
+      console.error("Error computing employee growth data:", error);
       return this.getFallbackGrowthData();
     }
   });

@@ -1,4 +1,4 @@
-import { authClient } from '@/test/auth-test-client';
+import { api } from './apiService';
 
 export interface UserData {
   id: string;
@@ -14,6 +14,18 @@ export interface UserData {
   updatedAt: Date;
   isTwoFactorEnabled?: boolean;
 }
+
+type ServerUser = {
+  id: string;
+  name?: string | null;
+  email: string;
+  role: string;
+  banned?: boolean;
+  banReason?: string | null;
+  banExpires?: string | Date | null;
+  createdAt: string | Date;
+  updatedAt: string | Date;
+};
 
 // Updated to match betterAuth's exact query type
 export interface UserQuery {
@@ -39,17 +51,16 @@ export const adminService = {
       ) : { limit: 100 };
       
       console.log('Making API call with query:', cleanQuery);
-      
-      const response = await authClient.admin.listUsers({
-        query: cleanQuery
-      });
-      
-      // Based on logs, we now know the exact structure
-      if (response?.data?.users && Array.isArray(response.data.users)) {
-        console.log(`Found ${response.data.users.length} users in response.data.users`);
-        return response.data.users;
+      const { data } = await api.get('/users', { params: cleanQuery });
+      if (data?.users && Array.isArray(data.users)) {
+        console.log(`Found ${data.users.length} users in response.data.users`);
+        return (data.users as ServerUser[]).map((u) => ({
+          ...u,
+          isActive: !u.banned,
+          isBanned: !!u.banned,
+          banExpiresAt: u.banExpires,
+        }));
       }
-      
       console.warn('No users found in response');
       return [];
     } catch (error) {
@@ -66,8 +77,8 @@ export const adminService = {
     data?: Record<string, unknown>;
   }) {
     try {
-      const response = await authClient.admin.createUser(userData);
-      return response;
+  const { data } = await api.post('/users', userData);
+  return data;
     } catch (error) {
       console.error('Failed to create user:', error);
       throw error;
@@ -76,8 +87,8 @@ export const adminService = {
 
   async setRole(params: { userId: string; role: 'user' | 'admin' }) {
     try {
-      const response = await authClient.admin.setRole(params);
-      return response;
+  const { data } = await api.patch(`/users/${params.userId}/role`, { role: params.role });
+  return data;
     } catch (error) {
       console.error('Failed to update user role:', error);
       throw error;
@@ -90,8 +101,8 @@ export const adminService = {
     banExpiresIn?: number;
   }) {
     try {
-      const response = await authClient.admin.banUser(params);
-      return response;
+  const { data } = await api.post(`/users/${params.userId}/ban`, { reason: params.banReason, expiresIn: params.banExpiresIn });
+  return data;
     } catch (error) {
       console.error('Failed to ban user:', error);
       throw error;
@@ -100,8 +111,8 @@ export const adminService = {
 
   async unbanUser(params: { userId: string }) {
     try {
-      const response = await authClient.admin.unbanUser(params);
-      return response;
+  const { data } = await api.post(`/users/${params.userId}/unban`);
+  return data;
     } catch (error) {
       console.error('Failed to unban user:', error);
       throw error;
@@ -110,8 +121,8 @@ export const adminService = {
 
   async listUserSessions(params: { userId: string }) {
     try {
-      const response = await authClient.admin.listUserSessions(params);
-      return response;
+  const { data } = await api.get(`/users/${params.userId}/sessions`);
+  return data;
     } catch (error) {
       console.error('Failed to list user sessions:', error);
       throw error;
@@ -120,8 +131,8 @@ export const adminService = {
 
   async revokeUserSession(params: { sessionToken: string }) {
     try {
-      const response = await authClient.admin.revokeUserSession(params);
-      return response;
+  const { data } = await api.post(`/sessions/${params.sessionToken}/revoke`);
+  return data;
     } catch (error) {
       console.error('Failed to revoke user session:', error);
       throw error;
@@ -130,8 +141,8 @@ export const adminService = {
 
   async revokeUserSessions(params: { userId: string }) {
     try {
-      const response = await authClient.admin.revokeUserSessions(params);
-      return response;
+  const { data } = await api.post(`/users/${params.userId}/sessions/revoke-all`);
+  return data;
     } catch (error) {
       console.error('Failed to revoke all user sessions:', error);
       throw error;
@@ -140,8 +151,8 @@ export const adminService = {
 
   async removeUser(params: { userId: string }) {
     try {
-      const response = await authClient.admin.removeUser(params);
-      return response;
+  const { data } = await api.delete(`/users/${params.userId}`);
+  return data;
     } catch (error) {
       console.error('Failed to delete user:', error);
       throw error;
@@ -150,18 +161,8 @@ export const adminService = {
 
   async getUser(userId: string) {
     try {
-      const response = await authClient.admin.listUsers({
-        query: {
-          filterField: 'id',
-          filterOperator: 'eq',
-          filterValue: userId,
-          limit: 1
-        }
-      });
-      
-      if (response?.data?.users?.[0]) {
-        return response.data.users[0];
-      }
+  const { data } = await api.get(`/users`, { params: { filterField: 'id', filterOperator: 'eq', filterValue: userId, limit: 1 } });
+  if (data?.users?.[0]) return data.users[0];
       throw new Error('User not found');
     } catch (error) {
       console.error('Failed to get user details:', error);

@@ -63,11 +63,11 @@ function AppContent() {
                   <TopBar />
                   <div className={`main-content backdrop-blur-xl ${isDark ? "bg-black/20" : "bg-white/20"}`}>
                     <Sidebar />
-                    <main className={`content-area ${isDark ? "text-gray-100" : "text-gray-900"}`}>
+                    <main id="main" className={`content-area ${isDark ? "text-gray-100" : "text-gray-900"}`}>
                         <Routes>
                           <Route path="/" element={<Suspense fallback={<div />}> <Home /> </Suspense>} />
                           <Route path="/about" element={<Suspense fallback={<div />}> <About /> </Suspense>} />
-                          <Route path="/dashboard" element={<Suspense fallback={<div />}> <Dashboard /> </Suspense>} />
+                          <Route path="/dashboard" element={<Suspense fallback={<div className="p-6">Loading dashboard…</div>}> <Dashboard /> </Suspense>} />
                         <Route 
                           path="/routes" 
                           element={

@@ -46,8 +46,7 @@ class ActivityService {
       return response.data;
     } catch (error) {
       console.error('Error fetching recent activities:', error);
-      
-      // NEVER use mock data, return empty array instead
+      // Return empty array when endpoint not present or on error to avoid UI breakage
       return [];
     }
   }

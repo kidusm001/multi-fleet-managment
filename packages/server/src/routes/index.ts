@@ -11,6 +11,7 @@ import clusterRoutes from './clusterRoutes';
 import notificationRoutes from './notificationRoutes';
 import vehicleRequestRoutes from './vehicleRequestRoutes';
 import searchRoutes from './searchRoutes';
+import userRoutes from './userRoutes';
 
 const router = express.Router();
 
@@ -34,6 +35,7 @@ router.use('/clusters', clusterRoutes);
 router.use('/notifications', notificationRoutes);
 router.use('/vehicle-requests', vehicleRequestRoutes);
 router.use('/search', searchRoutes);
+router.use('/users', userRoutes);
 
 // Debug route to check if router is working
 const debugRoute: RequestHandler = (req, res) => {
@@ -51,6 +53,7 @@ const debugRoute: RequestHandler = (req, res) => {
       '/notifications',
   '/vehicle-requests',
       '/search'
+  ,'/users'
     ]
   });
 };

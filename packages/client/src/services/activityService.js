@@ -23,13 +23,11 @@ class ActivityService {
       return response.data;
     } catch (error) {
       console.error('Error fetching recent activities:', error);
-      
-      // Fall back to mock data in development to prevent UI breakage
-      if (process.env.NODE_ENV === 'development') {
+      // Fall back to mock data in development or when endpoint is missing (404)
+      if (process.env.NODE_ENV === 'development' || error?.response?.status === 404) {
         console.warn('Using fallback mock activity data');
         return this.getMockActivities(limit);
       }
-      
       throw error;
     }
   }

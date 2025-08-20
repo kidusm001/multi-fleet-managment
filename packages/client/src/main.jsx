@@ -4,12 +4,14 @@ import { createRoot } from 'react-dom/client';
 import { Toaster } from 'sonner';
 
 // Internal dependencies
-import App from './App';  // Change to default import
+import App from './App';
+import ErrorBoundary from './components/Common/ErrorBoundary';
 import './styles/index.css';
 
 const root = createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
+    <ErrorBoundary>
     <Toaster 
       position="bottom-right" 
       expand={true} 
@@ -22,7 +24,8 @@ root.render(
           border: '1px solid var(--divider, #e5e7eb)'
         },
       }}
-    />
-    <App />
+  />
+  <App />
+  </ErrorBoundary>
   </React.StrictMode>
 );
