@@ -14,6 +14,7 @@ const About = lazy(() => import('@pages/About'));
 const Dashboard = lazy(() => import('@pages/Dashboard'));
 const RouteManagement = lazy(() => import('@pages/RouteManagement'));
 const ShuttleManagement = lazy(() => import('@pages/ShuttleManagement'));
+const VehicleManagement = lazy(() => import('@pages/ShuttleManagement')); // Alias for transition
 const EmployeeManagement = lazy(() => import('@pages/EmployeeManagement'));
 const Payroll = lazy(() => import('@pages/Payroll'));
 const Settings = lazy(() => import('@pages/Settings'));
@@ -76,6 +77,7 @@ function AppContent() {
                           } 
                         />
                           <Route path="/shuttles" element={<Suspense fallback={<div />}> <ShuttleManagement /> </Suspense>} />
+                          <Route path="/vehicles" element={<Suspense fallback={<div />}> <VehicleManagement /> </Suspense>} />
                           <Route path="/employees" element={<Suspense fallback={<div />}> <EmployeeManagement /> </Suspense>} />
                           <Route path="/payroll" element={<Suspense fallback={<div />}> <Payroll /> </Suspense>} />
                           <Route path="/notifications" element={<Suspense fallback={<div />}> <NotificationDashboard /> </Suspense>} />

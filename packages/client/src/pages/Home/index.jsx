@@ -93,7 +93,7 @@ export default function Home() {
                 className="text-6xl font-bold mb-6"
               >
                 <span className={`bg-gradient-to-r ${isDark ? 'from-white to-[#f3684e]' : 'from-slate-900 to-[#f3684e]'} bg-clip-text text-transparent`}>
-                  Welcome to Shuttle Management
+                  Welcome to Fleet Management
                 </span>
               </motion.h1>
               

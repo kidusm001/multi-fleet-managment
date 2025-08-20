@@ -34,10 +34,10 @@ const getMenuItems = (role) => {
         path: ROUTES.ROUTES,
       },
       {
-        id: "shuttles",
-        title: "Shuttles",
+        id: "vehicles",
+        title: "Vehicles",
         icon: Truck,
-        path: ROUTES.SHUTTLES,
+        path: ROUTES.VEHICLES,
       },
       {
         id: "employees",
@@ -66,10 +66,10 @@ const getMenuItems = (role) => {
         path: ROUTES.ROUTES,
       },
       {
-        id: "shuttles",
-        title: "Shuttles",
+        id: "vehicles",
+        title: "Vehicles",
         icon: Truck,
-        path: ROUTES.SHUTTLES,
+        path: ROUTES.VEHICLES,
       },
       {
         id: "employees",

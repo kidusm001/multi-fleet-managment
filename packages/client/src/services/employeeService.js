@@ -47,6 +47,40 @@ const employeeService = {
     });
     return response.data;
   },
+
+  getEmployeeStats: async () => {
+    try {
+      const response = await api.get('/employees/management');
+      const employees = response.data || [];
+      
+      // Calculate basic stats from employee data
+      const total = employees.length;
+      const assigned = employees.filter(emp => emp.departmentId).length;
+      const departments = new Set(employees.map(emp => emp.departmentId).filter(Boolean)).size;
+      const recentlyAdded = employees.filter(emp => {
+        const createdAt = new Date(emp.createdAt);
+        const weekAgo = new Date();
+        weekAgo.setDate(weekAgo.getDate() - 7);
+        return createdAt > weekAgo;
+      }).length;
+
+      return {
+        total,
+        assigned,
+        departments,
+        recentlyAdded
+      };
+    } catch (error) {
+      console.error('Error fetching employee stats:', error);
+      // Return default stats if API fails
+      return {
+        total: 0,
+        assigned: 0,
+        departments: 0,
+        recentlyAdded: 0
+      };
+    }
+  },
 };
 
 export const {
@@ -59,6 +93,8 @@ export const {
   getEmployeesByDepartment,
   deactivateEmployee,
   suggestRoutes,
+  getEmployeeStats,
 } = employeeService;
 
+export { employeeService };
 export default employeeService; 

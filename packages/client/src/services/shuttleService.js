@@ -147,7 +147,7 @@ class ShuttleService {
   async requestShuttle(shuttleData) {
     try {
       console.log("Sending shuttle request data:", shuttleData);
-      const response = await api.post('/shuttle-requests', shuttleData);
+      const response = await api.post('/vehicle-requests', shuttleData);
       return response.data;
     } catch (error) {
       console.error('Error requesting shuttle:', error);
@@ -157,7 +157,7 @@ class ShuttleService {
 
   async getPendingShuttleRequests() {
     try {
-      const response = await api.get('/shuttle-requests/pending');
+      const response = await api.get('/vehicle-requests/pending');
       return response.data;
     } catch (error) {
       console.error('Error fetching pending shuttle requests:', error);
@@ -167,7 +167,7 @@ class ShuttleService {
 
   async approveShuttleRequest(id) {
     try {
-      const response = await api.post(`/shuttle-requests/${id}/approve`);
+      const response = await api.post(`/vehicle-requests/${id}/approve`);
       return response.data;
     } catch (error) {
       console.error('Error approving shuttle request:', error);
@@ -177,7 +177,7 @@ class ShuttleService {
 
   async rejectShuttleRequest(id, comment) {
     try {
-      const response = await api.post(`/shuttle-requests/${id}/reject`, { comment });
+      const response = await api.post(`/vehicle-requests/${id}/reject`, { comment });
       return response.data;
     } catch (error) {
       console.error('Error rejecting shuttle request:', error);

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useNavigate } from "react-router-dom";
-import { employeeService } from "../../services/employeeService";
+import { employeeService } from "@/services/employeeService";
 import { Users, RefreshCw, AlertCircle } from "lucide-react";
 import Button from "@/components/Common/UI/Button";
 import { toast } from "sonner";

@@ -26,7 +26,8 @@ export const ROUTES = {
   HOME: '/',
   DASHBOARD: '/dashboard',
   ROUTES: '/routes',
-  SHUTTLES: '/shuttles',
+  VEHICLES: '/vehicles',
+  SHUTTLES: '/shuttles', // Legacy compatibility
   EMPLOYEES: '/employees',
   DRIVERS: '/driver-management',
   PAYROLL: '/payroll',
