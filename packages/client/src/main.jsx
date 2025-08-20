@@ -9,12 +9,15 @@ import ErrorBoundary from './components/Common/ErrorBoundary';
 import './styles/index.css';
 
 const root = createRoot(document.getElementById('root'));
-root.render(
-  <React.StrictMode>
-    <ErrorBoundary>
-    <Toaster 
-      position="bottom-right" 
-      expand={true} 
+
+// Allow disabling StrictMode in development to prevent double-invoked effects
+const enableStrict = import.meta.env.PROD || import.meta.env.VITE_ENABLE_STRICT_MODE === 'true';
+
+const AppTree = (
+  <ErrorBoundary>
+    <Toaster
+      position="bottom-right"
+      expand={true}
       richColors
       toastOptions={{
         duration: 3000,
@@ -24,8 +27,9 @@ root.render(
           border: '1px solid var(--divider, #e5e7eb)'
         },
       }}
-  />
-  <App />
+    />
+    <App />
   </ErrorBoundary>
-  </React.StrictMode>
 );
+
+root.render(enableStrict ? <React.StrictMode>{AppTree}</React.StrictMode> : AppTree);

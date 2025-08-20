@@ -3,24 +3,23 @@ import { useRole } from '@contexts/RoleContext';
 import { useState, useEffect } from 'react';
 
 export function ProtectedRoute({ children, allowedRoles = [] }) {
-  const { role } = useRole();
+  const { role, isReady } = useRole();
   const location = useLocation();
   const [isChecking, setIsChecking] = useState(true);
   const [isAuthorized, setIsAuthorized] = useState(false);
 
   useEffect(() => {
-    const checkAuthorization = () => {
-      const hasPermission = allowedRoles.includes(role);
-      setIsAuthorized(hasPermission);
-      setIsChecking(false);
-
-      if (!hasPermission) {
-        console.log(`Access denied: User role ${role} not in allowed roles:`, allowedRoles);
-      }
-    };
-
-    checkAuthorization();
-  }, [role, allowedRoles]);
+    if (!isReady) {
+      setIsChecking(true);
+      return;
+    }
+    const hasPermission = role ? allowedRoles.includes(role) : false;
+    setIsAuthorized(hasPermission);
+    setIsChecking(false);
+    if (!hasPermission) {
+      console.log(`Access denied: User role ${role} not in allowed roles:`, allowedRoles);
+    }
+  }, [role, allowedRoles, isReady]);
 
   if (isChecking) {
     return (

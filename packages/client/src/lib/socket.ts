@@ -68,6 +68,8 @@ class SocketManager {
   const base = import.meta.env.DEV ? '' : (import.meta.env.VITE_API_BASE || import.meta.env.VITE_API_URL || 'http://localhost:3001');
   this.socket = io(base, {
       withCredentials: true,
+      // Prefer WebSocket to avoid polling overhead in dev
+      transports: ['websocket'],
       reconnection: true,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
