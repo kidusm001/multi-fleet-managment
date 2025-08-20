@@ -189,7 +189,7 @@ Progress Tracker
 - [ ] Vehicles page adapted
 - [x] Employees/Departments adapted — employees-only; recruitment removed
 - [ ] Shifts adapted
-- [ ] Notifications adapted
+- [x] Notifications adapted
 - [ ] Search adapted
 - [ ] Legacy/unused removed
 - [ ] Tests passing (smoke + guards)
@@ -320,6 +320,11 @@ Update Log — 2025-08-21
 - Refactored EmployeeManagement to employees-only with filters, sorting, pagination, and activate/deactivate.
 - Simplified `EmployeeTable.jsx`; deleted dead candidate/batch code paths.
 - Updated EmployeeManagement README to reflect the new scope.
+
+Update Log — 2025-08-21 (cont.)
+- Notifications: normalized client API to server shape; aligned icon types to `route|shuttle|vehicle|employee|department|driver`; removed legacy batch icon.
+- Validators: renamed `validateCandidateData` → `validateEmployeeUploadData` and updated imports/usages in `DataTable.jsx` and `EmployeeUploadSection.jsx`.
+ - Cleanup: removed obsolete `candidate` branch from TopBar `TypeIcon`; renamed local variables in `validateFileContents` from `candidate` → `employee` for clarity; identified legacy `notificationService.js` as unused (pending deletion after reference sweep).
 
 Next Actions
 - Rebranding: confirm no MMCY images remain in `public/assets`; final sweep with ripgrep excluding `dist`.

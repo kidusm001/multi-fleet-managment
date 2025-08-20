@@ -2,9 +2,12 @@
 
 import { useState, useEffect } from 'react';
 
-const API_BASE = import.meta.env.DEV
-  ? '/api'
-  : (import.meta.env.VITE_API_URL || 'http://localhost:3001');
+// Auth endpoints live at '/auth' on the backend (not under '/api').
+// In development, we call same-origin '/auth' and let Vite proxy handle it.
+// In production, use the configured backend origin.
+const AUTH_BASE = import.meta.env.DEV
+  ? '/_auth'
+  : `${(import.meta.env.VITE_API_URL || 'http://localhost:3001').replace(/\/$/, '')}/auth`;
 
 export interface User {
   id: string;
@@ -22,7 +25,7 @@ export const authClient = {
   signIn: {
     email: async ({ email, password }: { email: string; password: string }) => {
       try {
-        const response = await fetch(`${API_BASE}/auth/sign-in`, {
+  const response = await fetch(`${AUTH_BASE}/sign-in`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -45,7 +48,7 @@ export const authClient = {
   },
   signOut: async () => {
     try {
-      await fetch(`${API_BASE}/auth/logout`, {
+  await fetch(`${AUTH_BASE}/logout`, {
         method: 'POST',
         credentials: 'include',
       });
@@ -56,7 +59,7 @@ export const authClient = {
   },
   getSession: async () => {
     try {
-      const response = await fetch(`${API_BASE}/auth/me`, {
+  const response = await fetch(`${AUTH_BASE}/me`, {
         credentials: 'include',
       });
 

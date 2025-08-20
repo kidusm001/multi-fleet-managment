@@ -1,5 +1,5 @@
 import PropTypes from 'prop-types';
-import { validatePhoneNumber, validateCandidateData } from "@/utils/validators";
+import { validatePhoneNumber, validateEmployeeUploadData } from "@/utils/validators";
 import { Badge } from "./Badge";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "./Table";
 
@@ -17,7 +17,7 @@ export function DataTable({ data, headers }) {
         </TableHeader>
         <TableBody>
           {data.map((row, idx) => {
-            const { isValid, errors } = validateCandidateData(row);
+            const { isValid, errors } = validateEmployeeUploadData(row);
             
             return (
               <TableRow key={idx}>

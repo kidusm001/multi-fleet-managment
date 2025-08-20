@@ -17,8 +17,8 @@ export const validateEmail = (email) => {
   return Boolean(email.match(EMAIL_REGEX));
 };
 
-// Helper function to validate candidate data
-export const validateCandidateData = (data) => {
+// Helper function to validate employee upload data
+export const validateEmployeeUploadData = (data) => {
   const errors = [];
 
   // Required fields: only name, department, and location
@@ -141,7 +141,7 @@ export const validateFileContents = (rows) => {
     // Skip empty rows
     if (!row.some(cell => cell?.trim())) continue;
 
-    const candidate = {
+    const employee = {
       name: row[fieldIndexes.name]?.trim() || '',
       location: row[fieldIndexes.location]?.trim() || '',
       contact: row[fieldIndexes.contact]?.trim() || '',
@@ -150,17 +150,17 @@ export const validateFileContents = (rows) => {
     };
 
     // Required field validation
-    if (!candidate.name) rowErrors.push('Name is required');
-    if (!candidate.location) rowErrors.push('Location is required');
-    if (!candidate.contact) rowErrors.push('Contact is required');
+  if (!employee.name) rowErrors.push('Name is required');
+  if (!employee.location) rowErrors.push('Location is required');
+  if (!employee.contact) rowErrors.push('Contact is required');
 
     // Phone number validation
-    if (candidate.contact && !validatePhoneNumber(candidate.contact)) {
+  if (employee.contact && !validatePhoneNumber(employee.contact)) {
       rowErrors.push('Invalid phone number format (should be Ethiopian format)');
     }
 
     // Email validation if provided
-    if (candidate.email && !validateEmail(candidate.email)) {
+  if (employee.email && !validateEmail(employee.email)) {
       rowErrors.push('Invalid email format');
     }
 
@@ -170,7 +170,7 @@ export const validateFileContents = (rows) => {
         errors: rowErrors
       });
     } else {
-      processedRows.push(candidate);
+  processedRows.push(employee);
     }
   }
 

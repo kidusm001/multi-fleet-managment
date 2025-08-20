@@ -15,7 +15,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/Common/UI/Tabs";
-import { validatePhoneNumber, validateEmail, validateCandidateData } from "@/utils/validators";
+import { validatePhoneNumber, validateEmail, validateEmployeeUploadData } from "@/utils/validators";
 
 // Import components from index
 import {
@@ -353,7 +353,7 @@ export default function EmployeeUploadSection({
         }
         
         // Validate data
-        const validation = validateCandidateData(data);
+  const validation = validateEmployeeUploadData(data);
         if (!validation.isValid) {
           // Use real row number (accounting for header if present)
           const rowNum = hasHeader ? idx + 2 : idx + 1;
@@ -423,7 +423,7 @@ export default function EmployeeUploadSection({
       }
       
       // Validate data
-      const validation = validateCandidateData(data);
+  const validation = validateEmployeeUploadData(data);
       if (!validation.isValid) {
         errors.push(`Row ${idx + 1}: ${validation.errors.join(', ')}`);
       }

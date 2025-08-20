@@ -34,6 +34,52 @@ export default function EmployeeManagement() {
   const [totalEmployees, setTotalEmployees] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
 
+  // Apply filters to employees (defined before effects to avoid TDZ issues)
+  const applyFilters = useCallback((employeesList) => {
+    let filtered = [...employeesList];
+    
+    // Department filter
+    if (departmentFilter !== "all") {
+      filtered = filtered.filter((e) => 
+        (e.department?.id?.toString() === departmentFilter) || 
+        (e.departmentId?.toString() === departmentFilter)
+      );
+    }
+
+    // Shift filter
+    if (shiftFilter !== "all") {
+      filtered = filtered.filter((e) => 
+        (e.shift?.id?.toString() === shiftFilter) || 
+        (e.shiftId?.toString() === shiftFilter)
+      );
+    }
+
+    // Status filter
+    if (statusFilter !== "all") {
+      filtered = filtered.filter((e) => e.status === statusFilter);
+    }
+
+    // Assignment filter
+    if (assignmentFilter === "assigned") {
+      filtered = filtered.filter((e) => e.assigned === true);
+    } else if (assignmentFilter === "unassigned") {
+      filtered = filtered.filter((e) => e.assigned === false);
+    }
+
+    // Search term
+  // Search removed
+    
+    // Update pagination data
+    setTotalEmployees(filtered.length);
+    setTotalPages(Math.ceil(filtered.length / itemsPerPage) || 1); // Ensure at least 1 page even when empty
+    
+    // Apply pagination
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const paginatedData = filtered.slice(startIndex, startIndex + itemsPerPage);
+    
+    setFilteredEmployees(paginatedData);
+  }, [departmentFilter, shiftFilter, statusFilter, assignmentFilter, currentPage, itemsPerPage]);
+
   // Fetch departments and shifts
   useEffect(() => {
     const fetchDepartmentsAndShifts = async () => {
@@ -102,52 +148,6 @@ export default function EmployeeManagement() {
   useEffect(() => {
     applyFilters(employees);
   }, [departmentFilter, shiftFilter, statusFilter, assignmentFilter, employees, currentPage, itemsPerPage, applyFilters]);
-
-  // Apply filters to employees
-  const applyFilters = useCallback((employeesList) => {
-    let filtered = [...employeesList];
-    
-    // Department filter
-    if (departmentFilter !== "all") {
-      filtered = filtered.filter((e) => 
-        (e.department?.id?.toString() === departmentFilter) || 
-        (e.departmentId?.toString() === departmentFilter)
-      );
-    }
-
-    // Shift filter
-    if (shiftFilter !== "all") {
-      filtered = filtered.filter((e) => 
-        (e.shift?.id?.toString() === shiftFilter) || 
-        (e.shiftId?.toString() === shiftFilter)
-      );
-    }
-
-    // Status filter
-    if (statusFilter !== "all") {
-      filtered = filtered.filter((e) => e.status === statusFilter);
-    }
-
-    // Assignment filter
-    if (assignmentFilter === "assigned") {
-      filtered = filtered.filter((e) => e.assigned === true);
-    } else if (assignmentFilter === "unassigned") {
-      filtered = filtered.filter((e) => e.assigned === false);
-    }
-
-    // Search term
-  // Search removed
-    
-    // Update pagination data
-    setTotalEmployees(filtered.length);
-    setTotalPages(Math.ceil(filtered.length / itemsPerPage) || 1); // Ensure at least 1 page even when empty
-    
-    // Apply pagination
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const paginatedData = filtered.slice(startIndex, startIndex + itemsPerPage);
-    
-    setFilteredEmployees(paginatedData);
-  }, [departmentFilter, shiftFilter, statusFilter, assignmentFilter, currentPage, itemsPerPage]);
 
   // Reset to first page when filters change
   useEffect(() => {

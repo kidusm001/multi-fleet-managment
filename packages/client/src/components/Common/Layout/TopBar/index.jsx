@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { createAuthClient } from "better-auth/react";
+import { useSession } from "@lib/auth-client";
 import { useTheme } from "@contexts/ThemeContext";
 import { useRole } from "@contexts/RoleContext";
 import { useNavigate, Link } from "react-router-dom";
@@ -22,7 +22,6 @@ import { Loader2 } from "lucide-react";
 import { useClickOutside } from "../../../../hooks/useClickOutside";
 import { searchService } from "../../../../services/searchService";
 
-const { useSession } = createAuthClient();
 
 // Icon mapping for search result types
 const TypeIcon = ({ type }) => {
@@ -41,9 +40,6 @@ const TypeIcon = ({ type }) => {
       return <Clock className="w-4 h-4" />;
     case "department":
       return <LayoutGrid className="w-4 h-4" />;
-    // candidate removed; default to User icon
-    case "candidate":
-      return <User className="w-4 h-4" />;
     default:
       return <FileText className="w-4 h-4" />;
   }

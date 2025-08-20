@@ -8,20 +8,26 @@ import { useNavigate } from "react-router-dom";
 // import { getImportanceLevel } from "@pages/notifications/lib/importance-levels";
 import { useTheme } from "@contexts/ThemeContext";
 
-import { Check, Package, Bus, Route } from "lucide-react";
+import { Check, Bus, Route, Car, User, LayoutGrid, IdCard } from "lucide-react";
 import { useNotifications } from "@contexts/NotificationContext";
 
 // Helper functions
 const mapTypeToIcon = (type) => {
   switch (type) {
-    case 'batch':
-      return 'package';
     case 'shuttle':
       return 'bus';
     case 'route':
       return 'route';
-    default:
+    case 'vehicle':
+      return 'car';
+    case 'employee':
       return 'user';
+    case 'department':
+      return 'grid';
+    case 'driver':
+      return 'id';
+    default:
+      return 'message';
   }
 };
 
@@ -293,12 +299,18 @@ function NotificationDropdown() {
                       >
                         {isRead ? (
                           <Check className="h-3 w-3 text-white" />
-                        ) : iconType === "package" ? (
-                          <Package className="h-3 w-3 text-white" />
                         ) : iconType === "bus" ? (
                           <Bus className="h-3 w-3 text-white" />
                         ) : iconType === "route" ? (
                           <Route className="h-3 w-3 text-white" />
+                        ) : iconType === "car" ? (
+                          <Car className="h-3 w-3 text-white" />
+                        ) : iconType === "user" ? (
+                          <User className="h-3 w-3 text-white" />
+                        ) : iconType === "grid" ? (
+                          <LayoutGrid className="h-3 w-3 text-white" />
+                        ) : iconType === "id" ? (
+                          <IdCard className="h-3 w-3 text-white" />
                         ) : null }
 
                       </div>

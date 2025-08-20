@@ -13,27 +13,89 @@ export interface NotificationQuery {
 export const notificationApi = {
   getAll: async (query: NotificationQuery = {}) => {
     const response = await api.get('/notifications', { params: query });
-    return response.data;
+    const data = response.data || {};
+    const notifications = data.notifications || data.items || [];
+    const total =
+      typeof data.total === 'number'
+        ? data.total
+        : Array.isArray(notifications)
+        ? notifications.length
+        : 0;
+    const perPage = (query && query.limit) || data.perPage || 10;
+    const pages = data.pages || (perPage ? Math.ceil(total / perPage) : 0);
+    return {
+      notifications,
+      pagination: {
+        total,
+        pages,
+        perPage,
+      },
+    };
   },
 
   getSortedByImportance: async (query: NotificationQuery = {}) => {
     const response = await api.get('/notifications/sorted-by-importance', { params: query });
-    return response.data;
+    const data = response.data || {};
+    const notifications = data.notifications || data.items || [];
+    const total = typeof data.total === 'number' ? data.total : notifications.length || 0;
+    const perPage = (query && query.limit) || data.perPage || 10;
+    const pages = data.pages || (perPage ? Math.ceil(total / perPage) : 0);
+    return {
+      notifications,
+      pagination: {
+        total,
+        pages,
+        perPage,
+      },
+    };
   },
 
   getUnread: async (page = 1, limit = 10) => {
     const response = await api.get('/notifications/unread', { params: { page, limit } });
-    return response.data;
+    const data = response.data || {};
+    const notifications = data.notifications || data.items || [];
+    const total = typeof data.total === 'number' ? data.total : notifications.length || 0;
+    const pages = data.pages || (limit ? Math.ceil(total / limit) : 0);
+    return {
+      notifications,
+      pagination: {
+        total,
+        pages,
+        perPage: limit,
+      },
+    };
   },
 
   getRead: async (page = 1, limit = 10) => {
     const response = await api.get('/notifications/read', { params: { page, limit } });
-    return response.data;
+    const data = response.data || {};
+    const notifications = data.notifications || data.items || [];
+    const total = typeof data.total === 'number' ? data.total : notifications.length || 0;
+    const pages = data.pages || (limit ? Math.ceil(total / limit) : 0);
+    return {
+      notifications,
+      pagination: {
+        total,
+        pages,
+        perPage: limit,
+      },
+    };
   },
 
   getByType: async (type: string, page = 1, limit = 10) => {
     const response = await api.get(`/notifications/type/${type}`, { params: { page, limit } });
-    return response.data;
+    const data = response.data || {};
+    const notifications = data.notifications || data.items || [];
+    const total = typeof data.total === 'number' ? data.total : notifications.length || 0;
+    const pages = data.pages || (limit ? Math.ceil(total / limit) : 0);
+    return {
+      notifications,
+      pagination: {
+        total,
+        pages,
+        perPage: limit,
+      },
+    };
   },
 
   markAsSeen: async (id: string) => {

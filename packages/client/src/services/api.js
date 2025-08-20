@@ -46,11 +46,14 @@ api.interceptors.response.use(
           // ignore any window access errors in non-browser contexts
         }
       }
-      // Global forbidden handling: go to unauthorized on 403
-      if (error.response.status === 403 && typeof window !== 'undefined') {
-        if (!window.location.pathname.startsWith('/unauthorized')) {
-          window.location.assign('/unauthorized');
-        }
+      // For 403 Forbidden, do NOT automatically redirect application-wide.
+      // Background API calls (notifications, counts) may return 403 when the
+      // user lacks a specific permission — let the calling component decide
+      // how to handle it (e.g., show a message or hide a feature) instead
+      // of forcing navigation which breaks SPA flows.
+      if (error.response.status === 403) {
+        console.warn('API Forbidden (403) — caller should handle this:', error.response.data);
+        // fall through to rethrow the error so components can handle it
       }
     }
     throw error;
