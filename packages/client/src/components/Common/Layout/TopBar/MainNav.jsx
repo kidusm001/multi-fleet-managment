@@ -31,6 +31,36 @@ const getNavIcon = (label) => {
   return iconMap[label] || LayoutDashboard;
 };
 
+// SVG-based highlight component for nav items (tapered line + center triangle)
+function NavHighlight({ isDark }) {
+  const color = isDark ? '#fb923c' : '#ea580c';
+  return (
+    <div className="absolute -bottom-1.5 left-1/2 transform -translate-x-1/2 transition-all duration-300 pointer-events-none">
+      <svg width="80" height="12" viewBox="0 0 80 12" xmlns="http://www.w3.org/2000/svg" className="block">
+        <defs>
+          <linearGradient id="navGrad" x1="0" x2="1">
+            <stop offset="0" stopColor={color} stopOpacity="0" />
+            <stop offset="0.18" stopColor={color} stopOpacity="1" />
+            <stop offset="0.82" stopColor={color} stopOpacity="1" />
+            <stop offset="1" stopColor={color} stopOpacity="0" />
+          </linearGradient>
+          <filter id="navGlow" x="-50%" y="-50%" width="200%" height="200%">
+            <feGaussianBlur stdDeviation="3" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        </defs>
+        {/* Tapered line */}
+        <rect x="0" y="6" width="80" height="2" rx="1" fill="url(#navGrad)" filter="url(#navGlow)" />
+        {/* Center upward triangle */}
+        <path d="M40 0 L46 6 L34 6 Z" fill={color} />
+      </svg>
+    </div>
+  );
+}
+
 // Click outside hook
 function useClickOutside(refs, handler) {
   useEffect(() => {
@@ -170,34 +200,8 @@ export default function MainNav({ isDark, onKeyDown }) {
                     {item.label}
                   </span>
                 </div>
-                {/* Simple highlight line with upward triangle when active */}
-                {isActive && (
-                  <div className="absolute -bottom-1.5 left-1/2 transform -translate-x-1/2 transition-all duration-300">
-                    {/* Tapered line that thins toward the ends */}
-                    <div className="relative" style={{ width: "60px", height: "2px" }}>
-                      <div 
-                        className={cn(
-                          "absolute inset-0 rounded-full transition-all duration-300",
-                          isDark ? "bg-orange-400" : "bg-orange-600"
-                        )}
-                        style={{
-                          clipPath: "polygon(10% 100%, 90% 100%, 100% 0%, 0% 0%)"
-                        }}
-                      />
-                    </div>
-                    {/* Small upward triangle in the center */}
-                    <div 
-                      className={cn(
-                        "absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-full w-0 h-0 transition-all duration-300"
-                      )}
-                      style={{
-                        borderLeft: "4px solid transparent",
-                        borderRight: "4px solid transparent",
-                        borderBottom: `4px solid ${isDark ? '#fb923c' : '#ea580c'}`
-                      }}
-                    />
-                  </div>
-                )}
+                {/* SVG-based highlight when active */}
+                {isActive && <NavHighlight isDark={isDark} />}
               </button>
               {/* Full-width sliding panel for subnav */}
               {showRoutesPanel && (
@@ -295,34 +299,8 @@ export default function MainNav({ isDark, onKeyDown }) {
                 {item.label}
               </span>
             </div>
-            {/* Simple highlight line with upward triangle when active */}
-            {isActive && (
-              <div className="absolute -bottom-1.5 left-1/2 transform -translate-x-1/2 transition-all duration-300">
-                {/* Tapered line that thins toward the ends */}
-                <div className="relative" style={{ width: "60px", height: "2px" }}>
-                  <div 
-                    className={cn(
-                      "absolute inset-0 rounded-full transition-all duration-300",
-                      isDark ? "bg-orange-400" : "bg-orange-600"
-                    )}
-                    style={{
-                      clipPath: "polygon(10% 100%, 90% 100%, 100% 0%, 0% 0%)"
-                    }}
-                  />
-                </div>
-                {/* Small upward triangle in the center */}
-                <div 
-                  className={cn(
-                    "absolute top-0 left-1/2 transform -translate-x-1/2 -translate-y-full w-0 h-0 transition-all duration-300"
-                  )}
-                  style={{
-                    borderLeft: "4px solid transparent",
-                    borderRight: "4px solid transparent",
-                    borderBottom: `4px solid ${isDark ? '#fb923c' : '#ea580c'}`
-                  }}
-                />
-              </div>
-            )}
+            {/* SVG-based highlight when active */}
+            {isActive && <NavHighlight isDark={isDark} />}
           </Link>
         );
       })}

@@ -13,7 +13,7 @@ Guiding Principles
 
 Next Plans (Frontend)
 
-- Navigation overhaul: replace Sidebar with structured Top Nav
+- [x] Navigation overhaul: replace Sidebar with structured Top Nav
 	- Files: `packages/client/src/components/Common/Layout/TopBar/index.jsx`, `packages/client/src/components/Common/Layout/Sidebar/index.jsx`, `packages/client/src/App.jsx`, `packages/client/src/contexts/SidebarContext/*`, `packages/client/src/styles/*`.
 	- Tasks:
 		- Add `MainNav` inside TopBar next to the logo showing primary paths: Dashboard, Routes, Vehicles, Employees, Payroll, Settings (role-aware).
@@ -23,7 +23,7 @@ Next Plans (Frontend)
 		- Update layout paddings to no longer rely on sidebar width variables; ensure content width and top padding account for fixed TopBar.
 	- Acceptance: No references to `Sidebar` or `SidebarContext`, main nav is visible in TopBar, hover shows subpaths, keyboard navigation works (Tab/Shift+Tab), current route highlighted.
 
-- Sidebar decommissioning and cleanup
+- [x] Sidebar decommissioning and cleanup
 	- Files: `.../Sidebar/index.jsx`, `.../contexts/SidebarContext/*`, any CSS vars referencing `--sidebar-width*`.
 	- Tasks:
 		- Remove Sidebar component, provider, hooks; delete CSS vars and data attributes like `data-sidebar-collapsed` usages.
