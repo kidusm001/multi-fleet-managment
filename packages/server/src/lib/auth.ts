@@ -1,45 +1,85 @@
 import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { PrismaClient } from '@prisma/client';
-import { admin } from 'better-auth/plugins';
+import { admin, organization } from 'better-auth/plugins';
+import {AdminAc, OrgAc, superadmin, user, owner, admin as organizationAdmin, manager, driver, employee} from './permissions';
+
 
 const prisma = new PrismaClient();
 
-const baseURL = (process.env.BETTER_AUTH_URL || 'http://localhost:3001').replace(/\/$/, '');
-
 export const auth = betterAuth({
-  appName: 'Multi-Fleet Management',
-  secret: process.env.BETTER_AUTH_SECRET || 'dev-secret-change',
-  baseURL,
   database: prismaAdapter(prisma, { provider: 'postgresql' }),
   emailAndPassword: {
     enabled: true,
-    autoSignIn: true,
     minPasswordLength: 8,
     maxPasswordLength: 128,
   },
   user: {
     additionalFields: {
-      role: { type: 'string', required: true, defaultValue: 'MANAGER', input: false },
-      tenantId: { type: 'string', required: true, input: true },
-      banned: { type: 'boolean', required: false, defaultValue: false, input: false },
-      banReason: { type: 'string', required: false, input: false },
-      banExpires: { type: 'date', required: false, input: false },
-    },
+      isSubscribed: {
+        type: 'boolean',
+        default: false,
+        input: false
+      }
+    }
   },
   plugins: [
     admin({
-      defaultRole: 'MANAGER',
-      adminRole: ['ADMIN'],
+      defaultRole: 'user',
+      adminRoles: ['superadmin'],
+      defaultBanReason: "Terms of service violation",
+      impersonationSessionDuration: 60 * 60, 
+      ac:AdminAc,
+      roles: {
+        superadmin,
+        user,
+      }
+    }),
+    organization({
+      // allowUserToCreateOrganization: async (user) => {
+      //   return await gotSubscribed(user.id);
+      // },
+      allowUserToCreateOrganization: false,
+      organizationLimit: 5,
+      ac:OrgAc,
+      roles: {
+        owner,
+        admin: organizationAdmin,
+        manager,
+        driver,
+        employee,
+      }
     }),
   ],
-  trustedOrigins: [
-    'http://localhost:3001/auth',
-    'http://localhost:3001',
-    'http://localhost:5173',
-    'http://127.0.0.1',
-    'http://127.0.0.1:3001',
-  ],
+
+  databaseHooks: {
+    user: {
+      create: {
+        before: async (user) => {
+          const isFirstUser = await checkIfFirstUser();
+          console.log("Creating user, isFirstUser:", isFirstUser);
+          return {
+            data: {
+              ...user,
+              role: isFirstUser ? "superadmin" : "user",
+            },
+          };
+        },
+      },
+    },
+  },
 });
+
+async function gotSubscribed(userId : string) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+  });
+  return user?.isSubscribed;
+}
+
+async function checkIfFirstUser() {
+  const count = await prisma.user.count();
+  return count === 0;
+}
 
 export type AuthInstance = typeof auth;

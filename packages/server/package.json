@@ -28,6 +28,7 @@
     "jsonwebtoken": "^9.0.2",
   "pino": "^9.3.2",
   "pino-http": "^10.3.0",
+  "shared": "workspace:*",
   "socket.io": "^4.8.1",
   "pdfkit": "^0.15.0"
   },
