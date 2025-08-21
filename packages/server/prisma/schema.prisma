@@ -14,9 +14,10 @@ datasource db {
 }
 
 enum Role {
-  ADMIN
-  MANAGER
-  DRIVER
+  admin
+  manager
+  driver
+  superadmin
 }
 
 enum VehicleStatus {
@@ -58,206 +59,141 @@ enum ApprovalStatus {
   REJECTED
 }
 
-model Tenant {
-  id        String   @id @default(cuid())
-  name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  users               User[]
-  drivers             Driver[]
-  routes              Route[]
-  stops               Stop[]
-  vehicles            Vehicle[]
-  vehicleCategories   VehicleCategory[]
-  vehicleAvailability VehicleAvailability[]
-  payrollReports      PayrollReport[]
-  notifications       Notification[]
-  departments         Department[]
-  shifts              Shift[]
-  employees           Employee[]
-  vehicleRequests     VehicleRequest[]
-
-  @@map("tenants")
+enum DriverStatus {
+  ACTIVE
+  OFF_DUTY
+  ON_BREAK
+  INACTIVE
 }
 
-model User {
-  id            String   @id @default(cuid())
-  email         String   @unique
-  password      String?
-  name          String?
-  emailVerified Boolean  @default(false)
-  image         String?
-  role          Role     @default(MANAGER)
-  tenantId      String
-  banned        Boolean  @default(false)
-  banReason     String?
-  banExpires    DateTime?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  tenant                Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  sessions              Session[]
-  accounts              Account[]
-  seenNotifications     Notification[] @relation("NotificationSeenBy")
-  memberships           Membership[]
-
-  // Indexes
-  @@index([tenantId])
-  @@map("users")
+enum VehicleType {
+  IN_HOUSE
+  OUTSOURCED
 }
 
-model Session {
-  id        String   @id @default(cuid())
-  expiresAt DateTime
-  token     String   @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  ipAddress String?
-  userAgent String?
-  userId    String
-  impersonatedBy String?
-
-  // Relations
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("sessions")
-}
-
-model Account {
-  id                    String    @id @default(cuid())
-  accountId             String
-  providerId            String
-  userId                String
-  accessToken           String?
-  refreshToken          String?
-  idToken               String?
-  accessTokenExpiresAt  DateTime?
-  refreshTokenExpiresAt DateTime?
-  scope                 String?
-  password              String?
-  createdAt             DateTime  @default(now())
-  updatedAt             DateTime  @updatedAt
-
-  // Relations
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("accounts")
+enum ImportanceLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
 }
 
 model Department {
-  id        String     @id @default(cuid())
-  name      String
-  tenantId  String
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
+  id             String   @id @default(cuid())
+  name           String
+  organizationId String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   // Relations
-  tenant    Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  employees Employee[]
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  employees    Employee[]
 
   // Indexes
-  @@index([tenantId])
+  @@index([organizationId])
   @@map("departments")
 }
 
 model Shift {
-  id        String   @id @default(cuid())
-  name      String
-  startTime DateTime
-  endTime   DateTime
-  timeZone  String
-  tenantId  String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id             String   @id @default(cuid())
+  name           String
+  startTime      DateTime
+  endTime        DateTime
+  timeZone       String
+  organizationId String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   // Relations
-  tenant              Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  organization        Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   employees           Employee[]
   routes              Route[]
   vehicleAvailability VehicleAvailability[]
 
   // Indexes
-  @@index([tenantId])
+  @@index([organizationId])
   @@map("shifts")
 }
 
 model Employee {
-  id           String   @id @default(cuid())
-  name         String
-  location     String?
-  assigned     Boolean  @default(false)
-  departmentId String
-  shiftId      String
-  stopId       String?  @unique
-  tenantId     String
-  deleted      Boolean  @default(false)
-  deletedAt    DateTime?
+  id             String    @id @default(cuid())
+  name           String
+  location       String?
+  assigned       Boolean   @default(false)
+  departmentId   String
+  shiftId        String
+  stopId         String?   @unique
+  organizationId String
+  userId         String
+  deleted        Boolean   @default(false)
+  deletedAt      DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   // Relations
-  tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  department Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
-  shift      Shift      @relation(fields: [shiftId], references: [id], onDelete: Cascade)
-  stop       Stop?      @relation(fields: [stopId], references: [id], onDelete: SetNull)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  department   Department   @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  shift        Shift        @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  stop         Stop?        @relation(fields: [stopId], references: [id], onDelete: SetNull)
 
   // Indexes
-  @@index([tenantId])
+  @@index([assigned])
+  @@index([organizationId])
   @@index([departmentId])
   @@index([shiftId])
+  @@index([deleted, deletedAt])
   @@map("employees")
 }
 
 model Driver {
-  id              String   @id @default(cuid())
+  id              String       @id @default(cuid())
   name            String
-  email           String?
-  phone           String?
-  licenseNumber   String   @unique
-  phoneNumber     String?
-  status          String   @default("active") // active, off-duty, on-break
+  email           String?      @unique
+  licenseNumber   String       @unique
+  phoneNumber     String?      @unique
+  status          DriverStatus @default(ACTIVE) // active, off-duty, on-break
   experienceYears Int?
-  rating          Float?   @default(0.0)
-  isActive        Boolean  @default(true)
-  tenantId        String
-  deleted         Boolean  @default(false)
+  rating          Float?       @default(0.0)
+  isActive        Boolean      @default(true)
+  organizationId  String
+  deleted         Boolean      @default(false)
   deletedAt       DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   // Relations
-  tenant              Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  organization        Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   vehicleAvailability VehicleAvailability[]
   payrollReports      PayrollReport[]
   assignedVehicles    Vehicle[]             @relation("VehicleDriver")
 
   // Indexes
-  @@index([tenantId])
+  @@index([organizationId])
+  @@index([status])
+  @@index([isActive])
+  @@index([deleted, deletedAt])
   @@map("drivers")
 }
 
 model VehicleCategory {
-  id       String @id @default(cuid())
-  name     String
-  capacity Int    @default(0)
-  tenantId String
+  id             String @id @default(cuid())
+  name           String
+  capacity       Int    @default(0)
+  organizationId String
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   // Relations
-  tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   vehicles        Vehicle[]
   vehicleRequests VehicleRequest[]
 
   // Indexes
-  @@index([tenantId])
+  @@index([organizationId])
   @@map("vehicle_categories")
 }
 
@@ -267,8 +203,8 @@ model Vehicle {
   name            String?
   model           String
   make            String?
-  type            String        @default("in-house") // in-house or outsourced
-  vendor          String?       // For outsourced vehicles
+  type            VehicleType   @default(IN_HOUSE) // in-house or outsourced
+  vendor          String? // For outsourced vehicles
   capacity        Int
   year            Int?
   status          VehicleStatus @default(AVAILABLE)
@@ -277,8 +213,8 @@ model Vehicle {
   dailyRate       Decimal?      @db.Decimal(10, 2)
   isActive        Boolean       @default(true)
   categoryId      String?
-  driverId        String?       // Assigned driver
-  tenantId        String
+  driverId        String? // Assigned driver
+  organizationId  String
   deleted         Boolean       @default(false)
   deletedAt       DateTime?
 
@@ -286,7 +222,7 @@ model Vehicle {
   updatedAt DateTime @updatedAt
 
   // Relations
-  tenant              Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  organization        Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   category            VehicleCategory?      @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   driver              Driver?               @relation("VehicleDriver", fields: [driverId], references: [id], onDelete: SetNull)
   vehicleAvailability VehicleAvailability[]
@@ -294,41 +230,47 @@ model Vehicle {
   routes              Route[]
 
   // Indexes
-  @@index([tenantId])
+  // For filtering by vehicle status
+  // For filtering in-house vs outsourced
+  @@index([organizationId])
   @@index([categoryId])
   @@index([driverId])
+  @@index([status])
+  @@index([type])
+  @@index([isActive])
+  @@index([deleted, deletedAt])
   @@map("vehicles")
 }
 
 model Route {
-  id            String      @id @default(cuid())
-  name          String
-  description   String?
-  vehicleId     String?
-  shiftId       String?
-  date          DateTime?
-  startTime     DateTime?
-  endTime       DateTime?
-  totalDistance Float?
-  totalTime     Float?
-  status        RouteStatus @default(ACTIVE)
-  isActive      Boolean     @default(true)
-  tenantId      String
-  deleted       Boolean     @default(false)
-  deletedAt     DateTime?
+  id             String      @id @default(cuid())
+  name           String
+  description    String?
+  vehicleId      String?
+  shiftId        String?
+  date           DateTime?
+  startTime      DateTime?
+  endTime        DateTime?
+  totalDistance  Float?
+  totalTime      Float?
+  status         RouteStatus @default(ACTIVE)
+  isActive       Boolean     @default(true)
+  organizationId String
+  deleted        Boolean     @default(false)
+  deletedAt      DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   // Relations
-  tenant              Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  organization        Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   vehicle             Vehicle?              @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
   shift               Shift?                @relation(fields: [shiftId], references: [id], onDelete: SetNull)
   stops               Stop[]
   vehicleAvailability VehicleAvailability[]
 
   // Indexes
-  @@index([tenantId])
+  @@index([organizationId])
   @@index([vehicleId])
   @@index([shiftId])
   @@map("routes")
@@ -343,92 +285,92 @@ model Stop {
   sequence             Int?      @default(0)
   order                Int       @default(0)
   routeId              String?
+  organizationId       String
   estimatedArrivalTime DateTime?
-  tenantId             String
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   // Relations
-  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  route    Route?    @relation(fields: [routeId], references: [id], onDelete: SetNull)
-  employee Employee?
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  route        Route?       @relation(fields: [routeId], references: [id], onDelete: SetNull)
+  employee     Employee?
 
   // Indexes
-  @@index([tenantId])
+  @@index([organizationId])
   @@index([routeId])
   @@map("stops")
 }
 
 model VehicleAvailability {
-  id        String   @id @default(cuid())
-  date      DateTime
-  startTime DateTime
-  endTime   DateTime
-  available Boolean  @default(true)
-  vehicleId String
-  driverId  String
-  routeId   String?
-  shiftId   String?
-  tenantId  String
+  id             String   @id @default(cuid())
+  date           DateTime
+  startTime      DateTime
+  endTime        DateTime
+  available      Boolean  @default(true)
+  vehicleId      String
+  driverId       String
+  routeId        String?
+  shiftId        String?
+  organizationId String
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   // Relations
-  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  vehicle Vehicle @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
-  driver  Driver  @relation(fields: [driverId], references: [id], onDelete: Cascade)
-  route   Route?  @relation(fields: [routeId], references: [id], onDelete: SetNull)
-  shift   Shift?  @relation(fields: [shiftId], references: [id], onDelete: SetNull)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  driver       Driver       @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  route        Route?       @relation(fields: [routeId], references: [id], onDelete: SetNull)
+  shift        Shift?       @relation(fields: [shiftId], references: [id], onDelete: SetNull)
 
   // Indexes
-  @@index([tenantId])
+  @@unique([vehicleId, shiftId, date])
+  @@index([organizationId])
   @@index([vehicleId])
   @@index([driverId])
   @@index([routeId])
   @@index([shiftId])
   @@index([date])
-  @@unique([vehicleId, shiftId, date])
   @@map("vehicle_availability")
 }
 
 model PayrollReport {
-  id               String        @id @default(cuid())
-  vehicleId        String?
-  driverId         String?
-  workedDays       Int?
-  dailyRate        Decimal?      @db.Decimal(10, 2)
-  totalPayment     Decimal       @db.Decimal(10, 2)
-  payDate          DateTime?
-  period           String        // e.g., "2024-01", "Q1-2024"
-  month            String?
-  year             Int?
-  status           PaymentStatus @default(PENDING)
-  maintenanceCost  Decimal?      @db.Decimal(10, 2)
-  insuranceCost    Decimal?      @db.Decimal(10, 2)
-  otherExpenses    Decimal?      @db.Decimal(10, 2)
-  efficiency       Int           @default(0) // Efficiency percentage
-  utilizationRate  Int           @default(0) // Utilization rate percentage
-  totalAmount      Float?
-  hoursWorked      Float?
-  overtimeHours    Float?
-  deductions       Float?
-  bonuses          Float?
-  generatedAt      DateTime      @default(now())
-  paidAt           DateTime?
-  tenantId         String
+  id              String        @id @default(cuid())
+  vehicleId       String?
+  driverId        String?
+  workedDays      Int?
+  dailyRate       Decimal?      @db.Decimal(10, 2)
+  totalPayment    Decimal       @db.Decimal(10, 2)
+  payDate         DateTime?
+  period          String // e.g., "2024-01", "Q1-2024"
+  month           String?
+  year            Int?
+  status          PaymentStatus @default(PENDING)
+  maintenanceCost Decimal?      @db.Decimal(10, 2)
+  insuranceCost   Decimal?      @db.Decimal(10, 2)
+  otherExpenses   Decimal?      @db.Decimal(10, 2)
+  efficiency      Int           @default(0) // Efficiency percentage
+  utilizationRate Int           @default(0) // Utilization rate percentage
+  totalAmount     Float?
+  hoursWorked     Float?
+  overtimeHours   Float?
+  deductions      Float?
+  bonuses         Float?
+  organizationId  String
+  generatedAt     DateTime      @default(now())
+  paidAt          DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   // Relations
-  tenant  Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  vehicle Vehicle? @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
-  driver  Driver?  @relation(fields: [driverId], references: [id], onDelete: SetNull)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle?     @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  driver       Driver?      @relation(fields: [driverId], references: [id], onDelete: SetNull)
 
   // Indexes
-  @@index([tenantId])
+  @@index([organizationId])
   @@index([vehicleId])
   @@index([driverId])
   @@index([period])
@@ -436,28 +378,27 @@ model PayrollReport {
 }
 
 model Notification {
-  id               String             @id @default(cuid())
-  title            String
-  message          String
-  type             NotificationType   @default(INFO)
-  status           NotificationStatus @default(UNREAD)
-  toRoles          String[] // Array of role strings
-  fromRole         String?
-  importance       String             @default("Medium")
-  localTime        String?
-  relatedEntityId  String?
-  userId           String? // Nullable for system-wide notifications
-  tenantId         String
+  id              String             @id @default(cuid())
+  title           String
+  message         String
+  type            NotificationType   @default(INFO)
+  status          NotificationStatus @default(UNREAD)
+  toRoles         String[] // Array of role strings
+  fromRole        String?
+  importance      ImportanceLevel    @default(MEDIUM)
+  localTime       String?
+  relatedEntityId String?
+  userId          String? // Nullable for system-wide notifications
+  organizationId  String
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   // Relations
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  seenBy User[] @relation("NotificationSeenBy")
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   // Indexes
-  @@index([tenantId])
+  @@index([organizationId])
   @@index([userId])
   @@index([status])
   @@index([type])
@@ -466,66 +407,159 @@ model Notification {
 }
 
 model VehicleRequest {
-  id           String         @id @default(cuid())
-  name         String
-  licensePlate String
-  categoryId   String?
-  dailyRate    Float?
-  capacity     Int
-  type         String
-  model        String
-  vendor       String?
-  status       ApprovalStatus @default(PENDING)
-  requestedBy  String // Role of the requester
-  approvedBy   String? // Role of the approver
-  approvedAt   DateTime?
-  comment      String? // For rejection reasons or notes
-  tenantId     String
+  id             String         @id @default(cuid())
+  name           String
+  licensePlate   String
+  categoryId     String?
+  dailyRate      Float?
+  capacity       Int
+  type           String
+  model          String
+  vendor         String?
+  status         ApprovalStatus @default(PENDING)
+  requestedBy    String // Role of the requester
+  approvedBy     String? // Role of the approver
+  approvedAt     DateTime?
+  comment        String? // For rejection reasons or notes
+  organizationId String
 
   requestedAt DateTime @default(now())
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   // Relations
-  tenant   Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  category VehicleCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  organization Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  category     VehicleCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
 
   // Indexes
-  @@index([tenantId])
+  @@index([organizationId])
   @@index([categoryId])
   @@map("vehicle_requests")
 }
 
+// ===========Better-Auth models=============
+
+model User {
+  id            String       @id
+  name          String
+  email         String
+  emailVerified Boolean
+  image         String?
+  createdAt     DateTime
+  updatedAt     DateTime
+  role          String?
+  banned        Boolean?
+  banReason     String?
+  banExpires    DateTime?
+  sessions      Session[]
+  accounts      Account[]
+  members       Member[]
+  invitations   Invitation[]
+  employees     Employee[] // Back-reference to Employee
+
+  isSubscribed Boolean?
+
+  @@unique([email])
+  @@map("user")
+}
+
+model Session {
+  id                   String   @id
+  expiresAt            DateTime
+  token                String
+  createdAt            DateTime
+  updatedAt            DateTime
+  ipAddress            String?
+  userAgent            String?
+  userId               String
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  impersonatedBy       String?
+  activeOrganizationId String?
+
+  @@unique([token])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime
+  updatedAt             DateTime
+
+  @@map("account")
+}
+
+model Organization {
+  id          String       @id
+  name        String
+  slug        String?
+  logo        String?
+  createdAt   DateTime
+  metadata    String?
+  members     Member[]
+  invitations Invitation[]
+
+  // Business model relations
+  departments         Department[]
+  shifts              Shift[]
+  employees           Employee[]
+  drivers             Driver[]
+  vehicleCategories   VehicleCategory[]
+  vehicles            Vehicle[]
+  routes              Route[]
+  stops               Stop[]
+  vehicleAvailability VehicleAvailability[]
+  payrollReports      PayrollReport[]
+  notifications       Notification[]
+  vehicleRequests     VehicleRequest[]
+
+  @@unique([slug])
+  @@map("organization")
+}
+
+model Member {
+  id             String       @id
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role           String
+  createdAt      DateTime
+
+  @@map("member")
+}
+
+model Invitation {
+  id             String       @id
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  email          String
+  role           String?
+  status         String
+  expiresAt      DateTime
+  inviterId      String
+  user           User         @relation(fields: [inviterId], references: [id], onDelete: Cascade)
+
+  @@map("invitation")
+}
+
 model Verification {
-  id         String    @id @default(cuid())
+  id         String    @id
   identifier String
   value      String
   expiresAt  DateTime
-  createdAt  DateTime? @default(now())
-  updatedAt  DateTime? @updatedAt
+  createdAt  DateTime?
+  updatedAt  DateTime?
 
-  @@map("verifications")
-}
-
-// --- Added for organization-based multi-tenancy (Better Auth organization plugin) ---
-model Organization {
-  id        String       @id @default(cuid())
-  name      String
-  createdAt DateTime     @default(now())
-  users     Membership[]
-  @@map("organizations")
-}
-
-model Membership {
-  id             String       @id @default(cuid())
-  userId         String
-  organizationId String
-  role           String       @default("member")
-  createdAt      DateTime     @default(now())
-  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, organizationId])
-  @@index([organizationId])
-  @@map("memberships")
+  @@map("verification")
 }
