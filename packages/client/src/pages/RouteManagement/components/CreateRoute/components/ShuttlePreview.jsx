@@ -5,7 +5,7 @@ import { Badge } from "@/components/Common/UI/Badge";
 import { Button } from "@components/Common/UI/Button";
 import LoadingWrapper from "@components/Common/LoadingAnimation/LoadingWrapper";
 import Map from "@components/Common/Map/MapComponent";
-import { useToast } from "@components/Common/UI/use-toast";
+import { toast } from "sonner";
 import { MAP_CONFIG } from "@data/constants";
 import { Input } from "@/components/Common/UI/Input";
 import { optimizeRoute } from "@services/routeOptimization";
@@ -16,7 +16,6 @@ const ShuttlePreview = ({ routeData, onClose, onAccept, show }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [optimizedRoute, setOptimizedRoute] = useState(null);
   const [routeMetrics, setRouteMetrics] = useState(null);
-  const { toast } = useToast();
 
   const { selectedEmployees = [], selectedShift, selectedShuttle } = routeData;
 
@@ -44,9 +43,9 @@ const ShuttlePreview = ({ routeData, onClose, onAccept, show }) => {
           (emp) => emp.stop && emp.stop.latitude && emp.stop.longitude
         );
 
-        if (validEmployees.length === 0) {
-          throw new Error("No valid employee stops found");
-        }
+          if (validEmployees.length === 0) {
+            throw new Error("No valid employee stops found");
+          }
 
         // Prepare data for optimization including HQ location and employee stops
         const routeForOptimization = {
@@ -96,18 +95,14 @@ const ShuttlePreview = ({ routeData, onClose, onAccept, show }) => {
 
         setOptimizedRoute(optimizedRouteData);
       } catch (error) {
-        toast({
-          title: "Error",
-          description: "Failed to create route preview: " + error.message,
-          variant: "destructive",
-        });
+          toast.error("Failed to create route preview: " + error.message);
       } finally {
         setIsLoading(false);
       }
     };
 
     calculateOptimalRoute();
-  }, [selectedEmployees, show, toast]);
+    }, [selectedEmployees, show]);
 
   // Get valid employees (with stops)
   const validEmployees = selectedEmployees.filter(
@@ -167,21 +162,14 @@ const ShuttlePreview = ({ routeData, onClose, onAccept, show }) => {
     const name = getSuggestedRouteName();
     if (name) {
       routeData.setName(name);
-      toast({
-        title: "Name Updated",
-        description: "Route name has been updated based on the furthest stop.",
-      });
+    toast.info("Route name has been updated based on the furthest stop.");
     }
   };
 
   const handleCreateRoute = async () => {
     // Validate route name
     if (!routeData.name.trim()) {
-      toast({
-        title: "Error",
-        description: "Please enter a route name",
-        variant: "destructive",
-      });
+      toast.error("Please enter a route name");
       return;
     }
 
@@ -202,11 +190,7 @@ const ShuttlePreview = ({ routeData, onClose, onAccept, show }) => {
     }
 
     if (validationErrors.length > 0) {
-      toast({
-        title: "Error",
-        description: `Missing required data: ${validationErrors.join(", ")}`,
-        variant: "destructive",
-      });
+      toast.error(`Missing required data: ${validationErrors.join(", ")}`);
       return;
     }
 
@@ -233,16 +217,9 @@ const ShuttlePreview = ({ routeData, onClose, onAccept, show }) => {
       // Create the route using the data
       await onAccept(routeApiData);
 
-      toast({
-        title: "Route Created",
-        description: `Route ${routeData.name} has been created successfully`,
-      });
+  toast.success(`Route ${routeData.name} has been created successfully`);
     } catch (error) {
-      toast({
-        title: "Route Creation Failed",
-        description: error.message || "Failed to create route",
-        variant: "destructive",
-      });
+  toast.error(error.message || "Failed to create route");
     }
   };
 

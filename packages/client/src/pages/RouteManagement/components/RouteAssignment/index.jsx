@@ -9,13 +9,13 @@ import DataSection from "./DataSection";
 import { shuttleService } from "@/services/shuttleService";
 import { shiftService } from "@/services/shiftService";
 import { getUnassignedEmployeesByShift, getRoutesByShift } from "@/services/api";
-import { useToast } from "@/components/Common/UI/use-toast";
+import { toast } from "sonner";
 import LoadingAnimation from "@/components/Common/LoadingAnimation";
 import styles from "./RouteAssignment.module.css";
 
 function RouteAssignment({ refreshTrigger }) {
   const navigate = useNavigate();
-  const { toast } = useToast();
+  // sonner toast imported globally
   const [selectedShift, setSelectedShift] = useState("");
   const [selectedTime, setSelectedTime] = useState("");
   const [selectedRoute, setSelectedRoute] = useState("");
@@ -32,7 +32,6 @@ function RouteAssignment({ refreshTrigger }) {
   const fetchShifts = useCallback(async () => {
     try {
       const shiftsData = await shiftService.getAllShifts();
-      // Format shift times
       const formattedShifts = shiftsData.map((shift) => ({
         ...shift,
         startTime: new Date(shift.startTime).toLocaleTimeString("en-US", {
@@ -49,13 +48,9 @@ function RouteAssignment({ refreshTrigger }) {
       setShifts(formattedShifts);
     } catch (err) {
       console.error("Error fetching shifts:", err);
-      toast({
-        title: "Error",
-        description: "Failed to load shifts. Please try again.",
-        variant: "destructive",
-      });
+      toast.error("Failed to load shifts. Please try again.");
     }
-  }, [toast]);
+  }, []);
 
   const fetchRoutesAndStats = useCallback(async () => {
     if (!selectedShift) {
@@ -84,43 +79,35 @@ function RouteAssignment({ refreshTrigger }) {
 
       try {
         const shuttles = await shuttleService.getShuttles();
-        
         for (const route of routes) {
           const shuttle = shuttles.find((s) => s.id === route.shuttleId);
           if (shuttle?.capacity) {
-            const assignedCount = route.stops?.reduce((count, stop) => 
-              stop.employee ? count + 1 : count, 0) || 0;
+            const assignedCount =
+              route.stops?.reduce(
+                (count, stop) => (stop.employee ? count + 1 : count),
+                0
+              ) || 0;
             totalAvailableSeats += Math.max(0, shuttle.capacity - assignedCount);
           }
         }
-
         setStats({
           unassignedInShift: employeesResponse.data.length,
           totalRoutes: routesResponse.data.length,
           availableSeats: totalAvailableSeats,
         });
-        
       } catch (err) {
-        toast({
-          title: "Warning",
-          description: "Error calculating available seats",
-          variant: "warning",
-        });
+        toast.warning("Error calculating available seats");
       }
       
       setRoutes(routes);
     } catch (err) {
       setError("Failed to load routes. Please try again.");
       setRoutes([]);
-      toast({
-        title: "Error",
-        description: "Failed to load routes",
-        variant: "destructive",
-      });
+      toast.error("Failed to load routes");
     } finally {
       setLoading(false);
     }
-  }, [selectedShift, toast]);
+  }, [selectedShift]);
 
   // Fetch shifts on component mount and when refresh triggered
   useEffect(() => {

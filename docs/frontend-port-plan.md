@@ -38,12 +38,13 @@ Next Plans (Frontend)
 		- Standardize loading and empty states; confirm Suspense fallbacks are visible and accessible.
 	- Acceptance: No horizontal scroll on mobile; Lighthouse Accessibility ≥ 95 on key pages; no nested triple card containers.
 
-- Env/types cleanup (mmcy → hilcoe where applicable)
+ - [x] Env/types cleanup (mmcy → hilcoe where applicable)
 	- Files: Repo-wide search. Primary env: `packages/client/.env*`, constants in `packages/client/src/data/constants.js` (if any), docs.
 	- Tasks:
 		- rg search for `MMCY|Mmcy|mmcy|hilcoe` and replace any lingering “mmcy location” strings with “hilcoe” per requirement.
 		- Validate rebranding envs like `VITE_HQ_NAME` remain “Routegna (HQ)”.
 	- Acceptance: Repo-wide grep for `MMCY|Mmcy|mmcy` returns no results; any intended “hilcoe” references present where required.
+	- Verification (2025-08-28): Repo-wide search returned no matches for `MMCY|Mmcy|mmcy`; existing intended `hilcoe` references preserved; no environment or constants file contained legacy brand identifiers. Acceptance criteria met.
 
 - Seed data improvements (realistic demo)
 	- File: `packages/server/prisma/seed.ts`.
@@ -54,13 +55,15 @@ Next Plans (Frontend)
 		- Add a second manager/admin user for coverage per tenant; keep shared demo password.
 	- Acceptance: Prisma seed runs without error; verification logs reflect increased counts; UI pages load meaningful data immediately after `pnpm -C packages/server prisma db seed`.
 
-- Toasts consolidation to latest `sonner`
+- [x] Toasts consolidation to latest `sonner`
 	- Files: components using `use-toast.jsx` or custom `Toaster`, e.g., `packages/client/src/components/Common/UI/use-toast.jsx`, `.../UI/Toaster/*`, plus pages/components importing `useToast`.
 	- Tasks:
 		- Replace `useToast` usage with `import { toast } from 'sonner'` and call `toast.success|error|warning|info` accordingly.
 		- Keep a single `<Toaster />` mounted (prefer the existing one in `App.jsx`); remove duplicate Toaster mounts (e.g., in `main.jsx`).
 		- Delete custom toast implementation files after migration; adjust styling via Sonner props.
-	- Acceptance: `rg "use-toast"` returns zero matches; only `sonner` is used for toasts; duplicate Toaster mounts removed; visual regression minimal.
+	- Acceptance: `rg "use-toast"` returns zero matches; only `sonner` is used for toasts; duplicate Toaster mounts removed; visual regression minimal. (Status: COMPLETED ✅ – legacy `use-toast.jsx` and custom `Toaster` removed, ShuttlePreview migrated, repository now exclusively uses `sonner` helpers.)
+
+		- Final Verification (2025-08-28): Confirmed single `<Toaster />` (direct import from `sonner`) mounted in `App.jsx`. Removed legacy Radix toast files (`use-toast.jsx`, `UI/Toaster/index.jsx`) and unused wrapper (`sonner.tsx`). All toast calls standardized to `toast.success|error|warning|info` with optional JSX nodes; no stale imports remain. Migration locked.
 
 - API alignment and error sweep
 	- Files: services under `packages/client/src/services/*.js` and `packages/client/src/pages/Settings/services/*.js`.

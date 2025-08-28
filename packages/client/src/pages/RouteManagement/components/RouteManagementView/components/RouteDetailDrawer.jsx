@@ -41,7 +41,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@components/Common/UI/alert-dialog";
-import { useToast } from "@components/Common/UI/use-toast";
+import { toast } from "sonner";
 
 const styles = `
 @keyframes slideOutDown {
@@ -80,7 +80,7 @@ const RouteDetailDrawer = ({
   const [selectedEmployees, setSelectedEmployees] = useState([]);
   const [employeeToRemove, setEmployeeToRemove] = useState(null);
   const [employeesToRemove, setEmployeesToRemove] = useState(null);
-  const { toast } = useToast();
+  // sonner toast imported directly
 
   if (!route) return null;
 
@@ -248,10 +248,7 @@ const RouteDetailDrawer = ({
       setSelectedEmployees([]);
       setEmployeesToRemove(null);
 
-      toast({
-        title: "Success",
-        description: `Successfully removed ${selectedEmployees.length} employees`,
-      });
+  toast.success(`Successfully removed ${selectedEmployees.length} employees`);
 
       // Check if route should be deleted
       if (remainingEmployees.length === 0) {
@@ -262,11 +259,7 @@ const RouteDetailDrawer = ({
       }
     } catch (error) {
       console.error("Error removing employees:", error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to remove employees",
-        variant: "destructive",
-      });
+  toast.error(error.message || "Failed to remove employees");
     }
   };
 

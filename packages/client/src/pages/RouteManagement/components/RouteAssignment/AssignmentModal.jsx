@@ -5,7 +5,8 @@ import { Badge } from "@/components/Common/UI/Badge";
 import { Button } from "@/components/Common/UI/Button";
 import LoadingWrapper from "@/components/Common/LoadingAnimation/LoadingWrapper";
 import Map from "@/components/Common/Map/MapComponent";
-import { useToast } from "@/components/Common/UI/use-toast";
+// migrated from custom useToast to sonner
+import { toast } from "sonner";
 import { MAP_CONFIG } from "@/data/constants";
 import { optimizeRoute } from "@/services/routeOptimization";
 import { cn } from "@/lib/utils";
@@ -18,7 +19,6 @@ const AssignmentModal = ({ employee, routes, onClose, onAssign, show }) => {
   const [optimizedRoute, setOptimizedRoute] = useState(null);
   const [routeMetrics, setRouteMetrics] = useState(null);
   const [isStopsExpanded, setIsStopsExpanded] = useState(false);
-  const { toast } = useToast();
 
   useEffect(() => {
     if (show) {
@@ -121,18 +121,14 @@ const AssignmentModal = ({ employee, routes, onClose, onAssign, show }) => {
 
         setOptimizedRoute(optimizedRouteData);
       } catch (error) {
-        toast({
-          title: "Error",
-          description: "Failed to create route preview: " + error.message,
-          variant: "destructive",
-        });
+  toast.error("Failed to create route preview: " + error.message);
       } finally {
         setIsLoading(false);
       }
     };
 
     calculateOptimalRoute();
-  }, [selectedRoute, show, employee, toast]);
+  }, [selectedRoute, show, employee]);
 
   const handleConfirm = async () => {
     if (!selectedRoute || !employee) return;
@@ -151,11 +147,7 @@ const AssignmentModal = ({ employee, routes, onClose, onAssign, show }) => {
       await onAssign(selectedRoute.id, employee.id, routeMetrics);
       onClose();
     } catch (error) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to assign employee to route",
-        variant: "destructive",
-      });
+  toast.error(error.message || "Failed to assign employee to route");
     }
   };
 

@@ -4,7 +4,7 @@ import PropTypes from "prop-types";
 import { useNavigate } from "react-router-dom";
 import AssignmentModal from "./AssignmentModal";
 import { getUnassignedEmployeesByShift } from "@/services/api";
-import { useToast } from "@/components/Common/UI/use-toast";
+import { toast } from "sonner";
 import { routeService } from "@/services/routeService";
 import {
   MagnifyingGlassIcon,
@@ -32,7 +32,7 @@ function DataSection({
   onRouteUpdate,
 }) {
   const navigate = useNavigate();
-  const { toast } = useToast();
+  // sonner toast
   const [availableEmployees, setAvailableEmployees] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -149,18 +149,14 @@ function DataSection({
       } catch (err) {
         console.error("Error fetching employees:", err);
         setError("Failed to load employees. Please try again.");
-        toast({
-          title: "Error",
-          description: "Failed to load employees. Please try again.",
-          variant: "destructive",
-        });
+  toast.error("Failed to load employees. Please try again.");
       } finally {
         setLoading(false);
       }
     }
 
     fetchEmployees();
-  }, [selectedShift, toast]);
+  }, [selectedShift]);
 
   const handleAssignClick = (employee) => {
     console.log("Opening modal for employee:", employee);
@@ -258,11 +254,7 @@ function DataSection({
         err.message ||
         "Failed to assign employee. Please try again.";
 
-      toast({
-        title: "Error",
-        description: errorMessage,
-        variant: "destructive",
-      });
+    toast.error(errorMessage);
     }
   };
 

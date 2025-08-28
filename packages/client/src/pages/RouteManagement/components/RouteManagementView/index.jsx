@@ -5,7 +5,7 @@ import { routeService } from "@services/routeService";
 import { shuttleService } from "@services/shuttleService";
 import { shiftService } from "@services/shiftService";
 import { departmentService } from "@services/departmentService";
-import { useToast } from "@components/Common/UI/use-toast";
+import { toast } from "sonner";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -65,7 +65,6 @@ function RouteManagementView({ refreshTrigger }) {
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedRoutes, setSelectedRoutes] = useState(new Set());
   const [selectedRoute, setSelectedRoute] = useState(null);
-  const { toast } = useToast();
   const { theme } = useTheme();
   const isDark = theme === "dark";
 
@@ -239,11 +238,7 @@ function RouteManagementView({ refreshTrigger }) {
 
   const handleRemoveEmployee = async (employeeData) => {
     if (!employeeData?.employee?.id || !employeeData?.routeId) {
-      toast({
-        title: "Error",
-        description: "Invalid employee data. Missing employee ID or route ID.",
-        variant: "destructive",
-      });
+  toast.error("Invalid employee data. Missing employee ID or route ID.");
       return;
     }
 
@@ -264,19 +259,12 @@ function RouteManagementView({ refreshTrigger }) {
 
       setEmployeeToRemove(null);
 
-      toast({
-        title: "Success",
-        description:
-          result.message ||
-          "Employee removed and route metrics updated successfully",
-      });
+      toast.success(
+        result.message || "Employee removed and route metrics updated successfully"
+      );
     } catch (err) {
       console.error("Error removing employee:", err);
-      toast({
-        title: "Error",
-        description: err.message || "Failed to remove employee",
-        variant: "destructive",
-      });
+      toast.error(err.message || "Failed to remove employee");
     }
   };
 
@@ -595,10 +583,7 @@ function RouteManagementView({ refreshTrigger }) {
                 setRouteToDelete(null);
                 setSelectedRoute(null); // Close drawer if open
 
-                toast({
-                  title: "Success",
-                  description: "Route(s) deleted successfully",
-                });
+                toast.success("Route(s) deleted successfully");
               }}
             >
               Delete
