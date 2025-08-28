@@ -1,6 +1,8 @@
 import api from '@/services/api';
 import mainEmployeeService from '@/services/employeeService';
 import { AsyncHandler } from '@/utils/asyncHandler';
+// Lightweight response validation (fails open); mirrors base service usage
+import { safeParseEmployees, safeParseEmployee } from '@/schemas/employee';
 
 /**
  * Employee Management Service
@@ -115,82 +117,14 @@ class EmployeeService {
     }
 
     try {
-      // Fix the URL - the route is actually defined under the main endpoint not under /stats
-      const response = await api.get('/employees');
-      
-      // Count departments
-      const departmentsSet = new Set(response.data.map(emp => emp.departmentId).filter(Boolean));
-      
-      // Count assigned employees
-      const assignedEmployees = response.data.filter(emp => emp.assigned);
-      
-      // Count recently added (last 30 days)
-      const now = new Date();
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(now.getDate() - 30);
-      
-      // Use safer approach for dates
-      const recentlyAdded = response.data.filter(emp => {
-        const createdAt = emp.createdAt || emp.updatedAt || now;
-        return new Date(createdAt) >= thirtyDaysAgo;
-      });
-      
-      // Create stats object
-      const stats = {
-        total: response.data.length,
-        assigned: assignedEmployees.length,
-        departments: departmentsSet.size,
-        recentlyAdded: recentlyAdded.length
-      };
-      
+      // Reuse base service stats (which prefers /employees/stats with fallback)
+      const stats = await mainEmployeeService.getEmployeeStats();
       this.cache.stats = stats;
       this.cache.statsLastFetched = Date.now();
-      
       return stats;
     } catch (error) {
-      console.error("Error fetching employee stats, generating from employee list:", error);
-      
-      try {
-        // Fallback: Calculate stats from employee list using the main service
-        const employees = await this.listEmployees(false);
-        
-        // Get unique department IDs
-        const departmentIds = new Set(employees.map(emp => emp.departmentId).filter(Boolean));
-        
-        // Count assigned employees
-        const assignedEmployees = employees.filter(emp => emp.assigned);
-        
-        // Count recently added (last 30 days)
-        const now = new Date();
-        const thirtyDaysAgo = new Date(now.setDate(now.getDate() - 30));
-        
-        const recentlyAdded = employees.filter(emp => {
-          const createdAt = new Date(emp.createdAt || emp.updatedAt || emp.deletedAt || now);
-          return createdAt >= thirtyDaysAgo;
-        });
-        
-        const stats = {
-          total: employees.length,
-          assigned: assignedEmployees.length,
-          departments: departmentIds.size,
-          recentlyAdded: recentlyAdded.length
-        };
-        
-        this.cache.stats = stats;
-        this.cache.statsLastFetched = Date.now();
-        
-        return stats;
-      } catch (fallbackError) {
-        console.error("Fallback employee stats calculation failed:", fallbackError);
-        
-        // Return minimal default stats if everything fails
-        return {
-          total: 0,
-          assigned: 0,
-          departments: 0,
-          recentlyAdded: 0
-        };
-      }
+      console.error('[managementEmployeeService.getEmployeeStats] failed to reuse base stats:', error?.message);
+      return { total: 0, assigned: 0, departments: 0, recentlyAdded: 0 };
     }
   });
 
@@ -208,13 +142,14 @@ class EmployeeService {
     }
 
     const response = await api.get('/employees');
-    
-    // Filter out deleted employees and format the data
-    const employees = response.data.map(emp => ({
-      ...emp,
-      assigned: Boolean(emp.shuttle || emp.assigned),
-      status: emp.deleted ? 'inactive' : (emp.status || 'active')
-    }));
+    const rawEmployees = safeParseEmployees(response.data);
+    const employees = rawEmployees
+      .filter(emp => !emp.deleted)
+      .map(emp => ({
+        ...emp,
+        assigned: Boolean(emp.shuttle || emp.assigned),
+        status: emp.deleted ? 'inactive' : (emp.status || 'active')
+      }));
     
     this.cache.employees = employees;
     this.cache.lastFetched = Date.now();
@@ -237,9 +172,8 @@ class EmployeeService {
 
     // Use the new management endpoint
     const response = await api.get('/employees/management');
-    
-    // Backend already sets deleted employees' status to inactive
-    const employees = response.data.map(emp => ({
+    const rawEmployees = safeParseEmployees(response.data);
+    const employees = rawEmployees.map(emp => ({
       ...emp,
       assigned: Boolean(emp.shuttle || emp.assigned)
     }));
@@ -494,10 +428,10 @@ class EmployeeService {
    * @returns {Promise<Object>} Created employee
    */
   createEmployee = AsyncHandler(async (employeeData) => {
-    // Use the main API endpoint for employee creation
-    const response = await api.post('/employees', employeeData);
-    this.clearCache();
-    return response.data;
+  // Delegate to base service to avoid duplication; base service already validates
+  const created = await mainEmployeeService.createEmployee(employeeData);
+  this.clearCache();
+  return created;
   });
 
   /**
@@ -506,9 +440,9 @@ class EmployeeService {
    * @returns {Promise<Object>} Updated employee data
    */
   deactivateEmployee = AsyncHandler(async (employeeId) => {
-    const response = await api.delete(`/employees/${employeeId}`);
-    this.clearCache();
-    return response.data;
+  const deactivated = await mainEmployeeService.deactivateEmployee(employeeId);
+  this.clearCache();
+  return deactivated;
   });
 
   /**
@@ -519,7 +453,7 @@ class EmployeeService {
   activateEmployee = AsyncHandler(async (employeeId) => {
     const response = await api.post(`/employees/${employeeId}/restore`);
     this.clearCache();
-    return response.data;
+    return safeParseEmployee(response.data);
   });
 
   /**
@@ -529,14 +463,12 @@ class EmployeeService {
    * @returns {Promise<Object>} Updated employee data
    */
   updateEmployee = AsyncHandler(async (employeeId, data) => {
-    const response = await api.put(`/employees/${employeeId}`, {
+    const updated = await mainEmployeeService.updateEmployee(employeeId, {
       ...data,
-      // Ensure assigned field is properly set when updating
       assigned: data.assigned !== undefined ? data.assigned : Boolean(data.shuttle)
     });
-    
     this.clearCache();
-    return response.data;
+    return updated;
   });
 
   /**
@@ -600,9 +532,8 @@ class EmployeeService {
     });
     
     const response = await api.get(`/employees?${queryParams.toString()}`);
-    
-    // Process response data to ensure proper format
-    const employees = response.data.data.map(emp => ({
+    const parsed = Array.isArray(response.data?.data) ? safeParseEmployees(response.data.data) : [];
+    const employees = parsed.map(emp => ({
       ...emp,
       assigned: Boolean(emp.shuttle || emp.assigned),
       status: emp.deleted ? 'inactive' : (emp.status || 'active')

@@ -33,6 +33,11 @@ The frontend of the Shuttle Management System provides an intuitive and responsi
 - **Data Visualization**: Chart.js / Recharts
 - **Animation**: Framer Motion
 
+### Developer Ergonomics
+
+- **Strict Mode Toggle**: Use `VITE_ENABLE_STRICT_MODE=false` in `.env` during local debugging to prevent React double-invoking effects (which can duplicate network calls or socket connections). Production builds always enable strict optimizations irrespective of this flag.
+- **Socket Transport**: The Socket.IO client (`src/lib/socket.ts`) is configured to prefer WebSocket-only transport, reducing overhead from long-polling fallbacks. Adjust there if testing legacy environments or proxies that require polling.
+
 ---
 
 ## Project Structure

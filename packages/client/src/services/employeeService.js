@@ -1,84 +1,83 @@
 import api from './api';
+import { safeParseEmployees, safeParseEmployee } from '../schemas/employee';
 
 const employeeService = {
   getAllEmployees: async () => {
     const response = await api.get('/employees');
-    return response.data;
+    return safeParseEmployees(response.data);
   },
 
   getEmployeeById: async (id) => {
     const response = await api.get(`/employees/${id}`);
-    return response.data;
+    return safeParseEmployee(response.data);
   },
 
   createEmployee: async (employeeData) => {
     const response = await api.post('/employees', employeeData);
-    return response.data;
+    return safeParseEmployee(response.data);
   },
 
   updateEmployee: async (id, employeeData) => {
     const response = await api.put(`/employees/${id}`, employeeData);
-    return response.data;
+    return safeParseEmployee(response.data);
   },
 
   deleteEmployee: async (id) => {
     await api.delete(`/employees/${id}`);
   },
 
-  getEmployeesByCompany: async (companyId) => {
-    const response = await api.get(`/employees/company/${companyId}`);
-    return response.data;
-  },
 
-  getEmployeesByDepartment: async (departmentId) => {
-    const response = await api.get(`/employees/department/${departmentId}`);
-    return response.data;
-  },
-
-
+  // Updated: backend soft delete uses DELETE; previous POST deactivate endpoint does not exist
   deactivateEmployee: async (employeeId) => {
-    const response = await api.post(`/employees/${employeeId}/deactivate`);
-    return response.data;
+  const response = await api.delete(`/employees/${employeeId}`);
+  // Validate deleted (soft-deactivated) employee shape
+  return safeParseEmployee(response.data);
   },
 
-  suggestRoutes: async (location) => {
-    const response = await api.get(`/employees/suggest-routes`, {
-      params: { location },
-    });
-    return response.data;
-  },
+  // Stub: backend /employees/suggest-routes not present yet. Provide safe fallback.
+  suggestRoutes: (() => {
+    let warned = false;
+    return async (_location) => {
+      if (!warned) {
+        // eslint-disable-next-line no-console
+        console.warn('[employeeService.suggestRoutes] Endpoint missing; returning empty list.');
+        warned = true;
+      }
+      return [];
+    };
+  })(),
 
   getEmployeeStats: async () => {
+    // Preferred: backend aggregated stats endpoint
     try {
-      const response = await api.get('/employees/management');
-      const employees = response.data || [];
-      
-      // Calculate basic stats from employee data
-      const total = employees.length;
-      const assigned = employees.filter(emp => emp.departmentId).length;
-      const departments = new Set(employees.map(emp => emp.departmentId).filter(Boolean)).size;
-      const recentlyAdded = employees.filter(emp => {
-        const createdAt = new Date(emp.createdAt);
+      const response = await api.get('/employees/stats');
+      const data = response.data || {};
+      // Basic shape guard with graceful fallback pieces
+      const total = typeof data.total === 'number' ? data.total : 0;
+      const assigned = typeof data.assigned === 'number' ? data.assigned : 0;
+      const departments = typeof data.departments === 'number' ? data.departments : 0;
+      const recentlyAdded = typeof data.recentlyAdded === 'number' ? data.recentlyAdded : 0;
+      return { total, assigned, departments, recentlyAdded };
+    } catch (primaryError) {
+      console.warn('[employeeService.getEmployeeStats] /employees/stats failed, falling back to client derivation:', primaryError?.message);
+      // Fallback: derive from management listing
+      try {
+        const response = await api.get('/employees/management');
+        const employees = safeParseEmployees(response.data || []);
+        const total = employees.length;
+        const assigned = employees.filter(emp => emp.assigned || emp.departmentId).length;
+        const departments = new Set(employees.map(emp => emp.departmentId).filter(Boolean)).size;
         const weekAgo = new Date();
         weekAgo.setDate(weekAgo.getDate() - 7);
-        return createdAt > weekAgo;
-      }).length;
-
-      return {
-        total,
-        assigned,
-        departments,
-        recentlyAdded
-      };
-    } catch (error) {
-      console.error('Error fetching employee stats:', error);
-      // Return default stats if API fails
-      return {
-        total: 0,
-        assigned: 0,
-        departments: 0,
-        recentlyAdded: 0
-      };
+        const recentlyAdded = employees.filter(emp => {
+          const createdAt = emp.createdAt ? new Date(emp.createdAt) : null;
+          return createdAt ? createdAt > weekAgo : false;
+        }).length;
+        return { total, assigned, departments, recentlyAdded };
+      } catch (fallbackError) {
+        console.error('[employeeService.getEmployeeStats] fallback derivation failed:', fallbackError?.message);
+        return { total: 0, assigned: 0, departments: 0, recentlyAdded: 0 };
+      }
     }
   },
 };
@@ -89,8 +88,6 @@ export const {
   createEmployee,
   updateEmployee,
   deleteEmployee,
-  getEmployeesByCompany,
-  getEmployeesByDepartment,
   deactivateEmployee,
   suggestRoutes,
   getEmployeeStats,
