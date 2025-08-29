@@ -79,7 +79,45 @@ function getInitialOrder(hqCoords, dropOffPoints) {
   return order;
 }
 
-export async function optimizeRoute(coordinates) {
+// Retry function with exponential backoff
+async function retryFetch(url, options = {}, maxRetries = 3) {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const response = await fetch(url, {
+        ...options,
+        headers: {
+          'Content-Type': 'application/json',
+          ...options.headers,
+        },
+      });
+      
+      if (response.ok) {
+        return response;
+      }
+      
+      // Don't retry on 4xx errors (client errors)
+      if (response.status >= 400 && response.status < 500) {
+        throw new Error(`Client error: ${response.status} ${response.statusText}`);
+      }
+      
+      // Retry on 5xx errors or network issues
+      if (attempt === maxRetries) {
+        throw new Error(`Server error after ${maxRetries + 1} attempts: ${response.status} ${response.statusText}`);
+      }
+      
+    } catch (error) {
+      if (attempt === maxRetries) {
+        throw error;
+      }
+      
+      // Wait before retrying (exponential backoff)
+      const delay = Math.min(1000 * Math.pow(2, attempt), 10000);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+}
+
+export async function optimizeRoute(coordinates, enableOptimization = true) {
   if (!coordinates || !Array.isArray(coordinates) || coordinates.length < 2) {
     console.error('Invalid coordinates provided for route optimization:', coordinates);
     return { coordinates: [], waypoints: [], dropOffOrder: [], distance: 0, duration: 0 };
@@ -102,6 +140,12 @@ export async function optimizeRoute(coordinates) {
 
   const [hqCoords, ...dropOffPoints] = coordinates;
 
+  // Check if Mapbox token is available and optimization is enabled
+  if (!MAPBOX_ACCESS_TOKEN || !enableOptimization) {
+    console.warn('Mapbox token not available or optimization disabled, using fallback route');
+    return getFallbackRoute(hqCoords, dropOffPoints);
+  }
+
   try {
     // Get initial ordering using TSP
     const initialOrder = getInitialOrder(hqCoords, dropOffPoints);
@@ -120,14 +164,10 @@ export async function optimizeRoute(coordinates) {
       `${hqCoords[0]},${hqCoords[1]}`
     ].join(';');
 
-    // Get actual route using Mapbox Directions API
+    // Get actual route using Mapbox Directions API with retry logic
     const directionsUrl = `https://api.mapbox.com/directions/v5/mapbox/driving/${waypointsString}?geometries=geojson&overview=full&access_token=${MAPBOX_ACCESS_TOKEN}`;
 
-    const directionsResponse = await fetch(directionsUrl);
-    if (!directionsResponse.ok) {
-      throw new Error(`Failed to fetch route from Mapbox, status: ${directionsResponse.status}`);
-    }
-
+    const directionsResponse = await retryFetch(directionsUrl);
     const directionsData = await directionsResponse.json();
 
     if (directionsData.code !== 'Ok' || !directionsData.routes?.[0]?.geometry?.coordinates) {
@@ -152,11 +192,19 @@ export async function optimizeRoute(coordinates) {
       waypoints,
       dropOffOrder: initialOrder.map(i => i + 1),
       distance: route.distance, // Distance in meters
-      duration: route.duration  // Duration in seconds
+      duration: route.duration,  // Duration in seconds
+      optimized: true // Flag to indicate successful optimization
     };
 
   } catch (error) {
-    console.error('Error in route optimization:', error);
+    console.error('Error in route optimization, falling back to simple route:', error);
+    return getFallbackRoute(hqCoords, dropOffPoints);
+  }
+}
+
+// Helper function to generate fallback route when optimization fails
+function getFallbackRoute(hqCoords, dropOffPoints) {
+  try {
     // Calculate approximate distance and time for fallback
     let totalDistance = 0;
     let totalDuration = 0;
@@ -165,7 +213,7 @@ export async function optimizeRoute(coordinates) {
     for (let i = 0; i < validRoute.length - 1; i++) {
       const dist = calculateDistance(validRoute[i], validRoute[i + 1]);
       if (dist === null) {
-        return { coordinates: [], waypoints: [], dropOffOrder: [], distance: 0, duration: 0 };
+        return { coordinates: [], waypoints: [], dropOffOrder: [], distance: 0, duration: 0, optimized: false };
       }
       totalDistance += dist * 1000; // Convert km to meters
       totalDuration += (dist / 40) * 3600; // Assume average speed of 40 km/h
@@ -180,7 +228,11 @@ export async function optimizeRoute(coordinates) {
       })),
       dropOffOrder: dropOffPoints.map((_, i) => i + 1),
       distance: totalDistance,
-      duration: totalDuration
+      duration: totalDuration,
+      optimized: false // Flag to indicate fallback route
     };
+  } catch (fallbackError) {
+    console.error('Error in fallback route generation:', fallbackError);
+    return { coordinates: [], waypoints: [], dropOffOrder: [], distance: 0, duration: 0, optimized: false };
   }
 }

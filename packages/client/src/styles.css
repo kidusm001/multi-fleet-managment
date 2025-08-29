@@ -1,3 +1,5 @@
+@import './styles/responsive.css';
+
 /* Custom scrollbar class */
 .custom-scrollbar {
   overflow: auto;

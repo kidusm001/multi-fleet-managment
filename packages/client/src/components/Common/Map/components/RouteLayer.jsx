@@ -8,7 +8,7 @@ function isMapReady(map) {
   return map && map.getCanvas() && map.isStyleLoaded();
 }
 
-export async function addRouteLayer({ map, route }) {
+export async function addRouteLayer({ map, route, enableOptimization = true }) {
   if (!route?.coordinates?.length || !map) return null;
 
   try {
@@ -36,12 +36,15 @@ export async function addRouteLayer({ map, route }) {
     const optimizedRoute = await optimizeRoute([
       HQ_LOCATION.coords,
       ...route.coordinates,
-    ]);
+    ], enableOptimization);
 
     if (!optimizedRoute?.coordinates?.length) return null;
 
     // Verify map is still valid before adding new layers
     if (!isMapReady(map)) return null;
+
+    // Determine route color based on optimization status
+    const routeColor = optimizedRoute.optimized ? "#4272FF" : "#FFA500"; // Blue for optimized, Orange for fallback
 
     // Add the route source and layer
     if (!map.getSource("route")) {
@@ -49,7 +52,9 @@ export async function addRouteLayer({ map, route }) {
         type: "geojson",
         data: {
           type: "Feature",
-          properties: {},
+          properties: {
+            optimized: optimizedRoute.optimized || false
+          },
           geometry: {
             type: "LineString",
             coordinates: optimizedRoute.coordinates,
@@ -68,11 +73,16 @@ export async function addRouteLayer({ map, route }) {
           "line-cap": "round",
         },
         paint: {
-          "line-color": "#4272FF",
+          "line-color": routeColor,
           "line-width": 4,
           "line-opacity": 0.8,
         },
       });
+    }
+
+    // Log optimization status for user feedback
+    if (!optimizedRoute.optimized) {
+      console.warn("Route optimization failed, showing fallback route. Check Mapbox configuration.");
     }
 
     // Return optimized route data for marker placement

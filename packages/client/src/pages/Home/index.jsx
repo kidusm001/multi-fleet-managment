@@ -14,9 +14,6 @@ const buttonStyles = {
 export default function Home() {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
-  const logoSrc = isDark
-    ? "/assets/images/logo-light.png"
-    : "/assets/images/logo-dark.PNG";
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -26,16 +23,16 @@ export default function Home() {
 
   return (
     <LoadingWrapper isLoading={isLoading}>
-      <div className={`home-container bg-gradient-to-br ${
+      <div className={`min-h-[calc(100vh-60px)] flex flex-col items-center justify-center px-4 sm:px-6 py-16 sm:py-20 md:py-24 bg-gradient-to-br ${
         isDark 
           ? 'from-slate-950 via-[#1a2327] to-[#1a2327]' 
           : 'from-gray-50 via-gray-100 to-gray-200'
       }`}>
-        {/* Logo Section - Updated light mode background */}
+        {/* Logo Section - Updated for mobile */}
         <motion.div
           initial={{ y: -20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          className="mb-12 relative z-10"
+          className="mb-8 sm:mb-12 relative z-10"
         >
           <motion.div
             animate={{
@@ -49,10 +46,13 @@ export default function Home() {
                 : 'bg-white/90 shadow-lg'
             } backdrop-blur-sm px-4 py-[0.2rem] rounded-[1.5rem]`}
           >
-            <img
-              src={logoSrc}
+                        <motion.img
+              src="/assets/images/logo-light.png"
               alt="Routegna"
-              className="h-16 object-contain"
+              className="h-8 sm:h-12 w-auto mb-4"
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ delay: 0.2, duration: 0.5 }}
             />
           </motion.div>
           <motion.div
@@ -73,9 +73,9 @@ export default function Home() {
         <motion.div
           initial={{ scale: 0.95, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
-          className="w-full max-w-6xl mx-auto"
+          className="w-full max-w-3xl mx-auto"
         >
-          <div className={`relative backdrop-blur-xl rounded-[2rem] shadow-2xl border overflow-hidden p-12 ${
+          <div className={`relative backdrop-blur-xl rounded-2xl sm:rounded-[2rem] shadow-2xl border overflow-hidden px-4 sm:px-8 py-8 sm:py-12 ${
             isDark 
               ? 'bg-black/20 border-white/10' 
               : 'bg-white/20 border-black/10'
@@ -90,9 +90,9 @@ export default function Home() {
               <motion.h1
                 initial={{ y: 20, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
-                className="text-6xl font-bold mb-6"
+                className="text-4xl sm:text-5xl md:text-6xl font-bold mb-4 sm:mb-6"
               >
-                <span className={`bg-gradient-to-r ${isDark ? 'from-white to-[#f3684e]' : 'from-slate-900 to-[#f3684e]'} bg-clip-text text-transparent`}>
+                <span className={`bg-gradient-to-r ${isDark ? 'from-white to-[#f3684e]' : 'from-slate-800 to-[#f3684e]'} bg-clip-text text-transparent`}>
                   Welcome to Fleet Management
                 </span>
               </motion.h1>
@@ -101,7 +101,7 @@ export default function Home() {
                 initial={{ y: 20, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ delay: 0.1 }}
-                className={`text-xl ${isDark ? 'text-white/70' : 'text-slate-900/70'} mb-12 max-w-2xl mx-auto`}
+                className={`text-lg sm:text-xl ${isDark ? 'text-white/70' : 'text-slate-800/80'} mb-8 sm:mb-12 max-w-xl mx-auto leading-relaxed`}
               >
                 Transform your transportation operations with our comprehensive fleet management solution.
               </motion.p>
@@ -110,7 +110,7 @@ export default function Home() {
                 initial={{ y: 20, opacity: 0 }}
                 animate={{ y: 0, opacity: 1 }}
                 transition={{ delay: 0.2 }}
-                className="flex items-center justify-center space-x-6"
+                className="flex flex-wrap items-center justify-center gap-4"
               >
                 <Link to="/dashboard">
                   <Button className={buttonStyles.primary}>

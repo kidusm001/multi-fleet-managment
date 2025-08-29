@@ -47,7 +47,7 @@ async function waitForStyleLoad(map) {
   });
 }
 
-function MapComponent({ selectedRoute, selectedShuttle, newStop, mapStyle, initialZoom, showDirections = false }) {
+function MapComponent({ selectedRoute, selectedShuttle, newStop, mapStyle, initialZoom, showDirections = false, enableOptimization = true }) {
   const mapContainer = useRef(null);
   const map = useRef(null);
   const markersRef = useRef([]);
@@ -83,6 +83,7 @@ function MapComponent({ selectedRoute, selectedShuttle, newStop, mapStyle, initi
         map: map.current,
         route: selectedRoute,
         shuttle: selectedShuttle,
+        enableOptimization,
       });
 
       if (optimizedRoute) {
@@ -267,7 +268,7 @@ function MapComponent({ selectedRoute, selectedShuttle, newStop, mapStyle, initi
       console.error("Error updating route:", error);
       setMapError("Failed to update route");
     }
-  }, [selectedRoute, selectedShuttle, mapInitialized, newStop, showDirections, isDark]);
+  }, [selectedRoute, selectedShuttle, mapInitialized, newStop, showDirections, isDark, enableOptimization]);
 
   // Add function to clean up controls
   const cleanupControls = useCallback(() => {
@@ -499,6 +500,7 @@ MapComponent.propTypes = {
   mapStyle: PropTypes.string,
   initialZoom: PropTypes.number,
   showDirections: PropTypes.bool,
+  enableOptimization: PropTypes.bool,
 };
 
 export default MapComponent;

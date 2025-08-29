@@ -39,7 +39,6 @@ const employeeService = {
     let warned = false;
     return async (_location) => {
       if (!warned) {
-        // eslint-disable-next-line no-console
         console.warn('[employeeService.suggestRoutes] Endpoint missing; returning empty list.');
         warned = true;
       }

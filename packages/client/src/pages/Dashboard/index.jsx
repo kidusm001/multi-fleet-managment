@@ -155,63 +155,95 @@ function Dashboard() {
   ], [routes]);
 
   return (
-    <div className="relative h-[calc(100vh-60px)] w-11/12 mx-auto">
-      {/* Main Map Container */}
-      <ErrorBoundary fallback={<div>Error loading map</div>}>
-        <Suspense
-          fallback={
-            <div className="map-loading">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#f3684e]"></div>
-            </div>
-          }
-        >
-          <div className="absolute inset-0 z-0" key={`map-${mapRefreshCounter.current}`}>
-            <MapComponent
-              selectedRoute={mapRouteData}
-              mapStyle={mapStyle}
-              initialZoom={11.5}
-            />
-          </div>
-        </Suspense>
-      </ErrorBoundary>
+    <div className="flex flex-col h-[calc(100vh-60px)]">
+      {/* Stats Cards - Outside on mobile, top of desktop */}
+      <div className="md:absolute md:top-6 md:left-1/2 md:transform md:-translate-x-1/2 md:z-10 md:pointer-events-none w-full md:w-auto">
+        <div className="block md:hidden p-4">
+          <StatsCards stats={stats} />
+        </div>
+        <div className="hidden md:block md:pointer-events-auto">
+          <StatsCards stats={stats} />
+        </div>
+      </div>
 
-      {/* Overlay Content */}
-      <div className="absolute inset-0 z-10 pointer-events-none">
-        <div className="grid grid-cols-12 gap-6 p-6 h-full">
-          {/* Left Section */}
-          <div className="col-span-3 space-y-4 pointer-events-auto relative z-50 h-2/3">
+      {/* Main Content - Map + Sidebar */}
+      <div className="flex-1 relative">
+        {/* Main Map Container */}
+        <ErrorBoundary fallback={<div>Error loading map</div>}>
+          <Suspense
+            fallback={
+              <div className="map-loading">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#f3684e]"></div>
+              </div>
+            }
+          >
+            <div className="absolute inset-0 z-0" key={`map-${mapRefreshCounter.current}`}>
+              <MapComponent
+                selectedRoute={mapRouteData}
+                mapStyle={mapStyle}
+                initialZoom={11.5}
+              />
+            </div>
+          </Suspense>
+        </ErrorBoundary>
+
+        {/* Left Sidebar - Desktop only */}
+        <div className="hidden md:block absolute left-6 top-20 bottom-6 w-80 z-10 pointer-events-auto">
+          <div className="h-full space-y-4">
             <SearchAndFilter
               searchQuery={searchQuery}
               onSearchChange={handleSearch}
               statusFilter={statusFilter}
               setStatusFilter={setStatusFilter}
             />
-            <RouteList
-              filteredRoutes={filteredRoutes}
-              selectedRoute={selectedRoute}
-              handleRouteSelect={handleRouteSelect}
-              searchQuery={searchQuery}
-              loading={loading}
-            />
-          </div>
-
-          {/* Top Stats */}
-          <div className="col-span-6 pointer-events-none relative z-50">
-            <StatsCards stats={stats} />
+            <div className="flex-1 overflow-hidden">
+              <RouteList
+                filteredRoutes={filteredRoutes}
+                selectedRoute={selectedRoute}
+                handleRouteSelect={handleRouteSelect}
+                searchQuery={searchQuery}
+                loading={loading}
+              />
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Route Details Panel */}
-      <AnimatePresence>
-        {selectedRoute && (
-          <RouteDetails
-            selectedRoute={selectedRoute}
-            isDetailsExpanded={isDetailsExpanded}
-            toggleRouteDetails={toggleRouteDetails}
-          />
-        )}
-      </AnimatePresence>
+        {/* Mobile Route Selector - Bottom sheet style */}
+        <div className="md:hidden absolute bottom-0 left-0 right-0 z-10 pointer-events-auto">
+          <div className="bg-white/95 dark:bg-[#0c1222]/95 backdrop-blur-md border-t border-gray-200 dark:border-gray-700 rounded-t-xl">
+            <div className="p-4 space-y-3">
+              <SearchAndFilter
+                searchQuery={searchQuery}
+                onSearchChange={handleSearch}
+                statusFilter={statusFilter}
+                setStatusFilter={setStatusFilter}
+              />
+              <div className="max-h-32 overflow-y-auto">
+                <RouteList
+                  filteredRoutes={filteredRoutes}
+                  selectedRoute={selectedRoute}
+                  handleRouteSelect={handleRouteSelect}
+                  searchQuery={searchQuery}
+                  loading={loading}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Route Details Panel - Desktop only, hidden on mobile */}
+        <AnimatePresence>
+          {selectedRoute && (
+            <div className="hidden md:block">
+              <RouteDetails
+                selectedRoute={selectedRoute}
+                isDetailsExpanded={isDetailsExpanded}
+                toggleRouteDetails={toggleRouteDetails}
+              />
+            </div>
+          )}
+        </AnimatePresence>
+      </div>
     </div>
   );
 }

@@ -320,10 +320,12 @@ The application uses React Context API for global state management:
 - **Custom Controls** for navigation and route management
 
 ### Route Optimization
-- **Web Worker Implementation** for heavy computations
-  - Route calculations performed off the main thread
-  - Prevents UI blocking during complex operations
-  - Handles large datasets efficiently
+- **Smart Route Planning** with Traveling Salesman Problem (TSP) optimization
+- **Mapbox Directions API Integration** for real driving directions
+- **Automatic Fallback** when optimization fails or Mapbox token is missing
+- **Visual Indicators** - Blue routes for optimized paths, orange for fallback routes
+- **Retry Logic** with exponential backoff for reliable API calls
+- **Distance and Duration Calculations** for route planning
 
 ### Performance Optimizations
 - **Lazy Loading**: Map components loaded on demand
@@ -343,12 +345,30 @@ cd multi-fleet-managment/packages/client
 # Install dependencies
 pnpm install
 
-# Create .env file (see .env.example for required variables)
+# Create .env file from example and configure Mapbox
 cp .env.example .env
+# Edit .env and add your Mapbox access token (get one free at https://account.mapbox.com/access-tokens/)
 
 # Start development server
 pnpm dev
 ```
+
+### Mapbox Configuration
+
+To enable full map functionality including route optimization:
+
+1. **Get a free Mapbox token** at [https://account.mapbox.com/access-tokens/](https://account.mapbox.com/access-tokens/)
+2. **Add the token to your .env file**:
+   ```bash
+   VITE_MAPBOX_ACCESS_TOKEN=your_mapbox_access_token_here
+   ```
+3. **Optional**: Configure custom map styles:
+   ```bash
+   VITE_MAPBOX_LIGHT_STYLE=mapbox://styles/mapbox/light-v11
+   VITE_MAPBOX_DARK_STYLE=mapbox://styles/mapbox/dark-v11
+   ```
+
+**Note**: Without a valid Mapbox token, the application will still work but route optimization will be disabled and fallback routes will be displayed in orange instead of blue.
 
 ### Required UI Components
 
