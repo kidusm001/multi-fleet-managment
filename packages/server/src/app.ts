@@ -3,90 +3,153 @@ import cors from 'cors';
 import pinoHttp from 'pino-http';
 import pino from 'pino';
 import dotenv from 'dotenv';
-import authRoutes from './routes/auth';
-import { loadSession } from './middleware/auth';
+import { toNodeHandler } from 'better-auth/node';
+
+import { auth } from './lib/auth';
 import apiRouter from './routes';
 
 dotenv.config();
 
 export function createApp() {
-  const app = express();
+    const app = express();
 
-  // Middleware
-  app.use(cors({
-    origin: (origin, cb) => {
-      const allowed = (process.env.CORS_ORIGINS || '').split(',').filter(Boolean);
-      if (!origin || allowed.length === 0 || allowed.includes(origin)) return cb(null, true);
-      return cb(new Error('CORS not allowed'), false);
-    },
+    // Middleware
+    const corsOptions = {
+    origin: ['http://localhost:5173', 'http://localhost:3000', ],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Cookie'],
+    exposedHeaders: ['Authorization', 'Set-Cookie'],
     credentials: true,
-    methods: ['GET','POST','PUT','PATCH','DELETE','OPTIONS'],
-    allowedHeaders: ['Content-Type','Authorization','X-Requested-With']
-  }));
-  app.use(express.json());
-
-  // Structured logging
-  const isProd = process.env.NODE_ENV === 'production';
-  const logger = pino(isProd ? {} : { transport: { target: 'pino-pretty', options: { colorize: true } } });
-  app.use(pinoHttp({ logger }));
-
-  // Very basic in-memory rate limiter (per-IP). For production, prefer Redis-backed store.
-  const rlWindowMs = Number(process.env.RATE_LIMIT_WINDOW_MS || 60_000);
-  const rlMax = Number(process.env.RATE_LIMIT_MAX || 120);
-  const hits = new Map<string, { count: number; resetAt: number }>();
-  app.use((req, res, next) => {
-    const key = req.ip || req.headers['x-forwarded-for']?.toString() || 'unknown';
-    const now = Date.now();
-    const rec = hits.get(key);
-    if (!rec || now > rec.resetAt) {
-      hits.set(key, { count: 1, resetAt: now + rlWindowMs });
-      return next();
-    }
-    rec.count += 1;
-    if (rec.count > rlMax) {
-      res.setHeader('Retry-After', Math.ceil((rec.resetAt - now) / 1000));
-      return res.status(429).json({ error: 'Too many requests' });
-    }
-    next();
-  });
-
-  // Session loader
-  app.use(loadSession);
-
-  // Routes
-  app.use('/auth', authRoutes);
-  // ...existing code...
-  app.use('/api', apiRouter);
-
-  // Health check endpoint
-  app.get('/health', (req, res) => {
-    res.status(200).json({ 
-      status: 'OK', 
-      timestamp: new Date().toISOString(),
-      service: 'multi-fleet-management-server'
-    });
-  });
-
-  // Minimal audit logger helper on res.locals
-  app.use((req, res, next) => {
-    (req as any).audit = (event: string, details?: Record<string, unknown>) => {
-      const user = (req as any).user || (req as any).auth || {};
-      logger.info({ event, userId: user.id, tenantId: user.tenantId, route: req.originalUrl, method: req.method, ...details }, 'audit');
     };
-    next();
-  });
 
-  // Error handler (avoid stack traces in production)
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+    app.use(cors(corsOptions));
+
+    app.all("/api/auth/*splat", toNodeHandler(auth));
+
+    app.use(express.json());
+
+    // Structured logging - minimal for development
     const isProd = process.env.NODE_ENV === 'production';
-    const status = err.status || 500;
-    const payload: any = { error: err.message || 'Internal server error' };
-    if (!isProd && err.stack) payload.stack = err.stack;
-    res.status(status).json(payload);
-  });
+    const isDev = process.env.NODE_ENV === 'development';
 
-  return app;
+    // Only log errors and warnings in development, or if LOG_LEVEL is set
+    const logLevel = process.env.LOG_LEVEL || (isDev ? 'error' : 'info');
+
+    const logger = pino(isProd ? {} : {
+        level: logLevel,
+        transport: { target: 'pino-pretty', options: { colorize: true } }
+    });
+
+    // Only use HTTP logging in production or if explicitly enabled
+    const httpLoggingEnabled = isProd || process.env.ENABLE_HTTP_LOGGING === 'true';
+    const httpLogLevel = process.env.HTTP_LOG_LEVEL || 'simple';
+
+    if (httpLoggingEnabled) {
+        console.log(`📊 HTTP request logging enabled (level: ${httpLogLevel})`);
+
+        if (httpLogLevel === 'verbose') {
+            // Verbose pino HTTP logging with full request/response details
+            app.use(pinoHttp({
+                logger,
+                autoLogging: true,
+                quietReqLogger: false,
+                customLogLevel: (req, res, err) => {
+                    if (res.statusCode >= 400 && res.statusCode < 500) return 'warn';
+                    if (res.statusCode >= 500 || err) return 'error';
+                    return 'info';
+                }
+            }));
+        } else if (httpLogLevel === 'detailed') {
+            // Detailed logging with headers and query params
+            app.use((req, res, next) => {
+                const start = Date.now();
+                const statusColor = res.statusCode >= 400 ? '🔴' : res.statusCode >= 300 ? '🟡' : '🟢';
+                console.log(`➡️  ${req.method} ${req.url}`, {
+                    query: req.query,
+                    headers: req.headers,
+                    ip: req.ip
+                });
+
+                res.on('finish', () => {
+                    const duration = Date.now() - start;
+                    console.log(`⬅️  ${statusColor} ${req.method} ${req.path} ${res.statusCode} - ${duration}ms`, {
+                        responseHeaders: res.getHeaders()
+                    });
+                });
+
+                next();
+            });
+        } else {
+            // Simple clean logging (default)
+            app.use((req, res, next) => {
+                const start = Date.now();
+
+                res.on('finish', () => {
+                    const duration = Date.now() - start;
+                    const statusColor = res.statusCode >= 400 ? '🔴' : res.statusCode >= 300 ? '🟡' : '🟢';
+                    console.log(`${statusColor} ${req.method} ${req.path} ${res.statusCode} - ${duration}ms`);
+                });
+
+                next();
+            });
+        }
+    } else {
+        console.log('🤫 HTTP request logging disabled');
+    }
+
+    // Very basic in-memory rate limiter (per-IP). For production, prefer Redis-backed store.
+    const rlWindowMs = Number(process.env.RATE_LIMIT_WINDOW_MS || 60_000);
+    const rlMax = Number(process.env.RATE_LIMIT_MAX || 120);
+    const hits = new Map<string, { count: number; resetAt: number }>();
+    app.use((req, res, next) => {
+        const key = req.ip || req.headers['x-forwarded-for']?.toString() || 'unknown';
+        const now = Date.now();
+        const rec = hits.get(key);
+        if (!rec || now > rec.resetAt) {
+            hits.set(key, { count: 1, resetAt: now + rlWindowMs });
+            return next();
+        }
+        rec.count += 1;
+        if (rec.count > rlMax) {
+            res.setHeader('Retry-After', Math.ceil((rec.resetAt - now) / 1000));
+            return res.status(429).json({ error: 'Too many requests' });
+        }
+        next();
+    });
+
+    // Routes
+    // ...existing code...
+    app.use('/api', apiRouter);
+
+    // Health check endpoint
+    app.get('/health', (req, res) => {
+        res.status(200).json({
+            status: 'OK',
+            timestamp: new Date().toISOString(),
+            service: 'multi-fleet-management-server'
+        });
+    });
+
+    // Minimal audit logger helper on res.locals
+    app.use((req, res, next) => {
+        (req as any).audit = (event: string, details?: Record<string, unknown>) => {
+            const user = (req as any).user || (req as any).auth || {};
+            logger.info({ event, userId: user.id, tenantId: user.tenantId, route: req.originalUrl, method: req.method, ...details }, 'audit');
+        };
+        next();
+    });
+
+    // Error handler (avoid stack traces in production)
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+        const isProd = process.env.NODE_ENV === 'production';
+        const status = err.status || 500;
+        const payload: any = { error: err.message || 'Internal server error' };
+        if (!isProd && err.stack) payload.stack = err.stack;
+        res.status(status).json(payload);
+    });
+
+    return app;
 }
 
 const app = createApp();

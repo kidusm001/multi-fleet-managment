@@ -5,7 +5,7 @@ import asyncHandler from 'express-async-handler';
 import { idValidation, vehicleValidation as shuttleValidation } from '../middleware/validation';
 import validateRequest from '../middleware/validateRequest';
 import { notificationService } from '../services/notificationService';
-import { requireRoles } from '../middleware/auth';
+import { requireRole } from '../middleware/requireRole';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -469,9 +469,9 @@ const handleShuttleApproval: RequestHandler<{ id: string }, {}, ApprovalBody> = 
 };
 
 // Routes
-router.get('/', requireRoles('admin', 'administrator', 'fleetManager'), asyncHandler(getAllShuttles));
-router.get('/maintenance', requireRoles('admin', 'administrator', 'fleetManager'), asyncHandler(getMaintenanceSchedule));
-router.get('/available', requireRoles('admin', 'administrator', 'fleetManager'), asyncHandler(getAvailableShuttles));
+router.get('/', requireRole(['admin', 'administrator', 'fleetManager']), asyncHandler(getAllShuttles));
+router.get('/maintenance', requireRole(['admin', 'administrator', 'fleetManager']), asyncHandler(getMaintenanceSchedule));
+router.get('/available', requireRole(['admin', 'administrator', 'fleetManager']), asyncHandler(getAvailableShuttles));
 // Public endpoints for tests
 router.get('/shuttle-availability/shift/available', asyncHandler(async (_req, res) => {
   res.status(400).json({ error: 'Shift ID is required' });
@@ -481,15 +481,15 @@ router.get(/^\/shuttle-availability\/shift\/\/available$/, asyncHandler(async (_
   res.status(400).json({ error: 'Shift ID is required' });
 }));
 router.get('/shuttle-availability/shift/:shiftId/available', asyncHandler(getAvailableShuttlesForShift));
-router.get('/:id', idValidation, validateRequest, requireRoles('admin', 'administrator', 'fleetManager'), asyncHandler(getShuttleById));
-router.post('/', shuttleValidation, validateRequest, requireRoles('admin', 'administrator'), asyncHandler(createShuttle));
-router.put('/:id', [...idValidation, ...shuttleValidation], validateRequest, requireRoles('admin', 'administrator'), asyncHandler(updateShuttle));
-router.delete('/:id', idValidation, validateRequest, requireRoles('admin', 'administrator'), asyncHandler(deleteShuttle));
-router.post('/:id/restore', idValidation, validateRequest, requireRoles('admin', 'administrator'), asyncHandler(restoreShuttle));
-router.patch('/:id/status', idValidation, validateRequest, requireRoles('admin', 'administrator'), asyncHandler(updateShuttleStatus));
-router.post('/request', shuttleValidation, validateRequest, requireRoles('fleetManager'), asyncHandler(requestShuttle));
-router.post('/request/:id/approve', validateRequest, requireRoles('admin', 'administrator'), asyncHandler(handleShuttleApproval));
-router.get('/requests/pending', requireRoles('admin', 'administrator', 'fleetManager'), asyncHandler(async (_req, res) => {
+router.get('/:id', idValidation, validateRequest, requireRole(['admin', 'administrator', 'fleetManager']), asyncHandler(getShuttleById));
+router.post('/', shuttleValidation, validateRequest, requireRole(['admin', 'administrator']), asyncHandler(createShuttle));
+router.put('/:id', [...idValidation, ...shuttleValidation], validateRequest, requireRole(['admin', 'administrator']), asyncHandler(updateShuttle));
+router.delete('/:id', idValidation, validateRequest, requireRole(['admin', 'administrator']), asyncHandler(deleteShuttle));
+router.post('/:id/restore', idValidation, validateRequest, requireRole(['admin', 'administrator']), asyncHandler(restoreShuttle));
+router.patch('/:id/status', idValidation, validateRequest, requireRole(['admin', 'administrator']), asyncHandler(updateShuttleStatus));
+router.post('/request', shuttleValidation, validateRequest, requireRole(['fleetManager']), asyncHandler(requestShuttle));
+router.post('/request/:id/approve', validateRequest, requireRole(['admin', 'administrator']), asyncHandler(handleShuttleApproval));
+router.get('/requests/pending', requireRole(['admin', 'administrator', 'fleetManager']), asyncHandler(async (_req, res) => {
   const requests = await (prisma as any).shuttleRequest.findMany({
     where: { status: 'PENDING' },
     include: { category: true },
@@ -497,7 +497,7 @@ router.get('/requests/pending', requireRoles('admin', 'administrator', 'fleetMan
   });
   res.json(requests);
 }));
-router.get('/requests', requireRoles('admin', 'administrator', 'fleetManager'), asyncHandler(async (_req, res) => {
+router.get('/requests', requireRole(['admin', 'administrator', 'fleetManager']), asyncHandler(async (_req, res) => {
   const requests = await (prisma as any).shuttleRequest.findMany({
     include: { category: true },
     orderBy: { requestedAt: 'desc' }

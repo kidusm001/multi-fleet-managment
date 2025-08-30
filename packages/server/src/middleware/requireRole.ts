@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { auth } from "../utils/auth";
+import { auth } from "../lib/auth";
 import { fromNodeHeaders } from "better-auth/node";
 
 export function requireRole(allowedRoles: string[]) {
@@ -12,7 +12,7 @@ export function requireRole(allowedRoles: string[]) {
         res.status(401).json({ message: "Unauthorized: No active session/user" });
         return;
       }
-      if (!allowedRoles.includes(session.user.role)) {
+      if (!session.user.role || !allowedRoles.includes(session.user.role)) {
         res.status(403).json({ message: "Forbidden: Insufficient permissions" });
         return;
       }
