@@ -17,6 +17,8 @@ enum Role {
   admin
   manager
   driver
+  owner
+  employee
   superadmin
 }
 

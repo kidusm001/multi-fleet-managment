@@ -2,7 +2,7 @@ import request from 'supertest';
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { createApp } from '../app';
 import { PrismaClient } from '@prisma/client';
-import { auth } from '../utils/auth';
+import { auth } from '../lib/auth';
 
 const prisma = new PrismaClient();
 const app = createApp();

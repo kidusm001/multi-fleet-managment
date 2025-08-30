@@ -1,229 +1,383 @@
-import { Router } from 'express';
-import { PrismaClient } from '@prisma/client';
-import { requireSession, requireRoles } from '../middleware/auth';
+import express, { Request, Response } from 'express';
+import { Route, PrismaClient, RouteStatus } from '@prisma/client';
+import { requireRole } from '../middleware/requireRole';
 
 const prisma = new PrismaClient();
-const router = Router();
+const router = express.Router();
 
-// Apply session loading middleware to all routes
-router.use(requireSession);
+type RouteList = Route[];
 
-// Debug logging for route operations
-router.use((req, _res, next) => {
-  // console.log(`[routes] ${req.method} ${req.path} - tenantId: ${req.sessionUser?.tenantId}`);
-  next();
+/**
+ * @route   GET /superadmin/routes
+ * @desc    Get all routes
+ * @access  Private (superadmin)
+ */
+router.get('/superadmin/routes', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+    try {
+        const { includeDeleted } = req.query;
+        const routes: RouteList = await prisma.route.findMany({
+            where: {
+                ...(includeDeleted !== 'true' && { deleted: false })
+            },
+            include: {
+                organization: true,
+                vehicle: true,
+                shift: true,
+                stops: {
+                    orderBy: {
+                        sequence: 'asc'
+                    }
+                },
+                vehicleAvailability: true
+            },
+            orderBy: {
+                createdAt: 'desc'
+            }
+        });
+        res.json(routes);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
 });
 
-// GET /routes - List all routes for the current tenant
-router.get('/', requireRoles('ADMIN', 'MANAGER', 'DRIVER'), async (req, res) => {
-  try {
-    const routes = await prisma.route.findMany({
-      where: { 
-        tenantId: req.sessionUser!.tenantId,
-        deleted: false 
-      },
-      include: {
-        stops: {
-          where: { tenantId: req.sessionUser!.tenantId },
-          orderBy: { order: 'asc' }
-        },
-        vehicle: true,
-        shift: true
-      },
-      orderBy: { createdAt: 'desc' }
-    });
-    
-    res.json({ routes });
-  } catch (e: any) {
-    console.error('GET /routes error:', e);
-    res.status(500).json({ error: 'Failed to fetch routes' });
-  }
+/**
+ * @route   GET /superadmin/routes/:id
+ * @desc    Get a specific route by ID
+ * @access  Private (superadmin)
+ */
+router.get('/superadmin/routes/:id', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        if (!id || typeof id !== 'string') {
+            return res.status(400).json({ message: 'Valid route ID is required' });
+        }
+        const route = await prisma.route.findUnique({
+            where: { id },
+            include: {
+                organization: true,
+                vehicle: true,
+                shift: true,
+                stops: {
+                    orderBy: {
+                        sequence: 'asc'
+                    }
+                },
+                vehicleAvailability: true
+            }
+        });
+        if (!route) {
+            return res.status(404).json({ message: 'Route not found' });
+        }
+        res.json(route);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
 });
 
-// GET /routes/:id - Get specific route for the current tenant
-router.get('/:id', requireRoles('ADMIN', 'MANAGER', 'DRIVER'), async (req, res) => {
-  try {
-    const route = await prisma.route.findFirst({
-      where: { 
-        id: req.params.id,
-        tenantId: req.sessionUser!.tenantId,
-        deleted: false
-      },
-      include: {
-        stops: {
-          where: { tenantId: req.sessionUser!.tenantId },
-          orderBy: { order: 'asc' }
-        },
-        vehicle: true,
-        shift: true
-      }
-    });
-    
-    if (!route) {
-      return res.status(404).json({ error: 'Route not found' });
+/**
+ * @route   GET /superadmin/routes/by-organization/:organizationId
+ * @desc    Get all routes for a specific organization
+ * @access  Private (superadmin)
+ */
+router.get('/superadmin/routes/by-organization/:organizationId', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+    try {
+        const { organizationId } = req.params;
+        const { includeDeleted } = req.query;
+        if (!organizationId || typeof organizationId !== 'string') {
+            return res.status(400).json({ message: 'Valid organization ID is required' });
+        }
+        const routes = await prisma.route.findMany({
+            where: {
+                organizationId,
+                ...(includeDeleted !== 'true' && { deleted: false })
+            },
+            include: {
+                organization: true,
+                vehicle: true,
+                shift: true,
+                stops: true
+            },
+            orderBy: {
+                name: 'asc'
+            }
+        });
+        res.json(routes);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal Server Error' });
     }
-    
-    res.json({ route });
-  } catch (e: any) {
-    console.error('GET /routes/:id error:', e);
-    res.status(500).json({ error: 'Failed to fetch route' });
-  }
 });
 
-// POST /routes - Create new route (ADMIN/MANAGER only)
-router.post('/', requireRoles('ADMIN', 'MANAGER'), async (req, res) => {
-  try {
-    const { name, description, vehicleId, shiftId, date, startTime, endTime } = req.body;
-    
-    if (!name) {
-      return res.status(400).json({ error: 'Route name is required' });
+/**
+ * @route   POST /superadmin/routes
+ * @desc    Create a new route
+ * @access  Private (superadmin)
+ */
+router.post('/superadmin/routes', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+    try {
+        const {
+            name,
+            description,
+            vehicleId,
+            shiftId,
+            date,
+            startTime,
+            endTime,
+            totalDistance,
+            totalTime,
+            status,
+            isActive,
+            organizationId
+        } = req.body;
+
+        // Validation
+        if (!name || typeof name !== 'string') {
+            return res.status(400).json({ message: 'Route name is required' });
+        }
+        if (!organizationId || typeof organizationId !== 'string') {
+            return res.status(400).json({ message: 'Organization ID is required' });
+        }
+
+        const organization = await prisma.organization.findUnique({ where: { id: organizationId } });
+        if (!organization) {
+            return res.status(404).json({ message: 'Organization not found' });
+        }
+
+        if (vehicleId) {
+            const vehicle = await prisma.vehicle.findUnique({ where: { id: vehicleId } });
+            if (!vehicle || vehicle.organizationId !== organizationId) {
+                return res.status(400).json({ message: 'Vehicle not found or does not belong to the organization' });
+            }
+        }
+
+        if (shiftId) {
+            const shift = await prisma.shift.findUnique({ where: { id: shiftId } });
+            if (!shift || shift.organizationId !== organizationId) {
+                return res.status(400).json({ message: 'Shift not found or does not belong to the organization' });
+            }
+        }
+
+        const newRoute = await prisma.route.create({
+            data: {
+                name,
+                description,
+                vehicleId,
+                shiftId,
+                date: date ? new Date(date) : null,
+                startTime: startTime ? new Date(startTime) : null,
+                endTime: endTime ? new Date(endTime) : null,
+                totalDistance,
+                totalTime,
+                status: status || RouteStatus.ACTIVE,
+                isActive: isActive !== undefined ? isActive : true,
+                organizationId
+            },
+            include: {
+                organization: true,
+                vehicle: true,
+                shift: true,
+                stops: true
+            }
+        });
+
+        res.status(201).json(newRoute);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal Server Error' });
     }
-    
-    // Validate vehicle belongs to same tenant if provided
-    if (vehicleId) {
-      const vehicle = await prisma.vehicle.findFirst({
-        where: { id: vehicleId, tenantId: req.sessionUser!.tenantId, deleted: false }
-      });
-      if (!vehicle) {
-        return res.status(400).json({ error: 'Invalid vehicle ID' });
-      }
-    }
-    
-    // Validate shift belongs to same tenant if provided
-    if (shiftId) {
-      const shift = await prisma.shift.findFirst({
-        where: { id: shiftId, tenantId: req.sessionUser!.tenantId }
-      });
-      if (!shift) {
-        return res.status(400).json({ error: 'Invalid shift ID' });
-      }
-    }
-    
-    const route = await prisma.route.create({
-      data: {
-        name,
-        description: description || null,
-        vehicleId: vehicleId || null,
-        shiftId: shiftId || null,
-        date: date ? new Date(date) : null,
-        startTime: startTime ? new Date(startTime) : null,
-        endTime: endTime ? new Date(endTime) : null,
-        tenantId: req.sessionUser!.tenantId
-      },
-      include: {
-        stops: {
-          where: { tenantId: req.sessionUser!.tenantId },
-          orderBy: { order: 'asc' }
-        },
-        vehicle: true,
-        shift: true
-      }
-    });
-    
-    res.status(201).json({ route });
-  } catch (e: any) {
-    console.error('POST /routes error:', e);
-    res.status(500).json({ error: 'Failed to create route' });
-  }
 });
 
-// PUT /routes/:id - Update route (ADMIN/MANAGER only)
-router.put('/:id', requireRoles('ADMIN', 'MANAGER'), async (req, res) => {
-  try {
-    const { name, description, vehicleId, shiftId, date, startTime, endTime, status } = req.body;
-    
-    // Check if route exists and belongs to tenant
-    const existingRoute = await prisma.route.findFirst({
-      where: { 
-        id: req.params.id,
-        tenantId: req.sessionUser!.tenantId,
-        deleted: false
-      }
-    });
-    
-    if (!existingRoute) {
-      return res.status(404).json({ error: 'Route not found' });
+/**
+ * @route   PUT /superadmin/routes/:id
+ * @desc    Update a route
+ * @access  Private (superadmin)
+ */
+router.put('/superadmin/routes/:id', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const {
+            name,
+            description,
+            vehicleId,
+            shiftId,
+            date,
+            startTime,
+            endTime,
+            totalDistance,
+            totalTime,
+            status,
+            isActive
+        } = req.body;
+
+        const existingRoute = await prisma.route.findUnique({ where: { id } });
+        if (!existingRoute) {
+            return res.status(404).json({ message: 'Route not found' });
+        }
+
+        if (vehicleId) {
+            const vehicle = await prisma.vehicle.findUnique({ where: { id: vehicleId } });
+            if (!vehicle || vehicle.organizationId !== existingRoute.organizationId) {
+                return res.status(400).json({ message: 'Vehicle not found or does not belong to the organization' });
+            }
+        }
+
+        if (shiftId) {
+            const shift = await prisma.shift.findUnique({ where: { id: shiftId } });
+            if (!shift || shift.organizationId !== existingRoute.organizationId) {
+                return res.status(400).json({ message: 'Shift not found or does not belong to the organization' });
+            }
+        }
+
+        const updatedRoute = await prisma.route.update({
+            where: { id },
+            data: {
+                name,
+                description,
+                vehicleId,
+                shiftId,
+                date: date ? new Date(date) : undefined,
+                startTime: startTime ? new Date(startTime) : undefined,
+                endTime: endTime ? new Date(endTime) : undefined,
+                totalDistance,
+                totalTime,
+                status,
+                isActive
+            },
+            include: {
+                organization: true,
+                vehicle: true,
+                shift: true,
+                stops: true
+            }
+        });
+
+        res.json(updatedRoute);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal Server Error' });
     }
-    
-    // Validate vehicle belongs to same tenant if provided
-    if (vehicleId) {
-      const vehicle = await prisma.vehicle.findFirst({
-        where: { id: vehicleId, tenantId: req.sessionUser!.tenantId, deleted: false }
-      });
-      if (!vehicle) {
-        return res.status(400).json({ error: 'Invalid vehicle ID' });
-      }
-    }
-    
-    // Validate shift belongs to same tenant if provided
-    if (shiftId) {
-      const shift = await prisma.shift.findFirst({
-        where: { id: shiftId, tenantId: req.sessionUser!.tenantId }
-      });
-      if (!shift) {
-        return res.status(400).json({ error: 'Invalid shift ID' });
-      }
-    }
-    
-    const updateData: any = {};
-    if (name !== undefined) updateData.name = name;
-    if (description !== undefined) updateData.description = description;
-    if (vehicleId !== undefined) updateData.vehicleId = vehicleId;
-    if (shiftId !== undefined) updateData.shiftId = shiftId;
-    if (date !== undefined) updateData.date = date ? new Date(date) : null;
-    if (startTime !== undefined) updateData.startTime = startTime ? new Date(startTime) : null;
-    if (endTime !== undefined) updateData.endTime = endTime ? new Date(endTime) : null;
-    if (status !== undefined) updateData.status = status;
-    
-    const route = await prisma.route.update({
-      where: { id: req.params.id },
-      data: updateData,
-      include: {
-        stops: {
-          where: { tenantId: req.sessionUser!.tenantId },
-          orderBy: { order: 'asc' }
-        },
-        vehicle: true,
-        shift: true
-      }
-    });
-    
-    res.json({ route });
-  } catch (e: any) {
-    console.error('PUT /routes/:id error:', e);
-    res.status(500).json({ error: 'Failed to update route' });
-  }
 });
 
-// DELETE /routes/:id - Soft delete route (ADMIN/MANAGER only)
-router.delete('/:id', requireRoles('ADMIN', 'MANAGER'), async (req, res) => {
-  try {
-    // Check if route exists and belongs to tenant
-    const existingRoute = await prisma.route.findFirst({
-      where: { 
-        id: req.params.id,
-        tenantId: req.sessionUser!.tenantId,
-        deleted: false
-      }
-    });
-    
-    if (!existingRoute) {
-      return res.status(404).json({ error: 'Route not found' });
+/**
+ * @route   DELETE /superadmin/routes/:id
+ * @desc    Soft delete a route
+ * @access  Private (superadmin)
+ */
+router.delete('/superadmin/routes/:id', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const existingRoute = await prisma.route.findUnique({ where: { id } });
+        if (!existingRoute) {
+            return res.status(404).json({ message: 'Route not found' });
+        }
+
+        if (existingRoute.deleted) {
+            return res.status(400).json({ message: 'Route is already deleted' });
+        }
+
+        await prisma.route.update({
+            where: { id },
+            data: {
+                deleted: true,
+                deletedAt: new Date(),
+                isActive: false,
+                status: RouteStatus.INACTIVE
+            }
+        });
+
+        res.json({ message: 'Route deleted successfully' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal Server Error' });
     }
-    
-    await prisma.route.update({
-      where: { id: req.params.id },
-      data: { 
-        deleted: true,
-        deletedAt: new Date()
-      }
-    });
-    
-    res.status(204).send();
-  } catch (e: any) {
-    console.error('DELETE /routes/:id error:', e);
-    res.status(500).json({ error: 'Failed to delete route' });
-  }
+});
+
+/**
+ * @route   PATCH /superadmin/routes/:id/restore
+ * @desc    Restore a soft-deleted route
+ * @access  Private (superadmin)
+ */
+router.patch('/superadmin/routes/:id/restore', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const existingRoute = await prisma.route.findUnique({ where: { id } });
+        if (!existingRoute) {
+            return res.status(404).json({ message: 'Route not found' });
+        }
+
+        if (!existingRoute.deleted) {
+            return res.status(400).json({ message: 'Route is not deleted' });
+        }
+
+        const restoredRoute = await prisma.route.update({
+            where: { id },
+            data: {
+                deleted: false,
+                deletedAt: null,
+                isActive: true,
+                status: RouteStatus.ACTIVE
+            },
+            include: {
+                organization: true,
+                vehicle: true,
+                shift: true,
+                stops: true
+            }
+        });
+
+        res.json({ message: 'Route restored successfully', route: restoredRoute });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+/**
+ * @route   GET /superadmin/routes/stats/summary
+ * @desc    Get summary statistics for all routes
+ * @access  Private (superadmin)
+ */
+router.get('/superadmin/routes/stats/summary', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+    try {
+        const routes = await prisma.route.findMany({
+            where: { deleted: false },
+            include: {
+                _count: {
+                    select: { stops: true }
+                },
+                organization: true
+            }
+        });
+
+        const stats = {
+            totalRoutes: routes.length,
+            activeRoutes: routes.filter(r => r.isActive).length,
+            inactiveRoutes: routes.filter(r => !r.isActive).length,
+            totalStops: routes.reduce((sum, r) => sum + r._count.stops, 0),
+            averageStopsPerRoute: routes.length > 0 ? routes.reduce((sum, r) => sum + r._count.stops, 0) / routes.length : 0,
+            routesByOrganization: routes.reduce((acc, r) => {
+                const orgName = r.organization.name;
+                if (!acc[orgName]) {
+                    acc[orgName] = {
+                        total: 0,
+                        active: 0,
+                        totalStops: 0
+                    };
+                }
+                acc[orgName].total += 1;
+                if (r.isActive) acc[orgName].active += 1;
+                acc[orgName].totalStops += r._count.stops;
+                return acc;
+            }, {} as Record<string, any>)
+        };
+
+        res.json(stats);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
 });
 
 export default router;
