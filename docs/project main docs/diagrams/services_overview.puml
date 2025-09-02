@@ -1,0 +1,68 @@
+@startuml Services Overview
+title Services Layer Architecture
+
+package "Backend Services" as services {
+    class NotificationService {
+        +createNotification(payload)
+        +getNotifications(userId, opts)
+        +markAsSeen(id, userId)
+        +getUnseenCount(userId)
+    }
+
+    class ClusteringService {
+        +getOptimalClusters(shiftId, date, vehicles)
+        +getOptimalClusterForShuttle(shiftId, date, shuttleId)
+    }
+
+    class ShuttleAvailabilityService {
+        +getAvailableShuttles(params)
+    }
+
+    class PayrollService {
+        +generateMonthlyPayroll(vehicleId, month, year)
+        +getMonthlyPayrollByVehicle(vehicleId, month, year)
+        +getAllMonthlyPayrolls(month, year)
+        +processPayroll(payrollId)
+    }
+}
+
+package "Frontend Modules" as frontend {
+    class MapComponent {
+        +render()
+        +updateRoute(route)
+    }
+
+    class RouteLayer {
+        +addToMap(map, route)
+        +removeFromMap()
+    }
+
+    class RouteOptimization {
+        +optimize(coordinates)
+        +fallbackHeuristic(coordinates)
+    }
+}
+
+package "Data Access" as data {
+    class PrismaClient {
+        +findMany()
+        +create()
+        +update()
+    }
+}
+
+NotificationService --> PrismaClient : uses
+ClusteringService --> PrismaClient : uses
+ShuttleAvailabilityService --> PrismaClient : uses
+PayrollService --> PrismaClient : uses
+
+MapComponent --> RouteLayer : manages
+RouteLayer --> RouteOptimization : delegates
+RouteOptimization --> MapComponent : returns optimized route
+
+note right of RouteOptimization
+    Blue: Optimized
+    Orange: Fallback
+end note
+
+@enduml

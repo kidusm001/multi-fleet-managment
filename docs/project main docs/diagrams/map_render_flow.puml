@@ -1,0 +1,15 @@
+@startuml MapRenderFlow
+rectangle UI {
+  component RouteSelection
+  component MapComponent
+  component RouteLayer
+  component OptimizationService
+}
+
+RouteSelection --> MapComponent : select route
+MapComponent --> RouteLayer : updateRoute()
+RouteLayer --> OptimizationService : optimizeRoute(coords)
+OptimizationService --> RouteLayer : optimized|fallback path
+RouteLayer --> MapComponent : render layer
+MapComponent --> RouteSelection : emit status (color code)
+@enduml
