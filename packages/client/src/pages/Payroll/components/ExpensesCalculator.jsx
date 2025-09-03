@@ -33,12 +33,10 @@ import {
 } from "@/components/Common/UI/Tabs";
 import { Label } from "@/components/Common/UI/Label";
 import { formatCurrency, formatPercent } from "@/utils/formatters";
-import { useToast } from "@/components/Common/UI/use-toast";
 import { useTheme } from "@/contexts/ThemeContext";
 import { payrollService } from "@/services/payrollService";
 
 export function ExpensesCalculator({ shuttleData, selectedMonth }) {
-  const { toast: _toast } = useToast();
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   // State for calculator inputs

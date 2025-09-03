@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from "react";
 import { useRole } from "@contexts/RoleContext";
-import { useToast } from "@components/Common/UI/use-toast";
+import { toast } from 'sonner';
 // removed unused XLSX
 import { ROLES } from "@data/constants";
 // imports trimmed
@@ -28,7 +28,6 @@ export default function EmployeeManagement() {
   const [shiftFilter, setShiftFilter] = useState("all");
   const [departments, setDepartments] = useState([]);
   const [shifts, setShifts] = useState([]);
-  const { toast } = useToast();
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
   const [totalEmployees, setTotalEmployees] = useState(0);
@@ -101,7 +100,7 @@ export default function EmployeeManagement() {
     };
 
     fetchDepartmentsAndShifts();
-  }, [toast]);
+  }, []);
 
   // Fetch employees including deleted ones (marked as inactive)
   useEffect(() => {
@@ -142,7 +141,7 @@ export default function EmployeeManagement() {
       isMounted = false;
       controller.abort();
     };
-  }, [toast]);
+  }, []);
 
   // Apply filters when filter values change
   useEffect(() => {
@@ -220,7 +219,7 @@ export default function EmployeeManagement() {
         }
       }
     },
-    [role, toast]
+  [role]
   );
 
   const handleActivateEmployee = useCallback(
@@ -255,7 +254,7 @@ export default function EmployeeManagement() {
         }
       }
     },
-    [role, toast]
+  [role]
   );
 
   // Removed export and batch handlers

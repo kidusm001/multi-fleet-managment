@@ -4,7 +4,6 @@ import { ProtectedRoute } from '@components/Common/ProtectedRoute';
 import { ROLES } from '@data/constants';
 import { AuthRoute } from '@components/Common/AuthRoute';
 // Layout Components
-// Sidebar removed; replaced by top navigation
 import Footer from "@components/Common/Layout/Footer";
 import TopBar from "@components/Common/Layout/TopBar";
 // Pages
@@ -21,7 +20,6 @@ const Settings = lazy(() => import('@pages/Settings'));
 const Login = lazy(() => import('@pages/Auth/Login'));
 const NotificationDashboard = lazy(() => import('@pages/notifications/components/notification-dashboard').then(m => ({ default: m.NotificationDashboard })));
 // Context
-// Sidebar context removed
 import { RoleProvider } from "@contexts/RoleContext";
 import { ThemeProvider, useTheme } from "@contexts/ThemeContext";
 import { AuthProvider } from "@contexts/AuthContext";

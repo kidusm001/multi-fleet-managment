@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useTheme } from "@contexts/ThemeContext";
 import { payrollService } from "@/services/payrollService";
 // removed unused formatters
-import { useToast } from "@/components/Common/UI/use-toast";
+import { toast } from 'sonner';
 
 import { Badge } from "@/components/Common/UI/Badge";
 import { Button } from "@/components/Common/UI/Button";
@@ -31,7 +31,6 @@ import { ShuttleTable } from "./components/ShuttleTable";
 export default function EnhancedShuttlePayrollDashboard() {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
-  const { toast } = useToast();
   const [selectedMonth, setSelectedMonth] = useState("");
   const [selectedShuttle, setSelectedShuttle] = useState(null);
   const [shuttleData, setShuttleData] = useState([]);
@@ -104,7 +103,6 @@ export default function EnhancedShuttlePayrollDashboard() {
         let shuttleDataTemp = [];
         try {
           const payrolls = await payrollService.getAllMonthlyPayrolls(currentMonth, currentYear);
-          console.log("API Response:", payrolls); // Debug log
           
           // Transform API response into expected format
           if (payrolls && Array.isArray(payrolls)) {
@@ -123,14 +121,12 @@ export default function EnhancedShuttlePayrollDashboard() {
               };
             });
           }
-          console.log("Transformed data:", shuttleDataTemp); // Debug log
         } catch (error) {
           console.error("Error loading payroll data:", error);
         }
 
         // If no data was loaded, use sample data
         if (!shuttleDataTemp || shuttleDataTemp.length === 0) {
-          console.log("Using sample data");
           shuttleDataTemp = sampleShuttleData;
         }
 
@@ -208,7 +204,6 @@ export default function EnhancedShuttlePayrollDashboard() {
           compliance: 100 // Assuming full compliance
         };
         
-        console.log("Setting shuttle data:", shuttleDataTemp); // Debug log
         setShuttleData(shuttleDataTemp);
         setPayrollDistributionData(distributionData);
         setMonthlyPayrollData(monthlyData);

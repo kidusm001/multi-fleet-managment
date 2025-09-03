@@ -1,7 +1,7 @@
 import { useState } from "react";
 import PropTypes from "prop-types";
 import { payrollService } from "@/services/payrollService";
-import { useToast } from "@/components/Common/UI/use-toast";
+import { toast } from 'sonner';
 import {
   Dialog,
   DialogContent,
@@ -28,7 +28,6 @@ import { useTheme } from "@/contexts/ThemeContext";
 export function ScheduleReportDialog({ open, onOpenChange }) {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
-  const { toast } = useToast();
   const [date, setDate] = useState();
   const [frequency, setFrequency] = useState("monthly");
   const [time, setTime] = useState("09:00");

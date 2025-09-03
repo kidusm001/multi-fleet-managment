@@ -4,12 +4,11 @@ import Controls from "./Controls";
 import DataSection from "./DataSection";
 import { routeService } from "@/services/routeService";
 import { shiftService } from "@/services/shiftService";
-import { useToast } from "@/components/Common/UI/use-toast";
+import { toast } from 'sonner';
 // Removed unused Button and LoadingSpinner imports
 
 function RouteAssignment() {
   const navigate = useNavigate();
-  const { toast } = useToast();
   const [selectedShift, setSelectedShift] = useState("");
   const [selectedTime, setSelectedTime] = useState("");
   const [selectedRoute, setSelectedRoute] = useState("");
@@ -35,7 +34,7 @@ function RouteAssignment() {
     }
 
     fetchShifts();
-  }, [toast]);
+  }, []);
 
   // Fetch routes when shift is selected
   useEffect(() => {
@@ -65,7 +64,7 @@ function RouteAssignment() {
     }
 
     fetchRoutes();
-  }, [selectedShift, toast]);
+  }, [selectedShift]);
 
   const _handleCreateNewRoute = () => {
     navigate("/route-management/create", {

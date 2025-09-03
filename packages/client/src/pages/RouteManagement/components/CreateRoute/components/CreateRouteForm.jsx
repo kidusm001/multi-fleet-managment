@@ -5,7 +5,7 @@ import { ArrowLeft, RotateCcw, Eye, Wand2, AlertTriangle, RefreshCw } from "luci
 // UI Components
 import { Input } from "@/components/Common/UI/Input";
 import { Badge } from "@/components/Common/UI/Badge";
-import { useToast } from "@components/Common/UI/use-toast";
+import { toast } from 'sonner';
 import LoadingWrapper from "@components/Common/LoadingAnimation/LoadingWrapper";
 // Services
 import { clusterService } from "@services/clusterService";
@@ -42,7 +42,6 @@ export default function CreateRouteForm({
   const [isLoadingShuttles, setIsLoadingShuttles] = useState(false);
   const [totalCapacity, setTotalCapacity] = useState(0);
   const [totalEmployees, setTotalEmployees] = useState(0);
-  const { toast } = useToast();
   const [pendingEmployeeSelection, setPendingEmployeeSelection] =
     useState(null);
   const initialFetchDone = useRef(false);
@@ -75,7 +74,6 @@ export default function CreateRouteForm({
     
     // Check if shift has changed
     if (shiftId !== previousShiftId.current) {
-      console.log("Shift changed, resetting cluster data");
       
       // Reset all cluster-related state for the new shift
       setShuttleClusters({});
@@ -153,7 +151,6 @@ export default function CreateRouteForm({
             );
 
             if (Object.keys(clusters).length > 0) {
-              console.log("Received fresh clusters:", clusters);
               setShuttleClusters(clusters);
               setOriginalClusters(JSON.parse(JSON.stringify(clusters))); // Deep copy
               setHasClusterResults(true); // Set flag when clusters are received
@@ -183,7 +180,7 @@ export default function CreateRouteForm({
     };
 
     fetchShuttlesAndClusters();
-  }, [selectedShift, getShiftId, employees, toast]);
+  }, [selectedShift, getShiftId, employees]);
 
   // Fetch existing routes when shift changes
   useEffect(() => {
@@ -209,7 +206,7 @@ export default function CreateRouteForm({
     };
 
     fetchExistingRoutes();
-  }, [selectedShift, toast]);
+  }, [selectedShift]);
 
   // Get current shuttle's cluster
   const getCurrentShuttleCluster = useCallback(() => {
@@ -362,7 +359,7 @@ export default function CreateRouteForm({
         description: "Route name has been updated based on the furthest stop.",
       });
     }
-  }, [getSuggestedRouteName, setRouteData, toast]);
+  }, [getSuggestedRouteName, setRouteData]);
 
   // Sort employees
   const sortedEmployees = useMemo(() => {
@@ -506,7 +503,6 @@ export default function CreateRouteForm({
             setSelectedShuttle(shuttle);
           }
           
-          console.log("Refreshed with fresh clusters:", clusters);
           setHighlightKey(prev => prev + 1);
         }
       } catch (error) {
@@ -520,7 +516,7 @@ export default function CreateRouteForm({
         setIsLoading(false);
       }
     }, 50);
-  }, [selectedShuttle, getShiftId, employees, toast]);
+  }, [selectedShuttle, getShiftId, employees]);
 
   // Replace the old handleRefreshHighlights with the new one
   const handleRefreshHighlights = useCallback((e) => {

@@ -123,6 +123,14 @@ Environment Variables
 - `VITE_API_URL` (legacy compatibility; used as fallback).
 - `VITE_ENABLE_MSW` (optional, for local mocks).
 
+Post-Plan Cleanup Checklist (2025-09-03)
+- [x] Replace all `useToast` imports with `import { toast } from 'sonner'` and inline calls (`toast.success|error(...)`).
+- [x] Delete `use-toast.jsx` after replacements.
+- [x] Remove `SidebarContext` directory and `Layout/Sidebar` component + `Sidebar.css`.
+- [x] Prune obsolete `// Removed ...` comments in touched files (core high-noise ones cleaned).
+- [x] Decide on `sonner.tsx` wrapper (removed) and standardized on direct `<Toaster />`.
+- [x] Remove stray debug `console.log` in payroll pages (retain `console.error`).
+
 Operational Checklists
 
 Initial Clean & Install (fish)
