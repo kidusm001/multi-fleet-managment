@@ -146,6 +146,11 @@ export function NotificationDashboard({ userRole: _userRole = "admin" }: Notific
     fetchStats();
   }, [typeFilter, dateRange]);
 
+  // Mount/unmount debug only (reload hack removed after routing refactor)
+  useEffect(() => {
+    return () => {};
+  }, []);
+
   // Map importance string to a numeric level
   const mapImportance = (importanceStr: string) => {
     switch (importanceStr) {

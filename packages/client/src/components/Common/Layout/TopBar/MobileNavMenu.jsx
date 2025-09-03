@@ -170,10 +170,18 @@ const MobileNavMenu = ({ isOpen, onClose, isDark }) => {
 
                 return (
                   <Link
-                    key={item.label}
-                    ref={index === 0 ? firstLinkRef : null}
-                    to={item.path}
-                    onClick={handleLinkClick}
+                      key={item.label}
+                      ref={index === 0 ? firstLinkRef : null}
+                      to={item.path}
+                      onClick={(e) => {
+                        // Hard reload workaround when leaving notifications page
+                        if (location.pathname === '/notifications' && item.path !== '/notifications') {
+                          e.preventDefault();
+                          window.location.href = item.path;
+                          return;
+                        }
+                        handleLinkClick();
+                      }}
                     className={cn(
                       "flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group",
                       isActive

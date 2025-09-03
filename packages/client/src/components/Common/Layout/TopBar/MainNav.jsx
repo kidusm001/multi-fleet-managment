@@ -171,7 +171,9 @@ export default function MainNav({ isDark, onKeyDown }) {
                 ref={routesBtnRef}
                 className={linkClass}
                 aria-current={isActive ? "page" : undefined}
-                onClick={() => setShowRoutesPanel((v) => !v)}
+                onClick={() => {
+                  setShowRoutesPanel((v) => !v);
+                }}
                 onMouseEnter={() => setHoveredItem(item.label)}
                 onMouseLeave={() => setHoveredItem(null)}
                 style={{ position: "relative", zIndex: 51 }}
@@ -225,7 +227,14 @@ export default function MainNav({ isDark, onKeyDown }) {
                       {item.subpaths.map((sub) => (
                         <button
                           key={sub.label}
-                          onClick={() => handleSubNav(sub)}
+                          onClick={() => {
+                            if (location.pathname === '/notifications') {
+                              const target = sub.path.startsWith('/') ? sub.path.split('?')[0] : '/routes';
+                              window.location.href = target;
+                              return;
+                            }
+                            handleSubNav(sub);
+                          }}
                           className={cn(
                             "px-4 py-1.5 text-sm font-medium transition-colors duration-150 border-b-2 outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
                             isActiveSubTab(sub)
@@ -272,6 +281,13 @@ export default function MainNav({ isDark, onKeyDown }) {
             to={item.path}
             className={linkClass}
             aria-current={isActive ? "page" : undefined}
+            onClick={(e) => {
+              if (location.pathname === '/notifications' && item.path !== '/notifications') {
+                e.preventDefault();
+                window.location.href = item.path;
+                return;
+              }
+            }}
             onMouseEnter={() => setHoveredItem(item.label)}
             onMouseLeave={() => setHoveredItem(null)}
           >

@@ -337,7 +337,8 @@
 
     .dashboard-header {
         background: linear-gradient(to right, #3b82f6 0%, #2563eb 100%);
-        -webkit-background-clip: text;
+    -webkit-background-clip: text;
+    background-clip: text;
         -webkit-text-fill-color: transparent;
     }
 
@@ -390,6 +391,21 @@
     .notifications-page {
         background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
     }
+    /* Dark mode background override */
+    .dark .notifications-page {
+        background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+    }
+    /* Dark mode inputs within notifications page */
+    .dark .notifications-page .list-container select,
+    .dark .notifications-page .list-container button[role="combobox"],
+    .dark .notifications-page .list-container .rdp,
+    .dark .notifications-page .list-container .rdp button {
+        background-color: rgba(30,41,59,0.6) !important;
+        color: #e2e8f0 !important;
+    }
+    .dark .notifications-page .list-container button[role="combobox"]:hover {
+        background-color: rgba(51,65,85,0.7) !important;
+    }
 
     /* Card with background and backdrop */
     .dashboard-notification-card {
@@ -402,7 +418,8 @@
     /* Gradient text header */
     .gradient-text-header {
         background: linear-gradient(to right, #3b82f6 0%, #2563eb 100%);
-        -webkit-background-clip: text;
+    -webkit-background-clip: text;
+    background-clip: text;
         -webkit-text-fill-color: transparent;
     }
 

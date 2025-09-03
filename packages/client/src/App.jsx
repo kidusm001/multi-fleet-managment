@@ -1,5 +1,5 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import React, { useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, useLocation, Outlet } from "react-router-dom";
 import { ProtectedRoute } from '@components/Common/ProtectedRoute';
 import { ROLES } from '@data/constants';
 import { AuthRoute } from '@components/Common/AuthRoute';
@@ -31,59 +31,120 @@ import { NotificationSound } from "@components/Common/Notifications/Notification
 // Styles
 import "@styles/App.css";
 
+// Layout for all authenticated/protected pages
+function ProtectedLayout({ isDark }) {
+  return (
+    <div className={`min-h-screen ${isDark ? "bg-slate-900" : "bg-gray-50"} transition-colors duration-300`}>
+      <TopBar />
+      <div className={`main-content backdrop-blur-xl ${isDark ? "bg-black/20" : "bg-white/20"}`}>
+        <main id="main" className={`content-area ${isDark ? "text-gray-100" : "text-gray-900"} pt-[60px]`}>
+          <Outlet />
+          <Footer />
+        </main>
+      </div>
+    </div>
+  );
+}
+
 function AppContent() {
   const { theme } = useTheme();
   const isDark = theme === "dark";
+  const location = useLocation();
+
+  // Track previous path to detect leaving /notifications
+  const prevPathRef = React.useRef(location.pathname);
+  useEffect(() => {
+    try {
+      // If leaving /notifications, attempt normal transition first, then verify DOM state
+      if (prevPathRef.current === '/notifications' && location.pathname !== '/notifications') {
+        // Short delay to allow React Router to unmount the component
+        setTimeout(() => {
+          const stale = document.querySelector('.notifications-page');
+          if (stale) {
+            window.location.href = location.pathname + location.search;
+          }
+        }, 140);
+      }
+      prevPathRef.current = location.pathname;
+    } catch (e) {
+      // ignore
+    }
+  }, [location]);
 
   return (
-  <div className={`app-container ${isDark ? "dark" : ""}`}>
+    <div className={`app-container ${isDark ? "dark" : ""}`}>
       <Routes>
         {/* Public Routes */}
-        <Route path="/auth/login" element={
-          <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading…</div>}>
-            <Login />
-          </Suspense>
-        } />
+        <Route
+          path="/auth/login"
+          element={
+            <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading…</div>}>
+              <Login />
+            </Suspense>
+          }
+        />
         <Route path="/unauthorized" element={<Unauthorized />} />
 
-        {/* Protected Routes - Require Authentication */}
+        {/* Protected Routes Layout */}
         <Route
-          path="*"
           element={
             <AuthRoute>
               <NotificationProvider>
                 <NotificationSound />
-                <div className={`min-h-screen ${isDark ? "bg-slate-900" : "bg-gray-50"} transition-colors duration-300`}>
-                  <TopBar />
-                  <div className={`main-content backdrop-blur-xl ${isDark ? "bg-black/20" : "bg-white/20"}`}>
-                    <main id="main" className={`content-area ${isDark ? "text-gray-100" : "text-gray-900"} pt-[60px]`}>
-                        <Routes>
-                          <Route path="/" element={<Suspense fallback={<div />}> <Home /> </Suspense>} />
-                          <Route path="/about" element={<Suspense fallback={<div />}> <About /> </Suspense>} />
-                          <Route path="/dashboard" element={<Suspense fallback={<div className="p-6">Loading dashboard…</div>}> <Dashboard /> </Suspense>} />
-                        <Route 
-                          path="/routes" 
-                          element={
-                            <ProtectedRoute allowedRoles={[ROLES.MANAGER, ROLES.ADMIN]}>
-                                <Suspense fallback={<div />}> <RouteManagement /> </Suspense>
-                            </ProtectedRoute>
-                          } 
-                        />
-                          <Route path="/shuttles" element={<Suspense fallback={<div />}> <ShuttleManagement /> </Suspense>} />
-                          <Route path="/vehicles" element={<Suspense fallback={<div />}> <VehicleManagement /> </Suspense>} />
-                          <Route path="/employees" element={<Suspense fallback={<div />}> <EmployeeManagement /> </Suspense>} />
-                          <Route path="/payroll" element={<Suspense fallback={<div />}> <Payroll /> </Suspense>} />
-                          <Route path="/notifications" element={<Suspense fallback={<div />}> <NotificationDashboard /> </Suspense>} />
-                          <Route path="/settings" element={<Suspense fallback={<div />}> <Settings /> </Suspense>} />
-                      </Routes>
-                      <Footer />
-                    </main>
-                  </div>
-                </div>
+                <ProtectedLayout isDark={isDark} />
               </NotificationProvider>
             </AuthRoute>
           }
-        />
+        >
+          <Route
+            index
+            element={<Suspense fallback={<div />}> <Home /> </Suspense>}
+          />
+          <Route
+            path="/"
+            element={<Suspense fallback={<div />}> <Home /> </Suspense>}
+          />
+          <Route
+            path="about"
+            element={<Suspense fallback={<div />}> <About /> </Suspense>}
+          />
+          <Route
+            path="dashboard"
+            element={<Suspense fallback={<div className="p-6">Loading dashboard…</div>}> <Dashboard /> </Suspense>}
+          />
+          <Route
+            path="routes"
+            element={
+              <ProtectedRoute allowedRoles={[ROLES.MANAGER, ROLES.ADMIN]}>
+                <Suspense fallback={<div />}> <RouteManagement /> </Suspense>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="shuttles"
+            element={<Suspense fallback={<div />}> <ShuttleManagement /> </Suspense>}
+          />
+          <Route
+            path="vehicles"
+            element={<Suspense fallback={<div />}> <VehicleManagement /> </Suspense>}
+          />
+          <Route
+            path="employees"
+            element={<Suspense fallback={<div />}> <EmployeeManagement /> </Suspense>}
+          />
+            <Route
+            path="payroll"
+            element={<Suspense fallback={<div />}> <Payroll /> </Suspense>}
+          />
+          <Route
+            path="notifications"
+            element={<Suspense fallback={<div />}> <NotificationDashboard /> </Suspense>}
+          />
+          <Route
+            path="settings"
+            element={<Suspense fallback={<div />}> <Settings /> </Suspense>}
+          />
+        </Route>
       </Routes>
     </div>
   );

@@ -79,20 +79,23 @@ function NotificationDropdown() {
     setLocalReadState(updatedState);
   };
 
+  const hardNavigateToNotifications = (idParam) => {
+    const target = idParam ? `/notifications?id=${idParam}` : '/notifications';
+    // Always force a full reload if we are not already on /notifications to avoid stale DOM issue
+    if (window.location.pathname !== '/notifications') {
+      window.location.href = target;
+    } else if (idParam) {
+      // If already on notifications, use client navigation to update query param
+      navigate(target);
+    }
+  };
+
   const handleNotificationClick = (id, e) => {
     e?.preventDefault();
     e?.stopPropagation();
-    
-    // Call the context method to mark as seen on the backend
     markAsSeen(id);
-    
-    // Immediately update local state for responsive UI feedback
-    setLocalReadState(prev => ({
-      ...prev,
-      [id]: true
-    }));
-    
-    navigate(`/notifications?id=${id}`);
+    setLocalReadState(prev => ({ ...prev, [id]: true }));
+    hardNavigateToNotifications(id);
   };
 
 
@@ -201,7 +204,10 @@ function NotificationDropdown() {
                 "text-xs h-7 px-2 hover:text-foreground",
                 isDarkMode ? "text-gray-400 hover:text-gray-200 hover:bg-gray-800" : "text-muted-foreground"
               )}
-              onClick={() => navigate('/notifications')}
+              onClick={(e) => {
+                e.preventDefault();
+                hardNavigateToNotifications();
+              }}
             >
               View All
             </Button>
