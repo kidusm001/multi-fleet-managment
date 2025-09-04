@@ -17,27 +17,25 @@ declare global {
 /**
  * Authentication middleware - validates user session
  */
-export function requireAuth(handler: Function) {
-  return async (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const session = await auth.api.getSession({
-        headers: fromNodeHeaders(req.headers)
-      });
+export async function requireAuth(req: Request, res: Response, next: NextFunction) {
+  try {
+    const session = await auth.api.getSession({
+      headers: fromNodeHeaders(req.headers)
+    });
 
-      if (!session?.user) {
-        return res.status(401).json({ error: 'Authentication required' });
-      }
-
-      // Add user and session to request
-      req.user = session.user;
-      req.session = session;
-
-      return handler(req, res, next);
-    } catch (error) {
-      console.error('Authentication error:', error);
-      return res.status(500).json({ error: 'Authentication failed' });
+    if (!session?.user) {
+      return res.status(401).json({ error: 'Authentication required' });
     }
-  };
+
+    // Add user and session to request
+    req.user = session.user;
+    req.session = session;
+
+    next();
+  } catch (error) {
+    console.error('Authentication error:', error);
+    return res.status(500).json({ error: 'Authentication failed' });
+  }
 }
 
 /**
@@ -65,12 +63,6 @@ export function requireRole(allowedRoles: string | string[]) {
   };
 }
 
-/**
- * Higher-order function to wrap route handlers with authentication
- */
-export function withAuth(handler: Function) {
-  return requireAuth(handler);
-}
 
 /**
  * Get current user from session

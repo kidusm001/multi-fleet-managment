@@ -1,6 +1,10 @@
 import express, { Request, Response } from 'express';
 import { Shift, PrismaClient } from '@prisma/client';
-import { requireRole } from '../middleware/requireRole';
+import { requireAuth, requireRole } from '../middleware/auth';
+import { CreateShift, CreateShiftSchema, ShiftIdParam, UpdateShiftSchema } from '../schema/shiftSchema';
+import { validateSchema, validateMultiple } from '../middleware/zodValidation';
+import { fromNodeHeaders } from 'better-auth/node';
+import { auth } from '../lib/auth';
 
 const prisma = new PrismaClient();
 const router = express.Router();
@@ -8,11 +12,11 @@ const router = express.Router();
 type ShiftList = Shift[];
 
 /**
- * @route   GET /superadmin/shifts
+ * @route   GET /superadmin
  * @desc    Get all shifts
  * @access  Private (superadmin)
  */
-router.get('/superadmin/shifts', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.get('/superadmin', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
         const shifts: ShiftList = await prisma.shift.findMany({
             include: {
@@ -49,11 +53,11 @@ router.get('/superadmin/shifts', requireRole(["superadmin"]), async (req: Reques
 });
 
 /**
- * @route   GET /superadmin/shifts/:id
+ * @route   GET /superadmin/:id
  * @desc    Get a specific shift by ID
  * @access  Private (superadmin)
  */
-router.get('/superadmin/shifts/:id', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.get('/superadmin/:id', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
         
@@ -119,11 +123,11 @@ router.get('/superadmin/shifts/:id', requireRole(["superadmin"]), async (req: Re
 });
 
 /**
- * @route   GET /superadmin/shifts/by-organization/:organizationId
+ * @route   GET /superadmin/by-organization/:organizationId
  * @desc    Get all shifts for a specific organization
  * @access  Private (superadmin)
  */
-router.get('/superadmin/shifts/by-organization/:organizationId', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.get('/superadmin/by-organization/:organizationId', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
         const { organizationId } = req.params;
         
@@ -169,11 +173,11 @@ router.get('/superadmin/shifts/by-organization/:organizationId', requireRole(["s
 });
 
 /**
- * @route   POST /superadmin/shifts
+ * @route   POST /superadmin
  * @desc    Create a new shift
  * @access  Private (superadmin)
  */
-router.post('/superadmin/shifts', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.post('/superadmin', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
         const {
             name,
@@ -265,11 +269,11 @@ router.post('/superadmin/shifts', requireRole(["superadmin"]), async (req: Reque
 });
 
 /**
- * @route   PUT /superadmin/shifts/:id
+ * @route   PUT /superadmin/:id
  * @desc    Update a shift
  * @access  Private (superadmin)
  */
-router.put('/superadmin/shifts/:id', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.put('/superadmin/:id', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
         const { name, startTime, endTime, timeZone } = req.body;
@@ -375,11 +379,11 @@ router.put('/superadmin/shifts/:id', requireRole(["superadmin"]), async (req: Re
 });
 
 /**
- * @route   DELETE /superadmin/shifts/:id
+ * @route   DELETE /superadmin/:id
  * @desc    Delete a shift
  * @access  Private (superadmin)
  */
-router.delete('/superadmin/shifts/:id', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.delete('/superadmin/:id', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
         const { force } = req.query;
@@ -479,11 +483,11 @@ router.delete('/superadmin/shifts/:id', requireRole(["superadmin"]), async (req:
 });
 
 /**
- * @route   GET /superadmin/shifts/:id/employees
+ * @route   GET /superadmin/:id/employees
  * @desc    Get all employees in a specific shift
  * @access  Private (superadmin)
  */
-router.get('/superadmin/shifts/:id/employees', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.get('/superadmin/:id/employees', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
         const { includeDeleted } = req.query;
@@ -542,11 +546,11 @@ router.get('/superadmin/shifts/:id/employees', requireRole(["superadmin"]), asyn
 });
 
 /**
- * @route   GET /superadmin/shifts/:id/routes
+ * @route   GET /superadmin/:id/routes
  * @desc    Get all routes for a specific shift
  * @access  Private (superadmin)
  */
-router.get('/superadmin/shifts/:id/routes', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.get('/superadmin/:id/routes', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
 
@@ -597,11 +601,11 @@ router.get('/superadmin/shifts/:id/routes', requireRole(["superadmin"]), async (
 });
 
 /**
- * @route   GET /superadmin/shifts/stats/summary
+ * @route   GET /superadmin/stats/summary
  * @desc    Get summary statistics for all shifts
  * @access  Private (superadmin)
  */
-router.get('/superadmin/shifts/stats/summary', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.get('/superadmin/stats/summary', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
         const shiftsWithStats = await prisma.shift.findMany({
             include: {
@@ -670,6 +674,313 @@ router.get('/superadmin/shifts/stats/summary', requireRole(["superadmin"]), asyn
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+/**
+ * User-specific routes
+ */
+
+/**
+ * @route   GET /
+ * @desc    Get all Shifts in a specific org
+ * @access  Private (User)
+ */
+
+router.get('/', requireAuth, async (req: Request, res: Response) => {
+    try {
+        const activeOrgId: string | null | undefined = req.session?.session?.activeOrganizationId;
+        if (!activeOrgId) {
+            return res.status(400).json({ message: 'Active organization not found' });
+        }
+
+        const hasPermission = await auth.api.hasPermission({
+            headers: await fromNodeHeaders(req.headers),
+                body: {
+                    permissions: {
+                        shift: ["read"] 
+                    }
+                }
+        });
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
+        
+        const shifts = await prisma.shift.findMany({
+            where: {
+                organizationId: activeOrgId,
+            },
+        })
+
+        res.json(shifts);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+/**
+ * @route   GET /:id
+ * @desc    Get a specific Shift in a specific org by id
+ * @access  Private (User)
+ */
+
+router.get('/:id', requireAuth, validateSchema(ShiftIdParam, 'params'), async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+
+        const activeOrgId: string | null | undefined = req.session?.session?.activeOrganizationId;
+        if (!activeOrgId) {
+            return res.status(400).json({ message: 'Active organization not found' });
+        }
+
+        const hasPermission = await auth.api.hasPermission({
+            headers: await fromNodeHeaders(req.headers),
+                body: {
+                    permissions: {
+                        shift: ["read"] 
+                    }
+                }
+        });
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
+
+        const shift = await prisma.shift.findUnique({
+            where: {
+                id,
+                organizationId: activeOrgId, 
+            },
+            include: {
+                organization: true,
+                employees: true,
+                routes: true,
+                vehicleAvailability: true
+            }
+        });
+
+        if (!shift) {
+            return res.status(404).json({ message: 'Shift not found' });
+        }
+
+        res.json(shift);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+/**
+ * @route   POST /
+ * @desc    Create a new shift
+ * @access  Private (User)
+ */
+
+
+router.post('/', requireAuth, validateSchema(CreateShiftSchema, 'body'), async (req: Request, res: Response) => {
+    try {
+        const {
+            name,
+            startTime,
+            endTime,
+            timeZone,
+        } : CreateShift = req.body;
+
+        const activeOrgId: string | null | undefined = req.session?.session?.activeOrganizationId;
+        if (!activeOrgId) {
+            return res.status(400).json({ message: 'Active organization not found' });
+        }
+
+        const hasPermission = await auth.api.hasPermission({
+            headers: await fromNodeHeaders(req.headers),
+                body: {
+                    permissions: {
+                        shift: ["create"] 
+                    }
+                }
+        });
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
+
+        const existingShift = await prisma.shift.findFirst({
+            where: {
+                name,
+                organizationId: activeOrgId,
+            }
+        });
+
+        if (existingShift) {
+            return res.status(409).json({ message: 'Shift with this name already exists' });
+        }
+
+        const shift = await prisma.shift.create({
+            data: {
+                name: name.trim(),
+                startTime,
+                endTime,
+                timeZone,
+                organizationId: activeOrgId
+            },
+            include: {
+                organization: true
+            }
+        });
+
+        res.json(shift);
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+
+/**
+ * @route   PUT /:id
+ * @desc    Update a Shift
+ * @access  Private (User)
+ */
+
+router.put('/:id',
+    requireAuth,
+    validateMultiple([{schema: ShiftIdParam, target: 'params'}, {schema: UpdateShiftSchema, target: 'body'}]),
+    async(req: Request, res: Response) => {
+        try {
+            const { id } = req.params;
+
+            const {
+                name,
+                startTime,
+                endTime,
+                timeZone,
+            } = req.body;
+
+            const activeOrgId: string | null | undefined = req.session?.session?.activeOrganizationId;
+            if (!activeOrgId) {
+                return res.status(400).json({ message: 'Active organization not found' });
+            }
+
+            const hasPermission = await auth.api.hasPermission({
+                headers: await fromNodeHeaders(req.headers),
+                    body: {
+                        permissions: {
+                            shift: ["update"] 
+                        }
+                    }
+            });
+            if (!hasPermission.success) {
+                return res.status(403).json({ message: 'Unauthorized' });
+            }
+
+            const existingShift = await prisma.shift.findFirst({
+                where: {
+                    id,
+                    organizationId: activeOrgId,
+                }
+            });
+
+            if (!existingShift) {
+                return res.status(404).json({ message: 'Shift not found' });
+            }
+
+            if (name) {
+                const conflictingShift = await prisma.shift.findFirst({
+                    where: {
+                        name,
+                        organizationId: activeOrgId,
+                        id: { not: id }
+                    }
+                });
+                if (conflictingShift) {
+                    return res.status(409).json({ message: 'Shift with this name already exists' });
+                }
+            }
+
+            const shift = await prisma.shift.update({
+                where: {id},
+                data: {
+                    name: name?.trim(),
+                    startTime,
+                    endTime,
+                    timeZone,
+                },
+                include: {
+                    organization: true
+                }
+            });
+
+            res.json(shift);
+        } catch (err) {
+            console.error(err);
+            res.status(500).json({ message: 'Internal Server Error' });
+        }
+    }
+);
+
+/**
+ * @route   DELETE /:id
+ * @desc    Delete a shift
+ * @access  Private (User)
+ */
+
+
+router.delete('/:id', requireAuth, validateSchema(ShiftIdParam, 'params'), async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+
+        const activeOrgId: string | null | undefined = req.session?.session?.activeOrganizationId;
+        if (!activeOrgId) {
+            return res.status(400).json({ message: 'Active organization not found' });
+        }
+
+        const hasPermission = await auth.api.hasPermission({
+            headers: await fromNodeHeaders(req.headers),
+                body: {
+                    permissions: {
+                        shift: ["delete"] 
+                    }
+                }
+        });
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
+
+        const existingShift = await prisma.shift.findFirst({
+            where: {
+                id,
+                organizationId: activeOrgId,
+            }
+        });
+
+        if (!existingShift) {
+            return res.status(404).json({ message: 'Shift not found' });
+        }
+
+        // Basic check for relations, you might want a more robust check
+        const relatedItems = await prisma.shift.findUnique({
+            where: { id },
+            include: {
+                employees: true,
+                routes: true,
+                vehicleAvailability: true
+            }
+        });
+
+        if (relatedItems && (relatedItems.employees.length > 0 || relatedItems.routes.length > 0 || relatedItems.vehicleAvailability.length > 0)) {
+            return res.status(400).json({ message: 'Cannot delete shift with associated employees, routes, or vehicle availability.' });
+        }
+
+
+        await prisma.shift.delete({
+            where: {id, organizationId: activeOrgId},
+        })
+        
+        res.status(204).send();
+
+    } catch (err) {
+            console.error(err);
+            res.status(500).json({ message: 'Internal Server Error' });
     }
 });
 

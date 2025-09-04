@@ -1,6 +1,6 @@
 import express, { Request, Response } from 'express';
 import { Route, PrismaClient, RouteStatus } from '@prisma/client';
-import { requireRole } from '../middleware/requireRole';
+import { requireAuth, requireRole } from '../middleware/auth';
 
 const prisma = new PrismaClient();
 const router = express.Router();
@@ -8,11 +8,11 @@ const router = express.Router();
 type RouteList = Route[];
 
 /**
- * @route   GET /superadmin/routes
+ * @route   GET /superadmin
  * @desc    Get all routes
  * @access  Private (superadmin)
  */
-router.get('/superadmin/routes', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.get('/superadmin', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
         const { includeDeleted } = req.query;
         const routes: RouteList = await prisma.route.findMany({
@@ -42,11 +42,11 @@ router.get('/superadmin/routes', requireRole(["superadmin"]), async (req: Reques
 });
 
 /**
- * @route   GET /superadmin/routes/:id
+ * @route   GET /superadmin/:id
  * @desc    Get a specific route by ID
  * @access  Private (superadmin)
  */
-router.get('/superadmin/routes/:id', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.get('/superadmin/:id', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
         if (!id || typeof id !== 'string') {
@@ -77,11 +77,11 @@ router.get('/superadmin/routes/:id', requireRole(["superadmin"]), async (req: Re
 });
 
 /**
- * @route   GET /superadmin/routes/by-organization/:organizationId
+ * @route   GET /superadmin/by-organization/:organizationId
  * @desc    Get all routes for a specific organization
  * @access  Private (superadmin)
  */
-router.get('/superadmin/routes/by-organization/:organizationId', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.get('/superadmin/by-organization/:organizationId', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
         const { organizationId } = req.params;
         const { includeDeleted } = req.query;
@@ -111,11 +111,11 @@ router.get('/superadmin/routes/by-organization/:organizationId', requireRole(["s
 });
 
 /**
- * @route   POST /superadmin/routes
+ * @route   POST /superadmin
  * @desc    Create a new route
  * @access  Private (superadmin)
  */
-router.post('/superadmin/routes', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.post('/superadmin', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
         const {
             name,
@@ -190,11 +190,11 @@ router.post('/superadmin/routes', requireRole(["superadmin"]), async (req: Reque
 });
 
 /**
- * @route   PUT /superadmin/routes/:id
+ * @route   PUT /superadmin/:id
  * @desc    Update a route
  * @access  Private (superadmin)
  */
-router.put('/superadmin/routes/:id', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.put('/superadmin/:id', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
         const {
@@ -261,11 +261,11 @@ router.put('/superadmin/routes/:id', requireRole(["superadmin"]), async (req: Re
 });
 
 /**
- * @route   DELETE /superadmin/routes/:id
+ * @route   DELETE /superadmin/:id
  * @desc    Soft delete a route
  * @access  Private (superadmin)
  */
-router.delete('/superadmin/routes/:id', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.delete('/superadmin/:id', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
         const existingRoute = await prisma.route.findUnique({ where: { id } });
@@ -295,11 +295,11 @@ router.delete('/superadmin/routes/:id', requireRole(["superadmin"]), async (req:
 });
 
 /**
- * @route   PATCH /superadmin/routes/:id/restore
+ * @route   PATCH /superadmin/:id/restore
  * @desc    Restore a soft-deleted route
  * @access  Private (superadmin)
  */
-router.patch('/superadmin/routes/:id/restore', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.patch('/superadmin/:id/restore', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
         const existingRoute = await prisma.route.findUnique({ where: { id } });
@@ -335,11 +335,11 @@ router.patch('/superadmin/routes/:id/restore', requireRole(["superadmin"]), asyn
 });
 
 /**
- * @route   GET /superadmin/routes/stats/summary
+ * @route   GET /superadmin/stats/summary
  * @desc    Get summary statistics for all routes
  * @access  Private (superadmin)
  */
-router.get('/superadmin/routes/stats/summary', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.get('/superadmin/stats/summary', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
         const routes = await prisma.route.findMany({
             where: { deleted: false },

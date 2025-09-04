@@ -17,7 +17,7 @@ export function requireRole(allowedRoles: string[]) {
         return;
       }
       // Attach user to request if needed
-      (req as any).user = session.user;
+      req.user = session.user;
       next(); // Only call next() if the user is authorized
     } catch (error) {
       // In case of session retrieval failure, respond with 401 (Unauthorized)

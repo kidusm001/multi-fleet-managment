@@ -1,6 +1,10 @@
 import express, { Request, Response } from 'express';
 import { VehicleCategory, PrismaClient } from '@prisma/client';
-import { requireRole } from '../middleware/requireRole';
+import { requireAuth, requireRole } from '../middleware/auth';
+import { fromNodeHeaders } from 'better-auth/node';
+import { auth } from '../lib/auth';
+import { validateSchema, validateMultiple } from '../middleware/zodValidation';
+import { VehicleCategoryIdParam, CreateVehicleCategorySchema, UpdateVehicleCategorySchema, CreateVehicleCategoryInput, UpdateVehicleCategoryInput } from '../schema/vehicleCategorySchema';
 
 const prisma = new PrismaClient();
 const router = express.Router();
@@ -8,11 +12,11 @@ const router = express.Router();
 type VehicleCategoryList = VehicleCategory[];
 
 /**
- * @route   GET /superadmin/vehicle-categories
+ * @route   GET /superadmin
  * @desc    Get all vehicle categories
  * @access  Private (superadmin)
  */
-router.get('/superadmin/vehicle-categories', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.get('/superadmin', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
         const categories: VehicleCategoryList = await prisma.vehicleCategory.findMany({
             include: {
@@ -47,11 +51,11 @@ router.get('/superadmin/vehicle-categories', requireRole(["superadmin"]), async 
 });
 
 /**
- * @route   GET /superadmin/vehicle-categories/:id
+ * @route   GET /superadmin/:id
  * @desc    Get a specific vehicle category by ID
  * @access  Private (superadmin)
  */
-router.get('/superadmin/vehicle-categories/:id', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.get('/superadmin/:id', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
         
@@ -101,11 +105,11 @@ router.get('/superadmin/vehicle-categories/:id', requireRole(["superadmin"]), as
 });
 
 /**
- * @route   GET /superadmin/vehicle-categories/by-organization/:organizationId
+ * @route   GET /superadmin/by-organization/:organizationId
  * @desc    Get all vehicle categories for a specific organization
  * @access  Private (superadmin)
  */
-router.get('/superadmin/vehicle-categories/by-organization/:organizationId', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.get('/superadmin/by-organization/:organizationId', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
         const { organizationId } = req.params;
         
@@ -149,11 +153,11 @@ router.get('/superadmin/vehicle-categories/by-organization/:organizationId', req
 });
 
 /**
- * @route   POST /superadmin/vehicle-categories
+ * @route   POST /superadmin
  * @desc    Create a new vehicle category
  * @access  Private (superadmin)
  */
-router.post('/superadmin/vehicle-categories', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.post('/superadmin', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
         const {
             name,
@@ -220,11 +224,11 @@ router.post('/superadmin/vehicle-categories', requireRole(["superadmin"]), async
 });
 
 /**
- * @route   PUT /superadmin/vehicle-categories/:id
+ * @route   PUT /superadmin/:id
  * @desc    Update a vehicle category
  * @access  Private (superadmin)
  */
-router.put('/superadmin/vehicle-categories/:id', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.put('/superadmin/:id', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
         const { name, capacity } = req.body;
@@ -302,11 +306,11 @@ router.put('/superadmin/vehicle-categories/:id', requireRole(["superadmin"]), as
 });
 
 /**
- * @route   DELETE /superadmin/vehicle-categories/:id
+ * @route   DELETE /superadmin/:id
  * @desc    Delete a vehicle category
  * @access  Private (superadmin)
  */
-router.delete('/superadmin/vehicle-categories/:id', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.delete('/superadmin/:id', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
         const { force } = req.query;
@@ -389,11 +393,11 @@ router.delete('/superadmin/vehicle-categories/:id', requireRole(["superadmin"]),
 });
 
 /**
- * @route   GET /superadmin/vehicle-categories/:id/vehicles
+ * @route   GET /superadmin/:id/vehicles
  * @desc    Get all vehicles in a specific category
  * @access  Private (superadmin)
  */
-router.get('/superadmin/vehicle-categories/:id/vehicles', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.get('/superadmin/:id/vehicles', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
         const { includeDeleted } = req.query;
@@ -442,11 +446,11 @@ router.get('/superadmin/vehicle-categories/:id/vehicles', requireRole(["superadm
 });
 
 /**
- * @route   GET /superadmin/vehicle-categories/:id/requests
+ * @route   GET /superadmin/:id/requests
  * @desc    Get all vehicle requests for a specific category
  * @access  Private (superadmin)
  */
-router.get('/superadmin/vehicle-categories/:id/requests', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.get('/superadmin/:id/requests', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
 
@@ -491,11 +495,11 @@ router.get('/superadmin/vehicle-categories/:id/requests', requireRole(["superadm
 });
 
 /**
- * @route   GET /superadmin/vehicle-categories/stats/summary
+ * @route   GET /superadmin/stats/summary
  * @desc    Get summary statistics for all vehicle categories
  * @access  Private (superadmin)
  */
-router.get('/superadmin/vehicle-categories/stats/summary', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.get('/superadmin/stats/summary', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
         const categoriesWithStats = await prisma.vehicleCategory.findMany({
             include: {
@@ -547,6 +551,290 @@ router.get('/superadmin/vehicle-categories/stats/summary', requireRole(["superad
         };
 
         res.json(stats);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+/**
+ * User-specific routes
+ */
+
+/**
+ * @route   GET /
+ * @desc    Get all vehicle categories in a specific org
+ * @access  Private (User)
+ */
+router.get('/', requireAuth, async (req: Request, res: Response) => {
+    try {
+        const activeOrgId: string | null | undefined = req.session?.session?.activeOrganizationId;
+        if (!activeOrgId) {
+            return res.status(400).json({ message: 'Active organization not found' });
+        }
+
+        const hasPermission = await auth.api.hasPermission({
+            headers: await fromNodeHeaders(req.headers),
+            body: {
+                permissions: {
+                    vehicleCategory: ["read"]
+                }
+            }
+        });
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
+
+        const categories = await prisma.vehicleCategory.findMany({
+            where: {
+                organizationId: activeOrgId
+            },
+            orderBy: {
+                name: 'asc'
+            }
+        });
+
+        res.json(categories);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+/**
+ * @route   GET /:id
+ * @desc    Get a specific vehicle category by ID
+ * @access  Private (User)
+ */
+router.get('/:id', requireAuth, validateSchema(VehicleCategoryIdParam, 'params'), async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const activeOrgId: string | null | undefined = req.session?.session?.activeOrganizationId;
+        if (!activeOrgId) {
+            return res.status(400).json({ message: 'Active organization not found' });
+        }
+
+        const hasPermission = await auth.api.hasPermission({
+            headers: await fromNodeHeaders(req.headers),
+            body: {
+                permissions: {
+                    vehicleCategory: ["read"]
+                }
+            }
+        });
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
+
+        const category = await prisma.vehicleCategory.findFirst({
+            where: {
+                id,
+                organizationId: activeOrgId
+            },
+            include: {
+                vehicles: true,
+            }
+        });
+
+        if (!category) {
+            return res.status(404).json({ message: 'Vehicle category not found' });
+        }
+
+        res.json(category);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+/**
+ * @route   POST /
+ * @desc    Create a new vehicle category
+ * @access  Private (User)
+ */
+router.post('/', requireAuth, validateSchema(CreateVehicleCategorySchema, 'body'), async (req: Request, res: Response) => {
+    try {
+        const { name, capacity }: CreateVehicleCategoryInput = req.body;
+        const activeOrgId: string | null | undefined = req.session?.session?.activeOrganizationId;
+        if (!activeOrgId) {
+            return res.status(400).json({ message: 'Active organization not found' });
+        }
+
+        const hasPermission = await auth.api.hasPermission({
+            headers: await fromNodeHeaders(req.headers),
+            body: {
+                permissions: {
+                    vehicleCategory: ["create"]
+                }
+            }
+        });
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
+
+        const existingCategory = await prisma.vehicleCategory.findFirst({
+            where: {
+                name: name.trim(),
+                organizationId: activeOrgId
+            }
+        });
+
+        if (existingCategory) {
+            return res.status(409).json({
+                message: 'Vehicle category with this name already exists in the organization'
+            });
+        }
+
+        const category = await prisma.vehicleCategory.create({
+            data: {
+                name: name.trim(),
+                capacity,
+                organizationId: activeOrgId
+            }
+        });
+
+        res.status(201).json(category);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+/**
+ * @route   PUT /:id
+ * @desc    Update a vehicle category
+ * @access  Private (User)
+ */
+router.put('/:id', requireAuth, validateMultiple([{ schema: VehicleCategoryIdParam, target: 'params' }, { schema: UpdateVehicleCategorySchema, target: 'body' }]), async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const { name, capacity }: UpdateVehicleCategoryInput = req.body;
+        const activeOrgId: string | null | undefined = req.session?.session?.activeOrganizationId;
+        if (!activeOrgId) {
+            return res.status(400).json({ message: 'Active organization not found' });
+        }
+
+        const hasPermission = await auth.api.hasPermission({
+            headers: await fromNodeHeaders(req.headers),
+            body: {
+                permissions: {
+                    vehicleCategory: ["update"]
+                }
+            }
+        });
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
+
+        const existingCategory = await prisma.vehicleCategory.findFirst({
+            where: {
+                id,
+                organizationId: activeOrgId
+            }
+        });
+
+        if (!existingCategory) {
+            return res.status(404).json({ message: 'Vehicle category not found' });
+        }
+
+        if (name && name.trim() !== existingCategory.name) {
+            const conflictingCategory = await prisma.vehicleCategory.findFirst({
+                where: {
+                    name: name.trim(),
+                    organizationId: activeOrgId,
+                    id: { not: id }
+                }
+            });
+
+            if (conflictingCategory) {
+                return res.status(409).json({
+                    message: 'Vehicle category with this name already exists in the organization'
+                });
+            }
+        }
+
+        const updateData: any = {};
+        if (name !== undefined) updateData.name = name.trim();
+        if (capacity !== undefined) updateData.capacity = capacity;
+
+        const category = await prisma.vehicleCategory.update({
+            where: { id },
+            data: updateData,
+        });
+
+        res.json(category);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+/**
+ * @route   DELETE /:id
+ * @desc    Delete a vehicle category
+ * @access  Private (User)
+ */
+router.delete('/:id', requireAuth, validateSchema(VehicleCategoryIdParam, 'params'), async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const activeOrgId: string | null | undefined = req.session?.session?.activeOrganizationId;
+        if (!activeOrgId) {
+            return res.status(400).json({ message: 'Active organization not found' });
+        }
+
+        const hasPermission = await auth.api.hasPermission({
+            headers: await fromNodeHeaders(req.headers),
+            body: {
+                permissions: {
+                    vehicleCategory: ["delete"]
+                }
+            }
+        });
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
+
+        const existingCategory = await prisma.vehicleCategory.findFirst({
+            where: {
+                id,
+                organizationId: activeOrgId
+            },
+            include: {
+                _count: {
+                    select: {
+                        vehicles: {
+                            where: {
+                                deleted: false
+                            }
+                        },
+                        vehicleRequests: true
+                    }
+                }
+            }
+        });
+
+        if (!existingCategory) {
+            return res.status(404).json({ message: 'Vehicle category not found' });
+        }
+
+        const hasVehicles = existingCategory._count.vehicles > 0;
+        const hasRequests = existingCategory._count.vehicleRequests > 0;
+
+        if (hasVehicles || hasRequests) {
+            return res.status(400).json({
+                message: 'Cannot delete category with associated vehicles or requests.',
+                details: {
+                    vehicleCount: existingCategory._count.vehicles,
+                    requestCount: existingCategory._count.vehicleRequests
+                }
+            });
+        }
+
+        await prisma.vehicleCategory.delete({
+            where: { id }
+        });
+
+        res.status(204).send();
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Internal Server Error' });

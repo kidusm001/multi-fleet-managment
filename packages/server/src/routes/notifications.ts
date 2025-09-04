@@ -1,16 +1,16 @@
 import express, { Request, Response } from 'express';
 import { PrismaClient, Notification, NotificationStatus, NotificationType, ImportanceLevel } from '@prisma/client';
-import { requireRole } from '../middleware/requireRole';
+import { requireAuth, requireRole } from '../middleware/auth';
 
 const prisma = new PrismaClient();
 const router = express.Router();
 
 /**
- * @route   GET /superadmin/notifications
+ * @route   GET /superadmin
  * @desc    Get all notifications
  * @access  Private (superadmin)
  */
-router.get('/superadmin/notifications', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.get('/superadmin', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
         const { organizationId, userId, status, type } = req.query;
 
@@ -37,11 +37,11 @@ router.get('/superadmin/notifications', requireRole(["superadmin"]), async (req:
 });
 
 /**
- * @route   GET /superadmin/notifications/:id
+ * @route   GET /superadmin/:id
  * @desc    Get a specific notification by ID
  * @access  Private (superadmin)
  */
-router.get('/superadmin/notifications/:id', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.get('/superadmin/:id', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
         const notification = await prisma.notification.findUnique({
@@ -61,11 +61,11 @@ router.get('/superadmin/notifications/:id', requireRole(["superadmin"]), async (
 });
 
 /**
- * @route   POST /superadmin/notifications
+ * @route   POST /superadmin
  * @desc    Create a new notification
  * @access  Private (superadmin)
  */
-router.post('/superadmin/notifications', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.post('/superadmin', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
         const {
             organizationId,
@@ -100,11 +100,11 @@ router.post('/superadmin/notifications', requireRole(["superadmin"]), async (req
 });
 
 /**
- * @route   PUT /superadmin/notifications/:id
+ * @route   PUT /superadmin/:id
  * @desc    Update a notification
  * @access  Private (superadmin)
  */
-router.put('/superadmin/notifications/:id', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.put('/superadmin/:id', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
         const { ...dataToUpdate } = req.body;
@@ -127,11 +127,11 @@ router.put('/superadmin/notifications/:id', requireRole(["superadmin"]), async (
 });
 
 /**
- * @route   DELETE /superadmin/notifications/:id
+ * @route   DELETE /superadmin/:id
  * @desc    Delete a notification
  * @access  Private (superadmin)
  */
-router.delete('/superadmin/notifications/:id', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.delete('/superadmin/:id', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
         await prisma.notification.delete({
@@ -145,11 +145,11 @@ router.delete('/superadmin/notifications/:id', requireRole(["superadmin"]), asyn
 });
 
 /**
- * @route   GET /superadmin/notifications/stats/summary
+ * @route   GET /superadmin/stats/summary
  * @desc    Get summary statistics for notifications
  * @access  Private (superadmin)
  */
-router.get('/superadmin/notifications/stats/summary', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.get('/superadmin/stats/summary', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
         const totalNotifications = await prisma.notification.count();
         

@@ -1,22 +1,38 @@
 import express, { RequestHandler, Request, Response } from 'express';
 import { Vehicle, VehicleAvailability, VehicleCategory, VehicleStatus, VehicleRequest, VehicleType, PrismaClient } from '@prisma/client';
-import { requireRole } from '../middleware/requireRole';
+import { requireAuth, requireRole } from '../middleware/auth';
+import { requireRole as test } from '../middleware/requireRole';
+import { fromNodeHeaders } from 'better-auth/node';
+import { auth } from '../lib/auth';
+import { validateSchema, validateMultiple } from '../middleware/zodValidation';
+import { getAvailableVehicles, VehicleAvailabilityService } from '../services/vehicleAvailabilityService';
+import {
+    CreateVehicleSchema,
+    UpdateVehicleSchema,
+    VehicleIdParamSchema,
+    AssignDriverSchema,
+    UpdateVehicleStatusSchema,
+    CreateVehicleInput,
+    UpdateVehicleInput,
+    AssignDriverInput,
+    UpdateVehicleStatusInput
+} from '../schema/vehicleSchemas';
 
 const prisma = new PrismaClient();
 const router = express.Router();
 
-type vehicleList = Vehicle[];
 
 
 /**
- * @route   GET /superadmin/vehicles
+ * @route   GET /superadmin/
  * @desc    Get all vehicles
  * @access  Private
  */
 
-router.get('/superadmin/vehicles', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.get('/superadmin/', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
+// router.get('/superadmin', test(["superadmin"]), async (req: Request, res: Response) => {
     try {
-        const vehicles: vehicleList = await prisma.vehicle.findMany({
+        const vehicles = await prisma.vehicle.findMany({
             where: {
                 deleted: false
             },
@@ -38,14 +54,14 @@ router.get('/superadmin/vehicles', requireRole(["superadmin"]), async (req: Requ
 
 
 /**
- * @route   GET /superadmin/vehicles/with-deleted
+ * @route   GET /superadmin/with-deleted
  * @desc    Get all vehicles even if deleted
  * @access  Private
  */
 
-router.get('/superadmin/vehicles/with-deleted', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.get('/superadmin/with-deleted', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
-        const vehicles: vehicleList = await prisma.vehicle.findMany({
+        const vehicles = await prisma.vehicle.findMany({
             include: {
                 category: true,
                 driver: true,
@@ -63,11 +79,11 @@ router.get('/superadmin/vehicles/with-deleted', requireRole(["superadmin"]), asy
 });
 
 /**
- * @route   GET /superadmin/vehicles/:id
+ * @route   GET /superadmin/:id
  * @desc    Get a specific vehicle by ID
  * @access  Private (superadmin)
  */
-router.get('/superadmin/vehicles/:id', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.get('/superadmin/:id', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
         
@@ -99,11 +115,11 @@ router.get('/superadmin/vehicles/:id', requireRole(["superadmin"]), async (req: 
 });
 
 /**
- * @route   GET /superadmin/vehicles/by-organization/:organizationId
+ * @route   GET /superadmin/by-organization/:organizationId
  * @desc    Get all vehicles for a specific organization
  * @access  Private (superadmin)
  */
-router.get('/superadmin/vehicles/by-organization/:organizationId', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.get('/superadmin/by-organization/:organizationId', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
         const { organizationId } = req.params;
         const { includeDeleted } = req.query;
@@ -130,11 +146,11 @@ router.get('/superadmin/vehicles/by-organization/:organizationId', requireRole([
 });
 
 /**
- * @route   POST /superadmin/vehicles
+ * @route   POST /superadmin/
  * @desc    Create a new vehicle
  * @access  Private (superadmin)
  */
-router.post('/superadmin/vehicles', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.post('/superadmin', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
         const {
             plateNumber,
@@ -257,11 +273,11 @@ router.post('/superadmin/vehicles', requireRole(["superadmin"]), async (req: Req
 });
 
 /**
- * @route   PUT /superadmin/vehicles/:id
+ * @route   PUT /superadmin/:id
  * @desc    Update a vehicle
  * @access  Private (superadmin)
  */
-router.put('/superadmin/vehicles/:id', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.put('/superadmin/:id', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
         
@@ -384,11 +400,11 @@ router.put('/superadmin/vehicles/:id', requireRole(["superadmin"]), async (req: 
 });
 
 /**
- * @route   DELETE /superadmin/vehicles/:id
+ * @route   DELETE /superadmin/:id
  * @desc    Soft delete a vehicle
  * @access  Private (superadmin)
  */
-router.delete('/superadmin/vehicles/:id', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.delete('/superadmin/:id', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
 
@@ -409,6 +425,19 @@ router.delete('/superadmin/vehicles/:id', requireRole(["superadmin"]), async (re
             return res.status(400).json({ message: 'Vehicle is already deleted' });
         }
 
+        const activeRoutesCount = await prisma.route.count({
+            where: {
+                vehicleId: id,
+                status: 'ACTIVE'
+            }
+        });
+
+        if (activeRoutesCount > 0) {
+            return res.status(400).json({ 
+                message: `Cannot delete vehicle. It is currently assigned to ${activeRoutesCount} active route(s). Please reassign or cancel the routes first.`
+            });
+        }
+
         const vehicle = await prisma.vehicle.update({
             where: { id },
             data: {
@@ -427,11 +456,11 @@ router.delete('/superadmin/vehicles/:id', requireRole(["superadmin"]), async (re
 });
 
 /**
- * @route   PATCH /superadmin/vehicles/:id/restore
+ * @route   PATCH /superadmin/:id/restore
  * @desc    Restore a soft-deleted vehicle
  * @access  Private (superadmin)
  */
-router.patch('/superadmin/vehicles/:id/restore', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.patch('/superadmin/:id/restore', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
 
@@ -475,11 +504,11 @@ router.patch('/superadmin/vehicles/:id/restore', requireRole(["superadmin"]), as
 });
 
 /**
- * @route   PATCH /superadmin/vehicles/:id/assign-driver
+ * @route   PATCH /superadmin/:id/assign-driver
  * @desc    Assign or unassign a driver to a vehicle
  * @access  Private (superadmin)
  */
-router.patch('/superadmin/vehicles/:id/assign-driver', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.patch('/superadmin/:id/assign-driver', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
         const { driverId } = req.body;
@@ -539,11 +568,11 @@ router.patch('/superadmin/vehicles/:id/assign-driver', requireRole(["superadmin"
 });
 
 /**
- * @route   PATCH /superadmin/vehicles/:id/status
+ * @route   PATCH /superadmin/:id/status
  * @desc    Update vehicle status
  * @access  Private (superadmin)
  */
-router.patch('/superadmin/vehicles/:id/status', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.patch('/superadmin/:id/status', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
         const { status } = req.body;
@@ -568,9 +597,19 @@ router.patch('/superadmin/vehicles/:id/status', requireRole(["superadmin"]), asy
             return res.status(404).json({ message: 'Vehicle not found' });
         }
 
+        const updateData: any = { status };
+
+        if (
+            status === VehicleStatus.MAINTENANCE ||
+            status === VehicleStatus.OUT_OF_SERVICE ||
+            status === VehicleStatus.INACTIVE
+        ) {
+            updateData.driverId = null;
+        }
+
         const vehicle = await prisma.vehicle.update({
             where: { id },
-            data: { status },
+            data: updateData,
             include: {
                 category: true,
                 driver: true,
@@ -582,6 +621,874 @@ router.patch('/superadmin/vehicles/:id/status', requireRole(["superadmin"]), asy
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+/**
+ * @route   GET /superadmin/maintenance
+ * @desc    Get maintenance schedule for all vehicles
+ * @access  Private (superadmin)
+ */
+router.get('/superadmin/maintenance', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
+    try {
+        const maintenanceVehicles = await prisma.vehicle.findMany({
+            where: {
+                deleted: false,
+                status: VehicleStatus.MAINTENANCE
+            },
+            include: {
+                category: true,
+                organization: true,
+                routes: {
+                    where: {
+                        deleted: false
+                    }
+                }
+            },
+            orderBy: {
+                lastMaintenance: 'desc'
+            }
+        });
+
+        const formattedVehicles = maintenanceVehicles.map(vehicle => ({
+            ...vehicle,
+            maintenanceStartDate: vehicle.lastMaintenance,
+            expectedEndDate: vehicle.nextMaintenance,
+            maintenanceDuration: vehicle.nextMaintenance && vehicle.lastMaintenance ? 
+                Math.ceil((new Date(vehicle.nextMaintenance).getTime() - new Date(vehicle.lastMaintenance).getTime()) / (1000 * 60 * 60 * 24)) : 
+                null
+        }));
+
+        res.json(formattedVehicles);
+    } catch (error) {
+        console.error('Error fetching maintenance schedule:', error);
+        res.status(500).json({ error: 'Failed to fetch maintenance schedule' });
+    }
+});
+
+/**
+ * @route   GET /superadmin/available
+ * @desc    Get all available vehicles
+ * @access  Private (superadmin)
+ */
+router.get('/superadmin/available', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
+    try {
+        const availableVehicles = await prisma.vehicle.findMany({
+            where: {
+                status: VehicleStatus.AVAILABLE,
+                deleted: false,
+                isActive: true,
+                routes: {
+                    none: {
+                        status: 'ACTIVE',
+                        deleted: false
+                    }
+                }
+            },
+            include: {
+                category: true,
+                organization: true,
+                driver: true
+            },
+            orderBy: {
+                plateNumber: 'asc'
+            }
+        });
+
+        res.json(availableVehicles);
+    } catch (error) {
+        console.error('Error fetching available vehicles:', error);
+        res.status(500).json({ error: 'Failed to fetch available vehicles' });
+    }
+});
+
+/**
+ * @route   GET /superadmin/vehicle-availability/shift/:shiftId/available
+ * @desc    Get all available vehicles for a specific shift
+ * @access  Private (superadmin)
+ */
+router.get('/superadmin/vehicle-availability/shift/:shiftId/available', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
+    try {
+        const { shiftId } = req.params;
+        const { organizationId } = req.query;
+
+        if (!shiftId) {
+            return res.status(400).json({ error: 'Shift ID is required' });
+        }
+
+        const result = await getAvailableVehicles({
+            shiftId,
+            organizationId: organizationId as string
+        });
+
+        res.status(200).json(result);
+    } catch (error) {
+        console.error('Error in available vehicles endpoint:', error);
+        res.status(500).json({ error: 'Failed to fetch available vehicles' });
+    }
+});
+
+/**
+ * User-specific routes
+ */
+
+/**
+ * @route   GET /
+ * @desc    Get all vehicles in the user's active organization
+ * @access  Private (User)
+ */
+router.get('/', requireAuth, async (req: Request, res: Response) => {
+    try {
+        const activeOrgId = req.session?.session?.activeOrganizationId;
+        if (!activeOrgId) {
+            return res.status(400).json({ message: 'Active organization not found' });
+        }
+
+        const hasPermission = await auth.api.hasPermission({
+            headers: await fromNodeHeaders(req.headers),
+            body: { permissions: { vehicle: ["read"] } }
+        });
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
+
+        const vehicles = await prisma.vehicle.findMany({
+            where: {
+                organizationId: activeOrgId,
+                deleted: false,
+            },
+            include: {
+                category: true,
+                driver: true,
+            },
+            orderBy: {
+                createdAt: 'desc'
+            }
+        });
+
+        res.json(vehicles);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+/**
+ * @route   GET /:id
+ * @desc    Get a specific vehicle by ID
+ * @access  Private (User)
+ */
+router.get('/:id', requireAuth, validateSchema(VehicleIdParamSchema, 'params'), async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const activeOrgId = req.session?.session?.activeOrganizationId;
+        if (!activeOrgId) {
+            return res.status(400).json({ message: 'Active organization not found' });
+        }
+
+        const hasPermission = await auth.api.hasPermission({
+            headers: await fromNodeHeaders(req.headers),
+            body: { permissions: { vehicle: ["read"] } }
+        });
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
+
+        const vehicle = await prisma.vehicle.findFirst({
+            where: {
+                id,
+                organizationId: activeOrgId,
+            },
+            include: {
+                category: true,
+                driver: true,
+                routes: true,
+                payrollReports: true,
+                vehicleAvailability: true
+            }
+        });
+
+        if (!vehicle) {
+            return res.status(404).json({ message: 'Vehicle not found' });
+        }
+
+        res.json(vehicle);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+/**
+ * @route   POST /
+ * @desc    Create a new vehicle
+ * @access  Private (User)
+ */
+router.post('/', requireAuth, validateSchema(CreateVehicleSchema, 'body'), async (req: Request, res: Response) => {
+    try {
+        const vehicleData: CreateVehicleInput = req.body;
+        const activeOrgId = req.session?.session?.activeOrganizationId;
+        if (!activeOrgId) {
+            return res.status(400).json({ message: 'Active organization not found' });
+        }
+
+        const hasPermission = await auth.api.hasPermission({
+            headers: await fromNodeHeaders(req.headers),
+            body: { permissions: { vehicle: ["create"] } }
+        });
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
+
+        const existingVehicle = await prisma.vehicle.findFirst({
+            where: {
+                plateNumber: vehicleData.plateNumber,
+                organizationId: activeOrgId
+            }
+        });
+
+        if (existingVehicle) {
+            return res.status(409).json({ message: 'Vehicle with this plate number already exists in this organization' });
+        }
+
+        if (vehicleData.categoryId) {
+            const category = await prisma.vehicleCategory.findFirst({
+                where: { id: vehicleData.categoryId, organizationId: activeOrgId }
+            });
+            if (!category) {
+                return res.status(404).json({ message: 'Vehicle category not found in this organization' });
+            }
+        }
+
+        if (vehicleData.driverId) {
+            const driver = await prisma.driver.findFirst({
+                where: { id: vehicleData.driverId, organizationId: activeOrgId }
+            });
+            if (!driver) {
+                return res.status(404).json({ message: 'Driver not found in this organization' });
+            }
+        }
+
+        const vehicle = await prisma.vehicle.create({
+            data: {
+                ...vehicleData,
+                organizationId: activeOrgId,
+            },
+            include: {
+                category: true,
+                driver: true,
+            }
+        });
+
+        res.status(201).json(vehicle);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+/**
+ * @route   PUT /:id
+ * @desc    Update a vehicle
+ * @access  Private (User)
+ */
+router.put('/:id', requireAuth, validateMultiple([{ schema: VehicleIdParamSchema, target: 'params' }, { schema: UpdateVehicleSchema, target: 'body' }]), async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const vehicleData: UpdateVehicleInput = req.body;
+        const activeOrgId = req.session?.session?.activeOrganizationId;
+        if (!activeOrgId) {
+            return res.status(400).json({ message: 'Active organization not found' });
+        }
+
+        const hasPermission = await auth.api.hasPermission({
+            headers: await fromNodeHeaders(req.headers),
+            body: { permissions: { vehicle: ["update"] } }
+        });
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
+
+        const existingVehicle = await prisma.vehicle.findFirst({
+            where: { id, organizationId: activeOrgId }
+        });
+
+        if (!existingVehicle) {
+            return res.status(404).json({ message: 'Vehicle not found' });
+        }
+
+        if (vehicleData.plateNumber && vehicleData.plateNumber !== existingVehicle.plateNumber) {
+            const conflictingVehicle = await prisma.vehicle.findFirst({
+                where: {
+                    plateNumber: vehicleData.plateNumber,
+                    organizationId: activeOrgId,
+                    id: { not: id }
+                }
+            });
+            if (conflictingVehicle) {
+                return res.status(409).json({ message: 'Vehicle with this plate number already exists' });
+            }
+        }
+
+        const vehicle = await prisma.vehicle.update({
+            where: { id },
+            data: vehicleData,
+            include: {
+                category: true,
+                driver: true,
+            }
+        });
+
+        res.json(vehicle);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+/**
+ * @route   DELETE /:id
+ * @desc    Soft delete a vehicle
+ * @access  Private (User)
+ */
+router.delete('/:id', requireAuth, validateSchema(VehicleIdParamSchema, 'params'), async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const activeOrgId = req.session?.session?.activeOrganizationId;
+        if (!activeOrgId) {
+            return res.status(400).json({ message: 'Active organization not found' });
+        }
+
+        const hasPermission = await auth.api.hasPermission({
+            headers: await fromNodeHeaders(req.headers),
+            body: { permissions: { vehicle: ["delete"] } }
+        });
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
+
+        const existingVehicle = await prisma.vehicle.findFirst({
+            where: { id, organizationId: activeOrgId }
+        });
+
+        if (!existingVehicle) {
+            return res.status(404).json({ message: 'Vehicle not found' });
+        }
+
+        if (existingVehicle.deleted) {
+            return res.status(400).json({ message: 'Vehicle is already deleted' });
+        }
+
+        const activeRoutesCount = await prisma.route.count({
+            where: {
+                vehicleId: id,
+                status: 'ACTIVE'
+            }
+        });
+
+        if (activeRoutesCount > 0) {
+            return res.status(400).json({ 
+                message: `Cannot delete vehicle. It is currently assigned to ${activeRoutesCount} active route(s). Please reassign or cancel the routes first.`
+            });
+        }
+
+        await prisma.vehicle.update({
+            where: { id },
+            data: {
+                deleted: true,
+                deletedAt: new Date(),
+                isActive: false,
+                status: 'OUT_OF_SERVICE'
+            }
+        });
+
+        res.status(204).send();
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+/**
+ * @route   PATCH /:id/restore
+ * @desc    Restore a soft-deleted vehicle
+ * @access  Private (User)
+ */
+router.patch('/:id/restore', requireAuth, validateSchema(VehicleIdParamSchema, 'params'), async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const activeOrgId = req.session?.session?.activeOrganizationId;
+        if (!activeOrgId) {
+            return res.status(400).json({ message: 'Active organization not found' });
+        }
+
+        const hasPermission = await auth.api.hasPermission({
+            headers: await fromNodeHeaders(req.headers),
+            body: { permissions: { vehicle: ["update", "create"] } } // Or a more specific restore permission
+        });
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
+
+        const existingVehicle = await prisma.vehicle.findFirst({
+            where: { id, organizationId: activeOrgId }
+        });
+
+        if (!existingVehicle) {
+            return res.status(404).json({ message: 'Vehicle not found' });
+        }
+
+        if (!existingVehicle.deleted) {
+            return res.status(400).json({ message: 'Vehicle is not deleted' });
+        }
+
+        const vehicle = await prisma.vehicle.update({
+            where: { id },
+            data: {
+                deleted: false,
+                deletedAt: null,
+                isActive: true,
+                status: 'AVAILABLE'
+            },
+            include: {
+                category: true,
+                driver: true,
+            }
+        });
+
+        res.json({ message: 'Vehicle restored successfully', vehicle });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+/**
+ * @route   PATCH /:id/assign-driver
+ * @desc    Assign or unassign a driver to a vehicle
+ * @access  Private (User)
+ */
+router.patch('/:id/assign-driver', requireAuth, validateMultiple([{ schema: VehicleIdParamSchema, target: 'params' }, { schema: AssignDriverSchema, target: 'body' }]), async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const { driverId }: AssignDriverInput = req.body;
+        const activeOrgId = req.session?.session?.activeOrganizationId;
+        if (!activeOrgId) {
+            return res.status(400).json({ message: 'Active organization not found' });
+        }
+
+        const hasPermission = await auth.api.hasPermission({
+            headers: await fromNodeHeaders(req.headers),
+            body: { permissions: { vehicle: ["update"] } }
+        });
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
+
+        const existingVehicle = await prisma.vehicle.findFirst({
+            where: { id, organizationId: activeOrgId }
+        });
+
+        if (!existingVehicle) {
+            return res.status(404).json({ message: 'Vehicle not found' });
+        }
+
+        if (driverId) {
+            const driver = await prisma.driver.findFirst({
+                where: { id: driverId, organizationId: activeOrgId }
+            });
+            if (!driver) {
+                return res.status(404).json({ message: 'Driver not found' });
+            }
+            if (!driver.isActive) {
+                return res.status(400).json({ message: 'Driver is not active' });
+            }
+        }
+
+        const vehicle = await prisma.vehicle.update({
+            where: { id },
+            data: { driverId: driverId || null },
+            include: {
+                category: true,
+                driver: true,
+            }
+        });
+
+        res.json({
+            message: driverId ? 'Driver assigned successfully' : 'Driver unassigned successfully',
+            vehicle
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+/**
+ * @route   PATCH /:id/status
+ * @desc    Update vehicle status
+ * @access  Private (User)
+ */
+router.patch('/:id/status', requireAuth, validateMultiple([{ schema: VehicleIdParamSchema, target: 'params' }, { schema: UpdateVehicleStatusSchema, target: 'body' }]), async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const { status }: UpdateVehicleStatusInput = req.body;
+        const activeOrgId = req.session?.session?.activeOrganizationId;
+        if (!activeOrgId) {
+            return res.status(400).json({ message: 'Active organization not found' });
+        }
+
+        const hasPermission = await auth.api.hasPermission({
+            headers: await fromNodeHeaders(req.headers),
+            body: { permissions: { vehicle: ["update"] } }
+        });
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
+
+        const existingVehicle = await prisma.vehicle.findFirst({
+            where: { id, organizationId: activeOrgId }
+        });
+
+        if (!existingVehicle) {
+            return res.status(404).json({ message: 'Vehicle not found' });
+        }
+
+        const updateData: any = { status };
+
+        if (
+            status === VehicleStatus.MAINTENANCE ||
+            status === VehicleStatus.OUT_OF_SERVICE ||
+            status === VehicleStatus.INACTIVE
+        ) {
+            updateData.driverId = null;
+        }
+
+        const vehicle = await prisma.vehicle.update({
+            where: { id },
+            data: updateData,
+            include: {
+                category: true,
+                driver: true,
+            }
+        });
+
+        res.json({ message: 'Vehicle status updated successfully', vehicle });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+/**
+ * @route   GET /maintenance
+ * @desc    Get maintenance schedule for vehicles in the user's organization
+ * @access  Private (User)
+ */
+router.get('/maintenance', requireAuth, async (req: Request, res: Response) => {
+    try {
+        const activeOrgId = req.session?.session?.activeOrganizationId;
+        if (!activeOrgId) {
+            return res.status(400).json({ message: 'Active organization not found' });
+        }
+
+        const hasPermission = await auth.api.hasPermission({
+            headers: await fromNodeHeaders(req.headers),
+            body: { permissions: { vehicle: ["read"] } }
+        });
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
+
+        const maintenanceVehicles = await prisma.vehicle.findMany({
+            where: {
+                organizationId: activeOrgId,
+                deleted: false,
+                status: VehicleStatus.MAINTENANCE
+            },
+            include: {
+                category: true,
+                routes: {
+                    where: {
+                        deleted: false
+                    }
+                }
+            },
+            orderBy: {
+                lastMaintenance: 'desc'
+            }
+        });
+
+        const formattedVehicles = maintenanceVehicles.map(vehicle => ({
+            ...vehicle,
+            maintenanceStartDate: vehicle.lastMaintenance,
+            expectedEndDate: vehicle.nextMaintenance,
+            maintenanceDuration: vehicle.nextMaintenance && vehicle.lastMaintenance ? 
+                Math.ceil((new Date(vehicle.nextMaintenance).getTime() - new Date(vehicle.lastMaintenance).getTime()) / (1000 * 60 * 60 * 24)) : 
+                null
+        }));
+
+        res.json(formattedVehicles);
+    } catch (error) {
+        console.error('Error fetching maintenance schedule:', error);
+        res.status(500).json({ error: 'Failed to fetch maintenance schedule' });
+    }
+});
+
+/**
+ * @route   GET /available
+ * @desc    Get all available vehicles in the user's organization
+ * @access  Private (User)
+ */
+router.get('/available', requireAuth, async (req: Request, res: Response) => {
+    try {
+        const activeOrgId = req.session?.session?.activeOrganizationId;
+        if (!activeOrgId) {
+            return res.status(400).json({ message: 'Active organization not found' });
+        }
+
+        const hasPermission = await auth.api.hasPermission({
+            headers: await fromNodeHeaders(req.headers),
+            body: { permissions: { vehicle: ["read"] } }
+        });
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
+
+        const availableVehicles = await prisma.vehicle.findMany({
+            where: {
+                organizationId: activeOrgId,
+                status: VehicleStatus.AVAILABLE,
+                deleted: false,
+                isActive: true,
+                routes: {
+                    none: {
+                        status: 'ACTIVE',
+                        deleted: false
+                    }
+                }
+            },
+            include: {
+                category: true,
+                driver: true
+            },
+            orderBy: {
+                plateNumber: 'asc'
+            }
+        });
+
+        res.json(availableVehicles);
+    } catch (error) {
+        console.error('Error fetching available vehicles:', error);
+        res.status(500).json({ error: 'Failed to fetch available vehicles' });
+    }
+});
+
+/**
+ * @route   GET /vehicle-availability/shift/:shiftId/available
+ * @desc    Get all available vehicles for a specific shift in the user's organization
+ * @access  Private (User)
+ */
+router.get('/vehicle-availability/shift/:shiftId/available', requireAuth, async (req: Request, res: Response) => {
+    try {
+        const { shiftId } = req.params;
+        const activeOrgId = req.session?.session?.activeOrganizationId;
+        
+        if (!activeOrgId) {
+            return res.status(400).json({ message: 'Active organization not found' });
+        }
+
+        if (!shiftId) {
+            return res.status(400).json({ error: 'Shift ID is required' });
+        }
+
+        const hasPermission = await auth.api.hasPermission({
+            headers: await fromNodeHeaders(req.headers),
+            body: { permissions: { vehicle: ["read"] } }
+        });
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
+
+        const result = await getAvailableVehicles({
+            shiftId,
+            organizationId: activeOrgId
+        });
+
+        res.status(200).json(result);
+    } catch (error) {
+        console.error('Error in available vehicles endpoint:', error);
+        res.status(500).json({ error: 'Failed to fetch available vehicles' });
+    }
+});
+
+/**
+ * @route   PATCH /:id/maintenance-status
+ * @desc    Update vehicle maintenance status with automatic scheduling
+ * @access  Private (User)
+ */
+router.patch('/:id/maintenance-status', requireAuth, validateSchema(VehicleIdParamSchema, 'params'), async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const { status } = req.body;
+        const activeOrgId = req.session?.session?.activeOrganizationId;
+        
+        if (!activeOrgId) {
+            return res.status(400).json({ message: 'Active organization not found' });
+        }
+
+        const hasPermission = await auth.api.hasPermission({
+            headers: await fromNodeHeaders(req.headers),
+            body: { permissions: { vehicle: ["update"] } }
+        });
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
+
+        const oldVehicle = await prisma.vehicle.findFirst({
+            where: { id, organizationId: activeOrgId },
+            include: { category: true }
+        });
+
+        if (!oldVehicle) {
+            return res.status(404).json({ error: 'Vehicle not found' });
+        }
+
+        const updateData: any = {
+            status,
+            ...(status === VehicleStatus.MAINTENANCE ? {
+                lastMaintenance: new Date(),
+                nextMaintenance: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days from now
+                driverId: null // Unassign driver during maintenance
+            } : status === VehicleStatus.AVAILABLE ? {
+                nextMaintenance: null
+            } : {})
+        };
+
+        const vehicle = await prisma.vehicle.update({
+            where: { id },
+            data: updateData,
+            include: {
+                category: true,
+                driver: true,
+                routes: {
+                    where: {
+                        deleted: false
+                    }
+                }
+            }
+        });
+
+        res.json({
+            message: `Vehicle status changed from ${oldVehicle.status} to ${status}${
+                status === VehicleStatus.MAINTENANCE ? 
+                `. Maintenance scheduled until ${vehicle.nextMaintenance?.toLocaleDateString()}` : 
+                ''
+            }`,
+            vehicle
+        });
+    } catch (error) {
+        console.error('Error updating vehicle maintenance status:', error);
+        res.status(500).json({ error: 'Failed to update vehicle maintenance status' });
+    }
+});
+
+/**
+ * @route   GET /shuttle-availability/shift/:shiftId/available
+ * @desc    Get all available vehicles for a specific shift in the user's organization
+ * @access  Private (User)
+ */
+router.get('/shuttle-availability/shift/:shiftId/available', requireAuth, async (req: Request, res: Response) => {
+    try {
+        const { shiftId } = req.params;
+        const activeOrgId = req.session?.session?.activeOrganizationId;
+        
+        if (!activeOrgId) {
+            return res.status(400).json({ message: 'Active organization not found' });
+        }
+
+        if (!shiftId) {
+            return res.status(400).json({ error: 'Shift ID is required' });
+        }
+
+        const hasPermission = await auth.api.hasPermission({
+            headers: await fromNodeHeaders(req.headers),
+            body: { permissions: { vehicle: ["read"] } }
+        });
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
+
+        const result = await getAvailableVehicles({
+            shiftId,
+            organizationId: activeOrgId
+        });
+
+        res.status(200).json(result);
+    } catch (error) {
+        console.error('Error in shuttle availability endpoint:', error);
+        res.status(500).json({ error: 'Failed to fetch available vehicles for shift' });
+    }
+});
+
+/**
+ * @route   POST /:id/check-availability
+ * @desc    Check if a vehicle is available for a specific time window
+ * @access  Private (User)
+ */
+router.post('/:id/check-availability', requireAuth, validateSchema(VehicleIdParamSchema, 'params'), async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const { shiftId, proposedDate, proposedStartTime, proposedEndTime } = req.body;
+        const activeOrgId = req.session?.session?.activeOrganizationId;
+        
+        if (!activeOrgId) {
+            return res.status(400).json({ message: 'Active organization not found' });
+        }
+
+        if (!shiftId || !proposedDate || !proposedStartTime || !proposedEndTime) {
+            return res.status(400).json({ 
+                error: 'shiftId, proposedDate, proposedStartTime, and proposedEndTime are required' 
+            });
+        }
+
+        const hasPermission = await auth.api.hasPermission({
+            headers: await fromNodeHeaders(req.headers),
+            body: { permissions: { vehicle: ["read"] } }
+        });
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
+
+        // Verify vehicle belongs to the organization
+        const vehicle = await prisma.vehicle.findFirst({
+            where: { id, organizationId: activeOrgId }
+        });
+
+        if (!vehicle) {
+            return res.status(404).json({ error: 'Vehicle not found' });
+        }
+
+        const availabilityService = new VehicleAvailabilityService();
+        const result = await availabilityService.validateRouteTimeWindow(
+            id,
+            new Date(proposedStartTime),
+            new Date(proposedEndTime)
+        );
+
+        res.json({
+            vehicleId: id,
+            available: result.valid,
+            reason: result.message,
+            timeWindow: {
+                start: proposedStartTime,
+                end: proposedEndTime,
+                date: proposedDate
+            }
+        });
+    } catch (error) {
+        console.error('Error checking vehicle availability:', error);
+        res.status(500).json({ error: 'Failed to check vehicle availability' });
     }
 });
 
