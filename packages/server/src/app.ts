@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import pinoHttp from 'pino-http';
 import pino from 'pino';
@@ -12,6 +12,8 @@ dotenv.config();
 
 export function createApp() {
     const app = express();
+
+    const FASTAPI_URL = process.env.FASTAPI_URL || 'http://localhost:8000';
 
     // Middleware
     const corsOptions = {
@@ -115,6 +117,35 @@ export function createApp() {
             return res.status(429).json({ error: 'Too many requests' });
         }
         next();
+    });
+
+    // FastAPI proxy middleware
+    app.use('/fastapi', async (req: Request, res: Response, next: NextFunction) => {
+        const adjustedPath = req.path.replace('/fastapi', '');
+        console.log(`Forwarding request to FastAPI: ${FASTAPI_URL}${adjustedPath}`);
+        
+        try {
+            const url = `${FASTAPI_URL}${adjustedPath}${req.url.includes('?') ? '?' + req.url.split('?')[1] : ''}`;
+            
+            const response = await fetch(url, {
+                method: req.method,
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...Object.fromEntries(
+                        Object.entries(req.headers).filter(([key]) => 
+                            !['host', 'connection', 'content-length'].includes(key.toLowerCase())
+                        )
+                    )
+                },
+                body: ['GET', 'HEAD'].includes(req.method) ? undefined : JSON.stringify(req.body)
+            });
+
+            const data = await response.json().catch(() => null);
+            res.status(response.status).json(data || { message: 'No content' });
+        } catch (error: any) {
+            console.error('FastAPI proxy error:', error);
+            res.status(500).json({ error: 'Failed to proxy request to FastAPI' });
+        }
     });
 
     // Routes

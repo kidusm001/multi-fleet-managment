@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const ShiftIdParam = z.object({
-    id: z.uuid('Invalid Shift ID format'),
+    id: z.cuid('Invalid Shift ID format'),
 });
 
 export const CreateShiftSchema = z.object({

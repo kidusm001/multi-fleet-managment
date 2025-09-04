@@ -1,21 +1,21 @@
 {
-  "cookie": "better-auth.session_token=DP7hF9toMuT5ULuZywXSG4AP4w6gGiib.GbXTq0zG4sliOW1iCZAaxFGzkuU1N6sY3GrWELQx4NA%3D",
+  "cookie": "better-auth.session_token=MsWcJaim8xu4DgzEkoUXWVm9TjyH4kS6.oatKKgIpopFP%2FI9v9e9PFBxe18h83tTN%2B%2FYfNtSpZP0%3D",
   "fullCookies": [
-    "better-auth.session_token=DP7hF9toMuT5ULuZywXSG4AP4w6gGiib.GbXTq0zG4sliOW1iCZAaxFGzkuU1N6sY3GrWELQx4NA%3D; Max-Age=604800; Path=/; HttpOnly; SameSite=Lax"
+    "better-auth.session_token=MsWcJaim8xu4DgzEkoUXWVm9TjyH4kS6.oatKKgIpopFP%2FI9v9e9PFBxe18h83tTN%2B%2FYfNtSpZP0%3D; Max-Age=604800; Path=/; HttpOnly; SameSite=Lax"
   ],
   "responseData": {
     "redirect": false,
-    "token": "DP7hF9toMuT5ULuZywXSG4AP4w6gGiib",
+    "token": "MsWcJaim8xu4DgzEkoUXWVm9TjyH4kS6",
     "user": {
-      "id": "UOLW2XknP4p351kNQEBrSYw6ILnl0dtr",
+      "id": "tni1A3xOUmmdLQTnPLrpicM2SdbXpnVq",
       "email": "robert.sterling@fleetmanager.com",
       "name": "Robert Sterling",
       "image": null,
       "emailVerified": false,
-      "createdAt": "2025-08-24T23:27:12.276Z",
-      "updatedAt": "2025-08-24T23:27:12.276Z"
+      "createdAt": "2025-09-04T14:52:25.159Z",
+      "updatedAt": "2025-09-04T14:52:25.159Z"
     }
   },
-  "timestamp": "2025-08-30T11:05:34.662Z",
+  "timestamp": "2025-09-04T14:57:03.420Z",
   "email": "robert.sterling@fleetmanager.com"
 }
