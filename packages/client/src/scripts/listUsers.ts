@@ -1,20 +1,18 @@
 import { authClient } from "../lib/auth-client";
 
-interface User {
-  id: string;
-  name: string;
-  email: string;
-  role?: string | null;
-  createdAt: Date;
-}
 
 async function listUsers() {
   try {
-    const users = await authClient.admin.listUsers({
-      query: {
-        limit: 10
-      }
-    });
+    // Some builds may not expose an admin surface on authClient; gracefully skip.
+    const maybeAdmin: unknown = (authClient as unknown as { admin?: unknown }).admin;
+    if (!maybeAdmin || typeof (maybeAdmin as { listUsers?: unknown }).listUsers !== 'function') {
+      console.log("Admin user listing not available in this build.");
+      return;
+    }
+  interface ListUsersArgs { query?: { limit?: number } }
+  interface ListedUser { id: string; name?: string; email?: string; role?: string | null; createdAt?: string | Date }
+  interface ListUsersResult { data: { users: ListedUser[] }; error?: { message: string } | null }
+  const users = await (maybeAdmin as { listUsers: (args: ListUsersArgs) => Promise<ListUsersResult> }).listUsers({ query: { limit: 10 } });
 
     if (users.error) {
       console.error("Error fetching users:", users.error);
@@ -22,13 +20,14 @@ async function listUsers() {
     }
 
     console.log("\n=== User List ===\n");
-    users.data.users.forEach((user: User, index: number) => {
+    users.data.users.forEach((u, index: number) => {
       console.log(`User ${index + 1}:`);
-      console.log(`- ID: ${user.id}`);
-      console.log(`- Name: ${user.name}`);
-      console.log(`- Email: ${user.email}`);
-      console.log(`- Role: ${user.role}`);
-      console.log(`- Created: ${new Date(user.createdAt).toLocaleDateString()}`);
+      console.log(`- ID: ${u.id}`);
+      console.log(`- Name: ${u.name ?? '—'}`);
+      console.log(`- Email: ${u.email ?? '—'}`);
+      console.log(`- Role: ${u.role ?? '—'}`);
+      const createdVal = u.createdAt ? new Date(u.createdAt).toLocaleDateString() : '—';
+      console.log(`- Created: ${createdVal}`);
       console.log("------------------------");
     });
 

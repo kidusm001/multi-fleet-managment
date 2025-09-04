@@ -5,6 +5,7 @@ import { ROLES } from '@data/constants';
 import { AuthRoute } from '@components/Common/AuthRoute';
 // Layout Components
 import Footer from "@components/Common/Layout/Footer";
+import ErrorBanner from '@components/Common/Organizations/ErrorBanner';
 import TopBar from "@components/Common/Layout/TopBar";
 // Pages
 import { Suspense, lazy } from 'react';
@@ -21,10 +22,13 @@ const Login = lazy(() => import('@pages/Auth/Login'));
 const NotificationDashboard = lazy(() => import('@pages/notifications/components/notification-dashboard').then(m => ({ default: m.NotificationDashboard })));
 // Context
 import { RoleProvider } from "@contexts/RoleContext";
+import { OrganizationProvider } from "@contexts/OrganizationContext";
+import { orgsEnabled } from '@lib/organization/flags';
 import { ThemeProvider, useTheme } from "@contexts/ThemeContext";
 import { AuthProvider } from "@contexts/AuthContext";
 import { Toaster } from 'sonner';
 import { NotificationProvider } from "@contexts/NotificationContext";
+import { ToastProvider } from '@contexts/ToastContext';
 import Unauthorized from "@pages/Unauthorized";
 import { NotificationSound } from "@components/Common/Notifications/NotificationSound";
 
@@ -39,6 +43,7 @@ function ProtectedLayout({ isDark }) {
       <div className={`main-content backdrop-blur-xl ${isDark ? "bg-black/20" : "bg-white/20"}`}>
         <main id="main" className={`content-area ${isDark ? "text-gray-100" : "text-gray-900"} pt-[60px]`}>
           <Outlet />
+          {orgsEnabled() && <ErrorBanner />}
           <Footer />
         </main>
       </div>
@@ -155,10 +160,21 @@ function App() {
     <ThemeProvider>
       <AuthProvider>
         <RoleProvider>
-          <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-            <AppContent />
-            <Toaster />
-          </Router>
+          <ToastProvider>
+            {orgsEnabled() ? (
+              <OrganizationProvider>
+                <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+                  <AppContent />
+                  <Toaster />
+                </Router>
+              </OrganizationProvider>
+            ) : (
+              <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+                <AppContent />
+                <Toaster />
+              </Router>
+            )}
+          </ToastProvider>
         </RoleProvider>
       </AuthProvider>
     </ThemeProvider>
