@@ -12,7 +12,7 @@ const BaseVehicleRequestSchema = z.object({
   model: z.string().min(1, 'Vehicle model is required').trim(),
   vendor: z.string().optional(),
   dailyRate: z.number().positive('Daily rate must be positive').optional().nullable(),
-  categoryId: z.uuid('Invalid category ID format').optional().nullable(),
+  categoryId: z.cuid('Invalid category ID format').optional().nullable(),
   comment: z.string().optional(),
 });
 
@@ -30,7 +30,7 @@ export const UpdateVehicleRequestSchema = z.object({
   model: z.string().min(1, 'Vehicle model cannot be empty').trim().optional(),
   vendor: z.string().optional(),
   dailyRate: z.number().positive('Daily rate must be positive').optional().nullable(),
-  categoryId: z.uuid('Invalid category ID format').optional().nullable(),
+  categoryId: z.cuid('Invalid category ID format').optional().nullable(),
   comment: z.string().optional(),
   status: ApprovalStatusSchema.optional(),
   requestedBy: z.string().optional(),
@@ -49,7 +49,7 @@ export const RejectVehicleRequestSchema = z.object({
 
 // Schema for vehicle request ID parameter
 export const VehicleRequestIdParamSchema = z.object({
-  id: z.uuid('Vehicle request ID is required'),
+  id: z.cuid('Vehicle request ID is required'),
 });
 
 // Schema for query parameters when fetching vehicle requests

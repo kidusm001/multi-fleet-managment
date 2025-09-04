@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 export const VehicleCategoryIdParam = z.object({
-  id: z.string().uuid('Invalid vehicle category ID format'),
+  id: z.string().cuid('Invalid vehicle category ID format'),
 });
 
 export const CreateVehicleCategorySchema = z.object({

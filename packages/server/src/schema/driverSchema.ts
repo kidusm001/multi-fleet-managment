@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 export const DriverIdParam = z.object({
-    id: z.uuid('Invalid Driver ID format'),
+    id: z.cuid('Invalid Driver ID format'),
 });
 
 export const CreateDriverSchema = z.object({

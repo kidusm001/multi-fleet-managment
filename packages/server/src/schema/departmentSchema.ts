@@ -1,11 +1,11 @@
 import { z } from 'zod';
 
 export const DepartmentIdParam = z.object({
-    id: z.uuid('Invalid department ID format'),
+    id: z.cuid('Invalid department ID format'),
 });
 
 export const OrganizationIdParam = z.object({
-    organizationId: z.uuid('Invalid organization ID format'),
+    organizationId: z.string().min(1, 'Organization ID is required'),
 });
 
 export const CreateDepartmentSchema = z.object({
@@ -14,7 +14,7 @@ export const CreateDepartmentSchema = z.object({
 
 export const SuperadminCreateDepartmentSchema = z.object({
     name: z.string().min(1).max(255),
-    organizationId: z.uuid('Invalid organization ID format'),
+    organizationId: z.string().min(1, 'Organization ID is required'),
 });
 
 export const UpdateDepartmentSchema = z.object({

@@ -17,22 +17,19 @@ const BaseVehicleSchema = z.object({
     .int()
     .min(1900, 'Year must be 1900 or later')
     .max(new Date().getFullYear() + 1, 'Year cannot be in the future')
-    .optional()
-    .nullable(),
+  .optional()
+  .nullable(),
   status: VehicleStatusSchema.optional().default('AVAILABLE'),
   lastMaintenance: z.iso.datetime().optional().nullable(),
   nextMaintenance: z.iso.datetime().optional().nullable(),
   dailyRate: z.number().positive('Daily rate must be positive').optional().nullable(),
-  categoryId: z.uuid('Invalid category ID format').optional().nullable(),
-  driverId: z.uuid('Invalid driver ID format').optional().nullable(),
+  categoryId: z.cuid('Invalid category ID format').optional().nullable(),
+  driverId: z.cuid('Invalid driver ID format').optional().nullable(),
 });
 
 // Schema for creating a new vehicle
 export const CreateVehicleSchema = BaseVehicleSchema.extend({
-  organizationId: z.uuid('Invalid organization ID format').min(1, 'Organization ID is required'),
-});
-
-// Schema for updating a vehicle (all fields optional except validation rules)
+});// Schema for updating a vehicle (all fields optional except validation rules)
 export const UpdateVehicleSchema = z.object({
   plateNumber: z.string().min(1, 'Plate number cannot be empty').trim().optional(),
   name: z.string().optional(),
@@ -51,14 +48,14 @@ export const UpdateVehicleSchema = z.object({
   lastMaintenance: z.iso.datetime().optional().nullable(),
   nextMaintenance: z.iso.datetime().optional().nullable(),
   dailyRate: z.number().positive('Daily rate must be positive').optional().nullable(),
-  categoryId: z.uuid('Invalid category ID format').optional().nullable(),
-  driverId: z.uuid('Invalid driver ID format').optional().nullable(),
+  categoryId: z.cuid('Invalid category ID format').optional().nullable(),
+  driverId: z.cuid('Invalid driver ID format').optional().nullable(),
   isActive: z.boolean().optional(),
 });
 
 // Schema for assigning/unassigning a driver
 export const AssignDriverSchema = z.object({
-  driverId: z.uuid('Invalid driver ID format').optional().nullable(),
+  driverId: z.cuid('Invalid driver ID format').optional().nullable(),
 });
 
 // Schema for updating vehicle status
@@ -68,12 +65,12 @@ export const UpdateVehicleStatusSchema = z.object({
 
 // Schema for vehicle ID parameter
 export const VehicleIdParamSchema = z.object({
-  id: z.uuid('Invalid vehicle ID format'),
+  id: z.cuid('Invalid vehicle ID format'),
 });
 
 // Schema for organization ID parameter
 export const OrganizationIdParamSchema = z.object({
-  organizationId: z.string().uuid('Invalid organization ID format'),
+  organizationId: z.string().min(1, 'Organization ID is required'),
 });
 
 // Schema for query parameters when fetching vehicles by organization

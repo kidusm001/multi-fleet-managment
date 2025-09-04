@@ -8,7 +8,7 @@ const BaseStopSchema = z.object({
     address: z.string().max(500, 'Address must be less than 500 characters').optional().nullable(),
     sequence: z.number().int().min(0, 'Sequence must be a non-negative integer').optional(),
     order: z.number().int().min(0, 'Order must be a non-negative integer').optional(),
-    routeId: z.uuid('Route ID must be a valid UUID').optional().nullable(),
+    routeId: z.cuid('Route ID must be a valid CUID').optional().nullable(),
     estimatedArrivalTime: z.iso.datetime('Invalid estimated arrival time format').optional().nullable(),
 });
 
@@ -22,12 +22,12 @@ export const UpdateStopSchema = BaseStopSchema.partial();
 
 // Stop ID parameter schema
 export const StopIdParamSchema = z.object({
-    id: z.uuid('Stop ID must be a valid UUID'),
+    id: z.cuid('Stop ID must be a valid CUID'),
 });
 
 // Assign Employee schema
 export const AssignEmployeeSchema = z.object({
-    employeeId: z.uuid('Employee ID must be a valid UUID').optional().nullable(),
+    employeeId: z.cuid('Employee ID must be a valid CUID').optional().nullable(),
 });
 
 // Reorder Stop schema
@@ -40,7 +40,7 @@ export const ReorderStopSchema = z.object({
 
 // Query parameter schemas
 export const StopsByRouteParamSchema = z.object({
-    routeId: z.string().uuid('Route ID must be a valid UUID'),
+    routeId: z.string().cuid('Route ID must be a valid CUID'),
 });
 
 // Export types for TypeScript
