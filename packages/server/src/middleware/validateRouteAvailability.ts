@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
-import { ShuttleAvailabilityService } from '../services/shuttleAvailabilityService';
+import { VehicleAvailabilityService } from '../services/vehicleAvailabilityService';
 
-const availabilityService = new ShuttleAvailabilityService();
+const availabilityService = new VehicleAvailabilityService();
 
 export const validateRouteAvailability = async (
   req: Request,
@@ -14,7 +14,7 @@ export const validateRouteAvailability = async (
 
     // Validate the route time window
   // For now, just ensure shift exists via getAvailableShuttles; replace when service implements time window validation
-  await ShuttleAvailabilityService.getAvailableShuttles({ shiftId: String(req.body.shiftId || '') });
+  await VehicleAvailabilityService.getAvailableVehicles({ shiftId: String(req.body.shiftId || '') });
     next();
   } catch (error) {
     console.error('Error validating route availability:', error);

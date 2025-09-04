@@ -20,16 +20,16 @@ const BaseVehicleSchema = z.object({
     .optional()
     .nullable(),
   status: VehicleStatusSchema.optional().default('AVAILABLE'),
-  lastMaintenance: z.string().datetime().optional().nullable(),
-  nextMaintenance: z.string().datetime().optional().nullable(),
+  lastMaintenance: z.iso.datetime().optional().nullable(),
+  nextMaintenance: z.iso.datetime().optional().nullable(),
   dailyRate: z.number().positive('Daily rate must be positive').optional().nullable(),
-  categoryId: z.string().uuid('Invalid category ID format').optional().nullable(),
-  driverId: z.string().uuid('Invalid driver ID format').optional().nullable(),
+  categoryId: z.uuid('Invalid category ID format').optional().nullable(),
+  driverId: z.uuid('Invalid driver ID format').optional().nullable(),
 });
 
 // Schema for creating a new vehicle
 export const CreateVehicleSchema = BaseVehicleSchema.extend({
-  organizationId: z.string().uuid('Invalid organization ID format').min(1, 'Organization ID is required'),
+  organizationId: z.uuid('Invalid organization ID format').min(1, 'Organization ID is required'),
 });
 
 // Schema for updating a vehicle (all fields optional except validation rules)
@@ -48,17 +48,17 @@ export const UpdateVehicleSchema = z.object({
     .optional()
     .nullable(),
   status: VehicleStatusSchema.optional(),
-  lastMaintenance: z.string().datetime().optional().nullable(),
-  nextMaintenance: z.string().datetime().optional().nullable(),
+  lastMaintenance: z.iso.datetime().optional().nullable(),
+  nextMaintenance: z.iso.datetime().optional().nullable(),
   dailyRate: z.number().positive('Daily rate must be positive').optional().nullable(),
-  categoryId: z.string().uuid('Invalid category ID format').optional().nullable(),
-  driverId: z.string().uuid('Invalid driver ID format').optional().nullable(),
+  categoryId: z.uuid('Invalid category ID format').optional().nullable(),
+  driverId: z.uuid('Invalid driver ID format').optional().nullable(),
   isActive: z.boolean().optional(),
 });
 
 // Schema for assigning/unassigning a driver
 export const AssignDriverSchema = z.object({
-  driverId: z.string().uuid('Invalid driver ID format').optional().nullable(),
+  driverId: z.uuid('Invalid driver ID format').optional().nullable(),
 });
 
 // Schema for updating vehicle status
@@ -68,7 +68,7 @@ export const UpdateVehicleStatusSchema = z.object({
 
 // Schema for vehicle ID parameter
 export const VehicleIdParamSchema = z.object({
-  id: z.string().uuid('Invalid vehicle ID format'),
+  id: z.uuid('Invalid vehicle ID format'),
 });
 
 // Schema for organization ID parameter

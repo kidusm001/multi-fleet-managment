@@ -1,16 +1,16 @@
 import express, { Request, Response } from 'express';
 import { PrismaClient, PayrollReport, PaymentStatus } from '@prisma/client';
-import { requireRole } from '../middleware/requireRole';
+import { requireAuth, requireRole } from '../middleware/auth';
 
 const prisma = new PrismaClient();
 const router = express.Router();
 
 /**
- * @route   GET /superadmin/payroll-reports
+ * @route   GET /superadmin
  * @desc    Get all payroll reports
  * @access  Private (superadmin)
  */
-router.get('/superadmin/payroll-reports', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.get('/superadmin', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
         const { organizationId, vehicleId, driverId, status, period } = req.query;
 
@@ -40,11 +40,11 @@ router.get('/superadmin/payroll-reports', requireRole(["superadmin"]), async (re
 });
 
 /**
- * @route   GET /superadmin/payroll-reports/:id
+ * @route   GET /superadmin/:id
  * @desc    Get a specific payroll report by ID
  * @access  Private (superadmin)
  */
-router.get('/superadmin/payroll-reports/:id', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.get('/superadmin/:id', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
         const report = await prisma.payrollReport.findUnique({
@@ -66,11 +66,11 @@ router.get('/superadmin/payroll-reports/:id', requireRole(["superadmin"]), async
 });
 
 /**
- * @route   POST /superadmin/payroll-reports
+ * @route   POST /superadmin
  * @desc    Create a new payroll report
  * @access  Private (superadmin)
  */
-router.post('/superadmin/payroll-reports', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.post('/superadmin', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
         const {
             organizationId,
@@ -121,11 +121,11 @@ router.post('/superadmin/payroll-reports', requireRole(["superadmin"]), async (r
 });
 
 /**
- * @route   PUT /superadmin/payroll-reports/:id
+ * @route   PUT /superadmin/:id
  * @desc    Update a payroll report
  * @access  Private (superadmin)
  */
-router.put('/superadmin/payroll-reports/:id', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.put('/superadmin/:id', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
         const { ...dataToUpdate } = req.body;
@@ -148,11 +148,11 @@ router.put('/superadmin/payroll-reports/:id', requireRole(["superadmin"]), async
 });
 
 /**
- * @route   DELETE /superadmin/payroll-reports/:id
+ * @route   DELETE /superadmin/:id
  * @desc    Delete a payroll report
  * @access  Private (superadmin)
  */
-router.delete('/superadmin/payroll-reports/:id', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.delete('/superadmin/:id', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
         await prisma.payrollReport.delete({
@@ -166,11 +166,11 @@ router.delete('/superadmin/payroll-reports/:id', requireRole(["superadmin"]), as
 });
 
 /**
- * @route   GET /superadmin/payroll-reports/stats/summary
+ * @route   GET /superadmin/stats/summary
  * @desc    Get summary statistics for payroll reports
  * @access  Private (superadmin)
  */
-router.get('/superadmin/payroll-reports/stats/summary', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.get('/superadmin/stats/summary', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
         const totalReports = await prisma.payrollReport.count();
         const totalPaid = await prisma.payrollReport.aggregate({

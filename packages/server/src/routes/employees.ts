@@ -1,6 +1,10 @@
 import express, { Request, Response } from 'express';
 import { Employee, PrismaClient } from '@prisma/client';
-import { requireRole } from '../middleware/requireRole';
+import { fromNodeHeaders } from 'better-auth/node';
+import { auth } from '../lib/auth';
+import { requireAuth, requireRole } from '../middleware/auth';
+import { validateMultiple, validateSchema } from '../middleware/zodValidation';
+import { CreateEmployeeSchema, CreateEmployee, EmployeeIdParam, UpdateEmployeeSchema } from '../schema/employeeSchema';
 
 const prisma = new PrismaClient();
 const router = express.Router();
@@ -8,11 +12,11 @@ const router = express.Router();
 type EmployeeList = Employee[];
 
 /**
- * @route   GET /superadmin/employees
+ * @route   GET /superadmin
  * @desc    Get all employees
  * @access  Private (superadmin)
  */
-router.get('/superadmin/employees', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.get('/superadmin', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
         const { includeDeleted } = req.query;
 
@@ -48,11 +52,11 @@ router.get('/superadmin/employees', requireRole(["superadmin"]), async (req: Req
 });
 
 /**
- * @route   GET /superadmin/employees/:id
+ * @route   GET /superadmin/:id
  * @desc    Get a specific employee by ID
  * @access  Private (superadmin)
  */
-router.get('/superadmin/employees/:id', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.get('/superadmin/:id', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
         
@@ -106,11 +110,11 @@ router.get('/superadmin/employees/:id', requireRole(["superadmin"]), async (req:
 });
 
 /**
- * @route   GET /superadmin/employees/by-organization/:organizationId
+ * @route   GET /superadmin/by-organization/:organizationId
  * @desc    Get all employees for a specific organization
  * @access  Private (superadmin)
  */
-router.get('/superadmin/employees/by-organization/:organizationId', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.get('/superadmin/by-organization/:organizationId', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
         const { organizationId } = req.params;
         const { includeDeleted } = req.query;
@@ -152,11 +156,11 @@ router.get('/superadmin/employees/by-organization/:organizationId', requireRole(
 });
 
 /**
- * @route   GET /superadmin/employees/by-department/:departmentId
+ * @route   GET /superadmin/by-department/:departmentId
  * @desc    Get all employees for a specific department
  * @access  Private (superadmin)
  */
-router.get('/superadmin/employees/by-department/:departmentId', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.get('/superadmin/by-department/:departmentId', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
         const { departmentId } = req.params;
         const { includeDeleted } = req.query;
@@ -198,11 +202,11 @@ router.get('/superadmin/employees/by-department/:departmentId', requireRole(["su
 });
 
 /**
- * @route   GET /superadmin/employees/by-shift/:shiftId
+ * @route   GET /superadmin/by-shift/:shiftId
  * @desc    Get all employees for a specific shift
  * @access  Private (superadmin)
  */
-router.get('/superadmin/employees/by-shift/:shiftId', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.get('/superadmin/by-shift/:shiftId', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
         const { shiftId } = req.params;
         const { includeDeleted } = req.query;
@@ -244,11 +248,11 @@ router.get('/superadmin/employees/by-shift/:shiftId', requireRole(["superadmin"]
 });
 
 /**
- * @route   POST /superadmin/employees
+ * @route   POST /superadmin
  * @desc    Create a new employee
  * @access  Private (superadmin)
  */
-router.post('/superadmin/employees', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.post('/superadmin', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
         const {
             name,
@@ -403,11 +407,11 @@ router.post('/superadmin/employees', requireRole(["superadmin"]), async (req: Re
 });
 
 /**
- * @route   PUT /superadmin/employees/:id
+ * @route   PUT /superadmin/:id
  * @desc    Update an employee
  * @access  Private (superadmin)
  */
-router.put('/superadmin/employees/:id', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.put('/superadmin/:id', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
         const { name, location, departmentId, shiftId, stopId, assigned } = req.body;
@@ -527,11 +531,11 @@ router.put('/superadmin/employees/:id', requireRole(["superadmin"]), async (req:
 });
 
 /**
- * @route   DELETE /superadmin/employees/:id
+ * @route   DELETE /superadmin/:id
  * @desc    Soft delete an employee
  * @access  Private (superadmin)
  */
-router.delete('/superadmin/employees/:id', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.delete('/superadmin/:id', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
 
@@ -570,11 +574,11 @@ router.delete('/superadmin/employees/:id', requireRole(["superadmin"]), async (r
 });
 
 /**
- * @route   PATCH /superadmin/employees/:id/restore
+ * @route   PATCH /superadmin/:id/restore
  * @desc    Restore a soft-deleted employee
  * @access  Private (superadmin)
  */
-router.patch('/superadmin/employees/:id/restore', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.patch('/superadmin/:id/restore', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
 
@@ -626,11 +630,11 @@ router.patch('/superadmin/employees/:id/restore', requireRole(["superadmin"]), a
 });
 
 /**
- * @route   PATCH /superadmin/employees/:id/assign-stop
+ * @route   PATCH /superadmin/:id/assign-stop
  * @desc    Assign or unassign a stop to an employee
  * @access  Private (superadmin)
  */
-router.patch('/superadmin/employees/:id/assign-stop', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.patch('/superadmin/:id/assign-stop', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
         const { stopId } = req.body;
@@ -718,11 +722,11 @@ router.patch('/superadmin/employees/:id/assign-stop', requireRole(["superadmin"]
 });
 
 /**
- * @route   GET /superadmin/employees/stats/summary
+ * @route   GET /superadmin/stats/summary
  * @desc    Get summary statistics for all employees
  * @access  Private (superadmin)
  */
-router.get('/superadmin/employees/stats/summary', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.get('/superadmin/stats/summary', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
         const employees = await prisma.employee.findMany({
             include: {
@@ -786,6 +790,880 @@ router.get('/superadmin/employees/stats/summary', requireRole(["superadmin"]), a
                         acc[deptName] = { name: deptName, count: 0, organization: emp.organization.name };
                     }
                     acc[deptName].count += 1;
+                    return acc;
+                }, {} as Record<string, any>)
+            )
+                .sort(([, a], [, b]) => b.count - a.count)
+                .slice(0, 5)
+                .map(([, dept]) => dept)
+        };
+
+        res.json(stats);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+/**
+ * User-specific routes
+ */
+
+/**
+ * @route   GET /
+ * @desc    Get all Employee in a specific org
+ * @access  Private (User)
+ */
+
+router.get('/', requireAuth, async (req: Request, res: Response) => {
+    try {
+        const activeOrgId: string | null | undefined = req.session?.session?.activeOrganizationId;
+        if (!activeOrgId) {
+            return res.status(400).json({ message: 'No active organization found in session' });
+        }
+
+        const hasPermission = await auth.api.hasPermission({
+            headers: await fromNodeHeaders(req.headers),
+                body: {
+                    permissions: {
+                        employee: ["read"] 
+                    }
+                }
+        });
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Forbidden: Insufficient permissions' });
+        }
+        
+        const employees = await prisma.employee.findMany({
+            where: {
+                organizationId: activeOrgId,
+                deleted: false
+            },
+        })
+
+        res.json(employees);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+/**
+ * @route   GET /:id
+ * @desc    Get a specific Employee in a specific org by id
+ * @access  Private (User)
+ */
+
+router.get('/:id', requireAuth, validateSchema(EmployeeIdParam, 'params'), async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+
+        const activeOrgId: string | null | undefined = req.session?.session?.activeOrganizationId;
+        if (!activeOrgId) {
+            return res.status(400).json({ message: 'No active organization found in session' });
+        }
+
+        const hasPermission = await auth.api.hasPermission({
+            headers: await fromNodeHeaders(req.headers),
+                body: {
+                    permissions: {
+                        employee: ["read"] 
+                    }
+                }
+        });
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Forbidden: Insufficient permissions' });
+        }
+
+        const employee = await prisma.employee.findUnique({
+            where: {
+                id,
+                organizationId: activeOrgId, 
+                deleted: false
+            },
+            include: {
+                organization: true,
+                user: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                        role: true,
+                        createdAt: true,
+                        updatedAt: true,
+                        emailVerified: true,
+                        image: true
+                    }
+                },
+                department: true,
+                shift: true,
+                stop: {
+                    include: {
+                        route: true
+                    }
+                }
+            }
+        });
+
+        res.json(employee);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+/**
+ * @route   POST /
+ * @desc    Create a new employee
+ * @access  Private (User)
+ */
+
+
+router.post('/', requireAuth, validateSchema(CreateEmployeeSchema, 'body'), async (req: Request, res: Response) => {
+    try {
+        const {
+            name,
+            location,
+            departmentId,
+            shiftId,
+            stopId,
+            userId,
+        } : CreateEmployee = req.body;
+
+        const activeOrgId: string | null | undefined = req.session?.session?.activeOrganizationId;
+        if (!activeOrgId) {
+            return res.status(400).json({ message: 'No active organization found in session' });
+        }
+
+        const hasPermission = await auth.api.hasPermission({
+            headers: await fromNodeHeaders(req.headers),
+                body: {
+                    permissions: {
+                        employee: ["create"] 
+                    }
+                }
+        });
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Forbidden: Insufficient permissions' });
+        }
+
+        const existingEmployee = await prisma.employee.findFirst({
+            where: {
+                organizationId: activeOrgId,
+                userId: userId,
+            }
+        });
+
+        if (existingEmployee) {
+            return res.status(409).json({ 
+                message: 'Employee with this User ID already exists in the organization' 
+            });
+        }
+
+        const existingUser = await prisma.user.findFirst({
+            where: {
+                id: userId,
+            }
+        });
+        if (!existingUser) {
+            return res.status(409).json({ 
+                message: 'User with this User ID does not exist' 
+            });
+        }
+
+        const existingMemeber = await prisma.member.findFirst({
+            where: {
+                userId: userId,
+                organizationId: activeOrgId
+            }
+        });
+        if (!existingMemeber) {
+            return res.status(409).json({ 
+                message: 'User with this User ID is not a member of this organization' 
+            });
+        }
+
+        const existingDepartment = await prisma.department.findFirst({
+            where: {
+                id: departmentId,
+                organizationId: activeOrgId
+            }
+        });
+        if (!existingDepartment) {
+            return res.status(409).json({ 
+                message: 'Department with this Department ID does not exist in this organization' 
+            });
+        }
+
+        const existingShift = await prisma.shift.findFirst({
+            where: {
+                id: shiftId,
+                organizationId: activeOrgId
+            }
+        });
+        if (!existingShift) {
+            return res.status(409).json({ 
+                message: 'Shift with this Shift ID does not exist in this organization' 
+            });
+        }
+
+        if(stopId) {
+            const existingStop = await prisma.stop.findFirst({
+                where: {
+                    id: stopId,
+                    organizationId: activeOrgId
+                }
+            });
+            if (!existingStop) {
+                return res.status(409).json({ 
+                    message: 'Stop with this Stop ID does not exist in this organization' 
+                });
+            }
+        }
+
+        const employee = await prisma.employee.create({
+            data: {
+                name: name.trim(),
+                location: location,
+                departmentId: departmentId,
+                shiftId: shiftId,
+                stopId: stopId,
+                organizationId: activeOrgId,
+                userId: userId
+            },
+            include: {
+                organization: true
+            }
+        });
+
+        res.json(employee);
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+
+/**
+ * @route   PUT /:id
+ * @desc    Update an Employee
+ * @access  Private (User)
+ */
+
+router.put('/:id',
+    requireAuth,
+    validateMultiple([{schema: EmployeeIdParam, target: 'params'}, {schema: UpdateEmployeeSchema, target: 'body'}]),
+    async(req: Request, res: Response) => {
+        try {
+            const { id } = req.params;
+
+            const {
+                name,
+                location,
+                departmentId,
+                shiftId,
+                stopId,
+                userId,
+            } : CreateEmployee = req.body;
+
+            const activeOrgId: string | null | undefined = req.session?.session?.activeOrganizationId;
+            if (!activeOrgId) {
+                return res.status(400).json({ message: 'No active organization found in session' });
+            }
+
+            const hasPermission = await auth.api.hasPermission({
+                headers: await fromNodeHeaders(req.headers),
+                    body: {
+                        permissions: {
+                            employee: ["update"] 
+                        }
+                    }
+            });
+            if (!hasPermission.success) {
+                return res.status(403).json({ message: 'Forbidden: Insufficient permissions' });
+            }
+
+            const existingEmployee = await prisma.employee.findFirst({
+                where: {
+                    id,
+                    organizationId: activeOrgId,
+                    deleted: false
+                }
+            });
+
+            if (!existingEmployee) {
+                return res.status(409).json({ 
+                    message: 'Employee not found' 
+                });
+            }
+
+            const existingUser = await prisma.user.findFirst({
+                where: {
+                    id: userId,
+                }
+            });
+            if (!existingUser) {
+                return res.status(409).json({ 
+                    message: 'User with this User ID does not exist' 
+                });
+            }
+
+            const existingMemeber = await prisma.member.findFirst({
+                where: {
+                    userId: userId,
+                    organizationId: activeOrgId
+                }
+            });
+            if (!existingMemeber) {
+                return res.status(409).json({ 
+                    message: 'User with this User ID is not a member of this organization' 
+                });
+            }
+
+            const existingDepartment = await prisma.department.findFirst({
+                where: {
+                    id: departmentId,
+                    organizationId: activeOrgId
+                }
+            });
+            if (!existingDepartment) {
+                return res.status(409).json({ 
+                    message: 'Department with this Department ID does not exist in this organization' 
+                });
+            }
+
+            const existingShift = await prisma.shift.findFirst({
+                where: {
+                    id: shiftId,
+                    organizationId: activeOrgId
+                }
+            });
+            if (!existingShift) {
+                return res.status(409).json({ 
+                    message: 'Shift with this Shift ID does not exist in this organization' 
+                });
+            }
+
+            if(stopId) {
+                const existingStop = await prisma.stop.findFirst({
+                    where: {
+                        id: stopId,
+                        organizationId: activeOrgId
+                    }
+                });
+                if (!existingStop) {
+                    return res.status(409).json({ 
+                        message: 'Stop with this Stop ID does not exist in this organization' 
+                    });
+                }
+            }
+
+            const employee = await prisma.employee.update({
+                where: {id},
+                data: {
+                    name: name.trim(),
+                    location: location,
+                    departmentId: departmentId,
+                    shiftId: shiftId,
+                    stopId: stopId,
+                    userId: userId
+                },
+                include: {
+                    organization: true
+                }
+            });
+
+            res.json(employee);
+        } catch (err) {
+            console.error(err);
+            res.status(500).json({ message: 'Internal Server Error' });
+        }
+    }
+);
+
+/**
+ * @route   DELETE /:id
+ * @desc    Delete an employee
+ * @access  Private (User)
+ */
+
+router.delete('/:id', requireAuth, validateSchema(EmployeeIdParam, 'params'), async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+
+        const activeOrgId: string | null | undefined = req.session?.session?.activeOrganizationId;
+        if (!activeOrgId) {
+            return res.status(400).json({ message: 'No active organization found in session' });
+        }
+
+        const hasPermission = await auth.api.hasPermission({
+            headers: await fromNodeHeaders(req.headers),
+                body: {
+                    permissions: {
+                        employee: ["delete"] 
+                    }
+                }
+        });
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Forbidden: Insufficient permissions' });
+        }
+
+        const existingEmployee = await prisma.employee.findFirst({
+            where: {
+                id,
+                organizationId: activeOrgId,
+                deleted: false
+            }
+        });
+
+        if (!existingEmployee) {
+            return res.status(404).json({ 
+                message: 'Employee not found' 
+            });
+        }
+
+        await prisma.employee.update({
+            where: {id, organizationId: activeOrgId},
+            data: {
+                deleted: true,
+                deletedAt: new Date(),
+                assigned: false,
+                stopId: null
+            }
+        })
+
+        res.status(204).send();
+
+    } catch (err) {
+            console.error(err);
+            res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+/**
+ * @route   GET /by-department/:departmentId
+ * @desc    Get all employees for a specific department in the user's organization
+ * @access  Private (User)
+ */
+router.get('/by-department/:departmentId', requireAuth, async (req: Request, res: Response) => {
+    try {
+        const { departmentId } = req.params;
+        const { includeDeleted } = req.query;
+        const activeOrgId = req.session?.session?.activeOrganizationId;
+        
+        if (!activeOrgId) {
+            return res.status(400).json({ message: 'Active organization not found' });
+        }
+
+        if (!departmentId || typeof departmentId !== 'string') {
+            return res.status(400).json({ message: 'Valid department ID is required' });
+        }
+
+        const hasPermission = await auth.api.hasPermission({
+            headers: await fromNodeHeaders(req.headers),
+            body: { permissions: { employee: ["read"] } }
+        });
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
+
+        // Verify department belongs to the organization
+        const department = await prisma.department.findFirst({
+            where: { id: departmentId, organizationId: activeOrgId }
+        });
+
+        if (!department) {
+            return res.status(404).json({ message: 'Department not found in this organization' });
+        }
+
+        const employees = await prisma.employee.findMany({
+            where: {
+                departmentId,
+                organizationId: activeOrgId,
+                ...(includeDeleted !== 'true' && { deleted: false })
+            },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                        role: true,
+                        createdAt: true
+                    }
+                },
+                department: true,
+                shift: true,
+                stop: true
+            },
+            orderBy: {
+                name: 'asc'
+            }
+        });
+
+        res.json(employees);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+/**
+ * @route   GET /by-shift/:shiftId
+ * @desc    Get all employees for a specific shift in the user's organization
+ * @access  Private (User)
+ */
+router.get('/by-shift/:shiftId', requireAuth, async (req: Request, res: Response) => {
+    try {
+        const { shiftId } = req.params;
+        const { includeDeleted } = req.query;
+        const activeOrgId = req.session?.session?.activeOrganizationId;
+        
+        if (!activeOrgId) {
+            return res.status(400).json({ message: 'Active organization not found' });
+        }
+
+        if (!shiftId || typeof shiftId !== 'string') {
+            return res.status(400).json({ message: 'Valid shift ID is required' });
+        }
+
+        const hasPermission = await auth.api.hasPermission({
+            headers: await fromNodeHeaders(req.headers),
+            body: { permissions: { employee: ["read"] } }
+        });
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
+
+        // Verify shift belongs to the organization
+        const shift = await prisma.shift.findFirst({
+            where: { id: shiftId, organizationId: activeOrgId }
+        });
+
+        if (!shift) {
+            return res.status(404).json({ message: 'Shift not found in this organization' });
+        }
+
+        const employees = await prisma.employee.findMany({
+            where: {
+                shiftId,
+                organizationId: activeOrgId,
+                ...(includeDeleted !== 'true' && { deleted: false })
+            },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                        role: true,
+                        createdAt: true
+                    }
+                },
+                department: true,
+                shift: true,
+                stop: true
+            },
+            orderBy: {
+                name: 'asc'
+            }
+        });
+
+        res.json(employees);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+/**
+ * @route   GET /shift/:shiftId/unassigned
+ * @desc    Get unassigned employees by shift in the user's organization
+ * @access  Private (User)
+ */
+router.get('/shift/:shiftId/unassigned', requireAuth, async (req: Request, res: Response) => {
+    try {
+        const { shiftId } = req.params;
+        const activeOrgId = req.session?.session?.activeOrganizationId;
+        
+        if (!activeOrgId) {
+            return res.status(400).json({ message: 'Active organization not found' });
+        }
+
+        if (!shiftId || typeof shiftId !== 'string') {
+            return res.status(400).json({ message: 'Valid shift ID is required' });
+        }
+
+        const hasPermission = await auth.api.hasPermission({
+            headers: await fromNodeHeaders(req.headers),
+            body: { permissions: { employee: ["read"] } }
+        });
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
+
+        // Verify shift belongs to the organization
+        const shift = await prisma.shift.findFirst({
+            where: { id: shiftId, organizationId: activeOrgId }
+        });
+
+        if (!shift) {
+            return res.status(404).json({ message: 'Shift not found in this organization' });
+        }
+
+        const employees = await prisma.employee.findMany({
+            where: {
+                shiftId,
+                organizationId: activeOrgId,
+                assigned: false,
+                deleted: false,
+            },
+            include: {
+                department: true,
+                shift: true,
+                stop: true
+            },
+            orderBy: {
+                name: 'asc'
+            }
+        });
+
+        res.json(employees);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+/**
+ * @route   PATCH /:id/assign-stop
+ * @desc    Assign or unassign a stop to an employee
+ * @access  Private (User)
+ */
+router.patch('/:id/assign-stop', requireAuth, validateSchema(EmployeeIdParam, 'params'), async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const { stopId } = req.body;
+        const activeOrgId = req.session?.session?.activeOrganizationId;
+        
+        if (!activeOrgId) {
+            return res.status(400).json({ message: 'Active organization not found' });
+        }
+
+        const hasPermission = await auth.api.hasPermission({
+            headers: await fromNodeHeaders(req.headers),
+            body: { permissions: { employee: ["assign"] } }
+        });
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
+
+        const existingEmployee = await prisma.employee.findFirst({
+            where: { id, organizationId: activeOrgId }
+        });
+
+        if (!existingEmployee) {
+            return res.status(404).json({ message: 'Employee not found' });
+        }
+
+        if (existingEmployee.deleted) {
+            return res.status(400).json({ message: 'Cannot assign stop to deleted employee' });
+        }
+
+        // Verify stop exists and belongs to the organization if provided
+        if (stopId) {
+            if (typeof stopId !== 'string') {
+                return res.status(400).json({ message: 'Stop ID must be a string' });
+            }
+
+            const stop = await prisma.stop.findFirst({
+                where: { id: stopId, organizationId: activeOrgId }
+            });
+
+            if (!stop) {
+                return res.status(404).json({ message: 'Stop not found in this organization' });
+            }
+
+            // Check if stop is already assigned to another employee
+            const assignedEmployee = await prisma.employee.findFirst({
+                where: {
+                    stopId,
+                    organizationId: activeOrgId,
+                    deleted: false,
+                    id: { not: id }
+                }
+            });
+
+            if (assignedEmployee) {
+                return res.status(409).json({ message: 'Stop is already assigned to another employee' });
+            }
+        }
+
+        const employee = await prisma.employee.update({
+            where: { id },
+            data: {
+                stopId: stopId || null,
+                assigned: stopId ? true : existingEmployee.assigned
+            },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                        role: true,
+                        createdAt: true
+                    }
+                },
+                department: true,
+                shift: true,
+                stop: true
+            }
+        });
+
+        res.json({ 
+            message: stopId ? 'Stop assigned successfully' : 'Stop unassigned successfully', 
+            employee 
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+/**
+ * @route   PATCH /:id/restore
+ * @desc    Restore a soft-deleted employee
+ * @access  Private (User)
+ */
+router.patch('/:id/restore', requireAuth, validateSchema(EmployeeIdParam, 'params'), async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const activeOrgId = req.session?.session?.activeOrganizationId;
+        
+        if (!activeOrgId) {
+            return res.status(400).json({ message: 'Active organization not found' });
+        }
+
+        const hasPermission = await auth.api.hasPermission({
+            headers: await fromNodeHeaders(req.headers),
+            body: { permissions: { employee: ["create", "update"] } } // Restore requires create or update permission
+        });
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
+
+        const existingEmployee = await prisma.employee.findFirst({
+            where: { id, organizationId: activeOrgId }
+        });
+
+        if (!existingEmployee) {
+            return res.status(404).json({ message: 'Employee not found' });
+        }
+
+        if (!existingEmployee.deleted) {
+            return res.status(400).json({ message: 'Employee is not deleted' });
+        }
+
+        const employee = await prisma.employee.update({
+            where: { id },
+            data: {
+                deleted: false,
+                deletedAt: null
+            },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                        role: true,
+                        createdAt: true
+                    }
+                },
+                department: true,
+                shift: true,
+                stop: true
+            }
+        });
+
+        res.json({ message: 'Employee restored successfully', employee });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+/**
+ * @route   GET /stats/summary
+ * @desc    Get employee statistics for the user's organization
+ * @access  Private (User)
+ */
+router.get('/stats/summary', requireAuth, async (req: Request, res: Response) => {
+    try {
+        const activeOrgId = req.session?.session?.activeOrganizationId;
+        
+        if (!activeOrgId) {
+            return res.status(400).json({ message: 'Active organization not found' });
+        }
+
+        const hasPermission = await auth.api.hasPermission({
+            headers: await fromNodeHeaders(req.headers),
+            body: { permissions: { employee: ["read"] } }
+        });
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
+
+        const employees = await prisma.employee.findMany({
+            where: {
+                organizationId: activeOrgId
+            },
+            include: {
+                department: true,
+                shift: true,
+                user: {
+                    select: {
+                        role: true
+                    }
+                }
+            }
+        });
+
+        const activeEmployees = employees.filter(emp => !emp.deleted);
+        const deletedEmployees = employees.filter(emp => emp.deleted);
+
+        const stats = {
+            totalEmployees: employees.length,
+            activeEmployees: activeEmployees.length,
+            deletedEmployees: deletedEmployees.length,
+            assignedEmployees: activeEmployees.filter(emp => emp.assigned).length,
+            unassignedEmployees: activeEmployees.filter(emp => !emp.assigned).length,
+            employeesWithStops: activeEmployees.filter(emp => emp.stopId).length,
+            employeesByDepartment: activeEmployees.reduce((acc, emp) => {
+                if (emp.department) {
+                    const deptName = emp.department.name;
+                    acc[deptName] = (acc[deptName] || 0) + 1;
+                }
+                return acc;
+            }, {} as Record<string, number>),
+            employeesByShift: activeEmployees.reduce((acc, emp) => {
+                if (emp.shift) {
+                    const shiftName = emp.shift.name;
+                    acc[shiftName] = (acc[shiftName] || 0) + 1;
+                }
+                return acc;
+            }, {} as Record<string, number>),
+            topDepartments: Object.entries(
+                activeEmployees.reduce((acc, emp) => {
+                    if (emp.department) {
+                        const deptName = emp.department.name;
+                        if (!acc[deptName]) {
+                            acc[deptName] = { name: deptName, count: 0 };
+                        }
+                        acc[deptName].count += 1;
+                    }
                     return acc;
                 }, {} as Record<string, any>)
             )

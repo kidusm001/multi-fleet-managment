@@ -1,6 +1,21 @@
 import express, { Request, Response } from 'express';
 import { Stop, PrismaClient } from '@prisma/client';
-import { requireRole } from '../middleware/requireRole';
+import { requireAuth, requireRole } from '../middleware/auth';
+import { fromNodeHeaders } from 'better-auth/node';
+import { auth } from '../lib/auth';
+import { validateSchema, validateMultiple } from '../middleware/zodValidation';
+import {
+    CreateStopSchema,
+    UpdateStopSchema,
+    StopIdParamSchema,
+    AssignEmployeeSchema,
+    ReorderStopSchema,
+    StopsByRouteParamSchema,
+    CreateStopInput,
+    UpdateStopInput,
+    AssignEmployeeInput,
+    ReorderStopInput
+} from '../schema/stopSchemas';
 
 const prisma = new PrismaClient();
 const router = express.Router();
@@ -8,11 +23,11 @@ const router = express.Router();
 type StopList = Stop[];
 
 /**
- * @route   GET /superadmin/stops
+ * @route   GET /superadmin
  * @desc    Get all stops
  * @access  Private (superadmin)
  */
-router.get('/superadmin/stops', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.get('/superadmin', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
         const stops: StopList = await prisma.stop.findMany({
             include: {
@@ -48,11 +63,11 @@ router.get('/superadmin/stops', requireRole(["superadmin"]), async (req: Request
 });
 
 /**
- * @route   GET /superadmin/stops/:id
+ * @route   GET /superadmin/:id
  * @desc    Get a specific stop by ID
  * @access  Private (superadmin)
  */
-router.get('/superadmin/stops/:id', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.get('/superadmin/:id', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
         
@@ -101,11 +116,11 @@ router.get('/superadmin/stops/:id', requireRole(["superadmin"]), async (req: Req
 });
 
 /**
- * @route   GET /superadmin/stops/by-organization/:organizationId
+ * @route   GET /superadmin/by-organization/:organizationId
  * @desc    Get all stops for a specific organization
  * @access  Private (superadmin)
  */
-router.get('/superadmin/stops/by-organization/:organizationId', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.get('/superadmin/by-organization/:organizationId', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
         const { organizationId } = req.params;
         
@@ -141,11 +156,11 @@ router.get('/superadmin/stops/by-organization/:organizationId', requireRole(["su
 });
 
 /**
- * @route   GET /superadmin/stops/by-route/:routeId
+ * @route   GET /superadmin/by-route/:routeId
  * @desc    Get all stops for a specific route
  * @access  Private (superadmin)
  */
-router.get('/superadmin/stops/by-route/:routeId', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.get('/superadmin/by-route/:routeId', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
         const { routeId } = req.params;
         
@@ -189,11 +204,11 @@ router.get('/superadmin/stops/by-route/:routeId', requireRole(["superadmin"]), a
 });
 
 /**
- * @route   POST /superadmin/stops
+ * @route   POST /superadmin
  * @desc    Create a new stop
  * @access  Private (superadmin)
  */
-router.post('/superadmin/stops', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.post('/superadmin', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
         const {
             name,
@@ -288,11 +303,11 @@ router.post('/superadmin/stops', requireRole(["superadmin"]), async (req: Reques
 });
 
 /**
- * @route   PUT /superadmin/stops/:id
+ * @route   PUT /superadmin/:id
  * @desc    Update a stop
  * @access  Private (superadmin)
  */
-router.put('/superadmin/stops/:id', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.put('/superadmin/:id', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
         const {
@@ -396,11 +411,11 @@ router.put('/superadmin/stops/:id', requireRole(["superadmin"]), async (req: Req
 });
 
 /**
- * @route   DELETE /superadmin/stops/:id
+ * @route   DELETE /superadmin/:id
  * @desc    Delete a stop
  * @access  Private (superadmin)
  */
-router.delete('/superadmin/stops/:id', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.delete('/superadmin/:id', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
         const { force } = req.query;
@@ -466,11 +481,11 @@ router.delete('/superadmin/stops/:id', requireRole(["superadmin"]), async (req: 
 });
 
 /**
- * @route   PATCH /superadmin/stops/:id/assign-employee
+ * @route   PATCH /superadmin/:id/assign-employee
  * @desc    Assign or unassign an employee to a stop
  * @access  Private (superadmin)
  */
-router.patch('/superadmin/stops/:id/assign-employee', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.patch('/superadmin/:id/assign-employee', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
         const { employeeId } = req.body;
@@ -572,11 +587,11 @@ router.patch('/superadmin/stops/:id/assign-employee', requireRole(["superadmin"]
 });
 
 /**
- * @route   PATCH /superadmin/stops/:id/reorder
+ * @route   PATCH /superadmin/:id/reorder
  * @desc    Update the order/sequence of a stop
  * @access  Private (superadmin)
  */
-router.patch('/superadmin/stops/:id/reorder', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.patch('/superadmin/:id/reorder', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
         const { sequence, order } = req.body;
@@ -628,11 +643,11 @@ router.patch('/superadmin/stops/:id/reorder', requireRole(["superadmin"]), async
 });
 
 /**
- * @route   GET /superadmin/stops/stats/summary
+ * @route   GET /superadmin/stats/summary
  * @desc    Get summary statistics for all stops
  * @access  Private (superadmin)
  */
-router.get('/superadmin/stops/stats/summary', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.get('/superadmin/stats/summary', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
         const stops = await prisma.stop.findMany({
             include: {
@@ -700,6 +715,564 @@ router.get('/superadmin/stops/stats/summary', requireRole(["superadmin"]), async
         };
 
         res.json(stats);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+/**
+ * User-specific routes
+ */
+
+/**
+ * @route   GET /
+ * @desc    Get all stops in the user's active organization
+ * @access  Private (User)
+ */
+router.get('/', requireAuth, async (req: Request, res: Response) => {
+    try {
+        const activeOrgId = req.session?.session?.activeOrganizationId;
+        if (!activeOrgId) {
+            return res.status(400).json({ message: 'Active organization not found' });
+        }
+
+        const hasPermission = await auth.api.hasPermission({
+            headers: await fromNodeHeaders(req.headers),
+            body: { permissions: { stop: ["read"] } }
+        });
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
+
+        const stops = await prisma.stop.findMany({
+            where: {
+                organizationId: activeOrgId,
+            },
+            include: {
+                route: true,
+                employee: {
+                    where: {
+                        deleted: false
+                    },
+                    include: {
+                        user: {
+                            select: {
+                                id: true,
+                                name: true,
+                                email: true
+                            }
+                        },
+                        department: true,
+                        shift: true
+                    }
+                }
+            },
+            orderBy: [
+                { routeId: 'asc' },
+                { sequence: 'asc' },
+                { order: 'asc' }
+            ]
+        });
+
+        res.json(stops);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+/**
+ * @route   GET /:id
+ * @desc    Get a specific stop by ID
+ * @access  Private (User)
+ */
+router.get('/:id', requireAuth, validateSchema(StopIdParamSchema, 'params'), async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const activeOrgId = req.session?.session?.activeOrganizationId;
+        if (!activeOrgId) {
+            return res.status(400).json({ message: 'Active organization not found' });
+        }
+
+        const hasPermission = await auth.api.hasPermission({
+            headers: await fromNodeHeaders(req.headers),
+            body: { permissions: { stop: ["read"] } }
+        });
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
+
+        const stop = await prisma.stop.findFirst({
+            where: {
+                id,
+                organizationId: activeOrgId,
+            },
+            include: {
+                route: {
+                    include: {
+                        vehicle: true,
+                        shift: true
+                    }
+                },
+                employee: {
+                    where: {
+                        deleted: false
+                    },
+                    include: {
+                        user: {
+                            select: {
+                                id: true,
+                                name: true,
+                                email: true
+                            }
+                        },
+                        department: true,
+                        shift: true
+                    }
+                }
+            }
+        });
+
+        if (!stop) {
+            return res.status(404).json({ message: 'Stop not found' });
+        }
+
+        res.json(stop);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+/**
+ * @route   GET /by-route/:routeId
+ * @desc    Get all stops for a specific route in the user's organization
+ * @access  Private (User)
+ */
+router.get('/by-route/:routeId', requireAuth, validateSchema(StopsByRouteParamSchema, 'params'), async (req: Request, res: Response) => {
+    try {
+        const { routeId } = req.params;
+        const activeOrgId = req.session?.session?.activeOrganizationId;
+        if (!activeOrgId) {
+            return res.status(400).json({ message: 'Active organization not found' });
+        }
+
+        const hasPermission = await auth.api.hasPermission({
+            headers: await fromNodeHeaders(req.headers),
+            body: { permissions: { stop: ["read"] } }
+        });
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
+
+        // Verify route belongs to the organization
+        const route = await prisma.route.findFirst({
+            where: { id: routeId, organizationId: activeOrgId }
+        });
+
+        if (!route) {
+            return res.status(404).json({ message: 'Route not found in this organization' });
+        }
+
+        const stops = await prisma.stop.findMany({
+            where: {
+                routeId,
+                organizationId: activeOrgId,
+            },
+            include: {
+                route: true,
+                employee: {
+                    where: {
+                        deleted: false
+                    },
+                    include: {
+                        user: {
+                            select: {
+                                id: true,
+                                name: true,
+                                email: true
+                            }
+                        }
+                    }
+                }
+            },
+            orderBy: [
+                { sequence: 'asc' },
+                { order: 'asc' }
+            ]
+        });
+
+        res.json(stops);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+/**
+ * @route   POST /
+ * @desc    Create a new stop
+ * @access  Private (User)
+ */
+router.post('/', requireAuth, validateSchema(CreateStopSchema, 'body'), async (req: Request, res: Response) => {
+    try {
+        const stopData: CreateStopInput = req.body;
+        const activeOrgId = req.session?.session?.activeOrganizationId;
+        if (!activeOrgId) {
+            return res.status(400).json({ message: 'Active organization not found' });
+        }
+
+        const hasPermission = await auth.api.hasPermission({
+            headers: await fromNodeHeaders(req.headers),
+            body: { permissions: { stop: ["create"] } }
+        });
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
+
+        // Verify route exists and belongs to the organization if provided
+        if (stopData.routeId) {
+            const route = await prisma.route.findFirst({
+                where: { id: stopData.routeId, organizationId: activeOrgId }
+            });
+            if (!route) {
+                return res.status(404).json({ message: 'Route not found in this organization' });
+            }
+        }
+
+        // Validate estimated arrival time
+        let arrivalTime = null;
+        if (stopData.estimatedArrivalTime) {
+            arrivalTime = new Date(stopData.estimatedArrivalTime);
+            if (isNaN(arrivalTime.getTime())) {
+                return res.status(400).json({ message: 'Invalid estimated arrival time format' });
+            }
+        }
+
+        const stop = await prisma.stop.create({
+            data: {
+                ...stopData,
+                organizationId: activeOrgId,
+                estimatedArrivalTime: arrivalTime,
+                sequence: stopData.sequence || 0,
+                order: stopData.order || 0,
+            },
+            include: {
+                route: true
+            }
+        });
+
+        res.status(201).json(stop);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+/**
+ * @route   PUT /:id
+ * @desc    Update a stop
+ * @access  Private (User)
+ */
+router.put('/:id', requireAuth, validateMultiple([{ schema: StopIdParamSchema, target: 'params' }, { schema: UpdateStopSchema, target: 'body' }]), async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const stopData: UpdateStopInput = req.body;
+        const activeOrgId = req.session?.session?.activeOrganizationId;
+        if (!activeOrgId) {
+            return res.status(400).json({ message: 'Active organization not found' });
+        }
+
+        const hasPermission = await auth.api.hasPermission({
+            headers: await fromNodeHeaders(req.headers),
+            body: { permissions: { stop: ["update"] } }
+        });
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
+
+        const existingStop = await prisma.stop.findFirst({
+            where: { id, organizationId: activeOrgId }
+        });
+
+        if (!existingStop) {
+            return res.status(404).json({ message: 'Stop not found' });
+        }
+
+        // Verify route exists and belongs to the organization if provided
+        if (stopData.routeId) {
+            const route = await prisma.route.findFirst({
+                where: { id: stopData.routeId, organizationId: activeOrgId }
+            });
+            if (!route) {
+                return res.status(404).json({ message: 'Route not found in this organization' });
+            }
+        }
+
+        // Validate estimated arrival time
+        let arrivalTime = undefined;
+        if (stopData.estimatedArrivalTime !== undefined) {
+            if (stopData.estimatedArrivalTime === null) {
+                arrivalTime = null;
+            } else {
+                arrivalTime = new Date(stopData.estimatedArrivalTime);
+                if (isNaN(arrivalTime.getTime())) {
+                    return res.status(400).json({ message: 'Invalid estimated arrival time format' });
+                }
+            }
+        }
+
+        const updateData = {
+            ...stopData,
+            estimatedArrivalTime: arrivalTime,
+        };
+
+        const stop = await prisma.stop.update({
+            where: { id },
+            data: updateData,
+            include: {
+                route: true,
+                employee: {
+                    where: {
+                        deleted: false
+                    }
+                }
+            }
+        });
+
+        res.json(stop);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+/**
+ * @route   DELETE /:id
+ * @desc    Delete a stop
+ * @access  Private (User)
+ */
+router.delete('/:id', requireAuth, validateSchema(StopIdParamSchema, 'params'), async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const { force } = req.query;
+        const activeOrgId = req.session?.session?.activeOrganizationId;
+        if (!activeOrgId) {
+            return res.status(400).json({ message: 'Active organization not found' });
+        }
+
+        const hasPermission = await auth.api.hasPermission({
+            headers: await fromNodeHeaders(req.headers),
+            body: { permissions: { stop: ["delete"] } }
+        });
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
+
+        const existingStop = await prisma.stop.findFirst({
+            where: { id, organizationId: activeOrgId },
+            include: {
+                employee: {
+                    where: {
+                        deleted: false
+                    }
+                }
+            }
+        });
+
+        if (!existingStop) {
+            return res.status(404).json({ message: 'Stop not found' });
+        }
+
+        // Check if stop has an assigned employee
+        const hasEmployee = existingStop.employee !== null;
+
+        if (hasEmployee && force !== 'true') {
+            return res.status(400).json({ 
+                message: 'Cannot delete stop with assigned employee. Use force=true to delete anyway.',
+                details: {
+                    employeeId: existingStop.employee?.id,
+                    employeeName: existingStop.employee?.name
+                }
+            });
+        }
+
+        // If force delete, unassign the employee first
+        if (hasEmployee && force === 'true') {
+            await prisma.employee.update({
+                where: { id: existingStop.employee!.id },
+                data: {
+                    stopId: null,
+                    assigned: false
+                }
+            });
+        }
+
+        await prisma.stop.delete({
+            where: { id }
+        });
+
+        res.status(204).send();
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+/**
+ * @route   PATCH /:id/assign-employee
+ * @desc    Assign or unassign an employee to a stop
+ * @access  Private (User)
+ */
+router.patch('/:id/assign-employee', requireAuth, validateMultiple([{ schema: StopIdParamSchema, target: 'params' }, { schema: AssignEmployeeSchema, target: 'body' }]), async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const { employeeId }: AssignEmployeeInput = req.body;
+        const activeOrgId = req.session?.session?.activeOrganizationId;
+        if (!activeOrgId) {
+            return res.status(400).json({ message: 'Active organization not found' });
+        }
+
+        const hasPermission = await auth.api.hasPermission({
+            headers: await fromNodeHeaders(req.headers),
+            body: { permissions: { stop: ["update"], employee: ["assign"] } }
+        });
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
+
+        const existingStop = await prisma.stop.findFirst({
+            where: { id, organizationId: activeOrgId }
+        });
+
+        if (!existingStop) {
+            return res.status(404).json({ message: 'Stop not found' });
+        }
+
+        // Verify employee exists and belongs to the organization if provided
+        if (employeeId) {
+            const employee = await prisma.employee.findFirst({
+                where: { id: employeeId, organizationId: activeOrgId }
+            });
+
+            if (!employee) {
+                return res.status(404).json({ message: 'Employee not found in this organization' });
+            }
+
+            if (employee.deleted) {
+                return res.status(400).json({ message: 'Cannot assign deleted employee to stop' });
+            }
+
+            // Check if employee is already assigned to another stop
+            if (employee.stopId && employee.stopId !== id) {
+                return res.status(409).json({ message: 'Employee is already assigned to another stop' });
+            }
+        }
+
+        // Update the employee's stop assignment
+        if (employeeId) {
+            await prisma.employee.update({
+                where: { id: employeeId },
+                data: {
+                    stopId: id,
+                    assigned: true
+                }
+            });
+        } else {
+            // Unassign any employee currently assigned to this stop
+            await prisma.employee.updateMany({
+                where: {
+                    stopId: id,
+                    organizationId: activeOrgId,
+                    deleted: false
+                },
+                data: {
+                    stopId: null,
+                    assigned: false
+                }
+            });
+        }
+
+        const stop = await prisma.stop.findFirst({
+            where: { id, organizationId: activeOrgId },
+            include: {
+                route: true,
+                employee: {
+                    where: {
+                        deleted: false
+                    },
+                    include: {
+                        user: {
+                            select: {
+                                id: true,
+                                name: true,
+                                email: true
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        res.json({ 
+            message: employeeId ? 'Employee assigned successfully' : 'Employee unassigned successfully', 
+            stop 
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+/**
+ * @route   PATCH /:id/reorder
+ * @desc    Update the order/sequence of a stop
+ * @access  Private (User)
+ */
+router.patch('/:id/reorder', requireAuth, validateMultiple([{ schema: StopIdParamSchema, target: 'params' }, { schema: ReorderStopSchema, target: 'body' }]), async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const { sequence, order }: ReorderStopInput = req.body;
+        const activeOrgId = req.session?.session?.activeOrganizationId;
+        if (!activeOrgId) {
+            return res.status(400).json({ message: 'Active organization not found' });
+        }
+
+        const hasPermission = await auth.api.hasPermission({
+            headers: await fromNodeHeaders(req.headers),
+            body: { permissions: { stop: ["update"] } }
+        });
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
+
+        const existingStop = await prisma.stop.findFirst({
+            where: { id, organizationId: activeOrgId }
+        });
+
+        if (!existingStop) {
+            return res.status(404).json({ message: 'Stop not found' });
+        }
+
+        const updateData: any = {};
+        if (sequence !== undefined) updateData.sequence = sequence;
+        if (order !== undefined) updateData.order = order;
+
+        const stop = await prisma.stop.update({
+            where: { id },
+            data: updateData,
+            include: {
+                route: true,
+                employee: {
+                    where: {
+                        deleted: false
+                    }
+                }
+            }
+        });
+
+        res.json({ message: 'Stop order updated successfully', stop });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Internal Server Error' });

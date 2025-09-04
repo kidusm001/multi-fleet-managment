@@ -1,16 +1,16 @@
 import express, { Request, Response } from 'express';
 import { PrismaClient, VehicleAvailability } from '@prisma/client';
-import { requireRole } from '../middleware/requireRole';
+import { requireAuth, requireRole } from '../middleware/auth';
 
 const prisma = new PrismaClient();
 const router = express.Router();
 
 /**
- * @route   GET /superadmin/vehicle-availability
+ * @route   GET /superadmin
  * @desc    Get all vehicle availability records
  * @access  Private (superadmin)
  */
-router.get('/superadmin/vehicle-availability', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.get('/superadmin', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
         const { organizationId, vehicleId, driverId, routeId, shiftId, startDate, endDate } = req.query;
 
@@ -48,11 +48,11 @@ router.get('/superadmin/vehicle-availability', requireRole(["superadmin"]), asyn
 });
 
 /**
- * @route   GET /superadmin/vehicle-availability/:id
+ * @route   GET /superadmin/:id
  * @desc    Get a specific vehicle availability record by ID
  * @access  Private (superadmin)
  */
-router.get('/superadmin/vehicle-availability/:id', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.get('/superadmin/:id', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
         const record = await prisma.vehicleAvailability.findUnique({
@@ -76,11 +76,11 @@ router.get('/superadmin/vehicle-availability/:id', requireRole(["superadmin"]), 
 });
 
 /**
- * @route   POST /superadmin/vehicle-availability
+ * @route   POST /superadmin
  * @desc    Create a new vehicle availability record
  * @access  Private (superadmin)
  */
-router.post('/superadmin/vehicle-availability', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.post('/superadmin', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
         const {
             date,
@@ -157,11 +157,11 @@ router.post('/superadmin/vehicle-availability', requireRole(["superadmin"]), asy
 });
 
 /**
- * @route   PUT /superadmin/vehicle-availability/:id
+ * @route   PUT /superadmin/:id
  * @desc    Update a vehicle availability record
  * @access  Private (superadmin)
  */
-router.put('/superadmin/vehicle-availability/:id', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.put('/superadmin/:id', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
         const {
@@ -202,11 +202,11 @@ router.put('/superadmin/vehicle-availability/:id', requireRole(["superadmin"]), 
 });
 
 /**
- * @route   DELETE /superadmin/vehicle-availability/:id
+ * @route   DELETE /superadmin/:id
  * @desc    Delete a vehicle availability record
  * @access  Private (superadmin)
  */
-router.delete('/superadmin/vehicle-availability/:id', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.delete('/superadmin/:id', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
         await prisma.vehicleAvailability.delete({
@@ -220,11 +220,11 @@ router.delete('/superadmin/vehicle-availability/:id', requireRole(["superadmin"]
 });
 
 /**
- * @route   GET /superadmin/vehicle-availability/stats/summary
+ * @route   GET /superadmin/stats/summary
  * @desc    Get summary statistics for vehicle availability
  * @access  Private (superadmin)
  */
-router.get('/superadmin/vehicle-availability/stats/summary', requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.get('/superadmin/stats/summary', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
         const totalRecords = await prisma.vehicleAvailability.count();
         const availableRecords = await prisma.vehicleAvailability.count({ where: { available: true } });
