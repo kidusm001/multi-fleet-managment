@@ -74,7 +74,6 @@ async function signUpUsers() {
     name: "Manager User",
     role: "manager",
   });
-  // Recruiter role removed from system; no recruiter seeding.
 }
 
 signUpUsers();

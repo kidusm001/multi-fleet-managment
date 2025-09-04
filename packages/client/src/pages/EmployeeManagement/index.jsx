@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import { ROLES } from "@data/constants";
 // imports trimmed
 import { employeeService } from "@pages/Settings/services/employeeService";
-// Removed candidate/batch services and CSV utilities
+// Removed legacy services and CSV utilities
 // removed unused ExcelUpload
 import LoadingWrapper from "@components/Common/LoadingAnimation/LoadingWrapper";
 // removed unused api
@@ -13,7 +13,7 @@ import LoadingWrapper from "@components/Common/LoadingAnimation/LoadingWrapper";
 import { RoleSelector } from "./components/RoleSelector";
 import { StatsSection } from "./components/StatsSection";
 import { EmployeeTable } from "./components/EmployeeTable";
-// Removed recruitment and batch review components
+// Removed legacy review components
 
 export default function EmployeeManagement() {
   const { role, setRole } = useRole();
@@ -153,7 +153,7 @@ export default function EmployeeManagement() {
     setCurrentPage(1);
   }, [departmentFilter, shiftFilter, statusFilter, assignmentFilter]);
 
-  // Removed candidate fetching and filtering
+  // Removed legacy fetching and filtering
 
   // No longer need to filter in this function - we're using the filteredEmployees state
   const getFilteredEmployees = useCallback(() => {
@@ -185,7 +185,7 @@ export default function EmployeeManagement() {
     };
   }, [employees]);
 
-  // Removed candidate actions
+  // Removed legacy actions
 
   const handleDeactivateEmployee = useCallback(
     async (employeeId) => {
@@ -257,9 +257,9 @@ export default function EmployeeManagement() {
   [role]
   );
 
-  // Removed export and batch handlers
+  // Removed export handlers
 
-  // Removed all batch handlers and state
+  // Removed legacy handlers and state
 
   // Handle page change
   const handlePageChange = (newPage) => {

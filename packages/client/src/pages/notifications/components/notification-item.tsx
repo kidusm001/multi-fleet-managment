@@ -215,7 +215,7 @@ export function NotificationItem({
               {description}
             </div>
           )}
-          {/* recruitment/batch metadata removed */}
+          {/* metadata removed */}
           {/* Only show expand button if there's more content */}
           {hasExpandableContent && (
             <button

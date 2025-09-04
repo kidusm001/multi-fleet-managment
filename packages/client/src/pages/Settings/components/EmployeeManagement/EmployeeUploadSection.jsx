@@ -628,12 +628,12 @@ export default function EmployeeUploadSection({
       // Get actual department names from the loaded departments
       const departmentNames = departments.length > 0 
         ? departments.map(d => d.name).slice(0, 4) // Take first 4 departments 
-        : ["Recruitment-Support", "Creative", "Trade Surveillance", "Cvent-Addis"]; // Fallback to known departments
+        : ["Operations", "Creative", "Trade Surveillance", "Cvent-Addis"]; // Fallback departments
       
       // Template data with correct departments and sample entries
       const templateData = [
         ['Name', 'Email', 'Phone', 'Department', 'Area Name', 'Latitude', 'Longitude'],
-        ['Alemayehu Tadesse', 'alemayehu.t@example.com', '+251911456789', departmentNames[0] || "Recruitment-Support", 'Kazanchis', '9.0215', '38.7468'],
+  ['Alemayehu Tadesse', 'alemayehu.t@example.com', '+251911456789', departmentNames[0] || "Operations", 'Kazanchis', '9.0215', '38.7468'],
         ['Tigist Hailu', 'tigist.h@example.com', '+251922345678', departmentNames[1] || "Creative", 'Bole', '8.9806', '38.7578'],
         ['Yonas Bekele', 'yonas.b@example.com', '+251911234567', departmentNames[2] || "Trade Surveillance", 'CMC', '9.0339', '38.7861'],
         ['Hiwot Girma', 'hiwot.g@example.com', '+251944567890', departmentNames[3] || "Cvent-Addis", 'Sarbet', '8.9946', '38.7468']

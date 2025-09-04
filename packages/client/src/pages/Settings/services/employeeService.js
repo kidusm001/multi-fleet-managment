@@ -90,7 +90,7 @@ class EmployeeService {
       "Abebe Kebede",
       "abebe.k@example.com",
       "+251911234567",
-      "Recruitment-Support", // Updated department name
+  "Operations",
       "Bole",
       "9.0221",
       "38.7468"
@@ -243,7 +243,7 @@ class EmployeeService {
       // Track duplicates
       const duplicates = [];
       
-      // First pass - identify duplicates within the batch itself
+  // First pass - identify duplicates within the upload itself
       const nameLocationMap = new Map();
       data.forEach(emp => {
         if (emp.name && emp.location) {
@@ -277,23 +277,23 @@ class EmployeeService {
           return false;
         }
         
-        // Check if this is a duplicate within the batch itself (more than one occurrence)
+  // Check if this is a duplicate within the upload itself (more than one occurrence)
         if (nameLocationMap.get(nameLocationCombo) > 1) {
           // Only skip duplicates after the first occurrence
           if (!duplicates.some(d => 
             d.name.toLowerCase() === employee.name.toLowerCase() && 
             d.location.toLowerCase() === employee.location.toLowerCase() &&
-            d.reason === "Duplicate within batch"
+            d.reason === "Duplicate within upload"
           )) {
             // Keep the first occurrence, skip the rest
             return true;
           }
           
-          console.log(`Skipping duplicate within batch: ${employee.name} at ${employee.location}`);
+          console.log(`Skipping duplicate within upload: ${employee.name} at ${employee.location}`);
           duplicates.push({
             name: employee.name,
             location: employee.location,
-            reason: "Duplicate within batch"
+            reason: "Duplicate within upload"
           });
           return false;
         }

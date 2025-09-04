@@ -150,19 +150,7 @@ class DepartmentService {
         return response.data;
     });
 
-    /**
-     * Batch update departments
-     * @param {Array<Object>} updates - Array of department updates
-     * @returns {Promise<Array>} Updated departments
-     */
-    batchUpdateDepartments = AsyncHandler(async (updates) => {
-        const response = await api.post('/departments/batch-update', { updates });
-
-        // Invalidate cache as multiple departments were updated
-        this.clearCache();
-
-        return response.data;
-    });
+    // Legacy bulk update endpoint removed
 
     /**
      * Clear all caches

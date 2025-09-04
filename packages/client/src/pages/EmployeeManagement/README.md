@@ -1,7 +1,7 @@
 # Employee Management
 
 ## Overview
-This section covers employee administration for Manager and Admin roles. All recruitment, candidate, and batch review features have been removed.
+This section covers employee administration for Manager and Admin roles.
 
 ## Roles
 - Manager: View and manage employee assignments and status.

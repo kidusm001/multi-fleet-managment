@@ -40,7 +40,7 @@ class SearchService {
             (term.length > 2 && term.startsWith(cleanQuery))
         );
 
-    // Remove candidate-specific behavior; use provided role as-is
+    // Using provided role as-is
     const effectiveRole = role;
 
         // Log if search appears to be route-related
@@ -167,7 +167,7 @@ class SearchService {
                     pathname: '/settings',
                     state: { activeTab: 'shifts' }
                 }; // Shifts go to /settings with shifts tab active
-            // Candidate type removed
+            // Legacy type removed
             case "department":
                 return {
                     pathname: '/settings',
