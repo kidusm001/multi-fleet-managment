@@ -56,6 +56,9 @@ export const auth = betterAuth({
         "http://localhost:3000",
         "http://localhost:5173"
     ],
+    logger: {
+        level: "debug",
+    },
 
 
     databaseHooks: {

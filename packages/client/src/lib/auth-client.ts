@@ -2,14 +2,31 @@
 
 import { createAuthClient } from "better-auth/client";
 import { adminClient, organizationClient } from "better-auth/client/plugins";
-
+import { OrgAc, AdminAc, superadmin, user, owner, admin as organizationAdmin, manager, driver, employee } from "./permissions";
 export const authClient = createAuthClient({
   baseURL: "http://localhost:3000",
   plugins: [
-    adminClient(),
-    organizationClient()
+    adminClient({
+            ac: AdminAc,
+            roles: {
+                superadmin,
+                user,
+            }
+    }),
+    organizationClient({
+            ac: OrgAc,
+            roles: {
+                owner,
+                admin: organizationAdmin,
+                manager,
+                driver,
+                employee,
+            }
+    })
   ],
 });
+
+export const {useSession} = authClient;
 
 
 // Keep interfaces for compatibility

@@ -6,6 +6,7 @@ import { createRoot } from 'react-dom/client';
 import App from './App';
 import ErrorBoundary from './components/Common/ErrorBoundary';
 import './styles/index.css';
+import './scripts/test-auth-fixed';
 
 const root = createRoot(document.getElementById('root'));
 

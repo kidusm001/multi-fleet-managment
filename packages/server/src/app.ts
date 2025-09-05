@@ -26,8 +26,28 @@ export function createApp() {
 
     app.use(cors(corsOptions));
 
+
     app.all("/api/auth/*splat", toNodeHandler(auth));
 
+    // Custom route to handle /api/auth/use-session -> /api/auth/get-session forwarding
+    app.all("/api/auth/use-session", (req, res) => {
+        // Simply forward to the get-session endpoint by modifying the original URL
+        const originalUrl = req.originalUrl;
+        const originalPath = req.path;
+        
+        // Temporarily modify the request to point to get-session
+        req.originalUrl = originalUrl.replace('/use-session', '/get-session');
+        (req as any).path = originalPath.replace('/use-session', '/get-session');
+        req.url = req.url.replace('/use-session', '/get-session');
+        
+        // Call the Better Auth handler directly
+        const authHandler = toNodeHandler(auth);
+        authHandler(req, res);
+        
+        // Restore original values after processing
+        req.originalUrl = originalUrl;
+        (req as any).path = originalPath;
+    });
     app.use(express.json());
 
     // Structured logging - minimal for development
