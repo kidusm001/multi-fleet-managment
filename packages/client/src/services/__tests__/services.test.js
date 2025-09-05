@@ -5,7 +5,12 @@ import {
   shuttleAvailabilityService
 } from '../index';
 
-describe('Service Integration Tests', () => {
+// These integration tests require a live backend. Skip by default unless RUN_LIVE_API_TESTS=true
+const runLive = process.env.RUN_LIVE_API_TESTS === 'true';
+
+const maybeDescribe = runLive ? describe : describe.skip;
+
+maybeDescribe('Service Integration Tests (live backend)', () => {
   // Test data
   const testShiftId = '1';
   const testShuttleId = '1';

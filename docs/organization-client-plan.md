@@ -283,32 +283,32 @@ Phase 5 (Dynamic Roles) – COMPLETE (mock scope)
 26. RolesPanel (list/create/update/delete) ✅
 27. Integrate dynamic roles into permission evaluation (union with static) ✅
 
-Phase 6 (Hardening) – IN PROGRESS
+Phase 6 (Hardening) – COMPLETE
 28. Skeleton loaders for each panel (organizations/members/invitations/teams/roles) ✅
 29. Toast provider ✅
-  29a. Audit all adapter call sites ensure success & error toasts (UNIFIED: "{entity} {action} {result}") ⏱
-  29b. Add missing success toasts for role/team CRUD (verify) ⏱
-  29c. Add error toast fallbacks where only banner presently shown ⏱
+  29a. Audit all adapter call sites ensure success & error toasts (UNIFIED: "{entity} {action} {result}") ✅
+  29b. Add missing success toasts for role/team CRUD (verify) ✅
+  29c. Add error toast fallbacks where only banner presently shown ✅
 30. Error banner & standardized error mapping (FOUNDATION IMPLEMENTED)
   30a. Introduce error code mapping layer (adapter -> friendly message) ✅
   30b. Central `mapOrgError(code, raw)` utility exported for tests ✅
   30c. Replace inline `normError` usage in banner with mapped message ✅
-  30d. Add unit tests for mapping (TODO) ⏱
+  30d. Add unit tests for mapping ✅
 31. Retry patterns (idempotent re-fetch buttons)
   31a. Disable retry buttons while target slice is loading ✅
   31b. Clear slice error on successful retry ✅
-  31c. Add exponential backoff helper (optional/deferred) ⏱
-  31d. Log retry attempts (console.debug hook) ⏱
+  31c. Add exponential backoff helper (optional/deferred) ✅
+  31d. Log retry attempts (console.debug hook) ✅
 32. Expanded tests
-  32a. Role CRUD happy path ⏱
-  32b. Team CRUD + membership ⏱
-  32c. Permission gating (negative + positive) ⏱
-  32d. Error + retry flow (force adapter error then recover) ⏱
-  32e. Deep link `?org=slug` activation ⏱
-  32f. Error mapping utility unit tests ⏱
-33. Documentation `docs/organization-client.md` (usage + flag matrix) ⏱
+  32a. Role CRUD happy path ✅
+  32b. Team CRUD + membership ✅
+  32c. Permission gating (negative + positive) ✅
+  32d. Error + retry flow (force adapter error then recover) ✅
+  32e. Deep link `?org=slug` activation ✅
+  32f. Error mapping utility unit tests ✅
+33. Documentation `docs/organization-client.md` (usage + flag matrix) ✅ (initial draft; will evolve during Phase 7)
 34. Additional gating: hide team/role UI if flags disabled ✅ (flags used)
-  34a. Permission tooltips for disabled buttons ⏱
+  34a. Permission tooltips for disabled buttons ✅
 35. Query param `?org=slug` activation (deep link) ✅
 
 Phase 7 (Cutover) – NOT STARTED

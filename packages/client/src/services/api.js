@@ -1,9 +1,21 @@
 import axios from 'axios';
 
+// Safe env resolver to work in Vite (browser) and Jest (no import.meta.env)
+function resolveEnv() {
+  try {
+    // Vite style
+    if (typeof import.meta !== 'undefined' && import.meta.env) return import.meta.env;
+  } catch (_) { /* ignore */ }
+  const g = globalThis;
+  // Support existing test shims (__IMETA.env or importMetaEnv)
+  return (g.__IMETA && g.__IMETA.env) || g.importMetaEnv || {};
+}
+const env = resolveEnv();
+
 // Build API base: in dev use Vite proxy at /api; otherwise use configured backend origin + /api
-const API_BASE = import.meta.env.DEV
+const API_BASE = env.DEV
   ? '/api'
-  : `${(import.meta.env.VITE_API_BASE || import.meta.env.VITE_API_URL || '').replace(/\/$/, '')}/api`;
+  : `${(env.VITE_API_BASE || env.VITE_API_URL || 'http://localhost:3001').replace(/\/$/, '')}/api`;
 
 export const api = axios.create({
   baseURL: API_BASE,

@@ -1,6 +1,21 @@
 import { createAuthClient } from "better-auth/client";
 import { adminClient } from "better-auth/client/plugins";
 
+// Ensure Fetch API globals exist (Better Auth expects Request/Response)
+(() => {
+  try {
+    if (typeof Request === 'undefined' || typeof fetch === 'undefined') {
+      const { fetch, Headers, Request, Response } = require('undici');
+      if (typeof globalThis.fetch === 'undefined') globalThis.fetch = fetch;
+      if (typeof globalThis.Headers === 'undefined') globalThis.Headers = Headers;
+      if (typeof globalThis.Request === 'undefined') globalThis.Request = Request;
+      if (typeof globalThis.Response === 'undefined') globalThis.Response = Response;
+    }
+  } catch (e) {
+    // swallow; tests will fail clearly if fetch truly unavailable
+  }
+})();
+
 const API_BASE = 'http://localhost:3001';
 
 const createClient = () => {

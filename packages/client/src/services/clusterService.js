@@ -1,8 +1,17 @@
 import axios from 'axios';
 
+function resolveEnv() {
+  try {
+    if (typeof import.meta !== 'undefined' && import.meta.env) return import.meta.env;
+  } catch (_) { /* ignore */ }
+  const g = globalThis;
+  return (g.__IMETA && g.__IMETA.env) || g.importMetaEnv || {};
+}
+const env = resolveEnv();
+
 // Create a separate axios instance for FastAPI requests
-const ORIGIN = import.meta.env.VITE_API_BASE || import.meta.env.VITE_API_URL || 'http://localhost:3001';
-const BASE = import.meta.env.DEV ? '/api' : `${ORIGIN.replace(/\/$/, '')}/api`;
+const ORIGIN = env.VITE_API_BASE || env.VITE_API_URL || 'http://localhost:3001';
+const BASE = env.DEV ? '/api' : `${ORIGIN.replace(/\/$/, '')}/api`;
 const fastApi = axios.create({
   baseURL: BASE, // Express backend mounts FastAPI under /fastapi
   timeout: 60000, // Increased timeout to 60 seconds

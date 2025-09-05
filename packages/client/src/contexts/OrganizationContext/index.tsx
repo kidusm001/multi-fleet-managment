@@ -107,14 +107,32 @@ export function OrganizationProvider({ children }: { children: React.ReactNode }
   // attach mapping for debugging (non-fatal)
   try { (globalThis as unknown as { __orgMapOrgError?: typeof mapOrgError }).__orgMapOrgError = mapOrgError; } catch { /* noop */ }
 
+  // configurable debug
+  const debugEnabled = ((): boolean => {
+    try { return (eval('import.meta')?.env?.VITE_ORG_DEBUG) === 'true'; } catch { return false; }
+  })();
+  const debug = (...args: unknown[]) => { if (debugEnabled) console.debug('[org]', ...args); };
+
+  async function backoff<T>(fn: () => Promise<T>, attempts = 1, max = 3, delay = 120): Promise<T> {
+    try {
+      return await fn();
+    } catch (e) {
+      if (attempts >= max) throw e;
+      const ms = delay * Math.pow(2, attempts - 1);
+      debug('retry attempt', attempts, 'waiting', ms, 'ms');
+      await new Promise(r => setTimeout(r, ms));
+      return backoff(fn, attempts + 1, max, delay);
+    }
+  }
+
   const load = useCallback(async () => {
     if (!featureEnabled) return;
     setState(s => ({ ...s, isLoading: true, error: null, status: { ...s.status!, loadingOrganizations: true, error: null } }));
-    const { data, error } = await adapter.listOrganizations();
+  const { data, error } = await adapter.listOrganizations();
     if (error) {
       const msg = mapOrgError(normError(error));
       setState(s => ({ ...s, isLoading: false, error: msg, status: { ...s.status!, loadingOrganizations: false, error: msg } }));
-      push(`Failed to load organizations: ${msg}`, 'error');
+      push(`Organizations load failed: ${msg}`,'error');
       return;
     }
     let orgs = data || [];
@@ -153,11 +171,11 @@ export function OrganizationProvider({ children }: { children: React.ReactNode }
     if (error) {
       const msg = mapOrgError(normError(error));
       setState(s => ({ ...s, error: msg, status: { ...s.status!, creating: false, error: msg } }));
-      push(`Create organization failed: ${msg}`, 'error');
+      push(`Organization create failed: ${msg}`, 'error');
       return;
     }
     setState(s => ({ ...s, status: { ...s.status!, creating: false } }));
-    push('Organization created', 'success');
+    push('Organization create success', 'success');
     await load();
   }, [adapter, featureEnabled, load, push]);
 
@@ -168,11 +186,11 @@ export function OrganizationProvider({ children }: { children: React.ReactNode }
     if (error) {
       const msg = mapOrgError(normError(error));
       setState(s => ({ ...s, error: msg, status: { ...s.status!, switching: false, error: msg } }));
-      push(`Switch failed: ${msg}`, 'error');
+      push(`Organization switch failed: ${msg}`, 'error');
       return;
     }
     setState(s => ({ ...s, status: { ...s.status!, switching: false } }));
-    push('Active organization updated', 'success');
+    push('Organization switch success', 'success');
     await load();
   }, [adapter, featureEnabled, load, push]);
 
@@ -184,11 +202,16 @@ export function OrganizationProvider({ children }: { children: React.ReactNode }
     loadMembers: async () => {
       if (!state.activeOrganization || !adapter.listMembers) return;
       setState(s => ({ ...s, status: { ...s.status!, loadingMembers: true } }));
-      const { data, error } = await adapter.listMembers(state.activeOrganization.id);
+  let data: OrganizationMember[] | null | undefined;
+  let error: unknown;
+      try {
+        const res = await backoff(() => adapter.listMembers!(state.activeOrganization!.id));
+        data = res.data; error = res.error;
+      } catch (e) { error = e instanceof Error ? e.message : 'error'; }
       if (error) {
         const msg = mapOrgError(normError(error));
         setState(s => ({ ...s, status: { ...s.status!, loadingMembers: false, error: msg } }));
-        push(`Load members failed: ${msg}`, 'error');
+        push(`Members load failed: ${msg}`, 'error');
         return;
       }
       setState(s => ({ ...s, members: (data as OrganizationMember[]) || [], status: { ...s.status!, loadingMembers: false, error: null } }));
@@ -196,11 +219,16 @@ export function OrganizationProvider({ children }: { children: React.ReactNode }
     loadInvitations: async () => {
       if (!state.activeOrganization || !adapter.listInvitations) return;
       setState(s => ({ ...s, status: { ...s.status!, loadingInvitations: true } }));
-      const { data, error } = await adapter.listInvitations(state.activeOrganization.id);
+  let data: OrganizationInvitation[] | null | undefined;
+  let error: unknown;
+      try {
+        const res = await backoff(() => adapter.listInvitations!(state.activeOrganization!.id));
+        data = res.data; error = res.error;
+      } catch (e) { error = e instanceof Error ? e.message : 'error'; }
       if (error) {
         const msg = mapOrgError(normError(error));
         setState(s => ({ ...s, status: { ...s.status!, loadingInvitations: false, error: msg } }));
-        push(`Load invitations failed: ${msg}`, 'error');
+        push(`Invitations load failed: ${msg}`, 'error');
         return;
       }
       setState(s => ({ ...s, invitations: (data as OrganizationInvitation[]) || [], status: { ...s.status!, loadingInvitations: false, error: null } }));
@@ -208,32 +236,37 @@ export function OrganizationProvider({ children }: { children: React.ReactNode }
     invite: async (email: string, role: string) => {
       if (!state.activeOrganization || !adapter.inviteMember) return;
       const { error } = await adapter.inviteMember({ email, role, organizationId: state.activeOrganization.id });
-  if (error) { push(`Invite failed: ${mapOrgError(normError(error))}`, 'error'); return; }
-      push('Invitation sent', 'success');
+  if (error) { push(`Invitation create failed: ${mapOrgError(normError(error))}`, 'error'); return; }
+    push('Invitation create success', 'success');
       await value.loadInvitations();
     },
     updateMemberRole: async (memberId: string, role: string) => {
       if (!adapter.updateMemberRole) return;
       const { error } = await adapter.updateMemberRole(memberId, role);
-  if (error) { push(`Update role failed: ${mapOrgError(normError(error))}`, 'error'); return; }
-      push('Member role updated', 'success');
+  if (error) { push(`Member role update failed: ${mapOrgError(normError(error))}`, 'error'); return; }
+    push('Member role update success', 'success');
       await value.loadMembers();
     },
     removeMember: async (memberId: string) => {
       if (!adapter.removeMember) return;
       const { error } = await adapter.removeMember(memberId);
-  if (error) { push(`Remove member failed: ${mapOrgError(normError(error))}`, 'error'); return; }
-      push('Member removed', 'success');
+  if (error) { push(`Member remove failed: ${mapOrgError(normError(error))}`, 'error'); return; }
+    push('Member remove success', 'success');
       await value.loadMembers();
     },
     loadTeams: async () => {
       if (!state.activeOrganization || !adapter.listTeams) return;
       setState(s => ({ ...s, status: { ...s.status!, loadingTeams: true } }));
-      const { data, error } = await adapter.listTeams(state.activeOrganization.id);
+  let data: OrganizationTeam[] | null | undefined;
+  let error: unknown;
+      try {
+        const res = await backoff(() => adapter.listTeams!(state.activeOrganization!.id));
+        data = res.data; error = res.error;
+      } catch (e) { error = e instanceof Error ? e.message : 'error'; }
       if (error) {
         const msg = mapOrgError(normError(error));
         setState(s => ({ ...s, status: { ...s.status!, loadingTeams: false, error: msg } }));
-        push(`Load teams failed: ${msg}`, 'error');
+        push(`Teams load failed: ${msg}`, 'error');
         return;
       }
       setState(s => ({ ...s, teams: (data as OrganizationTeam[]) || [], status: { ...s.status!, loadingTeams: false, error: null } }));
@@ -241,18 +274,23 @@ export function OrganizationProvider({ children }: { children: React.ReactNode }
     createTeam: async (name: string) => {
       if (!state.activeOrganization || !adapter.createTeam) return;
       const { error } = await adapter.createTeam({ name, organizationId: state.activeOrganization.id });
-  if (error) { push(`Create team failed: ${mapOrgError(normError(error))}`, 'error'); return; }
-      push('Team created', 'success');
+  if (error) { push(`Team create failed: ${mapOrgError(normError(error))}`, 'error'); return; }
+      push('Team create success', 'success');
       await value.loadTeams();
     },
     loadRoles: async () => {
       if (!state.activeOrganization || !adapter.listRoles) return;
       setState(s => ({ ...s, status: { ...s.status!, loadingRoles: true } }));
-      const { data, error } = await adapter.listRoles(state.activeOrganization.id);
+  let data: OrganizationRoleDescriptor[] | null | undefined;
+  let error: unknown;
+      try {
+        const res = await backoff(() => adapter.listRoles!(state.activeOrganization!.id));
+        data = res.data; error = res.error;
+      } catch (e) { error = e instanceof Error ? e.message : 'error'; }
       if (error) {
         const msg = mapOrgError(normError(error));
         setState(s => ({ ...s, status: { ...s.status!, loadingRoles: false, error: msg } }));
-        push(`Load roles failed: ${msg}`, 'error');
+        push(`Roles load failed: ${msg}`, 'error');
         return;
       }
       setState(s => ({ ...s, roles: (data as OrganizationRoleDescriptor[]) || [], status: { ...s.status!, loadingRoles: false, error: null } }));
@@ -260,28 +298,28 @@ export function OrganizationProvider({ children }: { children: React.ReactNode }
     createRole: async (name: string) => {
       if (!state.activeOrganization || !adapter.createRole) return;
       const { error } = await adapter.createRole({ organizationId: state.activeOrganization.id, name });
-  if (error) { push(`Create role failed: ${mapOrgError(normError(error))}`, 'error'); return; }
-      push('Role created', 'success');
+  if (error) { push(`Role create failed: ${mapOrgError(normError(error))}`, 'error'); return; }
+    push('Role create success', 'success');
       await value.loadRoles();
     },
     updateRole: async (id: string, name: string) => {
       if (!adapter.updateRole) return;
       const { error } = await adapter.updateRole(id, { name });
-  if (error) { push(`Update role failed: ${mapOrgError(normError(error))}`, 'error'); return; }
-      push('Role updated', 'success');
+  if (error) { push(`Role update failed: ${mapOrgError(normError(error))}`, 'error'); return; }
+    push('Role update success', 'success');
       await value.loadRoles();
     },
     deleteRole: async (id: string) => {
       if (!adapter.deleteRole) return;
       const { error } = await adapter.deleteRole(id);
-  if (error) { push(`Delete role failed: ${mapOrgError(normError(error))}`, 'error'); return; }
-      push('Role deleted', 'success');
+  if (error) { push(`Role delete failed: ${mapOrgError(normError(error))}`, 'error'); return; }
+    push('Role delete success', 'success');
       await value.loadRoles();
     },
     addMemberToTeam: async (teamId: string, userId: string) => {
       if (!state.activeOrganization || !adapter.addMemberToTeam) return;
       const { error } = await adapter.addMemberToTeam({ organizationId: state.activeOrganization.id, teamId, userId });
-  if (error) push(`Add to team failed: ${mapOrgError(normError(error))}`, 'error'); else push('Member added to team', 'success');
+  if (error) push(`Team member add failed: ${mapOrgError(normError(error))}`, 'error'); else push('Team member add success', 'success');
     },
     listTeamMembers: async (teamId: string) => {
       if (!state.activeOrganization || !adapter.listTeamMemberships) return [];
@@ -292,7 +330,7 @@ export function OrganizationProvider({ children }: { children: React.ReactNode }
     removeMemberFromTeam: async (membershipId: string) => {
       if (!adapter.removeMemberFromTeam) return;
       const { error } = await adapter.removeMemberFromTeam(membershipId);
-  if (error) push(`Remove from team failed: ${mapOrgError(normError(error))}`, 'error'); else push('Removed from team', 'success');
+  if (error) push(`Team member remove failed: ${mapOrgError(normError(error))}`, 'error'); else push('Team member remove success', 'success');
     },
     hasPermission: (domain: string, action: string) => {
       const activeMember = state.members.find(m => m.userId === 'current-user');

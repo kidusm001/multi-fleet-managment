@@ -22,6 +22,7 @@
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true,
+  "types": ["node", "jest"],
 
     /* Paths */
     "baseUrl": ".",
@@ -44,7 +45,18 @@
     "outDir": "./dist",
     "rootDir": "./src"
   },
-  "include": ["src/**/*"],
+  "ts-node": {
+    "compilerOptions": {
+      "module": "commonjs"
+    }
+  },
+  "jest": {
+    "globals": true
+  },
+  "typeAcquisition": {
+    "enable": true
+  },
+  "include": ["src/**/*", "src/__tests__/**/*", "**/*.test.ts", "**/*.test.tsx", "**/*.test.js", "**/*.test.jsx"],
   "exclude": ["node_modules"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }
