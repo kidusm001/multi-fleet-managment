@@ -1,85 +1,83 @@
-import { createContext, useContext, useState, useEffect } from 'react';
-import { authClient, useSession } from '@/lib/auth-client';
+import { createContext, useContext } from 'react';
+import { authClient } from '@/lib/auth-client';
 
 const AuthContext = createContext({
   isAuthenticated: false,
   user: null,
   login: () => {},
   logout: () => {},
+  signup: () => {},
   loginWithEmail: () => {},
+  // Organization methods
+  createOrganization: () => {},
+  switchOrganization: () => {},
+  inviteMember: () => {},
+  // Admin methods
+  admin: () => {},
 });
 
 export function AuthProvider({ children }) {
-  const { data: session, isPending } = useSession();
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState(null);
-
-  useEffect(() => {
-    if (session) {
-      setUser(session.user);
-      setIsAuthenticated(true);
-    } else {
-      setUser(null);
-      setIsAuthenticated(false);
-    }
-  }, [session]);
+  const session = authClient.useSession();
 
   const login = async ({ email, password }) => {
-    try {
-      const { data, error } = await authClient.signIn.email({
-        email: email.trim(),
-        password: password,
-      });
+    const result = await authClient.signIn.email({
+      email: email.trim(),
+      password,
+    });
+    return result;
+  };
 
-      if (error) {
-        console.debug('[auth] signIn.error', error);
-      } else {
-        console.debug('[auth] signIn.data', data);
-      }
-
-      if (error) {
-        console.error('Auth error:', error);
-        return { success: false, error: error.message };
-      }
-
-      if (!data?.user) {
-        return { success: false, error: 'No user data received' };
-      }
-
-  setUser(data.user);
-      setIsAuthenticated(true);
-      return { success: true };
-    } catch (error) {
-  console.error('Login error:', error);
-      return { success: false, error: error.message || 'An error occurred during login' };
-    }
+  const signup = async ({ email, password, name }) => {
+    const result = await authClient.signUp.email({
+      email: email.trim(),
+      password,
+      name: name?.trim(),
+    });
+    return result;
   };
 
   const logout = async () => {
-    try {
-      await authClient.signOut();
-      setUser(null);
-      setIsAuthenticated(false);
-      return { success: true };
-    } catch (error) {
-      return { success: false, error: error.message };
-    }
+    return await authClient.signOut();
   };
 
   const loginWithEmail = async (_email) => {
-    // This functionality is not implemented in the backend yet
     return { success: false, error: 'Magic link login not implemented' };
   };
 
+  // Organization methods
+  const createOrganization = async (name) => {
+    return await authClient.organization.create({
+      name,
+    });
+  };
+
+  const switchOrganization = async (organizationId) => {
+    return await authClient.organization.setActive({
+      organizationId,
+    });
+  };
+
+  const inviteMember = async (email, role) => {
+    return await authClient.organization.inviteMember({
+      email,
+      role,
+    });
+  };
+
   return (
-    <AuthContext.Provider 
-      value={{ 
-        isAuthenticated, 
-        user, 
-        login, 
-        logout, 
+    <AuthContext.Provider
+      value={{
+        isAuthenticated: !!session.data,
+        user: session.data?.user,
+        login,
+        logout,
+        signup,
         loginWithEmail,
-        isLoading: isPending 
+        createOrganization,
+        switchOrganization,
+        inviteMember,
+        admin: authClient.admin,
+        isLoading: session.isPending
       }}
     >
       {children}

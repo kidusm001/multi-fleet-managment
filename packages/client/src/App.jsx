@@ -19,6 +19,7 @@ const EmployeeManagement = lazy(() => import('@pages/EmployeeManagement'));
 const Payroll = lazy(() => import('@pages/Payroll'));
 const Settings = lazy(() => import('@pages/Settings'));
 const Login = lazy(() => import('@pages/Auth/Login'));
+const Signup = lazy(() => import('@pages/Auth/Signup'));
 const NotificationDashboard = lazy(() => import('@pages/notifications/components/notification-dashboard').then(m => ({ default: m.NotificationDashboard })));
 // Context
 import { RoleProvider } from "@contexts/RoleContext";
@@ -85,6 +86,14 @@ function AppContent() {
           element={
             <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading…</div>}>
               <Login />
+            </Suspense>
+          }
+        />
+        <Route
+          path="/auth/signup"
+          element={
+            <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading…</div>}>
+              <Signup />
             </Suspense>
           }
         />

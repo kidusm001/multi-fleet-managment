@@ -19,5 +19,8 @@
     "packageManager": "pnpm@10.14.0",
     "devDependencies": {
         "task-master-ai": "^0.24.0"
+    },
+    "dependencies": {
+        "better-auth": "^1.3.8"
     }
 }

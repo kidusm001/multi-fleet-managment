@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
-import { useAuth } from "@contexts/AuthContext";
+import { useLocation, useNavigate, Link } from "react-router-dom";
+import { authClient } from "@/lib/auth-client";
 import { Button } from "@components/Common/UI/Button";
 import { Input } from "@/components/Common/UI/Input";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
@@ -32,7 +32,6 @@ export default function Login() {
       return '/';
     }
   }, [location.search]);
-  const { login } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     email: "",
@@ -51,26 +50,27 @@ export default function Login() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!formData.email || !formData.password) {
       setError('Email and password are required');
       return;
     }
-  
+
     setError(null);
     setIsLoading(true);
-  
+
     try {
-      const result = await login({
+      await authClient.signIn.email({
         email: formData.email.trim(),
         password: formData.password
+      }, {
+        onSuccess: () => {
+          navigate(nextPath);
+        },
+        onError: (ctx) => {
+          setError(ctx.error.message);
+        }
       });
-      
-      if (result.success) {
-        navigate(nextPath);
-      } else {
-        setError(result.error || 'Login failed');
-      }
     } catch (error) {
       setError(error.message || 'An error occurred');
     } finally {
@@ -175,6 +175,19 @@ export default function Login() {
                 </span>
                 <div className="absolute inset-0 -z-10 bg-gradient-to-r from-[#f3684e]/0 via-white/10 to-[#f3684e]/0 group-hover:via-white/20 transition-all duration-500 translate-x-[-100%] group-hover:translate-x-[100%]" />
               </Button>
+            </motion.div>
+            <motion.div
+              className="mt-6 text-center"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6 }}
+            >
+              <p className="text-white/70">
+                Dont have an account?{" "}
+                <Link to="/auth/signup" className="text-[#f3684e] hover:text-[#f3684e]/80 font-medium transition-colors">
+                  Sign Up
+                </Link>
+              </p>
             </motion.div>
             {error && (
               <motion.p
