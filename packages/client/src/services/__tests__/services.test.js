@@ -1,16 +1,21 @@
-import {
-  routeService,
-  employeeService,
-  clusterService,
-  shuttleAvailabilityService
-} from '../index';
-
-// These integration tests require a live backend. Skip by default unless RUN_LIVE_API_TESTS=true
+// These integration tests require a live backend. We purposely gate *imports* behind the flag
+// so that axios instances hitting a non-existent server don't run during normal unit test runs.
 const runLive = process.env.RUN_LIVE_API_TESTS === 'true';
 
-const maybeDescribe = runLive ? describe : describe.skip;
+if (!runLive) {
+  // Provide a skipped suite placeholder for visibility
+  describe.skip('Service Integration Tests (live backend)', () => {
+    test('skipped (set RUN_LIVE_API_TESTS=true to enable)', () => {});
+  });
+} else {
+  const {
+    routeService,
+    employeeService,
+    clusterService,
+    shuttleAvailabilityService
+  } = await import('../index');
 
-maybeDescribe('Service Integration Tests (live backend)', () => {
+  describe('Service Integration Tests (live backend)', () => {
   // Test data
   const testShiftId = '1';
   const testShuttleId = '1';
@@ -65,4 +70,5 @@ maybeDescribe('Service Integration Tests (live backend)', () => {
       expect(Array.isArray(employees)).toBe(true);
     });
   });
-}); 
+  });
+}

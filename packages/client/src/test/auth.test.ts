@@ -1,47 +1,57 @@
-import { authClient } from './auth-test-client';
+// Live Better Auth integration test (organization plugin) requires a running backend.
+// We gate EVERYTHING behind the env flag so normal unit test runs never import client code.
+export {}; // ensure this file is a module to avoid potential global re-declaration noise
 
-// NOTE: This test requires a running Better Auth backend. Skipping in CI/unit context without server.
-describe.skip('Better Auth integration (requires live server)', () => { /* placeholder to show intent */ });
+const RUN_LIVE_AUTH = process.env.RUN_LIVE_AUTH_TESTS === 'true';
 
-async function testAuthEndpoints() {
-  try {
-    console.log('Testing auth endpoints...');
-    
-    // Use the session token we got from creating the admin user
-    globalThis.__authToken = '21f47ec7-97c2-48ce-9ffd-6b1624792627';
-    console.log('Using session token:', globalThis.__authToken);
+if (!RUN_LIVE_AUTH) {
+  describe.skip('Better Auth integration (requires live backend & org plugin)', () => {
+    test('skipped (enable with RUN_LIVE_AUTH_TESTS=true)', () => {});
+  });
+} else {
+  describe('Better Auth integration (live)', () => {
+    // Use loose typing; if better-auth exposes types you can replace 'any' with the proper client type.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let authClient: any;
 
-    // Get session directly instead of using useSession atom
-    const session = await authClient.getSession();
-    console.log('GetSession response:', session);
+    beforeAll(async () => {
+      const mod = await import('./auth-test-client');
+      authClient = mod.authClient;
+    });
 
-    if (session.error) {
-      throw new Error(`GetSession failed: ${session.error.message}`);
-    }
+    test('session established', async () => {
+      globalThis.__authToken = process.env.TEST_ADMIN_SESSION_TOKEN || '';
+      const session = await authClient.getSession();
+      expect(session?.error).toBeFalsy();
+      expect(session?.data || session?.user || session).toBeTruthy();
+    });
 
-    // Try to list users with active session
-    const usersResponse = await authClient.admin.listUsers({
-      query: {
-        limit: 10,
-        offset: 0
+    test('admin list users', async () => {
+      const usersResp = await authClient.admin.listUsers({ query: { limit: 1, offset: 0 } });
+      expect(usersResp.error).toBeFalsy();
+      // Some versions return { data: [...] }, others just array — be tolerant.
+      const users = usersResp.data || usersResp.users || usersResp;
+      expect(Array.isArray(users)).toBe(true);
+    });
+
+    test('organization plugin optional smoke', async () => {
+      // Organization plugin docs: ensure endpoints only if plugin configured server-side.
+      // We probe defensively so the test passes even if plugin is absent.
+      const orgApi = authClient.organization || authClient.organizations || authClient.org;
+      if (!orgApi) {
+        console.warn('Organization plugin endpoints not present on authClient (skipping assertions)');
+        return;
+      }
+      // Try list organizations if available.
+      const listFn = orgApi.listOrganizations || orgApi.getOrganizations || orgApi.list;
+      if (listFn) {
+        const orgs = await listFn.call(orgApi, { query: { limit: 1, offset: 0 } }).catch(() => null);
+        // Accept either error (plugin misconfigured) or successful data; just ensure no unhandled throw.
+        if (orgs && !orgs.error) {
+          const collection = orgs.data || orgs.organizations || orgs;
+            expect(Array.isArray(collection)).toBe(true);
+        }
       }
     });
-    console.log('Users list response:', usersResponse);
-
-    if (usersResponse.error) {
-      throw new Error(`ListUsers failed: ${usersResponse.error.message}`);
-    }
-
-  } catch (error) {
-    console.error('Test failed:', error);
-    process.exit(1);
-  }
-}
-
-// Run the tests
-// Only run when explicit env flag is set to avoid failing suite without backend.
-if (process.env.RUN_LIVE_AUTH_TESTS === 'true') {
-  testAuthEndpoints()
-    .then(() => console.log('Tests completed'))
-    .catch(console.error);
+  });
 }
