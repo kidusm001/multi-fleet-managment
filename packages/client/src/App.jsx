@@ -11,6 +11,7 @@ import { AuthRoute } from '@components/Common/AuthRoute';
 import Footer from "@components/Common/Layout/Footer";
 import ErrorBanner from '@components/Common/Organizations/ErrorBanner';
 import TopBar from "@components/Common/Layout/TopBar";
+import OrganizationGuard from "@components/Common/Guards/OrganizationGuard";
 // Pages
 import { Suspense, lazy } from 'react';
 const Home = lazy(() => import('@pages/Home'));
@@ -24,6 +25,7 @@ const Payroll = lazy(() => import('@pages/Payroll'));
 const Settings = lazy(() => import('@pages/Settings'));
 const Login = lazy(() => import('@pages/Auth/Login'));
 const Signup = lazy(() => import('@pages/Auth/Signup'));
+const OrganizationSelection = lazy(() => import('@pages/OrganizationSelection'));
 // const NotificationDashboard = lazy(() => import('@pages/notifications/components/notification-dashboard').then(m => ({ default: m.NotificationDashboard })));
 // Context
 import { RoleProvider } from "@contexts/RoleContext";
@@ -103,15 +105,29 @@ function AppContent() {
           }
         />
         <Route path="/unauthorized" element={<Unauthorized />} />
+        
+        {/* Organization Selection - Protected but outside main layout */}
+        <Route
+          path="/organizations"
+          element={
+            <AuthRoute>
+              <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading…</div>}>
+                <OrganizationSelection />
+              </Suspense>
+            </AuthRoute>
+          }
+        />
 
         {/* Protected Routes Layout */}
         <Route
           element={
             <AuthRoute>
-              {/* <NotificationProvider> */}
-                {/* <NotificationSound /> */}
-                <ProtectedLayout isDark={isDark} />
-              {/* </NotificationProvider> */}
+              <OrganizationGuard>
+                {/* <NotificationProvider> */}
+                  {/* <NotificationSound /> */}
+                  <ProtectedLayout isDark={isDark} />
+                {/* </NotificationProvider> */}
+              </OrganizationGuard>
             </AuthRoute>
           }
         >

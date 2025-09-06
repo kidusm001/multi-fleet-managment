@@ -11,20 +11,20 @@ export default defineConfig({
   open: 'http://localhost:5173',
     proxy: {
       '/_auth': {
-        target: 'http://localhost:3001',
+        target: 'http://localhost:3000',
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path.replace(/^\/_auth/, '/auth'),
       },
       '/api': {
-        target: 'http://localhost:3001',
+        target: 'http://localhost:3000',
         changeOrigin: true,
         secure: false,
         // keep path as-is to hit backend '/api/*'
       }
       ,
       '/socket.io': {
-        target: 'http://localhost:3001',
+        target: 'http://localhost:3000',
         ws: true,
         changeOrigin: true,
         secure: false,

@@ -242,12 +242,12 @@ class RouteService {
       throw new Error('Route ID and Employee ID are required');
     }
 
-    // Convert route ID to number and ensure employee ID is a string
-    const cleanRouteId = Number(routeId);
+    // Clean and validate both IDs as strings (cuid format)
+    const cleanRouteId = String(routeId).trim();
     const cleanEmployeeId = String(employeeId).trim();
 
-    // Validate route ID is a valid number
-    if (isNaN(cleanRouteId) || cleanRouteId <= 0) {
+    // Validate route ID is not empty or NaN
+    if (!cleanRouteId || cleanRouteId === 'NaN') {
       throw new Error('Invalid route ID');
     }
 

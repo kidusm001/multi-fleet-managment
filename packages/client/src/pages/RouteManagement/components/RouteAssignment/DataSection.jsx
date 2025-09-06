@@ -144,6 +144,11 @@ function DataSection({
       setLoading(true);
       setError(null);
       try {
+        // Validate that selectedShift is a valid string ID
+        if (typeof selectedShift !== 'string' || selectedShift.trim() === '' || selectedShift === 'NaN') {
+          throw new Error("Invalid shift ID");
+        }
+
         const response = await getUnassignedEmployeesByShift(selectedShift);
         setAvailableEmployees(response.data);
       } catch (err) {
@@ -171,9 +176,9 @@ function DataSection({
         throw new Error("Route ID and Employee ID are required");
       }
 
-      // Clean and validate route ID
-      const cleanRouteId = Number(routeId);
-      if (isNaN(cleanRouteId) || cleanRouteId <= 0) {
+      // Clean and validate route ID (cuid format)
+      const cleanRouteId = String(routeId).trim();
+      if (!cleanRouteId || cleanRouteId === 'NaN') {
         throw new Error("Invalid route ID");
       }
 
@@ -222,8 +227,10 @@ function DataSection({
       const updatedRoute = await routeService.getRouteById(cleanRouteId);
 
       // Refresh the available employees list
-      const response = await getUnassignedEmployeesByShift(selectedShift);
-      setAvailableEmployees(response.data);
+      if (typeof selectedShift === 'string' && selectedShift.trim() !== '' && selectedShift !== 'NaN') {
+        const response = await getUnassignedEmployeesByShift(selectedShift);
+        setAvailableEmployees(response.data);
+      }
 
       // Notify parent component to update routes with the full updated route data
       onRouteUpdate(updatedRoute);

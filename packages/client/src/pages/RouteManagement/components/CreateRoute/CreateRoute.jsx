@@ -118,14 +118,14 @@ function CreateRoute() {
     if (selectedShift) {
       const fetchShiftData = async () => {
         try {
-          const shiftId = Number(selectedShift);
-          if (isNaN(shiftId)) {
+          // Validate selectedShift is a valid string ID
+          if (!selectedShift || typeof selectedShift !== 'string' || selectedShift.trim() === '' || selectedShift === 'NaN') {
             throw new Error("Invalid shift ID");
           }
 
           const [employeesResponse, routesResponse] = await Promise.all([
-            getUnassignedEmployeesByShift(shiftId),
-            getRoutesByShift(shiftId),
+            getUnassignedEmployeesByShift(selectedShift),
+            getRoutesByShift(selectedShift),
           ]);
 
           setEmployees(employeesResponse.data);
@@ -182,9 +182,9 @@ function CreateRoute() {
       await createRoute(routeApiData);
 
       // Refresh the employees list to update assignments
-      if (selectedShift) {
+      if (selectedShift && typeof selectedShift === 'string' && selectedShift.trim() !== '') {
         const employeesResponse = await getUnassignedEmployeesByShift(
-          Number(selectedShift)
+          selectedShift
         );
         setEmployees(employeesResponse.data);
       }

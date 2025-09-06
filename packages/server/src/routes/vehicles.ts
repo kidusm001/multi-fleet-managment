@@ -774,6 +774,55 @@ router.get('/', requireAuth, async (req: Request, res: Response) => {
 });
 
 /**
+ * @route   GET /available
+ * @desc    Get all available vehicles in the user's organization
+ * @access  Private (User)
+ */
+router.get('/available', requireAuth, async (req: Request, res: Response) => {
+    try {
+        const activeOrgId = req.session?.session?.activeOrganizationId;
+        if (!activeOrgId) {
+            return res.status(400).json({ message: 'Active organization not found' });
+        }
+
+        const hasPermission = await auth.api.hasPermission({
+            headers: await fromNodeHeaders(req.headers),
+            body: { permissions: { vehicle: ["read"] } }
+        });
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
+
+        const availableVehicles = await prisma.vehicle.findMany({
+            where: {
+                organizationId: activeOrgId,
+                status: VehicleStatus.AVAILABLE,
+                deleted: false,
+                isActive: true,
+                routes: {
+                    none: {
+                        status: 'ACTIVE',
+                        deleted: false
+                    }
+                }
+            },
+            include: {
+                category: true,
+                driver: true
+            },
+            orderBy: {
+                plateNumber: 'asc'
+            }
+        });
+
+        res.json(availableVehicles);
+    } catch (error) {
+        console.error('Error fetching available vehicles:', error);
+        res.status(500).json({ error: 'Failed to fetch available vehicles' });
+    }
+});
+
+/**
  * @route   GET /:id
  * @desc    Get a specific vehicle by ID
  * @access  Private (User)
@@ -1232,55 +1281,6 @@ router.get('/maintenance', requireAuth, async (req: Request, res: Response) => {
     } catch (error) {
         console.error('Error fetching maintenance schedule:', error);
         res.status(500).json({ error: 'Failed to fetch maintenance schedule' });
-    }
-});
-
-/**
- * @route   GET /available
- * @desc    Get all available vehicles in the user's organization
- * @access  Private (User)
- */
-router.get('/available', requireAuth, async (req: Request, res: Response) => {
-    try {
-        const activeOrgId = req.session?.session?.activeOrganizationId;
-        if (!activeOrgId) {
-            return res.status(400).json({ message: 'Active organization not found' });
-        }
-
-        const hasPermission = await auth.api.hasPermission({
-            headers: await fromNodeHeaders(req.headers),
-            body: { permissions: { vehicle: ["read"] } }
-        });
-        if (!hasPermission.success) {
-            return res.status(403).json({ message: 'Unauthorized' });
-        }
-
-        const availableVehicles = await prisma.vehicle.findMany({
-            where: {
-                organizationId: activeOrgId,
-                status: VehicleStatus.AVAILABLE,
-                deleted: false,
-                isActive: true,
-                routes: {
-                    none: {
-                        status: 'ACTIVE',
-                        deleted: false
-                    }
-                }
-            },
-            include: {
-                category: true,
-                driver: true
-            },
-            orderBy: {
-                plateNumber: 'asc'
-            }
-        });
-
-        res.json(availableVehicles);
-    } catch (error) {
-        console.error('Error fetching available vehicles:', error);
-        res.status(500).json({ error: 'Failed to fetch available vehicles' });
     }
 });
 

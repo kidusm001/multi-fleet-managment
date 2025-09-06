@@ -66,12 +66,14 @@ function RouteAssignment({ refreshTrigger }) {
     setLoading(true);
     setError(null);
     try {
-      const shiftId = Number(selectedShift);
-      if (isNaN(shiftId)) throw new Error("Invalid shift ID");
+      // Validate selectedShift is a valid string ID
+      if (!selectedShift || typeof selectedShift !== 'string' || selectedShift.trim() === '' || selectedShift === 'NaN') {
+        throw new Error("Invalid shift ID");
+      }
 
       const [employeesResponse, routesResponse] = await Promise.all([
-        getUnassignedEmployeesByShift(shiftId),
-        getRoutesByShift(shiftId),
+        getUnassignedEmployeesByShift(selectedShift),
+        getRoutesByShift(selectedShift),
       ]);
 
       const routes = routesResponse.data;

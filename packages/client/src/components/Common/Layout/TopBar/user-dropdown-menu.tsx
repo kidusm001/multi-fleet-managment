@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@lib/utils";
-import { User, Settings, LogOut, ChevronDown } from "lucide-react";
+import { User, Settings, LogOut, ChevronDown, Building2 } from "lucide-react";
 import { authClient } from "@lib/auth-client";
 import { useTheme } from "@contexts/ThemeContext";
 import {
@@ -317,6 +317,11 @@ export function UserDropdown({ username, email, role }: UserDropdownProps) {
     setIsOpen(false);
   };
 
+  const handleOrganizationsClick = () => {
+    navigate("/organizations");
+    setIsOpen(false);
+  };
+
   return (
     <>
       <UserButtonCss theme={theme} />
@@ -380,6 +385,27 @@ export function UserDropdown({ username, email, role }: UserDropdownProps) {
             )} />
             <Settings className="w-4 h-4 transition-transform group-hover:scale-110 group-hover:rotate-12" />
             <span className="font-medium">Settings</span>
+          </DropdownMenuItem>
+
+          {/* Organizations Item */}
+          <DropdownMenuItem
+            onClick={handleOrganizationsClick}
+            className={cn(
+              "dropdown-item flex items-center gap-3 px-4 py-3 text-sm transition-all", // Increased padding and gap
+              "relative cursor-pointer",
+              isDarkMode 
+                ? "text-gray-300 hover:text-blue-300 focus:text-blue-300" 
+                : "text-gray-700 hover:text-blue-600 focus:text-blue-600",
+              "group hover:pl-5 active:scale-98" // Adjusted hover padding
+            )}
+          >
+            <div className={cn(
+              "absolute left-0 top-[10%] w-1 h-[80%] rounded-full bg-blue-500",
+              "opacity-0 transition-all duration-200 scale-50",
+              "group-hover:opacity-100 group-hover:scale-100"
+            )} />
+            <Building2 className="w-4 h-4 transition-transform group-hover:scale-110" />
+            <span className="font-medium">Organizations</span>
           </DropdownMenuItem>
 
           {/* Logout Item */}

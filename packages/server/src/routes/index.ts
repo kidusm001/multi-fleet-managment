@@ -34,18 +34,18 @@ router.use((req, res, next) => {
     next();
 });
 
-router.use('/vehicles', vehicleRoutes);
-router.use('/vehicle-categories', vehicleCategoryRoutes);
+router.use('/shuttles', vehicleRoutes);
+router.use('/shuttle-categories', vehicleCategoryRoutes);
 router.use('/departments', departmentRoutes);
 router.use('/shifts', shiftRoutes);
 router.use('/employees', employeeRoutes);
 router.use('/drivers', driverRoutes);
 router.use('/stops', stopRoutes);
 router.use('/routes', routeRoutes);
-router.use('/vehicle-availability', vehicleAvailabilityRoutes);
+router.use('/shuttle-availability', vehicleAvailabilityRoutes);
 router.use('/payroll-reports', payrollReportRoutes);
 router.use('/notifications', notificationRoutes);
-router.use('/vehicle-requests', vehicleRequestRoutes);
+router.use('/shuttle-requests', vehicleRequestRoutes);
 
 // Register routes
 // router.use('/shifts', shiftRoutes);

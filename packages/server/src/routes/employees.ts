@@ -849,6 +849,45 @@ router.get('/', requireAuth, async (req: Request, res: Response) => {
 });
 
 /**
+ * @route   GET /management
+ * @desc    Get all Employee (including deleted) in the user's organization
+ * @access  Private (User)
+ */
+
+router.get('/management', requireAuth, async (req: Request, res: Response) => {
+    try {
+        const activeOrgId: string | null | undefined = req.session?.session?.activeOrganizationId;
+        if (!activeOrgId) {
+            return res.status(400).json({ message: 'No active organization found in session' });
+        }
+
+        const hasPermission = await auth.api.hasPermission({
+            headers: await fromNodeHeaders(req.headers),
+                body: {
+                    permissions: {
+                        employee: ["read"] 
+                    }
+                }
+        });
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Forbidden: Insufficient permissions' });
+        }
+        
+        const employees = await prisma.employee.findMany({
+            where: {
+                organizationId: activeOrgId,
+                deleted: true
+            },
+        })
+
+        res.json(employees);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+/**
  * @route   GET /:id
  * @desc    Get a specific Employee in a specific org by id
  * @access  Private (User)
@@ -1391,7 +1430,7 @@ router.get('/shift/:shiftId/unassigned', requireAuth, async (req: Request, res: 
             return res.status(400).json({ message: 'Active organization not found' });
         }
 
-        if (!shiftId || typeof shiftId !== 'string') {
+        if (!shiftId || typeof shiftId !== 'string' || shiftId === 'NaN' || shiftId.trim() === '') {
             return res.status(400).json({ message: 'Valid shift ID is required' });
         }
 

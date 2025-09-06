@@ -12,10 +12,8 @@ function resolveEnv() {
 }
 const env = resolveEnv();
 
-// Build API base: in dev use Vite proxy at /api; otherwise use configured backend origin + /api
-const API_BASE = env.DEV
-  ? '/api'
-  : `${(env.VITE_API_BASE || env.VITE_API_URL || 'http://localhost:3001').replace(/\/$/, '')}/api`;
+// Build API base: Always use configured backend origin + /api (no proxy)
+const API_BASE = `${(env.VITE_API_BASE || env.VITE_API_URL || 'http://localhost:3000').replace(/\/$/, '')}/api`;
 
 export const api = axios.create({
   baseURL: API_BASE,
@@ -78,23 +76,33 @@ export const getShiftById = (id) => api.get(`/shifts/${id}`);
 
 // Employees
 export const getEmployees = () => api.get('/employees');
-export const getUnassignedEmployeesByShift = (shiftId) => api.get(`/employees/shift/${Number(shiftId)}/unassigned`);
-export const getEmployeeById = (id) => api.get(`/employees/${Number(id)}`);
-export const updateEmployee = (id, data) => api.put(`/employees/${Number(id)}`, data);
+export const getUnassignedEmployeesByShift = (shiftId) => {
+  if (!shiftId || typeof shiftId !== 'string' || shiftId.trim() === '' || shiftId === 'NaN') {
+    throw new Error('Invalid shift ID provided');
+  }
+  return api.get(`/employees/shift/${shiftId}/unassigned`);
+};
+export const getEmployeeById = (id) => api.get(`/employees/${id}`);
+export const updateEmployee = (id, data) => api.put(`/employees/${id}`, data);
 
 // Routes
 export const getRoutes = () => api.get('/routes');
-export const getRoutesByShift = (shiftId) => api.get(`/routes/shift/${Number(shiftId)}`);
-export const getRouteById = (id) => api.get(`/routes/${Number(id)}`);
+export const getRoutesByShift = (shiftId) => {
+  if (!shiftId || typeof shiftId !== 'string' || shiftId.trim() === '' || shiftId === 'NaN') {
+    throw new Error('Invalid shift ID provided');
+  }
+  return api.get(`/routes/shift/${shiftId}`);
+};
+export const getRouteById = (id) => api.get(`/routes/${id}`);
 export const createRoute = (data) => api.post('/routes', data);
-export const updateRoute = (id, data) => api.put(`/routes/${Number(id)}`, data);
-export const deleteRoute = (id) => api.delete(`/routes/${Number(id)}`);
+export const updateRoute = (id, data) => api.put(`/routes/${id}`, data);
+export const deleteRoute = (id) => api.delete(`/routes/${id}`);
 
 // Shuttles
 export const getShuttles = () => api.get('/shuttles');
 export const getAvailableShuttles = () => api.get('/shuttles/available');
-export const getShuttleById = (id) => api.get(`/shuttles/${Number(id)}`);
-export const getShuttlesByCategory = (categoryId) => api.get(`/shuttles/category/${Number(categoryId)}`);
+export const getShuttleById = (id) => api.get(`/shuttles/${id}`);
+export const getShuttlesByCategory = (categoryId) => api.get(`/shuttles/category/${categoryId}`);
 
 // Clustering
 export const optimizeClusters = (shiftId, date, shuttles) =>
@@ -132,10 +140,10 @@ export const getOptimalRoute = (employees) =>
 
 // Departments
 export const getDepartments = () => api.get('/departments');
-export const getDepartmentById = (id) => api.get(`/departments/${Number(id)}`);
+export const getDepartmentById = (id) => api.get(`/departments/${id}`);
 export const createDepartment = (data) => api.post('/departments', data);
-export const updateDepartment = (id, data) => api.patch(`/departments/${Number(id)}`, data);
-export const deleteDepartment = (id) => api.delete(`/departments/${Number(id)}`);
-export const getDepartmentEmployees = (id) => api.get(`/departments/${Number(id)}/employees`);
+export const updateDepartment = (id, data) => api.patch(`/departments/${id}`, data);
+export const deleteDepartment = (id) => api.delete(`/departments/${id}`);
+export const getDepartmentEmployees = (id) => api.get(`/departments/${id}/employees`);
 
 export default api;

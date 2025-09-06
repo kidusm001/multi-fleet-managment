@@ -1,25 +1,45 @@
 import React, { useState, useMemo } from 'react';
-import { Plus, Check, ChevronDown, ChevronUp, Loader2 } from 'lucide-react';
-import { useOrganizations } from '@/contexts/OrganizationContext';
+import { useNavigate } from 'react-router-dom';
+import { Plus, Check, ChevronDown, ChevronUp, Loader2, Building2 } from 'lucide-react';
+import { authClient } from '@/lib/auth-client';
 import { cn } from '@lib/utils';
 
 export default function OrganizationSwitcher({ isDark }) {
-  const { organizations, activeOrganization, setActive, create, isLoading, error } = useOrganizations();
+  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [filter, setFilter] = useState('');
-  const [creating, setCreating] = useState(false);
+  const [switching, setSwitching] = useState(false);
+  
+  // Use better-auth organization hooks
+  const { useListOrganizations, useActiveOrganization } = authClient;
+  const { data: organizations = [], isLoading } = useListOrganizations();
+  const { data: activeOrganization } = useActiveOrganization();
+  
   const filtered = useMemo(() => {
     if (!filter) return organizations;
     return organizations.filter(o => o.name.toLowerCase().includes(filter.toLowerCase()));
   }, [organizations, filter]);
 
-  const handleCreate = async () => {
-    if (creating) return;
-    const name = prompt('Organization name');
-    if (!name || !name.trim()) return;
-    setCreating(true);
-    await create(name.trim());
-    setCreating(false);
+  const handleSwitch = async (orgId) => {
+    if (switching || orgId === activeOrganization?.id) return;
+    setSwitching(true);
+    try {
+      await authClient.organization.setActive({
+        organizationId: orgId
+      });
+      setOpen(false);
+      // Optionally refresh or redirect
+      window.location.reload();
+    } catch (error) {
+      console.error('Failed to switch organization:', error);
+    } finally {
+      setSwitching(false);
+    }
+  };
+
+  const handleManageOrganizations = () => {
+    navigate('/organizations');
+    setOpen(false);
   };
 
   return (
@@ -59,11 +79,11 @@ export default function OrganizationSwitcher({ isDark }) {
               className={cn('w-full text-sm px-2 py-1 rounded-md border outline-none', isDark ? 'bg-white/5 border-white/10 text-white placeholder:text-white/40' : 'bg-black/5 border-black/10 text-black placeholder:text-black/40')}
             />
             <button
-              onClick={handleCreate}
-              title="Create organization"
+              onClick={handleManageOrganizations}
+              title="Manage organizations"
               className={cn('p-1.5 rounded-md border', isDark ? 'border-white/10 hover:bg-white/10 text-white' : 'border-black/10 hover:bg-black/10 text-black')}
             >
-              {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+              <Building2 className="h-4 w-4" />
             </button>
           </div>
           <div className="max-h-64 overflow-y-auto pr-1 space-y-1">
@@ -72,24 +92,45 @@ export default function OrganizationSwitcher({ isDark }) {
               return (
                 <button
                   key={org.id}
-                  onClick={async () => { if (!active) await setActive(org.id); setOpen(false); }}
+                  onClick={() => handleSwitch(org.id)}
+                  disabled={switching}
                   className={cn(
-                    'w-full flex items-center justify-between text-left px-2 py-1.5 rounded-md text-sm transition-colors',
+                    'w-full flex items-center justify-between text-left px-2 py-1.5 rounded-md text-sm transition-colors disabled:opacity-50',
                     active ? (isDark ? 'bg-orange-500/20 text-orange-300' : 'bg-orange-500/15 text-orange-700') : (isDark ? 'hover:bg-white/10 text-white' : 'hover:bg-black/5 text-black')
                   )}
                   role="option"
                   aria-selected={active}
                 >
-                  <span className="truncate">{org.name}</span>
-                  {active && <Check className="h-4 w-4" />}
+                  <div className="flex-1 min-w-0">
+                    <div className="truncate font-medium">{org.name}</div>
+                    <div className={cn("text-xs truncate", isDark ? "text-white/60" : "text-black/60")}>
+                      @{org.slug}
+                    </div>
+                  </div>
+                  {switching && active ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : active ? (
+                    <Check className="h-4 w-4" />
+                  ) : null}
                 </button>
               );
             })}
             {!isLoading && filtered.length === 0 && (
-              <div className={cn('text-xs px-2 py-4 text-center rounded-md border', isDark ? 'border-white/10 text-white/50' : 'border-black/10 text-black/50')}>No organizations</div>
+              <div className={cn('text-xs px-2 py-4 text-center rounded-md border', isDark ? 'border-white/10 text-white/50' : 'border-black/10 text-black/50')}>
+                {filter ? 'No matching organizations' : 'No organizations found'}
+              </div>
             )}
-            {error && (
-              <div className="text-xs text-red-500 px-2 py-1">{error}</div>
+            {!organizations.length && !isLoading && (
+              <button
+                onClick={handleManageOrganizations}
+                className={cn(
+                  'w-full flex items-center gap-2 justify-center px-2 py-3 rounded-md border text-sm transition-colors',
+                  isDark ? 'border-white/10 hover:bg-white/10 text-white' : 'border-black/10 hover:bg-black/5 text-black'
+                )}
+              >
+                <Plus className="h-4 w-4" />
+                Create your first organization
+              </button>
             )}
           </div>
         </div>

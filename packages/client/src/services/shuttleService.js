@@ -14,6 +14,38 @@ class ShuttleService {
     }));
   }
 
+  // Helper method to map frontend vehicle types to backend schema
+  mapVehicleType(type) {
+    const typeMap = {
+      'in-house': 'IN_HOUSE',
+      'in_house': 'IN_HOUSE',
+      'outsourced': 'OUTSOURCED',
+      'IN_HOUSE': 'IN_HOUSE',
+      'OUTSOURCED': 'OUTSOURCED'
+    };
+    return typeMap[type] || 'IN_HOUSE';
+  }
+
+  // Helper method to map frontend vehicle status to backend schema
+  mapVehicleStatus(status) {
+    const statusMap = {
+      'active': 'AVAILABLE',
+      'available': 'AVAILABLE',
+      'in-use': 'IN_USE',
+      'in_use': 'IN_USE',
+      'maintenance': 'MAINTENANCE',
+      'out-of-service': 'OUT_OF_SERVICE',
+      'out_of_service': 'OUT_OF_SERVICE',
+      'inactive': 'INACTIVE',
+      'AVAILABLE': 'AVAILABLE',
+      'IN_USE': 'IN_USE',
+      'MAINTENANCE': 'MAINTENANCE',
+      'OUT_OF_SERVICE': 'OUT_OF_SERVICE',
+      'INACTIVE': 'INACTIVE'
+    };
+    return statusMap[status] || 'AVAILABLE';
+  }
+
   // Helper function to debounce updates
   async debounceUpdate(shuttleId, updateFn) {
     if (this.pendingUpdates.has(shuttleId)) {
@@ -82,17 +114,25 @@ class ShuttleService {
           return response.data;
         }
 
-        // Format the update data with strict type handling
+        // Format the update data according to vehicle schema
         const formattedData = {};
         
         // Only include fields that are actually being updated
         if (updates.name !== undefined) formattedData.name = updates.name.trim();
         if (updates.model !== undefined) formattedData.model = updates.model.trim();
-        if (updates.licensePlate !== undefined) formattedData.licensePlate = updates.licensePlate.trim().toUpperCase();
-        if (updates.categoryId !== undefined) formattedData.categoryId = Number(updates.categoryId);
-        if (updates.type !== undefined) formattedData.type = updates.type;
-        if (updates.vendor !== undefined) formattedData.vendor = updates.type === 'outsourced' ? updates.vendor.trim() : null;
+        if (updates.plateNumber !== undefined) formattedData.plateNumber = updates.plateNumber.trim().toUpperCase();
+        if (updates.licensePlate !== undefined) formattedData.plateNumber = updates.licensePlate.trim().toUpperCase(); // Map licensePlate to plateNumber
+        if (updates.make !== undefined) formattedData.make = updates.make.trim();
+        if (updates.capacity !== undefined) formattedData.capacity = Number(updates.capacity);
+        if (updates.year !== undefined) formattedData.year = Number(updates.year);
+        if (updates.categoryId !== undefined) formattedData.categoryId = updates.categoryId;
+        if (updates.driverId !== undefined) formattedData.driverId = updates.driverId;
+        if (updates.type !== undefined) formattedData.type = this.mapVehicleType(updates.type);
+        if (updates.vendor !== undefined) formattedData.vendor = this.mapVehicleType(updates.type) === 'OUTSOURCED' ? updates.vendor.trim() : null;
         if (updates.dailyRate !== undefined) formattedData.dailyRate = Number(updates.dailyRate || 0);
+        if (updates.status !== undefined) formattedData.status = this.mapVehicleStatus(updates.status);
+        if (updates.lastMaintenance !== undefined) formattedData.lastMaintenance = updates.lastMaintenance;
+        if (updates.nextMaintenance !== undefined) formattedData.nextMaintenance = updates.nextMaintenance;
 
         console.log('Sending formatted data:', formattedData);
         
@@ -114,15 +154,36 @@ class ShuttleService {
 
     console.log('Sending shuttle data to API:', shuttleData);
     try {
-      // Ensure capacity is a number and status is included
+      // Format data according to vehicle schema requirements
       const formattedData = {
-        ...shuttleData,
+        plateNumber: shuttleData.plateNumber?.trim() || shuttleData.licensePlate?.trim(), // Handle both field names
+        model: shuttleData.model?.trim(),
         capacity: parseInt(shuttleData.capacity),
-        status: shuttleData.status || 'active',
-        dailyRate: parseFloat(shuttleData.dailyRate)
+        // Optional fields
+        name: shuttleData.name?.trim() || undefined,
+        make: shuttleData.make?.trim() || undefined,
+        type: this.mapVehicleType(shuttleData.type) || 'IN_HOUSE', // Map and default to IN_HOUSE
+        vendor: shuttleData.vendor?.trim() || undefined,
+        year: shuttleData.year ? parseInt(shuttleData.year) : undefined,
+        status: this.mapVehicleStatus(shuttleData.status) || 'AVAILABLE', // Map and default to AVAILABLE
+        dailyRate: shuttleData.dailyRate ? parseFloat(shuttleData.dailyRate) : undefined,
+        categoryId: shuttleData.categoryId || undefined,
+        driverId: shuttleData.driverId || undefined,
+        lastMaintenance: shuttleData.lastMaintenance || undefined,
+        nextMaintenance: shuttleData.nextMaintenance || undefined
       };
 
+      // Remove undefined values to avoid sending unnecessary fields
+      Object.keys(formattedData).forEach(key => {
+        if (formattedData[key] === undefined) {
+          delete formattedData[key];
+        }
+      });
+
+      console.log('Formatted data according to schema:', formattedData);
+
       const response = await api.post('/shuttles', formattedData);
+      return response.data;
       return response.data;
     } catch (error) {
       console.error('Error response:', error.response?.data);

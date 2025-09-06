@@ -31,6 +31,7 @@ export const ROUTES = {
   EMPLOYEES: '/employees',
   DRIVERS: '/driver-management',
   PAYROLL: '/payroll',
+  ORGANIZATIONS: '/organizations',
   // NOTIFICATIONS: '/notifications', // Disabled - not implemented on server yet
   SETTINGS: '/settings'
 };
