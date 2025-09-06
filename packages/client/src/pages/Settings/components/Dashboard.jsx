@@ -42,13 +42,8 @@ export default function Dashboard() {
       (user?.roles?.includes?.("admin")) || 
       (user?.isAdmin === true);
 
-    // Only redirect if we're certain the user is authenticated but NOT an admin
-    if (isAuthenticated === true && !isAdmin) {
-      navigate("/unauthorized", { replace: true });
-    }
-
-    // If authenticated and is admin, set flag to show admin content
-    if (isAuthenticated === true && isAdmin) {
+    // Allow access to all authenticated users
+    if (isAuthenticated === true) {
       setShowAdminContent(true);
     }
   }, [isAuthenticated, navigate, user]);

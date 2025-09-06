@@ -174,12 +174,12 @@ const MobileNavMenu = ({ isOpen, onClose, isDark }) => {
                       ref={index === 0 ? firstLinkRef : null}
                       to={item.path}
                       onClick={(e) => {
-                        // Hard reload workaround when leaving notifications page
-                        if (location.pathname === '/notifications' && item.path !== '/notifications') {
-                          e.preventDefault();
-                          window.location.href = item.path;
-                          return;
-                        }
+                        // Removed notifications-specific hard reload workaround since notifications are disabled
+                        // if (location.pathname === '/notifications' && item.path !== '/notifications') {
+                        //   e.preventDefault();
+                        //   window.location.href = item.path;
+                        //   return;
+                        // }
                         handleLinkClick();
                       }}
                     className={cn(

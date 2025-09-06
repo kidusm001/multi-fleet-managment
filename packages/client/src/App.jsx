@@ -3,6 +3,10 @@ import { BrowserRouter as Router, Routes, Route, useLocation, Outlet } from "rea
 import { ProtectedRoute } from '@components/Common/ProtectedRoute';
 import { ROLES } from '@data/constants';
 import { AuthRoute } from '@components/Common/AuthRoute';
+
+// NOTE: Notifications are temporarily disabled since they're not implemented on the server yet
+// All notification-related imports, providers, and routes have been commented out
+
 // Layout Components
 import Footer from "@components/Common/Layout/Footer";
 import ErrorBanner from '@components/Common/Organizations/ErrorBanner';
@@ -20,7 +24,7 @@ const Payroll = lazy(() => import('@pages/Payroll'));
 const Settings = lazy(() => import('@pages/Settings'));
 const Login = lazy(() => import('@pages/Auth/Login'));
 const Signup = lazy(() => import('@pages/Auth/Signup'));
-const NotificationDashboard = lazy(() => import('@pages/notifications/components/notification-dashboard').then(m => ({ default: m.NotificationDashboard })));
+// const NotificationDashboard = lazy(() => import('@pages/notifications/components/notification-dashboard').then(m => ({ default: m.NotificationDashboard })));
 // Context
 import { RoleProvider } from "@contexts/RoleContext";
 import { OrganizationProvider } from "@contexts/OrganizationContext";
@@ -28,10 +32,10 @@ import { orgsEnabled } from '@lib/organization/flags';
 import { ThemeProvider, useTheme } from "@contexts/ThemeContext";
 import { AuthProvider } from "@contexts/AuthContext";
 import { Toaster } from 'sonner';
-import { NotificationProvider } from "@contexts/NotificationContext";
+// import { NotificationProvider } from "@contexts/NotificationContext";
 import { ToastProvider } from '@contexts/ToastContext';
 import Unauthorized from "@pages/Unauthorized";
-import { NotificationSound } from "@components/Common/Notifications/NotificationSound";
+// import { NotificationSound } from "@components/Common/Notifications/NotificationSound";
 
 // Styles
 import "@styles/App.css";
@@ -60,21 +64,22 @@ function AppContent() {
   // Track previous path to detect leaving /notifications
   const prevPathRef = React.useRef(location.pathname);
   useEffect(() => {
-    try {
-      // If leaving /notifications, attempt normal transition first, then verify DOM state
-      if (prevPathRef.current === '/notifications' && location.pathname !== '/notifications') {
-        // Short delay to allow React Router to unmount the component
-        setTimeout(() => {
-          const stale = document.querySelector('.notifications-page');
-          if (stale) {
-            window.location.href = location.pathname + location.search;
-          }
-        }, 140);
-      }
-      prevPathRef.current = location.pathname;
-    } catch (e) {
-      // ignore
-    }
+    // Commented out notification-specific cleanup since notifications are disabled
+    // try {
+    //   // If leaving /notifications, attempt normal transition first, then verify DOM state
+    //   if (prevPathRef.current === '/notifications' && location.pathname !== '/notifications') {
+    //     // Short delay to allow React Router to unmount the component
+    //     setTimeout(() => {
+    //       const stale = document.querySelector('.notifications-page');
+    //       if (stale) {
+    //         window.location.href = location.pathname + location.search;
+    //       }
+    //     }, 140);
+    //   }
+    //   prevPathRef.current = location.pathname;
+    // } catch (e) {
+    //   // ignore
+    // }
   }, [location]);
 
   return (
@@ -103,10 +108,10 @@ function AppContent() {
         <Route
           element={
             <AuthRoute>
-              <NotificationProvider>
-                <NotificationSound />
+              {/* <NotificationProvider> */}
+                {/* <NotificationSound /> */}
                 <ProtectedLayout isDark={isDark} />
-              </NotificationProvider>
+              {/* </NotificationProvider> */}
             </AuthRoute>
           }
         >
@@ -150,10 +155,10 @@ function AppContent() {
             path="payroll"
             element={<Suspense fallback={<div />}> <Payroll /> </Suspense>}
           />
-          <Route
+          {/* <Route
             path="notifications"
             element={<Suspense fallback={<div />}> <NotificationDashboard /> </Suspense>}
-          />
+          /> */}
           <Route
             path="settings"
             element={<Suspense fallback={<div />}> <Settings /> </Suspense>}

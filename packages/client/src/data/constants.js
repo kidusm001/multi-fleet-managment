@@ -13,8 +13,8 @@ export const MAP_CONFIG = {
 export const MAPBOX_ACCESS_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
 
 export const ROLES = {
-  ADMIN: 'admin',
-  MANAGER: 'fleetManager'
+  ADMIN: 'user',
+  MANAGER: 'user'
 };
 
 export const ROLE_LABELS = {
@@ -31,6 +31,7 @@ export const ROUTES = {
   EMPLOYEES: '/employees',
   DRIVERS: '/driver-management',
   PAYROLL: '/payroll',
+  // NOTIFICATIONS: '/notifications', // Disabled - not implemented on server yet
   SETTINGS: '/settings'
 };
 
