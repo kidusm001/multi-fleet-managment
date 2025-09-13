@@ -1611,6 +1611,7 @@ router.patch('/:id/restore', requireAuth, validateSchema(EmployeeIdParam, 'param
                 deletedAt: null
             },
             include: {
+                organization: true,
                 user: {
                     select: {
                         id: true,
@@ -1626,7 +1627,7 @@ router.patch('/:id/restore', requireAuth, validateSchema(EmployeeIdParam, 'param
             }
         });
 
-        res.json({ message: 'Employee restored successfully', employee });
+        res.json(employee);
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Internal Server Error' });

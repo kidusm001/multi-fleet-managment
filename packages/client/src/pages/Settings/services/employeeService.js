@@ -175,7 +175,8 @@ class EmployeeService {
     const rawEmployees = safeParseEmployees(response.data);
     const employees = rawEmployees.map(emp => ({
       ...emp,
-      assigned: Boolean(emp.shuttle || emp.assigned)
+      assigned: Boolean(emp.shuttle || emp.assigned),
+      status: emp.deleted ? 'inactive' : (emp.status || 'active')
     }));
     
     this.cache.managementEmployees = employees;
@@ -451,7 +452,7 @@ class EmployeeService {
    * @returns {Promise<Object>} Updated employee data
    */
   activateEmployee = AsyncHandler(async (employeeId) => {
-    const response = await api.post(`/employees/${employeeId}/restore`);
+    const response = await api.patch(`/employees/${employeeId}/restore`);
     this.clearCache();
     return safeParseEmployee(response.data);
   });

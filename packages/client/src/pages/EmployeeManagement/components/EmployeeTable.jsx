@@ -170,6 +170,16 @@ export function EmployeeTable({
             Inactive
           </Badge>
         );
+      case "removed":
+      case "deleted":
+        return (
+          <Badge
+            variant="destructive"
+            className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300 px-3 py-1 font-medium"
+          >
+            Removed
+          </Badge>
+        );
       default:
         return (
           <Badge
