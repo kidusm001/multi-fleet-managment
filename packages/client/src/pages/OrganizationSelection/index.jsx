@@ -12,9 +12,6 @@ import {
   Search, 
   ChevronRight, 
   Users, 
-  Crown,
-  Shield,
-  User,
   Loader2,
   AlertCircle,
   LogOut
@@ -67,18 +64,6 @@ export default function OrganizationSelection() {
     org.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     org.slug.toLowerCase().includes(searchTerm.toLowerCase())
   ) || [];
-
-  // Get role icon and label
-  const getRoleInfo = (role) => {
-    switch (role?.toLowerCase()) {
-      case 'owner':
-        return { icon: Crown, label: 'Owner', color: 'text-yellow-500' };
-      case 'admin':
-        return { icon: Shield, label: 'Admin', color: 'text-blue-500' };
-      default:
-        return { icon: User, label: 'Member', color: 'text-gray-500' };
-    }
-  };
 
   // Handle organization selection
   const handleSelectOrganization = async (org) => {
@@ -266,9 +251,6 @@ export default function OrganizationSelection() {
             </Card>
           ) : (
             filteredOrganizations.map((org) => {
-              const member = org.members?.find(m => m.userId === session.user.id);
-              const roleInfo = getRoleInfo(member?.role);
-              const RoleIcon = roleInfo.icon;
               const isActive = activeOrganization?.id === org.id;
 
               return (
@@ -317,18 +299,6 @@ export default function OrganizationSelection() {
 
                       {/* Role and Members */}
                       <div className="flex items-center space-x-4 text-sm">
-                        <div className="flex items-center space-x-1">
-                          <RoleIcon className={cn("w-4 h-4", roleInfo.color)} />
-                          <span className="text-muted-foreground">{roleInfo.label}</span>
-                        </div>
-                        
-                        <div className="flex items-center space-x-1">
-                          <Users className="w-4 h-4 text-muted-foreground" />
-                          <span className="text-muted-foreground">
-                            {org.memberCount || org.members?.length || 0}
-                          </span>
-                        </div>
-
                         <ChevronRight className="w-4 h-4 text-muted-foreground" />
                       </div>
                     </div>

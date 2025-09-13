@@ -77,7 +77,6 @@ export default function EmployeeUploadSection({
     phone: "",
     departmentId: "",
     shiftId: "",
-    position: "",
     location: "",
     ...DEFAULT_POSITION
   });

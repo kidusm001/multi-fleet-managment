@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 
 import { createAuthClient } from "better-auth/react";
-import { adminClient, organizationClient } from "better-auth/client/plugins";
+import { adminClient, organizationClient, genericOAuthClient } from "better-auth/client/plugins";
 import { OrgAc, AdminAc, superadmin, user, owner, admin as organizationAdmin, manager, driver, employee } from "./permissions";
 export const authClient = createAuthClient({
   baseURL: "http://localhost:3000",
@@ -22,7 +22,8 @@ export const authClient = createAuthClient({
                 driver,
                 employee,
             }
-    })
+    }),
+    genericOAuthClient()
   ],
 });
 

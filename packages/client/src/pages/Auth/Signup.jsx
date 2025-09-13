@@ -84,6 +84,18 @@ export default function Signup() {
         }
     };
 
+    const handleFaydaSignIn = async () => {
+        setError(null);
+        try {
+            await authClient.signIn.oauth2({
+                providerId: 'fayda',
+                callbackURL: '/dashboard'
+            });
+        } catch (error) {
+            setError(error.message || 'Failed to sign in with Fayda');
+        }
+    };
+
     return (
         <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-gradient-to-br from-slate-950 via-[#1a2327] to-[#1a2327] overflow-hidden">
             <motion.div initial={{ y: -10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="mb-8 relative z-10">
@@ -219,11 +231,47 @@ export default function Signup() {
                                 <div className="absolute inset-0 -z-10 bg-gradient-to-r from-[#f3684e]/0 via-white/10 to-[#f3684e]/0 group-hover:via-white/20 transition-all duration-500 translate-x-[-100%] group-hover:translate-x-[100%]" />
                             </Button>
                         </motion.div>
+
+                        {/* Divider */}
+                        <motion.div 
+                            className="flex items-center my-6 w-full"
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.55 }}
+                        >
+                            <div className="flex-1 border-t border-white/20"></div>
+                            <span className="px-4 text-white/50 text-sm">or</span>
+                            <div className="flex-1 border-t border-white/20"></div>
+                        </motion.div>
+
+                        {/* Fayda Sign In Button */}
+                        <motion.div
+                            className="mb-6 w-full"
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 0.6 }}
+                        >
+                            <Button
+                                onClick={handleFaydaSignIn}
+                                className="relative overflow-hidden group bg-white hover:bg-gray-50 text-[#073B51] py-3.5 rounded-xl transition-all duration-300 shadow-lg hover:shadow-xl active:scale-[0.98] w-full border border-gray-200"
+                                disabled={isLoading}
+                            >
+                                <span className="relative z-10 flex items-center justify-center">
+                                    <img 
+                                        src="/assets/images/fayda.png" 
+                                        alt="Fayda" 
+                                        className="w-5 h-5 mr-2 object-contain rounded-full"
+                                    />
+                                    Continue with Fayda
+                                </span>
+                                <div className="absolute inset-0 -z-10 bg-gradient-to-r from-gray-100/0 via-gray-200/10 to-gray-100/0 group-hover:via-gray-200/20 transition-all duration-500 translate-x-[-100%] group-hover:translate-x-[100%]" />
+                            </Button>
+                        </motion.div>
                         <motion.div
                             className="mt-6 text-center"
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: 0.6 }}
+                            transition={{ delay: 0.65 }}
                         >
                             <p className="text-white/70">
                                 Already have an account?{" "}

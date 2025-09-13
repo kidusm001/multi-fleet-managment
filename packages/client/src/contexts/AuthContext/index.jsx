@@ -7,6 +7,7 @@ const AuthContext = createContext({
   login: () => {},
   logout: () => {},
   loginWithEmail: () => {},
+  loginWithFayda: () => {},
 });
 
 export function AuthProvider({ children }) {
@@ -80,6 +81,18 @@ export function AuthProvider({ children }) {
     }
   };
 
+  const loginWithFayda = async (callbackURL = '/') => {
+    try {
+      await authClient.signIn.oauth2({
+        providerId: 'fayda',
+        callbackURL
+      });
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error.message || 'Failed to sign in with Fayda' };
+    }
+  };
+
   return (
     <AuthContext.Provider 
       value={{ 
@@ -88,6 +101,7 @@ export function AuthProvider({ children }) {
         login, 
         logout, 
         loginWithEmail,
+        loginWithFayda,
         isLoading: isPending 
       }}
     >

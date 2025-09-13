@@ -240,25 +240,6 @@ export default function SingleEmployeeForm({
             )}
           </div>
           
-          {/* Position field */}
-          <div className="space-y-2">
-            <Label htmlFor="position" className="flex items-center gap-2">
-              <Briefcase className="h-4 w-4 text-gray-400" />
-              Position
-            </Label>
-            <Input
-              id="position"
-              name="position"
-              value={employee.position}
-              onChange={onEmployeeChange}
-              placeholder="Software Developer"
-              className={cn(
-                isDark ? "bg-gray-900 border-gray-700" : "bg-white",
-                placeholderClasses
-              )}
-            />
-          </div>
-
           {/* Location field with map picker */}
           <div className="space-y-2">
             <Label htmlFor="location" className="flex items-center gap-2">

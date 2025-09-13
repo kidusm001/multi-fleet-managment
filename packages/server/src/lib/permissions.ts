@@ -57,6 +57,8 @@ export const Orgstatements = {
     
     analytics: ["read", "export", "dashboard", "reports"],
     reports: ["create", "read", "export", "schedule"],
+
+    sys_user: ["list"],
     
     data: ["read", "write", "export", "import", "backup", "restore"],
 } as const;
@@ -120,6 +122,8 @@ export const owner = OrgAc.newRole({
     
     analytics: ["read", "export", "dashboard", "reports"],
     reports: ["create", "read", "export", "schedule"],
+
+    sys_user: ["list"],
     
     ...ownerAc.statements,
 });
@@ -146,6 +150,8 @@ export const admin = OrgAc.newRole({
     
     analytics: ["read", "export", "dashboard", "reports"],
     reports: ["create", "read", "export", "schedule"],
+
+    sys_user: ["list"],
     
     ...organizationAdminAc.statements,
 });

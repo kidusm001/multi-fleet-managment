@@ -26,6 +26,57 @@ export function createApp() {
 
     app.use(cors(corsOptions));
 
+    // Fayda OAuth callback redirector for development
+    // The development Fayda client is configured to redirect to /callback
+    // but Better Auth expects /api/auth/oauth2/callback/fayda
+    app.get('/callback', (req, res) => {
+        console.log('🔄 Fayda callback received:', req.originalUrl);
+        console.log('📋 Query params:', req.query);
+        
+        // req.originalUrl contains the full path and query string, e.g., "/callback?code=ABC123&state=XYZ"
+        // We just need to extract the query string part.
+        const queryString = req.originalUrl.substring(req.path.length); // Gets "?code=ABC123&state=XYZ"
+
+        // This is the actual endpoint your better-auth library is listening on
+        const targetUrl = `/api/auth/oauth2/callback/fayda${queryString}`;
+        
+        console.log('➡️  Redirecting to:', targetUrl);
+
+        // Perform a 302 (temporary) redirect to the correct URL
+        res.redirect(targetUrl);
+    });
+
+    // Intercept the root redirect after successful OAuth and redirect to client
+    app.get('/', (req, res) => {
+        console.log('🔍 Root request received');
+        console.log('🍪 Cookies:', req.headers.cookie);
+        console.log('🔗 Referer:', req.headers.referer);
+        
+        // Check if this is a post-OAuth redirect (has session cookies)
+        const hasAuthCookies = req.headers.cookie && (
+            req.headers.cookie.includes('better-auth.session_token') ||
+            req.headers.cookie.includes('session') ||
+            req.headers.cookie.includes('better-auth')
+        );
+        
+        // Also check if the referer suggests this came from an OAuth callback
+        const fromOAuthCallback = req.headers.referer && 
+            req.headers.referer.includes('/api/auth/oauth2/callback');
+        
+        if (hasAuthCookies || fromOAuthCallback) {
+            console.log('✅ Detected post-OAuth redirect, sending to client');
+            res.redirect('http://localhost:5173/');
+        } else {
+            console.log('📄 Root request without auth context');
+            res.status(404).json({ 
+                message: 'This is the API server. Frontend is at http://localhost:5173',
+                endpoints: [
+                    'GET /api/auth/* - Authentication endpoints',
+                    'GET /health - Health check'
+                ]
+            });
+        }
+    });
 
     app.all("/api/auth/*splat", toNodeHandler(auth));
 

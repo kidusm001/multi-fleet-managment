@@ -11,6 +11,7 @@ import vehicleAvailabilityRoutes from './vehicle-availability';
 import payrollReportRoutes from './payroll-reports';
 import notificationRoutes from './notifications';
 import vehicleRequestRoutes from './vehicle-requests';
+import userRoutes from './users';
 // import shiftRoutes from './shiftRoutes';
 // import employeeRoutes from './employeeRoutes';
 // import routeRoutes from './routeRoutes';
@@ -46,6 +47,7 @@ router.use('/shuttle-availability', vehicleAvailabilityRoutes);
 router.use('/payroll-reports', payrollReportRoutes);
 router.use('/notifications', notificationRoutes);
 router.use('/shuttle-requests', vehicleRequestRoutes);
+router.use('/users', userRoutes);
 
 // Register routes
 // router.use('/shifts', shiftRoutes);

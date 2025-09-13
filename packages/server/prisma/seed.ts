@@ -25,10 +25,7 @@ const prisma = new PrismaClient()
  * - Fleet analytics and reporting data
  */
 
-// Helper function to generate consistent IDs for seed data
-function generateSeedId(prefix: string, suffix: string): string {
-  return `${prefix}-${suffix}`
-}
+
 
 // Helper function to get current date with time set to start of day
 function getToday(): Date {
@@ -113,18 +110,15 @@ async function createDepartmentsAndShifts(org: any) {
 
   // Create departments specific to fleet management
   const departments = [
-    { id: generateSeedId('dept', `ops-${org.id}`), name: 'Fleet Operations', orgId: org.id },
-    { id: generateSeedId('dept', `maint-${org.id}`), name: 'Vehicle Maintenance', orgId: org.id },
-    { id: generateSeedId('dept', `admin-${org.id}`), name: 'Administration', orgId: org.id },
+    { name: 'Fleet Operations', orgId: org.id },
+    { name: 'Vehicle Maintenance', orgId: org.id },
+    { name: 'Administration', orgId: org.id },
   ]
 
   const createdDepartments: any[] = []
   for (const dept of departments) {
-    const department = await prisma.department.upsert({
-      where: { id: dept.id },
-      update: { name: dept.name, organizationId: dept.orgId },
-      create: { 
-        id: dept.id, 
+    const department = await prisma.department.create({
+      data: { 
         name: dept.name, 
         organizationId: dept.orgId 
       },
@@ -136,19 +130,16 @@ async function createDepartmentsAndShifts(org: any) {
   const now = new Date()
   const shifts = [
     {
-      id: generateSeedId('shift', `morning-${org.id}`),
       name: 'Morning Shift',
       startHour: 6,
       endHour: 14
     },
     {
-      id: generateSeedId('shift', `afternoon-${org.id}`),
       name: 'Afternoon Shift', 
       startHour: 14,
       endHour: 22
     },
     {
-      id: generateSeedId('shift', `night-${org.id}`),
       name: 'Night Shift',
       startHour: 22,
       endHour: 6
@@ -162,11 +153,8 @@ async function createDepartmentsAndShifts(org: any) {
     const endTime = new Date(now)
     endTime.setHours(shiftData.endHour, 0, 0, 0)
 
-    const shift = await prisma.shift.upsert({
-      where: { id: shiftData.id },
-      update: {},
-      create: {
-        id: shiftData.id,
+    const shift = await prisma.shift.create({
+      data: {
         name: shiftData.name,
         startTime: startTime,
         endTime: endTime,
@@ -194,17 +182,8 @@ async function createEmployeesFromMembers(org: any, departments: any[], shifts: 
     const shift = getRandomElement(shifts)
 
     try {
-      await prisma.employee.upsert({
-        where: { id: generateSeedId('emp', `${member.user.id}-${org.id}`) },
-        update: { 
-          name: member.user.name,
-          departmentId: department.id, 
-          shiftId: shift.id, 
-          organizationId: org.id, 
-          userId: member.user.id 
-        },
-        create: { 
-          id: generateSeedId('emp', `${member.user.id}-${org.id}`),
+      await prisma.employee.create({
+        data: { 
           name: member.user.name, 
           location: member.role === 'admin' ? 'Head Office' : 
                    member.role === 'manager' ? 'Operations Center' : 'Field Office', 
@@ -235,7 +214,6 @@ async function createDriversFromMembers(org: any, usersByRole: any) {
       const member = driverMembers[i]
       const timestamp = Date.now()
       const licenseNumber = `DL${org.id.slice(-4)}${timestamp.toString().slice(-4)}${i.toString().padStart(2, '0')}`
-      const uniqueDriverId = generateSeedId('driver', `${member.user.id}-${org.id}-${i}`)
       
       try {
         // Check if driver already exists for this user in this organization
@@ -254,9 +232,8 @@ async function createDriversFromMembers(org: any, usersByRole: any) {
 
         const driver = await prisma.driver.create({
           data: { 
-            id: uniqueDriverId,
             name: member.user.name, 
-            email: null, // Remove email to avoid conflicts across organizations
+            email: member.user.email,
             phoneNumber: `+1-555-${String(Math.floor(Math.random() * 9000) + 1000)}-${i}`, 
             licenseNumber, 
             experienceYears: Math.floor(Math.random() * 10) + 2, 
@@ -286,17 +263,9 @@ async function createVehicleCategories(org: any) {
   ]
 
   const createdCategories: any[] = []
-  for (let i = 0; i < categories.length; i++) {
-    const cat = categories[i]
-    const category = await prisma.vehicleCategory.upsert({
-      where: { id: generateSeedId('cat', `${cat.name.toLowerCase().replace(' ', '-')}-${org.id}`) },
-      update: { 
-        name: cat.name, 
-        capacity: cat.capacity, 
-        organizationId: org.id 
-      },
-      create: { 
-        id: generateSeedId('cat', `${cat.name.toLowerCase().replace(' ', '-')}-${org.id}`),
+  for (const cat of categories) {
+    const category = await prisma.vehicleCategory.create({
+      data: { 
         name: cat.name, 
         capacity: cat.capacity, 
         organizationId: org.id 
@@ -320,8 +289,7 @@ async function createVehiclesForOrg(org: any, categories: any[], drivers: any[])
   ]
 
   const createdVehicles: any[] = []
-  for (let i = 0; i < vehicleTemplates.length; i++) {
-    const template = vehicleTemplates[i]
+  for (const template of vehicleTemplates) {
     const category = getRandomElement(categories)
     const driver = template.status === VehicleStatus.AVAILABLE && drivers.length > 0 ? 
       getRandomElement(drivers) : null
@@ -330,17 +298,8 @@ async function createVehiclesForOrg(org: any, categories: any[], drivers: any[])
     const uniquePlateNumber = `${template.plateNumber}-${org.slug.toUpperCase()}`
 
     try {
-      const vehicle = await prisma.vehicle.upsert({
-        where: { plateNumber: uniquePlateNumber },
-        update: { 
-          name: template.name, 
-          status: template.status, 
-          driverId: driver?.id, 
-          categoryId: category.id, 
-          organizationId: org.id 
-        },
-        create: { 
-          id: generateSeedId('vehicle', `${org.id}-${i}`),
+      const vehicle = await prisma.vehicle.create({
+        data: { 
           plateNumber: uniquePlateNumber, 
           name: template.name, 
           model: template.model, 
@@ -401,17 +360,8 @@ async function createRoutesAndStops(org: any, vehicles: any[], shifts: any[]) {
     routeEndTime.setHours(16 + i * 2, 0, 0, 0)
 
     try {
-      const route = await prisma.route.upsert({
-        where: { id: generateSeedId('route', `${org.id}-${i}`) },
-        update: { 
-          vehicleId: vehicle.id, 
-          shiftId: shift.id, 
-          isActive: true, 
-          status: RouteStatus.ACTIVE, 
-          organizationId: org.id 
-        },
-        create: { 
-          id: generateSeedId('route', `${org.id}-${i}`),
+      const route = await prisma.route.create({
+        data: { 
           name: template.name, 
           description: template.description, 
           vehicleId: vehicle.id, 
@@ -428,14 +378,8 @@ async function createRoutesAndStops(org: any, vehicles: any[], shifts: any[]) {
       // Create stops for this route
       for (let j = 0; j < template.stops.length; j++) {
         const stopData = template.stops[j]
-        await prisma.stop.upsert({
-          where: { id: generateSeedId('stop', `${org.id}-${i}-${j}`) },
-          update: { 
-            routeId: route.id, 
-            organizationId: org.id 
-          },
-          create: { 
-            id: generateSeedId('stop', `${org.id}-${i}-${j}`),
+        await prisma.stop.create({
+          data: { 
             name: stopData.name, 
             address: stopData.address, 
             latitude: stopData.lat, 
@@ -478,24 +422,8 @@ async function createVehicleAvailability(org: any, vehicles: any[], drivers: any
         const endTime = new Date(tomorrow)
         endTime.setHours(18, 0, 0, 0)
 
-        await prisma.vehicleAvailability.upsert({
-          where: { 
-            vehicleId_shiftId_date: { 
-              vehicleId: vehicle.id, 
-              shiftId: shift.id, 
-              date: tomorrow 
-            } 
-          },
-          update: { 
-            startTime, 
-            endTime, 
-            available: true, 
-            driverId: driver.id, 
-            routeId: route?.id, 
-            organizationId: org.id 
-          },
-          create: { 
-            id: generateSeedId('availability', `${org.id}-${vehicle.id}-${shift.id}-${tomorrow.getTime()}`),
+        await prisma.vehicleAvailability.create({
+          data: { 
             date: tomorrow, 
             startTime, 
             endTime, 
@@ -515,24 +443,8 @@ async function createVehicleAvailability(org: any, vehicles: any[], drivers: any
         const nextWeekEnd = new Date(nextWeek)
         nextWeekEnd.setHours(18, 0, 0, 0)
 
-        await prisma.vehicleAvailability.upsert({
-          where: { 
-            vehicleId_shiftId_date: { 
-              vehicleId: vehicle.id, 
-              shiftId: shift.id, 
-              date: nextWeek 
-            } 
-          },
-          update: { 
-            startTime: nextWeekStart, 
-            endTime: nextWeekEnd, 
-            available: true, 
-            driverId: driver.id, 
-            routeId: route?.id, 
-            organizationId: org.id 
-          },
-          create: { 
-            id: generateSeedId('availability', `${org.id}-${vehicle.id}-${shift.id}-${nextWeek.getTime()}`),
+        await prisma.vehicleAvailability.create({
+          data: { 
             date: nextWeek, 
             startTime: nextWeekStart, 
             endTime: nextWeekEnd, 
@@ -596,20 +508,12 @@ async function createVehicleRequests(org: any, categories: any[], usersByRole: a
   ]
 
   let requestCount = 0
-  for (let i = 0; i < requestTemplates.length; i++) {
-    const template = requestTemplates[i]
+  for (const template of requestTemplates) {
     const category = getRandomElement(categories)
 
     try {
-      await prisma.vehicleRequest.upsert({
-        where: { id: generateSeedId('vr', `${org.id}-${i}`) },
-        update: { 
-          status: template.status as ApprovalStatus, 
-          organizationId: org.id,
-          comment: template.comment 
-        },
-        create: { 
-          id: generateSeedId('vr', `${org.id}-${i}`),
+      await prisma.vehicleRequest.create({
+        data: { 
           name: template.name, 
           licensePlate: template.licensePlate, 
           categoryId: category.id, 
@@ -664,19 +568,13 @@ async function createNotifications(org: any, usersByRole: any) {
   ]
 
   let notificationCount = 0
-  for (let i = 0; i < notificationTemplates.length; i++) {
-    const template = notificationTemplates[i]
+  for (const template of notificationTemplates) {
     const recipients = usersByRole[template.recipientRole + 's'] || []
 
     for (const recipient of recipients.slice(0, 2)) { // Limit to 2 recipients per role
       try {
-        await prisma.notification.upsert({
-          where: { id: generateSeedId('notif', `${org.id}-${i}-${recipient.user.id}`) },
-          update: { 
-            organizationId: org.id 
-          },
-          create: { 
-            id: generateSeedId('notif', `${org.id}-${i}-${recipient.user.id}`),
+        await prisma.notification.create({
+          data: { 
             title: template.title, 
             message: template.message, 
             type: template.type, 
@@ -720,9 +618,7 @@ async function createPayrollReports(org: any, usersByRole: any) {
   ]
 
   let reportCount = 0
-  for (let i = 0; i < reports.length; i++) {
-    const report = reports[i]
-
+  for (const report of reports) {
     for (const recipient of report.recipients.slice(0, 3)) { // Limit to 3 per report type
       try {
         const baseAmount = report.type === 'DRIVER' ? 3000 : 5000
@@ -731,13 +627,8 @@ async function createPayrollReports(org: any, usersByRole: any) {
         const dailyRate = totalPayment / workedDays
         const hoursWorked = workedDays * 8 + Math.random() * 20 // Some overtime
 
-        await prisma.payrollReport.upsert({
-          where: { id: generateSeedId('payroll', `${org.id}-${i}-${recipient.user.id}`) },
-          update: { 
-            organizationId: org.id 
-          },
-          create: { 
-            id: generateSeedId('payroll', `${org.id}-${i}-${recipient.user.id}`),
+        await prisma.payrollReport.create({
+          data: { 
             period: period,
             month: currentMonth,
             year: currentYear,

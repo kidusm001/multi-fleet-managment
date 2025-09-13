@@ -10,7 +10,6 @@ import { employeeService } from "@pages/Settings/services/employeeService";
 import LoadingWrapper from "@components/Common/LoadingAnimation/LoadingWrapper";
 // removed unused api
 
-import { RoleSelector } from "./components/RoleSelector";
 import { StatsSection } from "./components/StatsSection";
 import { EmployeeTable } from "./components/EmployeeTable";
 // Removed legacy review components
@@ -281,7 +280,7 @@ export default function EmployeeManagement() {
               <h1 className="text-2xl font-bold text-[var(--text-primary)]">
                 Employee Management
               </h1>
-              <RoleSelector role={role} setRole={setRole} />
+              
             </div>
 
             <div className="p-6">

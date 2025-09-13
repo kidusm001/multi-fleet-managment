@@ -3,8 +3,9 @@
     "version": "1.0.0",
     "description": "",
     "main": "index.js",
+    "type": "module",
     "scripts": {
-        "dev": "nodemon --exec ts-node src/index.ts",
+        "dev": "nodemon --exec \"tsx src/index.ts\"",
         "build": "tsc",
         "start": "node dist/index.js",
         "test": "prisma generate && vitest run --reporter=default",
@@ -25,6 +26,7 @@
         "express-async-handler": "^1.2.0",
         "express-fileupload": "^1.5.2",
         "express-validator": "^7.2.1",
+        "fayda": "^0.0.14",
         "jsonwebtoken": "^9.0.2",
         "pdfkit": "^0.15.0",
         "pino": "^9.3.2",
@@ -53,6 +55,6 @@
         "vitest": "^2.1.4"
     },
     "prisma": {
-        "seed": "ts-node prisma/seed.ts"
+        "seed": "tsx prisma/seed.ts"
     }
 }

@@ -2,7 +2,11 @@ import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { PrismaClient } from '@prisma/client';
 import { admin, organization } from 'better-auth/plugins';
+import {fayda} from 'fayda';
 import { AdminAc, OrgAc, superadmin, user, owner, admin as organizationAdmin, manager, driver, employee } from './permissions';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 
 const prisma = new PrismaClient();
@@ -14,11 +18,15 @@ export const auth = betterAuth({
         minPasswordLength: 8,
         maxPasswordLength: 128,
     },
+    session: {
+        expiresIn: 60 * 60 * 24 * 7, // 7 days
+        updateAge: 60 * 60 * 24, // 1 day
+    },
     user: {
         additionalFields: {
             isSubscribed: {
                 type: 'boolean',
-                default: false,
+                defaultValue: false,
                 input: false
             }
         }
@@ -49,7 +57,26 @@ export const auth = betterAuth({
                 employee,
             }
         }),
+        await fayda({
+            clientId: process.env.CLIENT_ID!,
+            privateKey: process.env.PRIVATE_KEY!,
+            redirectUrl: "http://localhost:3000/callback"
+        }).then(plugin => {
+            console.log('✅ Fayda plugin configured with:', {
+                clientId: process.env.CLIENT_ID?.substring(0, 10) + '...',
+                redirectUrl: "http://localhost:3000/callback",
+                privateKeyPresent: !!process.env.PRIVATE_KEY
+            });
+            return plugin;
+        })
     ],
+
+	account: {
+		accountLinking: {
+			enabled: true,
+			trustedProviders: ['fayda']
+		}
+	},
 
     trustedOrigins: [
         "http://localhost:3000/api/auth",

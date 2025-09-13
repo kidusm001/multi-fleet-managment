@@ -59,7 +59,7 @@ router.get('/superadmin', requireAuth, requireRole(["superadmin"]), async (req: 
 router.get('/superadmin/:id', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
-        
+
         if (!id || typeof id !== 'string') {
             return res.status(400).json({ message: 'Valid employee ID is required' });
         }
@@ -118,7 +118,7 @@ router.get('/superadmin/by-organization/:organizationId', requireAuth, requireRo
     try {
         const { organizationId } = req.params;
         const { includeDeleted } = req.query;
-        
+
         if (!organizationId || typeof organizationId !== 'string') {
             return res.status(400).json({ message: 'Valid organization ID is required' });
         }
@@ -164,7 +164,7 @@ router.get('/superadmin/by-department/:departmentId', requireAuth, requireRole([
     try {
         const { departmentId } = req.params;
         const { includeDeleted } = req.query;
-        
+
         if (!departmentId || typeof departmentId !== 'string') {
             return res.status(400).json({ message: 'Valid department ID is required' });
         }
@@ -210,7 +210,7 @@ router.get('/superadmin/by-shift/:shiftId', requireAuth, requireRole(["superadmi
     try {
         const { shiftId } = req.params;
         const { includeDeleted } = req.query;
-        
+
         if (!shiftId || typeof shiftId !== 'string') {
             return res.status(400).json({ message: 'Valid shift ID is required' });
         }
@@ -336,8 +336,8 @@ router.post('/superadmin', requireAuth, requireRole(["superadmin"]), async (req:
         });
 
         if (existingEmployee) {
-            return res.status(409).json({ 
-                message: 'User is already an employee in this organization' 
+            return res.status(409).json({
+                message: 'User is already an employee in this organization'
             });
         }
 
@@ -711,9 +711,9 @@ router.patch('/superadmin/:id/assign-stop', requireAuth, requireRole(["superadmi
             }
         });
 
-        res.json({ 
-            message: stopId ? 'Stop assigned successfully' : 'Stop unassigned successfully', 
-            employee 
+        res.json({
+            message: stopId ? 'Stop assigned successfully' : 'Stop unassigned successfully',
+            employee
         });
     } catch (error) {
         console.error(error);
@@ -824,16 +824,16 @@ router.get('/', requireAuth, async (req: Request, res: Response) => {
 
         const hasPermission = await auth.api.hasPermission({
             headers: await fromNodeHeaders(req.headers),
-                body: {
-                    permissions: {
-                        employee: ["read"] 
-                    }
+            body: {
+                permissions: {
+                    employee: ["read"]
                 }
+            }
         });
         if (!hasPermission.success) {
             return res.status(403).json({ message: 'Forbidden: Insufficient permissions' });
         }
-        
+
         const employees = await prisma.employee.findMany({
             where: {
                 organizationId: activeOrgId,
@@ -863,20 +863,19 @@ router.get('/management', requireAuth, async (req: Request, res: Response) => {
 
         const hasPermission = await auth.api.hasPermission({
             headers: await fromNodeHeaders(req.headers),
-                body: {
-                    permissions: {
-                        employee: ["read"] 
-                    }
+            body: {
+                permissions: {
+                    employee: ["read"]
                 }
+            }
         });
         if (!hasPermission.success) {
             return res.status(403).json({ message: 'Forbidden: Insufficient permissions' });
         }
-        
+
         const employees = await prisma.employee.findMany({
             where: {
                 organizationId: activeOrgId,
-                deleted: true
             },
         })
 
@@ -904,11 +903,11 @@ router.get('/:id', requireAuth, validateSchema(EmployeeIdParam, 'params'), async
 
         const hasPermission = await auth.api.hasPermission({
             headers: await fromNodeHeaders(req.headers),
-                body: {
-                    permissions: {
-                        employee: ["read"] 
-                    }
+            body: {
+                permissions: {
+                    employee: ["read"]
                 }
+            }
         });
         if (!hasPermission.success) {
             return res.status(403).json({ message: 'Forbidden: Insufficient permissions' });
@@ -917,7 +916,7 @@ router.get('/:id', requireAuth, validateSchema(EmployeeIdParam, 'params'), async
         const employee = await prisma.employee.findUnique({
             where: {
                 id,
-                organizationId: activeOrgId, 
+                organizationId: activeOrgId,
                 deleted: false
             },
             include: {
@@ -967,7 +966,7 @@ router.post('/', requireAuth, validateSchema(CreateEmployeeSchema, 'body'), asyn
             shiftId,
             stopId,
             userId,
-        } : CreateEmployee = req.body;
+        }: CreateEmployee = req.body;
 
         const activeOrgId: string | null | undefined = req.session?.session?.activeOrganizationId;
         if (!activeOrgId) {
@@ -976,11 +975,11 @@ router.post('/', requireAuth, validateSchema(CreateEmployeeSchema, 'body'), asyn
 
         const hasPermission = await auth.api.hasPermission({
             headers: await fromNodeHeaders(req.headers),
-                body: {
-                    permissions: {
-                        employee: ["create"] 
-                    }
+            body: {
+                permissions: {
+                    employee: ["create"]
                 }
+            }
         });
         if (!hasPermission.success) {
             return res.status(403).json({ message: 'Forbidden: Insufficient permissions' });
@@ -994,8 +993,8 @@ router.post('/', requireAuth, validateSchema(CreateEmployeeSchema, 'body'), asyn
         });
 
         if (existingEmployee) {
-            return res.status(409).json({ 
-                message: 'Employee with this User ID already exists in the organization' 
+            return res.status(409).json({
+                message: 'Employee with this User ID already exists in the organization'
             });
         }
 
@@ -1005,8 +1004,8 @@ router.post('/', requireAuth, validateSchema(CreateEmployeeSchema, 'body'), asyn
             }
         });
         if (!existingUser) {
-            return res.status(409).json({ 
-                message: 'User with this User ID does not exist' 
+            return res.status(409).json({
+                message: 'User with this User ID does not exist'
             });
         }
 
@@ -1017,8 +1016,8 @@ router.post('/', requireAuth, validateSchema(CreateEmployeeSchema, 'body'), asyn
             }
         });
         if (!existingMemeber) {
-            return res.status(409).json({ 
-                message: 'User with this User ID is not a member of this organization' 
+            return res.status(409).json({
+                message: 'User with this User ID is not a member of this organization'
             });
         }
 
@@ -1029,8 +1028,8 @@ router.post('/', requireAuth, validateSchema(CreateEmployeeSchema, 'body'), asyn
             }
         });
         if (!existingDepartment) {
-            return res.status(409).json({ 
-                message: 'Department with this Department ID does not exist in this organization' 
+            return res.status(409).json({
+                message: 'Department with this Department ID does not exist in this organization'
             });
         }
 
@@ -1041,12 +1040,12 @@ router.post('/', requireAuth, validateSchema(CreateEmployeeSchema, 'body'), asyn
             }
         });
         if (!existingShift) {
-            return res.status(409).json({ 
-                message: 'Shift with this Shift ID does not exist in this organization' 
+            return res.status(409).json({
+                message: 'Shift with this Shift ID does not exist in this organization'
             });
         }
 
-        if(stopId) {
+        if (stopId) {
             const existingStop = await prisma.stop.findFirst({
                 where: {
                     id: stopId,
@@ -1054,8 +1053,8 @@ router.post('/', requireAuth, validateSchema(CreateEmployeeSchema, 'body'), asyn
                 }
             });
             if (!existingStop) {
-                return res.status(409).json({ 
-                    message: 'Stop with this Stop ID does not exist in this organization' 
+                return res.status(409).json({
+                    message: 'Stop with this Stop ID does not exist in this organization'
                 });
             }
         }
@@ -1092,8 +1091,8 @@ router.post('/', requireAuth, validateSchema(CreateEmployeeSchema, 'body'), asyn
 
 router.put('/:id',
     requireAuth,
-    validateMultiple([{schema: EmployeeIdParam, target: 'params'}, {schema: UpdateEmployeeSchema, target: 'body'}]),
-    async(req: Request, res: Response) => {
+    validateMultiple([{ schema: EmployeeIdParam, target: 'params' }, { schema: UpdateEmployeeSchema, target: 'body' }]),
+    async (req: Request, res: Response) => {
         try {
             const { id } = req.params;
 
@@ -1104,7 +1103,7 @@ router.put('/:id',
                 shiftId,
                 stopId,
                 userId,
-            } : CreateEmployee = req.body;
+            }: CreateEmployee = req.body;
 
             const activeOrgId: string | null | undefined = req.session?.session?.activeOrganizationId;
             if (!activeOrgId) {
@@ -1113,11 +1112,11 @@ router.put('/:id',
 
             const hasPermission = await auth.api.hasPermission({
                 headers: await fromNodeHeaders(req.headers),
-                    body: {
-                        permissions: {
-                            employee: ["update"] 
-                        }
+                body: {
+                    permissions: {
+                        employee: ["update"]
                     }
+                }
             });
             if (!hasPermission.success) {
                 return res.status(403).json({ message: 'Forbidden: Insufficient permissions' });
@@ -1132,8 +1131,8 @@ router.put('/:id',
             });
 
             if (!existingEmployee) {
-                return res.status(409).json({ 
-                    message: 'Employee not found' 
+                return res.status(409).json({
+                    message: 'Employee not found'
                 });
             }
 
@@ -1143,8 +1142,8 @@ router.put('/:id',
                 }
             });
             if (!existingUser) {
-                return res.status(409).json({ 
-                    message: 'User with this User ID does not exist' 
+                return res.status(409).json({
+                    message: 'User with this User ID does not exist'
                 });
             }
 
@@ -1155,8 +1154,8 @@ router.put('/:id',
                 }
             });
             if (!existingMemeber) {
-                return res.status(409).json({ 
-                    message: 'User with this User ID is not a member of this organization' 
+                return res.status(409).json({
+                    message: 'User with this User ID is not a member of this organization'
                 });
             }
 
@@ -1167,8 +1166,8 @@ router.put('/:id',
                 }
             });
             if (!existingDepartment) {
-                return res.status(409).json({ 
-                    message: 'Department with this Department ID does not exist in this organization' 
+                return res.status(409).json({
+                    message: 'Department with this Department ID does not exist in this organization'
                 });
             }
 
@@ -1179,12 +1178,12 @@ router.put('/:id',
                 }
             });
             if (!existingShift) {
-                return res.status(409).json({ 
-                    message: 'Shift with this Shift ID does not exist in this organization' 
+                return res.status(409).json({
+                    message: 'Shift with this Shift ID does not exist in this organization'
                 });
             }
 
-            if(stopId) {
+            if (stopId) {
                 const existingStop = await prisma.stop.findFirst({
                     where: {
                         id: stopId,
@@ -1192,14 +1191,14 @@ router.put('/:id',
                     }
                 });
                 if (!existingStop) {
-                    return res.status(409).json({ 
-                        message: 'Stop with this Stop ID does not exist in this organization' 
+                    return res.status(409).json({
+                        message: 'Stop with this Stop ID does not exist in this organization'
                     });
                 }
             }
 
             const employee = await prisma.employee.update({
-                where: {id},
+                where: { id },
                 data: {
                     name: name.trim(),
                     location: location,
@@ -1238,11 +1237,11 @@ router.delete('/:id', requireAuth, validateSchema(EmployeeIdParam, 'params'), as
 
         const hasPermission = await auth.api.hasPermission({
             headers: await fromNodeHeaders(req.headers),
-                body: {
-                    permissions: {
-                        employee: ["delete"] 
-                    }
+            body: {
+                permissions: {
+                    employee: ["delete"]
                 }
+            }
         });
         if (!hasPermission.success) {
             return res.status(403).json({ message: 'Forbidden: Insufficient permissions' });
@@ -1257,13 +1256,13 @@ router.delete('/:id', requireAuth, validateSchema(EmployeeIdParam, 'params'), as
         });
 
         if (!existingEmployee) {
-            return res.status(404).json({ 
-                message: 'Employee not found' 
+            return res.status(404).json({
+                message: 'Employee not found'
             });
         }
 
         await prisma.employee.update({
-            where: {id, organizationId: activeOrgId},
+            where: { id, organizationId: activeOrgId },
             data: {
                 deleted: true,
                 deletedAt: new Date(),
@@ -1275,8 +1274,8 @@ router.delete('/:id', requireAuth, validateSchema(EmployeeIdParam, 'params'), as
         res.status(204).send();
 
     } catch (err) {
-            console.error(err);
-            res.status(500).json({ message: 'Internal Server Error' });
+        console.error(err);
+        res.status(500).json({ message: 'Internal Server Error' });
     }
 });
 
@@ -1290,7 +1289,7 @@ router.get('/by-department/:departmentId', requireAuth, async (req: Request, res
         const { departmentId } = req.params;
         const { includeDeleted } = req.query;
         const activeOrgId = req.session?.session?.activeOrganizationId;
-        
+
         if (!activeOrgId) {
             return res.status(400).json({ message: 'Active organization not found' });
         }
@@ -1358,7 +1357,7 @@ router.get('/by-shift/:shiftId', requireAuth, async (req: Request, res: Response
         const { shiftId } = req.params;
         const { includeDeleted } = req.query;
         const activeOrgId = req.session?.session?.activeOrganizationId;
-        
+
         if (!activeOrgId) {
             return res.status(400).json({ message: 'Active organization not found' });
         }
@@ -1425,7 +1424,7 @@ router.get('/shift/:shiftId/unassigned', requireAuth, async (req: Request, res: 
     try {
         const { shiftId } = req.params;
         const activeOrgId = req.session?.session?.activeOrganizationId;
-        
+
         if (!activeOrgId) {
             return res.status(400).json({ message: 'Active organization not found' });
         }
@@ -1485,7 +1484,7 @@ router.patch('/:id/assign-stop', requireAuth, validateSchema(EmployeeIdParam, 'p
         const { id } = req.params;
         const { stopId } = req.body;
         const activeOrgId = req.session?.session?.activeOrganizationId;
-        
+
         if (!activeOrgId) {
             return res.status(400).json({ message: 'Active organization not found' });
         }
@@ -1561,9 +1560,9 @@ router.patch('/:id/assign-stop', requireAuth, validateSchema(EmployeeIdParam, 'p
             }
         });
 
-        res.json({ 
-            message: stopId ? 'Stop assigned successfully' : 'Stop unassigned successfully', 
-            employee 
+        res.json({
+            message: stopId ? 'Stop assigned successfully' : 'Stop unassigned successfully',
+            employee
         });
     } catch (error) {
         console.error(error);
@@ -1580,7 +1579,7 @@ router.patch('/:id/restore', requireAuth, validateSchema(EmployeeIdParam, 'param
     try {
         const { id } = req.params;
         const activeOrgId = req.session?.session?.activeOrganizationId;
-        
+
         if (!activeOrgId) {
             return res.status(400).json({ message: 'Active organization not found' });
         }
@@ -1642,7 +1641,7 @@ router.patch('/:id/restore', requireAuth, validateSchema(EmployeeIdParam, 'param
 router.get('/stats/summary', requireAuth, async (req: Request, res: Response) => {
     try {
         const activeOrgId = req.session?.session?.activeOrganizationId;
-        
+
         if (!activeOrgId) {
             return res.status(400).json({ message: 'Active organization not found' });
         }

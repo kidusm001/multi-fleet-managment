@@ -83,8 +83,8 @@ const columns = [
           <span className={cn(
             "w-2 h-2 rounded-full mr-2",
             status === 'active' ? 'bg-green-500 dark:bg-green-400' :
-            status === 'maintenance' ? 'bg-yellow-500 dark:bg-yellow-400' :
-            'bg-red-500 dark:bg-red-400'
+              status === 'maintenance' ? 'bg-yellow-500 dark:bg-yellow-400' :
+                'bg-red-500 dark:bg-red-400'
           )} />
           {status.charAt(0).toUpperCase() + status.slice(1)}
         </span>
@@ -108,7 +108,7 @@ export default function ShuttleTable() {
   const [pageSize] = useState(8); // Increased page size for better usability
   const [pageIndex, setPageIndex] = useState(0);
   const { role } = useRole();
-  
+
   // Create a ref to store the refresh function for external access
   const refreshTableRef = useRef(null);
 
@@ -145,7 +145,7 @@ export default function ShuttleTable() {
   const getPageNumbers = () => {
     const totalPages = table.getPageCount();
     const currentPage = pageIndex + 1;
-    
+
     // Max page buttons to show at once
     const maxPageButtons = 5;
     let pages = [];
@@ -269,9 +269,9 @@ export default function ShuttleTable() {
                           {header.isPlaceholder
                             ? null
                             : flexRender(
-                                header.column.columnDef.header,
-                                header.getContext()
-                              )}
+                              header.column.columnDef.header,
+                              header.getContext()
+                            )}
                         </th>
                       ))}
                     </tr>
@@ -337,8 +337,8 @@ export default function ShuttleTable() {
                   {getPageNumbers().map((page, index) => {
                     if (page === "ellipsis" || page === "ellipsis2") {
                       return (
-                        <div 
-                          key={`ellipsis-${index}`} 
+                        <div
+                          key={`ellipsis-${index}`}
                           className="flex items-center justify-center h-8 w-8"
                         >
                           <MoreHorizontal className="h-4 w-4 text-gray-400" />
