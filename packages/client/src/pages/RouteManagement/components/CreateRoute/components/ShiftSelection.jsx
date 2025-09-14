@@ -35,13 +35,15 @@ export default function ShiftSelection({
   }
 
   const handleShiftChange = (value) => {
-    const shiftId = Number(value);
-    if (!isNaN(shiftId)) {
-      onShiftChange(shiftId);
+    // Since shift IDs are strings (UUIDs), pass the value directly
+    if (value && value.trim() !== '') {
+      onShiftChange(value);
     }
   };
 
-  const selectedShiftData = shifts.find((s) => s.id === Number(selectedShift));
+  const selectedShiftData = shifts.find((s) => 
+    s.id === selectedShift || String(s.id) === String(selectedShift)
+  );
 
   return (
     <div className={styles.container}>
@@ -134,11 +136,11 @@ export default function ShiftSelection({
 }
 
 ShiftSelection.propTypes = {
-  selectedShift: PropTypes.number,
+  selectedShift: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
   onShiftChange: PropTypes.func.isRequired,
   shifts: PropTypes.arrayOf(
     PropTypes.shape({
-      id: PropTypes.number.isRequired,
+      id: PropTypes.oneOfType([PropTypes.number, PropTypes.string]).isRequired,
       name: PropTypes.string.isRequired,
       startTime: PropTypes.string.isRequired,
       endTime: PropTypes.string.isRequired,

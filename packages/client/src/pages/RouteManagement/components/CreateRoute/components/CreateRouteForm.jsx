@@ -776,8 +776,9 @@ export default function CreateRouteForm({
 CreateRouteForm.propTypes = {
   selectedShift: PropTypes.oneOfType([
     PropTypes.number,
+    PropTypes.string, // Added string support for UUID shift IDs
     PropTypes.shape({
-      id: PropTypes.number,
+      id: PropTypes.oneOfType([PropTypes.number, PropTypes.string]), // Support both number and string IDs
       name: PropTypes.string,
       startTime: PropTypes.string,
       endTime: PropTypes.string,

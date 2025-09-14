@@ -18,11 +18,11 @@ export default function RouteList({ routes }) {
   return (
     <div className={styles.routeList}>
       {routes.map((route) => {
-        // Get all unique employees from all stops
-        const employees = route.stops?.flatMap((stop) => stop.employee) || [];
+        // Get all unique employees from all stops, filtering out nulls
+        const employees = route.stops?.flatMap((stop) => stop.employee).filter(Boolean) || [];
         const uniqueEmployees = [
-          ...new Set(employees.map((emp) => emp.id)),
-        ].map((id) => employees.find((emp) => emp.id === id));
+          ...new Set(employees.filter(emp => emp && emp.id).map((emp) => emp.id)),
+        ].map((id) => employees.find((emp) => emp && emp.id === id)).filter(Boolean);
 
         return (
           <div key={route.id} className={styles.routeCard}>
@@ -30,7 +30,7 @@ export default function RouteList({ routes }) {
               <div className="flex justify-between items-start mb-2">
                 <h4 className={styles.routeName}>{route.name}</h4>
                 <Badge variant="outline" className={styles.shuttleBadge}>
-                  {route.shuttle.name}
+                  {route.shuttle?.name || 'No Shuttle'}
                 </Badge>
               </div>
               <div className={styles.routeDetails}>
@@ -65,14 +65,14 @@ RouteList.propTypes = {
       name: PropTypes.string.isRequired,
       shuttle: PropTypes.shape({
         name: PropTypes.string.isRequired,
-      }).isRequired,
+      }), // Made optional since routes might not have shuttles assigned yet
       stops: PropTypes.arrayOf(
         PropTypes.shape({
           employee: PropTypes.shape({
             id: PropTypes.oneOfType([PropTypes.string, PropTypes.number])
               .isRequired,
             location: PropTypes.string.isRequired,
-          }).isRequired,
+          }),
         })
       ),
     })

@@ -27,7 +27,7 @@ export default function EmployeeTable({ data }) {
           {data?.map((employee) => (
             <TableRow key={employee.id} className={styles.staticRow}>
               <TableCell>{employee.name}</TableCell>
-              <TableCell>{employee.location}</TableCell>
+              <TableCell>{employee.location || 'N/A'}</TableCell>
               <TableCell>{employee.department.name}</TableCell>
               <TableCell>
                 <Badge 
@@ -59,9 +59,9 @@ export default function EmployeeTable({ data }) {
 EmployeeTable.propTypes = {
   data: PropTypes.arrayOf(
     PropTypes.shape({
-      id: PropTypes.string.isRequired,
+      id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
       name: PropTypes.string.isRequired,
-      location: PropTypes.string.isRequired,
+      location: PropTypes.string,
       department: PropTypes.shape({
         name: PropTypes.string.isRequired,
       }).isRequired,

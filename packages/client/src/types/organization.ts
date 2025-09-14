@@ -108,6 +108,7 @@ export interface OrganizationAdapter {
   cancelInvitation?(id: string): Promise<OrganizationAdapterResult<{ id: string }>>;
   removeMember?(memberId: string): Promise<OrganizationAdapterResult<{ id: string }>>;
   updateMemberRole?(memberId: string, role: string): Promise<OrganizationAdapterResult<OrganizationMember>>;
+  addMember?(args: { userId: string; role: string; organizationId: string }): Promise<OrganizationAdapterResult<OrganizationMember>>;
   createTeam?(args: { name: string; organizationId: string }): Promise<OrganizationAdapterResult<OrganizationTeam>>;
   updateTeam?(id: string, args: { name?: string }): Promise<OrganizationAdapterResult<OrganizationTeam>>;
   deleteTeam?(id: string): Promise<OrganizationAdapterResult<{ id: string }>>;

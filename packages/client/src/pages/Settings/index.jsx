@@ -9,11 +9,8 @@ import {
   Clock, 
   Bus,
   LayoutDashboard,
-  UserCog,
-  Layers
+  UserCog
 } from "lucide-react";
-import OrganizationAdmin from '@components/Common/Organizations/OrganizationAdmin';
-import { orgsEnabled } from '@lib/organization/flags';
 import { cn } from "@/lib/utils";
 
 // Import settings components
@@ -24,7 +21,7 @@ import ShiftManagement from "./components/ShiftManagement";
 import UserManagement from "./components/UserManagement";
 import EmployeeManagement from "./components/EmployeeManagement";
 
-const baseTabs = [
+const tabs = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
   { id: "employees", label: "Employees", icon: Users },
   { id: "drivers", label: "Drivers", icon: Truck },
@@ -33,7 +30,6 @@ const baseTabs = [
   { id: "users", label: "Users", icon: UserCog },
   { id: "shuttles", label: "Shuttles", icon: Bus },
 ];
-const tabs = orgsEnabled() ? [...baseTabs, { id: 'organizations', label: 'Organizations', icon: Layers }] : baseTabs;
 
 export default function Settings() {
   useTheme();
@@ -76,8 +72,6 @@ export default function Settings() {
         return <ShiftManagement />;
       case "users":
         return <UserManagement />;
-      case "organizations":
-        return <OrganizationAdmin />;
       default:
         return null;
     }
