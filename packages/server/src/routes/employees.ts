@@ -4,7 +4,7 @@ import { fromNodeHeaders } from 'better-auth/node';
 import { auth } from '../lib/auth';
 import { requireAuth, requireRole } from '../middleware/auth';
 import { validateMultiple, validateSchema } from '../middleware/zodValidation';
-import { CreateEmployeeSchema, CreateEmployee, EmployeeIdParam, UpdateEmployeeSchema } from '../schema/employeeSchema';
+import { CreateEmployeeSchema, CreateEmployee, EmployeeIdParam, UpdateEmployeeSchema, DepartmentIdParam, OrganizationIdParam, ShiftIdParam, SuperAdminCreateEmployeeSchema, SuperAdminUpdateEmployeeSchema, WorkLocationIdParam } from '../schema/employeeSchema';
 
 const prisma = new PrismaClient();
 const router = express.Router();
@@ -37,7 +37,8 @@ router.get('/superadmin', requireAuth, requireRole(["superadmin"]), async (req: 
                 },
                 department: true,
                 shift: true,
-                stop: true
+                stop: true,
+                workLocation: true,
             },
             orderBy: {
                 createdAt: 'desc'
@@ -56,13 +57,9 @@ router.get('/superadmin', requireAuth, requireRole(["superadmin"]), async (req: 
  * @desc    Get a specific employee by ID
  * @access  Private (superadmin)
  */
-router.get('/superadmin/:id', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.get('/superadmin/:id', requireAuth, requireRole(["superadmin"]), validateSchema(EmployeeIdParam, 'params'), async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
-
-        if (!id || typeof id !== 'string') {
-            return res.status(400).json({ message: 'Valid employee ID is required' });
-        }
 
         const employee = await prisma.employee.findUnique({
             where: { id },
@@ -94,7 +91,8 @@ router.get('/superadmin/:id', requireAuth, requireRole(["superadmin"]), async (r
                     include: {
                         route: true
                     }
-                }
+                },
+                workLocation: true,
             }
         });
 
@@ -114,14 +112,10 @@ router.get('/superadmin/:id', requireAuth, requireRole(["superadmin"]), async (r
  * @desc    Get all employees for a specific organization
  * @access  Private (superadmin)
  */
-router.get('/superadmin/by-organization/:organizationId', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.get('/superadmin/by-organization/:organizationId', requireAuth, requireRole(["superadmin"]), validateSchema(OrganizationIdParam, 'params'), async (req: Request, res: Response) => {
     try {
         const { organizationId } = req.params;
         const { includeDeleted } = req.query;
-
-        if (!organizationId || typeof organizationId !== 'string') {
-            return res.status(400).json({ message: 'Valid organization ID is required' });
-        }
 
         const employees = await prisma.employee.findMany({
             where: {
@@ -141,7 +135,8 @@ router.get('/superadmin/by-organization/:organizationId', requireAuth, requireRo
                 },
                 department: true,
                 shift: true,
-                stop: true
+                stop: true,
+                workLocation: true,
             },
             orderBy: {
                 name: 'asc'
@@ -160,14 +155,10 @@ router.get('/superadmin/by-organization/:organizationId', requireAuth, requireRo
  * @desc    Get all employees for a specific department
  * @access  Private (superadmin)
  */
-router.get('/superadmin/by-department/:departmentId', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.get('/superadmin/by-department/:departmentId', requireAuth, requireRole(["superadmin"]), validateSchema(DepartmentIdParam, 'params'), async (req: Request, res: Response) => {
     try {
         const { departmentId } = req.params;
         const { includeDeleted } = req.query;
-
-        if (!departmentId || typeof departmentId !== 'string') {
-            return res.status(400).json({ message: 'Valid department ID is required' });
-        }
 
         const employees = await prisma.employee.findMany({
             where: {
@@ -187,6 +178,7 @@ router.get('/superadmin/by-department/:departmentId', requireAuth, requireRole([
                 },
                 department: true,
                 shift: true,
+                workLocation: true,
                 stop: true
             },
             orderBy: {
@@ -206,14 +198,10 @@ router.get('/superadmin/by-department/:departmentId', requireAuth, requireRole([
  * @desc    Get all employees for a specific shift
  * @access  Private (superadmin)
  */
-router.get('/superadmin/by-shift/:shiftId', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.get('/superadmin/by-shift/:shiftId', requireAuth, requireRole(["superadmin"]), validateSchema(ShiftIdParam, 'params'), async (req: Request, res: Response) => {
     try {
         const { shiftId } = req.params;
         const { includeDeleted } = req.query;
-
-        if (!shiftId || typeof shiftId !== 'string') {
-            return res.status(400).json({ message: 'Valid shift ID is required' });
-        }
 
         const employees = await prisma.employee.findMany({
             where: {
@@ -233,6 +221,50 @@ router.get('/superadmin/by-shift/:shiftId', requireAuth, requireRole(["superadmi
                 },
                 department: true,
                 shift: true,
+                workLocation: true,
+                stop: true
+            },
+            orderBy: {
+                name: 'asc'
+            }
+        });
+
+        res.json(employees);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+/**
+ * @route   GET /superadmin/by-work-location/:workLocationId
+ * @desc    Get all employees for a specific work location
+ * @access  Private (superadmin)
+ */
+router.get('/superadmin/by-work-location/:workLocationId', requireAuth, requireRole(["superadmin"]), validateSchema(WorkLocationIdParam, 'params'), async (req: Request, res: Response) => {
+    try {
+        const { workLocationId } = req.params;
+        const { includeDeleted } = req.query;
+
+        const employees = await prisma.employee.findMany({
+            where: {
+                locationId: workLocationId,
+                ...(includeDeleted !== 'true' && { deleted: false })
+            },
+            include: {
+                organization: true,
+                user: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                        role: true,
+                        createdAt: true
+                    }
+                },
+                department: true,
+                shift: true,
+                workLocation: true,
                 stop: true
             },
             orderBy: {
@@ -252,7 +284,7 @@ router.get('/superadmin/by-shift/:shiftId', requireAuth, requireRole(["superadmi
  * @desc    Create a new employee
  * @access  Private (superadmin)
  */
-router.post('/superadmin', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.post('/superadmin', requireAuth, requireRole(["superadmin"]), validateSchema(SuperAdminCreateEmployeeSchema, 'body'), async (req: Request, res: Response) => {
     try {
         const {
             name,
@@ -264,23 +296,6 @@ router.post('/superadmin', requireAuth, requireRole(["superadmin"]), async (req:
             userId,
             assigned
         } = req.body;
-
-        // Validate required fields
-        if (!name || typeof name !== 'string') {
-            return res.status(400).json({ message: 'Employee name is required and must be a string' });
-        }
-        if (!departmentId || typeof departmentId !== 'string') {
-            return res.status(400).json({ message: 'Department ID is required and must be a string' });
-        }
-        if (!shiftId || typeof shiftId !== 'string') {
-            return res.status(400).json({ message: 'Shift ID is required and must be a string' });
-        }
-        if (!organizationId || typeof organizationId !== 'string') {
-            return res.status(400).json({ message: 'Organization ID is required and must be a string' });
-        }
-        if (!userId || typeof userId !== 'string') {
-            return res.status(400).json({ message: 'User ID is required and must be a string' });
-        }
 
         // Verify organization exists
         const organization = await prisma.organization.findUnique({
@@ -392,6 +407,7 @@ router.post('/superadmin', requireAuth, requireRole(["superadmin"]), async (req:
                 },
                 department: true,
                 shift: true,
+                workLocation: true,
                 stop: true
             }
         });
@@ -411,14 +427,10 @@ router.post('/superadmin', requireAuth, requireRole(["superadmin"]), async (req:
  * @desc    Update an employee
  * @access  Private (superadmin)
  */
-router.put('/superadmin/:id', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.put('/superadmin/:id', requireAuth, requireRole(["superadmin"]), validateMultiple([{ schema: EmployeeIdParam, target: 'params' }, { schema: SuperAdminUpdateEmployeeSchema, target: 'body' }]), async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
         const { name, location, departmentId, shiftId, stopId, assigned } = req.body;
-
-        if (!id || typeof id !== 'string') {
-            return res.status(400).json({ message: 'Valid employee ID is required' });
-        }
 
         // Check if employee exists
         const existingEmployee = await prisma.employee.findUnique({
@@ -427,14 +439,6 @@ router.put('/superadmin/:id', requireAuth, requireRole(["superadmin"]), async (r
 
         if (!existingEmployee) {
             return res.status(404).json({ message: 'Employee not found' });
-        }
-
-        // Validate input if provided
-        if (name && typeof name !== 'string') {
-            return res.status(400).json({ message: 'Employee name must be a string' });
-        }
-        if (location && typeof location !== 'string') {
-            return res.status(400).json({ message: 'Location must be a string' });
         }
 
         // Verify department exists if provided
@@ -519,6 +523,7 @@ router.put('/superadmin/:id', requireAuth, requireRole(["superadmin"]), async (r
                 },
                 department: true,
                 shift: true,
+                workLocation: true,
                 stop: true
             }
         });
@@ -535,13 +540,9 @@ router.put('/superadmin/:id', requireAuth, requireRole(["superadmin"]), async (r
  * @desc    Soft delete an employee
  * @access  Private (superadmin)
  */
-router.delete('/superadmin/:id', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.delete('/superadmin/:id', requireAuth, requireRole(["superadmin"]), validateSchema(EmployeeIdParam, 'params'), async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
-
-        if (!id || typeof id !== 'string') {
-            return res.status(400).json({ message: 'Valid employee ID is required' });
-        }
 
         // Check if employee exists
         const existingEmployee = await prisma.employee.findUnique({
@@ -578,13 +579,9 @@ router.delete('/superadmin/:id', requireAuth, requireRole(["superadmin"]), async
  * @desc    Restore a soft-deleted employee
  * @access  Private (superadmin)
  */
-router.patch('/superadmin/:id/restore', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.patch('/superadmin/:id/restore', requireAuth, requireRole(["superadmin"]), validateSchema(EmployeeIdParam, 'params'), async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
-
-        if (!id || typeof id !== 'string') {
-            return res.status(400).json({ message: 'Valid employee ID is required' });
-        }
 
         // Check if employee exists
         const existingEmployee = await prisma.employee.findUnique({
@@ -618,6 +615,7 @@ router.patch('/superadmin/:id/restore', requireAuth, requireRole(["superadmin"])
                 },
                 department: true,
                 shift: true,
+                workLocation: true,
                 stop: true
             }
         });
@@ -634,14 +632,10 @@ router.patch('/superadmin/:id/restore', requireAuth, requireRole(["superadmin"])
  * @desc    Assign or unassign a stop to an employee
  * @access  Private (superadmin)
  */
-router.patch('/superadmin/:id/assign-stop', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.patch('/superadmin/:id/assign-stop', requireAuth, requireRole(["superadmin"]), validateSchema(EmployeeIdParam, 'params'), async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
         const { stopId } = req.body;
-
-        if (!id || typeof id !== 'string') {
-            return res.status(400).json({ message: 'Valid employee ID is required' });
-        }
 
         // Check if employee exists
         const existingEmployee = await prisma.employee.findUnique({
@@ -707,6 +701,7 @@ router.patch('/superadmin/:id/assign-stop', requireAuth, requireRole(["superadmi
                 },
                 department: true,
                 shift: true,
+                workLocation: true,
                 stop: true
             }
         });
@@ -733,6 +728,7 @@ router.get('/superadmin/stats/summary', requireAuth, requireRole(["superadmin"])
                 organization: true,
                 department: true,
                 shift: true,
+                workLocation: true,
                 user: {
                     select: {
                         role: true
@@ -935,6 +931,7 @@ router.get('/:id', requireAuth, validateSchema(EmployeeIdParam, 'params'), async
                 },
                 department: true,
                 shift: true,
+                workLocation: true,
                 stop: {
                     include: {
                         route: true
@@ -966,6 +963,7 @@ router.post('/', requireAuth, validateSchema(CreateEmployeeSchema, 'body'), asyn
             shiftId,
             stopId,
             userId,
+            locationId,
         }: CreateEmployee = req.body;
 
         const activeOrgId: string | null | undefined = req.session?.session?.activeOrganizationId;
@@ -1045,6 +1043,20 @@ router.post('/', requireAuth, validateSchema(CreateEmployeeSchema, 'body'), asyn
             });
         }
 
+        if (locationId) { 
+            const exisingLocation = await prisma.location.findFirst({
+                where: {
+                    id: locationId,
+                    organizationId: activeOrgId
+                }
+            });
+            if (!exisingLocation) {
+                return res.status(409).json({
+                    message: 'Location with this Location ID does not exist in this organization'
+                });
+            }
+        }
+
         if (stopId) {
             const existingStop = await prisma.stop.findFirst({
                 where: {
@@ -1067,7 +1079,8 @@ router.post('/', requireAuth, validateSchema(CreateEmployeeSchema, 'body'), asyn
                 shiftId: shiftId,
                 stopId: stopId,
                 organizationId: activeOrgId,
-                userId: userId
+                userId: userId,
+                locationId: locationId
             },
             include: {
                 organization: true
@@ -1103,6 +1116,7 @@ router.put('/:id',
                 shiftId,
                 stopId,
                 userId,
+                locationId,
             }: CreateEmployee = req.body;
 
             const activeOrgId: string | null | undefined = req.session?.session?.activeOrganizationId;
@@ -1183,6 +1197,20 @@ router.put('/:id',
                 });
             }
 
+        if (locationId) { 
+            const exisingLocation = await prisma.location.findFirst({
+                where: {
+                    id: locationId,
+                    organizationId: activeOrgId
+                }
+            });
+            if (!exisingLocation) {
+                return res.status(409).json({
+                    message: 'Location with this Location ID does not exist in this organization'
+                });
+            }
+        }
+
             if (stopId) {
                 const existingStop = await prisma.stop.findFirst({
                     where: {
@@ -1205,7 +1233,8 @@ router.put('/:id',
                     departmentId: departmentId,
                     shiftId: shiftId,
                     stopId: stopId,
-                    userId: userId
+                    userId: userId,
+                    locationId: locationId
                 },
                 include: {
                     organization: true
@@ -1284,7 +1313,7 @@ router.delete('/:id', requireAuth, validateSchema(EmployeeIdParam, 'params'), as
  * @desc    Get all employees for a specific department in the user's organization
  * @access  Private (User)
  */
-router.get('/by-department/:departmentId', requireAuth, async (req: Request, res: Response) => {
+router.get('/by-department/:departmentId', requireAuth, validateSchema(DepartmentIdParam, 'params'), async (req: Request, res: Response) => {
     try {
         const { departmentId } = req.params;
         const { includeDeleted } = req.query;
@@ -1292,10 +1321,6 @@ router.get('/by-department/:departmentId', requireAuth, async (req: Request, res
 
         if (!activeOrgId) {
             return res.status(400).json({ message: 'Active organization not found' });
-        }
-
-        if (!departmentId || typeof departmentId !== 'string') {
-            return res.status(400).json({ message: 'Valid department ID is required' });
         }
 
         const hasPermission = await auth.api.hasPermission({
@@ -1333,7 +1358,8 @@ router.get('/by-department/:departmentId', requireAuth, async (req: Request, res
                 },
                 department: true,
                 shift: true,
-                stop: true
+                stop: true,
+                workLocation: true,
             },
             orderBy: {
                 name: 'asc'
@@ -1352,7 +1378,7 @@ router.get('/by-department/:departmentId', requireAuth, async (req: Request, res
  * @desc    Get all employees for a specific shift in the user's organization
  * @access  Private (User)
  */
-router.get('/by-shift/:shiftId', requireAuth, async (req: Request, res: Response) => {
+router.get('/by-shift/:shiftId', requireAuth, validateSchema(ShiftIdParam, 'params'), async (req: Request, res: Response) => {
     try {
         const { shiftId } = req.params;
         const { includeDeleted } = req.query;
@@ -1360,10 +1386,6 @@ router.get('/by-shift/:shiftId', requireAuth, async (req: Request, res: Response
 
         if (!activeOrgId) {
             return res.status(400).json({ message: 'Active organization not found' });
-        }
-
-        if (!shiftId || typeof shiftId !== 'string') {
-            return res.status(400).json({ message: 'Valid shift ID is required' });
         }
 
         const hasPermission = await auth.api.hasPermission({
@@ -1401,7 +1423,73 @@ router.get('/by-shift/:shiftId', requireAuth, async (req: Request, res: Response
                 },
                 department: true,
                 shift: true,
-                stop: true
+                stop: true,
+                workLocation: true,
+            },
+            orderBy: {
+                name: 'asc'
+            }
+        });
+
+        res.json(employees);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+/**
+ * @route   GET /by-work-location/:workLocationId
+ * @desc    Get all employees for a specific work location in the user's organization
+ * @access  Private (User)
+ */
+router.get('/by-work-location/:workLocationId', requireAuth, validateSchema(WorkLocationIdParam, 'params'), async (req: Request, res: Response) => {
+    try {
+        const { workLocationId } = req.params;
+        const { includeDeleted } = req.query;
+        const activeOrgId = req.session?.session?.activeOrganizationId;
+
+        if (!activeOrgId) {
+            return res.status(400).json({ message: 'Active organization not found' });
+        }
+
+        const hasPermission = await auth.api.hasPermission({
+            headers: await fromNodeHeaders(req.headers),
+            body: { permissions: { employee: ["read"] } }
+        });
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
+
+        // Verify work location belongs to the organization
+        const workLocation = await prisma.location.findFirst({
+            where: { id: workLocationId, organizationId: activeOrgId }
+        });
+
+        if (!workLocation) {
+            return res.status(404).json({ message: 'Work location not found in this organization' });
+        }
+
+        const employees = await prisma.employee.findMany({
+            where: {
+                locationId: workLocationId,
+                organizationId: activeOrgId,
+                ...(includeDeleted !== 'true' && { deleted: false })
+            },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                        role: true,
+                        createdAt: true
+                    }
+                },
+                department: true,
+                shift: true,
+                stop: true,
+                workLocation: true,
             },
             orderBy: {
                 name: 'asc'
@@ -1420,17 +1508,13 @@ router.get('/by-shift/:shiftId', requireAuth, async (req: Request, res: Response
  * @desc    Get unassigned employees by shift in the user's organization
  * @access  Private (User)
  */
-router.get('/shift/:shiftId/unassigned', requireAuth, async (req: Request, res: Response) => {
+router.get('/shift/:shiftId/unassigned', requireAuth, validateSchema(ShiftIdParam, 'params'), async (req: Request, res: Response) => {
     try {
         const { shiftId } = req.params;
         const activeOrgId = req.session?.session?.activeOrganizationId;
 
         if (!activeOrgId) {
             return res.status(400).json({ message: 'Active organization not found' });
-        }
-
-        if (!shiftId || typeof shiftId !== 'string' || shiftId === 'NaN' || shiftId.trim() === '') {
-            return res.status(400).json({ message: 'Valid shift ID is required' });
         }
 
         const hasPermission = await auth.api.hasPermission({
@@ -1460,6 +1544,7 @@ router.get('/shift/:shiftId/unassigned', requireAuth, async (req: Request, res: 
             include: {
                 department: true,
                 shift: true,
+                workLocation: true,
                 stop: true
             },
             orderBy: {
