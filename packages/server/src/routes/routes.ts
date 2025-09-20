@@ -773,30 +773,91 @@ router.post('/', requireAuth, validateSchema(CreateRouteSchema, 'body'), async (
 router.put('/:id', requireAuth, validateMultiple([{ schema: RouteIdParamSchema, target: 'params' }, { schema: UpdateRouteSchema, target: 'body' }]), async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
-        const routeData: UpdateRouteInput = req.body;
+        const {
+            name,
+            vehicleId,
+            shiftId,
+            date,
+            totalDistance,
+            totalTime,
+        } = req.body as UpdateRouteInput;
+
         const activeOrgId = req.session?.session?.activeOrganizationId;
         if (!activeOrgId) return res.status(400).json({ message: 'Active organization not found' });
+
         const hasPermission = await auth.api.hasPermission({
             headers: await fromNodeHeaders(req.headers),
             body: { permissions: { route: ["update"] } }
         });
         if (!hasPermission.success) return res.status(403).json({ message: 'Unauthorized' });
+
         const existingRoute = await prisma.route.findFirst({ where: { id, organizationId: activeOrgId } });
         if (!existingRoute) return res.status(404).json({ message: 'Route not found' });
-        // Validate vehicle and shift belong to org
-        if (routeData.vehicleId) {
-            const vehicle = await prisma.vehicle.findFirst({ where: { id: routeData.vehicleId, organizationId: activeOrgId } });
-            if (!vehicle) return res.status(404).json({ message: 'Vehicle not found in this organization' });
+
+        if (totalTime && totalTime > 90) {
+            return res.status(400).json({ error: 'Total time of the route cannot exceed 90 minutes.' });
         }
-        if (routeData.shiftId) {
-            const shift = await prisma.shift.findFirst({ where: { id: routeData.shiftId, organizationId: activeOrgId } });
-            if (!shift) return res.status(404).json({ message: 'Shift not found in this organization' });
+
+        const shift = await prisma.shift.findFirst({
+            where: { id: shiftId || undefined, organizationId: activeOrgId },
+        });
+
+        if (!shift) {
+            return res.status(404).json({ error: 'Shift not found.' });
         }
+
+        const startTime = shift.endTime;
+        const endTime = new Date(startTime.getTime() + (totalTime || 0) * 60000);
+
+        if (vehicleId && shiftId && date) {
+            const availabilityCheck = await VehicleAvailabilityService.checkVehicleAvailability({
+                vehicleId,
+                shiftId,
+                proposedDate: new Date(date),
+                proposedStartTime: startTime,
+                proposedEndTime: endTime,
+            });
+
+            if (!availabilityCheck.available) {
+                return res.status(400).json({
+                    error: 'Vehicle is not available for this time slot',
+                    reason: availabilityCheck.reason
+                });
+            }
+        }
+
+
         const updatedRoute = await prisma.route.update({
             where: { id },
-            data: routeData,
+            data: {
+                name,
+                vehicleId,
+                shiftId,
+                date: date ? new Date(date) : undefined,
+                startTime,
+                endTime,
+                totalDistance,
+                totalTime,
+                status: 'ACTIVE',
+            },
             include: { vehicle: true, shift: true, stops: true }
         });
+
+        if (vehicleId && shiftId && date) {
+            await prisma.vehicleAvailability.update({
+                where: {
+                    vehicleId_shiftId_date: {
+                        vehicleId,
+                        shiftId,
+                        date: new Date(date),
+                    },
+                },
+                data: {
+                    available: false,
+                },
+            });
+        }
+
         res.json(updatedRoute);
     } catch (error) {
         console.error(error);
@@ -814,18 +875,69 @@ router.delete('/:id', requireAuth, validateSchema(RouteIdParamSchema, 'params'),
         const { id } = req.params;
         const activeOrgId = req.session?.session?.activeOrganizationId;
         if (!activeOrgId) return res.status(400).json({ message: 'Active organization not found' });
+
         const hasPermission = await auth.api.hasPermission({
             headers: await fromNodeHeaders(req.headers),
             body: { permissions: { route: ["delete"] } }
         });
         if (!hasPermission.success) return res.status(403).json({ message: 'Unauthorized' });
-        const existingRoute = await prisma.route.findFirst({ where: { id, organizationId: activeOrgId } });
-        if (!existingRoute) return res.status(404).json({ message: 'Route not found' });
-        if (existingRoute.deleted) return res.status(400).json({ message: 'Route is already deleted' });
-        await prisma.route.update({
-            where: { id },
-            data: { deleted: true, deletedAt: new Date(), isActive: false, status: RouteStatus.INACTIVE }
+
+        await prisma.$transaction(async (prisma) => {
+            const route = await prisma.route.findFirst({
+                where: { id, organizationId: activeOrgId },
+                include: {
+                    stops: {
+                        include: {
+                            employee: true,
+                        },
+                    },
+                    shift: true,
+                    vehicle: true
+                },
+            });
+
+            if (!route) {
+                return res.status(404).json({ message: 'Route not found' });
+            }
+            if (route.deleted) {
+                return res.status(400).json({ message: 'Route is already deleted' });
+            }
+
+            const employeeIds = route.stops
+                .filter((stop): stop is typeof stop & { employee: NonNullable<typeof stop.employee> } => stop.employee !== null)
+                .map(stop => stop.employee.id);
+
+            if (employeeIds.length > 0) {
+                await prisma.employee.updateMany({
+                    where: { id: { in: employeeIds } },
+                    data: { assigned: false },
+                });
+            }
+
+            if (route.vehicleId && route.shiftId && route.date) {
+                await prisma.vehicleAvailability.updateMany({
+                    where: {
+                        vehicleId: route.vehicleId,
+                        shiftId: route.shiftId,
+                        date: route.date,
+                    },
+                    data: {
+                        available: true,
+                    },
+                });
+            }
+
+            await prisma.stop.updateMany({
+                where: { routeId: id },
+                data: { routeId: null, sequence: null, estimatedArrivalTime: null },
+            });
+
+            await prisma.route.update({
+                where: { id },
+                data: { deleted: true, deletedAt: new Date(), isActive: false, status: RouteStatus.INACTIVE }
+            });
         });
+
         res.status(204).send();
     } catch (error) {
         console.error(error);
@@ -957,6 +1069,158 @@ router.patch('/:routeId/stops/:stopId/add', requireAuth, validateMultiple([{ sch
         res.status(200).json({ message: 'Stop added to route successfully' });
     } catch (error) {
         console.error(error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+/**
+ * @route   PATCH /:routeId/employees/:employeeId/add-stop
+ * @desc    Add an employee's stop to a route
+ * @access  Private (User)
+ */
+router.patch('/:routeId/employees/:employeeId/add-stop', requireAuth, validateMultiple([{ schema: RouteIdParamSchema, target: 'params' }]), async (req: Request, res: Response) => {
+    const { routeId, employeeId } = req.params;
+    const { totalDistance, totalTime } = req.body;
+    const activeOrgId = req.session?.session?.activeOrganizationId;
+    if (!activeOrgId) return res.status(400).json({ message: 'Active organization not found' });
+
+    try {
+        const hasPermission = await auth.api.hasPermission({
+            headers: await fromNodeHeaders(req.headers),
+            body: { permissions: { route: ["update"] } }
+        });
+        if (!hasPermission.success) return res.status(403).json({ message: 'Unauthorized' });
+
+        const route = await prisma.route.findFirst({
+            where: { id: routeId, organizationId: activeOrgId },
+            include: {
+                vehicle: true,
+                stops: true
+            }
+        });
+
+        if (!route) {
+            return res.status(404).json({ error: 'Route not found' });
+        }
+
+        if (route.vehicle && route.stops.length >= route.vehicle.capacity) {
+            return res.status(400).json({ error: 'Route has reached maximum vehicle capacity' });
+        }
+
+        const employee = await prisma.employee.findFirst({ where: { id: employeeId, organizationId: activeOrgId } });
+        if (!employee) {
+            return res.status(404).json({ error: 'Employee not found' });
+        }
+
+        if (!employee.stopId) {
+            return res.status(404).json({ error: 'Employee does not have an associated stop' });
+        }
+
+        const stop = await prisma.stop.findFirst({ where: { id: employee.stopId, organizationId: activeOrgId } });
+        if (!stop || stop.routeId) {
+            return res.status(404).json({ error: 'Stop not found or already assigned to another route' });
+        }
+
+        await prisma.stop.update({
+            where: { id: stop.id },
+            data: {
+                routeId: routeId,
+                sequence: (await prisma.stop.count({ where: { routeId } })) + 1,
+                estimatedArrivalTime: new Date(),
+            },
+        });
+
+        await prisma.route.update({
+            where: { id: routeId },
+            data: {
+                totalDistance,
+                totalTime
+            }
+        });
+
+        await prisma.employee.update({
+            where: { id: employeeId },
+            data: {
+                assigned: true
+            }
+        });
+
+        res.status(200).json({ message: 'Stop added to route successfully' });
+    } catch (error) {
+        console.error('Error adding stop to route:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+/**
+ * @route   PATCH /:routeId/employees/:employeeId/remove-stop
+ * @desc    Remove an employee's stop from a route
+ * @access  Private (User)
+ */
+router.patch('/:routeId/employees/:employeeId/remove-stop', requireAuth, validateMultiple([{ schema: RouteIdParamSchema, target: 'params' }]), async (req: Request, res: Response) => {
+    const { routeId, employeeId } = req.params;
+    const { totalDistance, totalTime } = req.body;
+    const activeOrgId = req.session?.session?.activeOrganizationId;
+    if (!activeOrgId) return res.status(400).json({ message: 'Active organization not found' });
+
+    try {
+        const hasPermission = await auth.api.hasPermission({
+            headers: await fromNodeHeaders(req.headers),
+            body: { permissions: { route: ["update"] } }
+        });
+        if (!hasPermission.success) return res.status(403).json({ message: 'Unauthorized' });
+
+        const route = await prisma.route.findFirst({
+            where: { id: routeId, organizationId: activeOrgId },
+        });
+        if (!route) {
+            return res.status(404).json({ error: 'Route not found' });
+        }
+
+        const employee = await prisma.employee.findFirst({ where: { id: employeeId, organizationId: activeOrgId } });
+        if (!employee) {
+            return res.status(404).json({ error: 'Employee not found' });
+        }
+        if (!employee.stopId) {
+            return res.status(404).json({ error: 'Employee does not have an associated stop' });
+        }
+
+        const stop = await prisma.stop.findFirst({ where: { id: employee.stopId, routeId, organizationId: activeOrgId } });
+        if (!stop) {
+            return res.status(404).json({ error: 'Stop not found in the specified route' });
+        }
+
+        await prisma.$transaction(async (prisma) => {
+            await prisma.stop.update({
+                where: { id: stop.id },
+                data: {
+                    routeId: null,
+                    sequence: null,
+                    estimatedArrivalTime: null,
+                },
+            });
+
+            await prisma.employee.update({
+                where: { id: employeeId },
+                data: { assigned: false },
+            });
+
+            await prisma.route.update({
+                where: { id: routeId },
+                data: {
+                    totalDistance,
+                    totalTime,
+                },
+            });
+        });
+
+        res.status(200).json({
+            message: 'Stop removed and route metrics updated successfully',
+            totalDistance,
+            totalTime
+        });
+    } catch (error) {
+        console.error('Error in transaction:', error);
         res.status(500).json({ message: 'Internal Server Error' });
     }
 });
