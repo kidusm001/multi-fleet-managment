@@ -5,6 +5,7 @@ import { RouteStatus } from '@prisma/client';
 const BaseRouteSchema = z.object({
     name: z.string().min(1, 'Route name is required').max(255, 'Route name must be less than 255 characters'),
     description: z.string().max(1000, 'Description must be less than 1000 characters').optional().nullable(),
+    locationId: z.cuid('Location ID must be a valid CUID').optional().nullable(),
     vehicleId: z.cuid('Vehicle ID must be a valid CUID').optional().nullable(),
     shiftId: z.cuid('Shift ID must be a valid CUID').optional().nullable(),
     date: z.iso.datetime('Invalid date format').optional().nullable(),
@@ -77,6 +78,10 @@ export const RoutesByShiftParamSchema = z.object({
 
 export const RoutesByVehicleParamSchema = z.object({
     vehicleId: z.cuid('Vehicle ID must be a valid CUID'),
+});
+
+export const RoutesByLocationParamSchema = z.object({
+    locationId: z.cuid('Location ID must be a valid CUID'),
 });
 
 // Export types for TypeScript

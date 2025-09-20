@@ -15,6 +15,7 @@ import {
     UpdateRouteStopsSchema,
     RoutesByShiftParamSchema,
     RoutesByVehicleParamSchema,
+    RoutesByLocationParamSchema,
     CreateRouteInput,
     UpdateRouteInput,
     UpdateRouteStatusInput,
@@ -44,6 +45,7 @@ router.get('/superadmin', requireAuth, requireRole(["superadmin"]), async (req: 
                 organization: true,
                 vehicle: true,
                 shift: true,
+                location: true,
                 stops: {
                     orderBy: {
                         sequence: 'asc'
@@ -79,6 +81,7 @@ router.get('/superadmin/:id', requireAuth, requireRole(["superadmin"]), async (r
                 organization: true,
                 vehicle: true,
                 shift: true,
+                location: true,
                 stops: {
                     orderBy: {
                         sequence: 'asc'
@@ -118,6 +121,7 @@ router.get('/superadmin/by-organization/:organizationId', requireAuth, requireRo
                 organization: true,
                 vehicle: true,
                 shift: true,
+                location: true,
                 stops: true
             },
             orderBy: {
@@ -143,6 +147,7 @@ router.post('/superadmin', requireAuth, requireRole(["superadmin"]), async (req:
             description,
             vehicleId,
             shiftId,
+            locationId,
             date,
             startTime,
             endTime,
@@ -186,6 +191,7 @@ router.post('/superadmin', requireAuth, requireRole(["superadmin"]), async (req:
                 description,
                 vehicleId,
                 shiftId,
+                locationId,
                 date: date ? new Date(date) : null,
                 startTime: startTime ? new Date(startTime) : null,
                 endTime: endTime ? new Date(endTime) : null,
@@ -199,6 +205,7 @@ router.post('/superadmin', requireAuth, requireRole(["superadmin"]), async (req:
                 organization: true,
                 vehicle: true,
                 shift: true,
+                location: true,
                 stops: true
             }
         });
@@ -223,6 +230,7 @@ router.put('/superadmin/:id', requireAuth, requireRole(["superadmin"]), async (r
             description,
             vehicleId,
             shiftId,
+            locationId,
             date,
             startTime,
             endTime,
@@ -258,6 +266,7 @@ router.put('/superadmin/:id', requireAuth, requireRole(["superadmin"]), async (r
                 description,
                 vehicleId,
                 shiftId,
+                locationId,
                 date: date ? new Date(date) : undefined,
                 startTime: startTime ? new Date(startTime) : undefined,
                 endTime: endTime ? new Date(endTime) : undefined,
@@ -270,6 +279,7 @@ router.put('/superadmin/:id', requireAuth, requireRole(["superadmin"]), async (r
                 organization: true,
                 vehicle: true,
                 shift: true,
+                location: true,
                 stops: true
             }
         });
@@ -344,6 +354,7 @@ router.patch('/superadmin/:id/restore', requireAuth, requireRole(["superadmin"])
                 organization: true,
                 vehicle: true,
                 shift: true,
+                location: true,
                 stops: true
             }
         });
@@ -424,6 +435,7 @@ router.get('/', requireAuth, async (req: Request, res: Response) => {
             include: {
                 vehicle: true,
                 shift: true,
+                location: true,
                 stops: { orderBy: { sequence: 'asc' }, include: { employee: true } },
                 vehicleAvailability: true
             },
@@ -494,6 +506,7 @@ router.get('/:id', requireAuth, validateSchema(RouteIdParamSchema, 'params'), as
             include: {
                 vehicle: true,
                 shift: true,
+                location: true,
                 stops: { orderBy: { sequence: 'asc' }, include: { employee: true } },
                 vehicleAvailability: true
             }
@@ -526,6 +539,41 @@ router.get('/shift/:shiftId', requireAuth, validateSchema(RoutesByShiftParamSche
             include: {
                 vehicle: true,
                 shift: true,
+                location: true,
+                stops: { orderBy: { sequence: 'asc' }, include: { employee: true } },
+                vehicleAvailability: true
+            }
+        });
+        res.json(routes);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+/**
+ * @route   GET /location/:locationId
+ * @desc    Get all routes for a specific location in the user's organization
+ * @access  Private (User)
+ */
+router.get('/location/:locationId', requireAuth, validateSchema(RoutesByLocationParamSchema, 'params'), async (req: Request, res: Response) => {
+    try {
+        const { locationId } = req.params;
+        const activeOrgId = req.session?.session?.activeOrganizationId;
+        if (!activeOrgId) return res.status(400).json({ message: 'Active organization not found' });
+
+        const hasPermission = await auth.api.hasPermission({
+            headers: await fromNodeHeaders(req.headers),
+            body: { permissions: { route: ["read"] } }
+        });
+        if (!hasPermission.success) return res.status(403).json({ message: 'Unauthorized' });
+
+        const routes = await prisma.route.findMany({
+            where: { locationId, organizationId: activeOrgId, deleted: false },
+            include: {
+                vehicle: true,
+                shift: true,
+                location: true,
                 stops: { orderBy: { sequence: 'asc' }, include: { employee: true } },
                 vehicleAvailability: true
             }
@@ -579,6 +627,7 @@ router.post('/', requireAuth, validateSchema(CreateRouteSchema, 'body'), async (
             totalDistance,
             totalTime,
             employees,
+            locationId,
         } = req.body as CreateRouteInput;
 
         const activeOrgId = req.session?.session?.activeOrganizationId;
@@ -703,6 +752,7 @@ router.post('/', requireAuth, validateSchema(CreateRouteSchema, 'body'), async (
                     totalTime,
                     status: 'ACTIVE',
                     organizationId: activeOrgId,
+                    locationId,
                 },
             });
 
@@ -780,6 +830,7 @@ router.put('/:id', requireAuth, validateMultiple([{ schema: RouteIdParamSchema, 
             date,
             totalDistance,
             totalTime,
+            locationId,
         } = req.body as UpdateRouteInput;
 
         const activeOrgId = req.session?.session?.activeOrganizationId;
@@ -833,6 +884,7 @@ router.put('/:id', requireAuth, validateMultiple([{ schema: RouteIdParamSchema, 
                 name,
                 vehicleId,
                 shiftId,
+                locationId,
                 date: date ? new Date(date) : undefined,
                 startTime,
                 endTime,
@@ -840,7 +892,7 @@ router.put('/:id', requireAuth, validateMultiple([{ schema: RouteIdParamSchema, 
                 totalTime,
                 status: 'ACTIVE',
             },
-            include: { vehicle: true, shift: true, stops: true }
+            include: { vehicle: true, shift: true, location: true, stops: true }
         });
 
         if (vehicleId && shiftId && date) {
