@@ -17,8 +17,17 @@ const BaseRouteSchema = z.object({
 });
 
 // Create Route schema
-export const CreateRouteSchema = BaseRouteSchema.required({
+export const CreateRouteSchema = BaseRouteSchema.extend({
+    employees: z.array(z.object({
+        employeeId: z.cuid('Employee ID must be a valid CUID'),
+        stopId: z.cuid('Stop ID must be a valid CUID'),
+    })).min(1, 'At least one employee is required'),
+}).required({
     name: true,
+    shiftId: true,
+    date: true,
+    totalTime: true,
+    vehicleId: true,
 });
 
 // Update Route schema (all fields optional except constraints)

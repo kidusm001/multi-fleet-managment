@@ -4,6 +4,7 @@ import { requireAuth, requireRole } from '../middleware/auth';
 import { fromNodeHeaders } from 'better-auth/node';
 import { auth } from '../lib/auth';
 import { validateSchema, validateMultiple } from '../middleware/zodValidation';
+import { VehicleAvailabilityService } from '../services/vehicleAvailabilityService';
 import {
     CreateRouteSchema,
     UpdateRouteSchema,
@@ -570,31 +571,197 @@ router.get('/:routeId/stops', requireAuth, validateSchema(RouteIdParamSchema, 'p
  */
 router.post('/', requireAuth, validateSchema(CreateRouteSchema, 'body'), async (req: Request, res: Response) => {
     try {
-        const routeData: CreateRouteInput = req.body;
+        const {
+            name,
+            vehicleId,
+            shiftId,
+            date,
+            totalDistance,
+            totalTime,
+            employees,
+        } = req.body as CreateRouteInput;
+
         const activeOrgId = req.session?.session?.activeOrganizationId;
-        if (!activeOrgId) return res.status(400).json({ message: 'Active organization not found' });
+        if (!activeOrgId) {
+            return res.status(400).json({ message: 'Active organization not found' });
+        }
+
+        if (!vehicleId) {
+            return res.status(400).json({ message: 'vehicleId is required' });
+        }
+        if (!shiftId) {
+            return res.status(400).json({ message: 'shiftId is required' });
+        }
+        if (!date) {
+            return res.status(400).json({ message: 'date is required' });
+        }
+
         const hasPermission = await auth.api.hasPermission({
             headers: await fromNodeHeaders(req.headers),
             body: { permissions: { route: ["create"] } }
         });
-        if (!hasPermission.success) return res.status(403).json({ message: 'Unauthorized' });
-        // Validate vehicle and shift belong to org
-        if (routeData.vehicleId) {
-            const vehicle = await prisma.vehicle.findFirst({ where: { id: routeData.vehicleId, organizationId: activeOrgId } });
-            if (!vehicle) return res.status(404).json({ message: 'Vehicle not found in this organization' });
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Unauthorized' });
         }
-        if (routeData.shiftId) {
-            const shift = await prisma.shift.findFirst({ where: { id: routeData.shiftId, organizationId: activeOrgId } });
-            if (!shift) return res.status(404).json({ message: 'Shift not found in this organization' });
+
+        // Validate totalTime does not exceed 90 minutes
+        if (totalTime && totalTime > 90) {
+            res.status(400).json({ error: 'Total time of the route cannot exceed 90 minutes.' });
+            return;
         }
-        const newRoute = await prisma.route.create({
-            data: { ...routeData, organizationId: activeOrgId },
-            include: { vehicle: true, shift: true, stops: true }
+
+        // Fetch the associated shift to get its endTime
+        const shift = await prisma.shift.findFirst({
+            where: { id: shiftId, organizationId: activeOrgId },
         });
-        res.status(201).json(newRoute);
+
+        if (!shift) {
+            res.status(404).json({ error: 'Shift not found.' });
+            return;
+        }
+
+        // Calculate route startTime and endTime
+        const startTime = shift.endTime;
+        const endTime = new Date(startTime.getTime() + (totalTime || 0) * 60000); // totalTime in minutes
+
+        const availabilityCheck = await VehicleAvailabilityService.checkVehicleAvailability({
+            vehicleId,
+            shiftId,
+            proposedDate: new Date(date),
+            proposedStartTime: startTime,
+            proposedEndTime: endTime,
+        });
+
+        if (!availabilityCheck.available) {
+            return res.status(400).json({
+                error: 'Vehicle is not available for this time slot',
+                reason: availabilityCheck.reason
+            });
+        }
+
+        if (!employees || employees.length === 0) {
+            return res.status(400).json({ error: 'No employees provided for the route.' });
+        }
+
+        const employeeIds = employees.map((employee) => employee.employeeId);
+        const stopIds = employees.map((employee) => employee.stopId);
+
+        // First check if all employees are available (not assigned)
+        const employeeAvailabilityCheck = await prisma.employee.findMany({
+            where: {
+                id: { in: employeeIds },
+                organizationId: activeOrgId,
+                assigned: false, // Only get unassigned employees
+            },
+        });
+
+        if (employeeAvailabilityCheck.length !== employeeIds.length) {
+            const unavailableCount = employeeIds.length - employeeAvailabilityCheck.length;
+            return res.status(400).json({
+                error: 'Some employees are already assigned to other routes or do not belong to this organization',
+                expected: employeeIds.length,
+                available: employeeAvailabilityCheck.length,
+                unavailable: unavailableCount
+            });
+        }
+
+        // Verify that all provided stopIds are associated with the respective employees
+        const existingStops = await prisma.stop.findMany({
+            where: {
+                id: { in: stopIds },
+                organizationId: activeOrgId,
+                employee: {
+                    id: { in: employeeIds },
+                    assigned: false, // Double check employee assignment
+                },
+                routeId: null, // Ensure stops are not already assigned to a route
+            },
+            include: {
+                employee: true,
+            },
+        });
+
+        if (existingStops.length !== stopIds.length) {
+            return res.status(400).json({
+                error: 'Some stops do not exist, are not associated with the provided employees, or are already assigned to a route.',
+                expected: stopIds.length,
+                found: existingStops.length
+            });
+        }
+
+        await prisma.$transaction(async (prisma) => {
+            // Create the new route
+            const newRoute = await prisma.route.create({
+                data: {
+                    name,
+                    vehicleId,
+                    shiftId,
+                    date: new Date(date),
+                    startTime,
+                    endTime,
+                    totalDistance,
+                    totalTime,
+                    status: 'ACTIVE',
+                    organizationId: activeOrgId,
+                },
+            });
+
+            // Update stops to associate them with the new route
+            await prisma.stop.updateMany({
+                where: {
+                    id: { in: stopIds },
+                },
+                data: {
+                    routeId: newRoute.id,
+                    estimatedArrivalTime: new Date(),
+                },
+            });
+
+            // Mark employees as assigned
+            await prisma.employee.updateMany({
+                where: {
+                    id: { in: employeeIds },
+                },
+                data: {
+                    assigned: true,
+                },
+            });
+
+            const vehicle = await prisma.vehicle.findUnique({ where: { id: vehicleId } });
+
+            // Update or create VehicleAvailability
+            await prisma.vehicleAvailability.upsert({
+                where: {
+                    vehicleId_shiftId_date: {
+                        vehicleId,
+                        shiftId,
+                        date: new Date(date),
+                    },
+                },
+                create: {
+                    vehicleId,
+                    shiftId,
+                    date: new Date(date),
+                    startTime: startTime,
+                    endTime: endTime,
+                    available: false,
+                    organizationId: activeOrgId,
+                    driverId: vehicle?.driverId || ''
+                },
+                update: {
+                    available: false,
+                },
+            });
+
+            res.status(201).json(newRoute);
+        });
+
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Internal Server Error' });
+        console.error('Error creating route and updating vehicle availability:', error);
+        res.status(500).json({
+            error: 'Internal server error.',
+            details: error instanceof Error ? error.message : 'Unknown error'
+        });
     }
 });
 
