@@ -131,16 +131,25 @@ export default function OrganizationSelection() {
   // Handle organization selection
   const handleSelectOrganization = async (org) => {
     try {
-      console.log(`Setting organization ${org.name} (${org.id}) as active...`);
+      const isAlreadyActive = activeOrganization && (
+        activeOrganization.id === org.id || 
+        String(activeOrganization.id) === String(org.id)
+      );
+
+      if (isAlreadyActive) {
+        console.log(`Organization ${org.name} is already active, navigating to dashboard...`);
+      } else {
+        console.log(`Setting organization ${org.name} (${org.id}) as active...`);
+        
+        // Set the selected organization as active
+        await authClient.organization.setActive({
+          organizationId: org.id
+        });
+        
+        console.log('Organization set as active, navigating to dashboard...');
+      }
       
-      // Set the selected organization as active
-      await authClient.organization.setActive({
-        organizationId: org.id
-      });
-      
-      console.log('Organization set as active, navigating to dashboard...');
-      
-      // Navigate to dashboard
+      // Navigate to dashboard regardless of whether it was already active
       navigate('/dashboard');
     } catch (error) {
       console.error('Failed to set active organization:', error);
@@ -391,7 +400,7 @@ export default function OrganizationSelection() {
                     "w-full cursor-pointer transition-all duration-200 hover:shadow-lg",
                     isActive && "ring-2 ring-primary bg-primary/5 border-primary/20"
                   )}
-                  onClick={() => !isActive && handleSelectOrganization(org)}
+                  onClick={() => handleSelectOrganization(org)}
                 >
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">

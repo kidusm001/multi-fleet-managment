@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { authClient } from '@/lib/auth-client';
 import { Building2, Users, Calendar, Crown, Loader2, Edit3 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@components/Common/UI/Card';
@@ -11,10 +11,57 @@ export default function OrganizationOverview() {
   const { useActiveOrganization, useListOrganizations } = authClient;
   const { data: activeOrg, isLoading: activeOrgLoading } = useActiveOrganization();
   const { data: organizations, isLoading: orgsLoading } = useListOrganizations();
+  
+  const [fullOrgData, setFullOrgData] = useState(null);
+  const [activeMember, setActiveMember] = useState(null);
+  const [isLoadingDetails, setIsLoadingDetails] = useState(false);
+  const [lastFetchedOrgId, setLastFetchedOrgId] = useState(null);
 
   // Get current organization details
   const currentOrg = activeOrg || (organizations && organizations[0]);
-  const isLoading = activeOrgLoading || orgsLoading;
+  const isLoading = activeOrgLoading || orgsLoading || isLoadingDetails;
+
+  // Memoized fetch function to prevent recreating on every render
+  const fetchOrganizationDetails = useCallback(async (orgId) => {
+    if (!orgId || isLoadingDetails || lastFetchedOrgId === orgId) return;
+    
+    console.log('Fetching organization details for:', orgId);
+    setIsLoadingDetails(true);
+    setLastFetchedOrgId(orgId);
+    
+    try {
+      // Fetch full organization data
+      const { data: fullOrg, error: orgError } = await authClient.organization.getFullOrganization({
+        organizationId: orgId
+      });
+
+      if (orgError) {
+        console.error('Failed to fetch full organization:', orgError);
+      } else {
+        setFullOrgData(fullOrg);
+      }
+
+      // Fetch active member data to get the user's role
+      const { data: memberData, error: memberError } = await authClient.organization.getActiveMember();
+      
+      if (memberError) {
+        console.error('Failed to fetch active member:', memberError);
+      } else {
+        setActiveMember(memberData);
+      }
+    } catch (error) {
+      console.error('Error fetching organization details:', error);
+    } finally {
+      setIsLoadingDetails(false);
+    }
+  }, [isLoadingDetails, lastFetchedOrgId]);
+
+  // Fetch organization details when organization changes
+  useEffect(() => {
+    if (currentOrg?.id && currentOrg.id !== lastFetchedOrgId && !isLoadingDetails) {
+      fetchOrganizationDetails(currentOrg.id);
+    }
+  }, [currentOrg?.id, fetchOrganizationDetails, lastFetchedOrgId, isLoadingDetails]);
 
   if (isLoading) {
     return (
@@ -62,13 +109,16 @@ export default function OrganizationOverview() {
     );
   }
 
-  // Mock data for stats - in a real app, this would come from API
+  // Real organization stats from fetched data
   const stats = {
-    totalMembers: (currentOrg.members && Array.isArray(currentOrg.members)) ? currentOrg.members.length : 0,
+    totalMembers: fullOrgData?.members?.length || currentOrg?.members?.length || 0,
     totalRoutes: 12, // This would come from your routes API
     activeVehicles: 8, // This would come from your vehicles API
     totalEmployees: 45, // This would come from your employees API
   };
+
+  // Get user's actual role from active member data
+  const userRole = activeMember?.role || 'member';
 
   return (
     <div className="p-6 space-y-6">
@@ -99,7 +149,7 @@ export default function OrganizationOverview() {
       </div>
 
       {/* Quick Stats */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 xl:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Members</CardTitle>
@@ -177,8 +227,14 @@ export default function OrganizationOverview() {
             <div>
               <label className="text-sm font-medium text-muted-foreground">Your Role</label>
               <div className="flex items-center gap-2">
-                <Crown className="w-4 h-4 text-primary" />
-                <span className="font-medium">Administrator</span>
+                {userRole === 'owner' ? (
+                  <Crown className="w-4 h-4 text-yellow-500" />
+                ) : userRole === 'admin' ? (
+                  <Crown className="w-4 h-4 text-primary" />
+                ) : (
+                  <Users className="w-4 h-4 text-primary" />
+                )}
+                <span className="font-medium capitalize">{userRole}</span>
               </div>
             </div>
             {currentOrg.createdAt && (

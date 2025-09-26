@@ -256,12 +256,12 @@ export default function OrganizationSettings() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">Storage Used</span>
-                <Badge variant="secondary">2.3 GB / 10 GB</Badge>
+                <Badge variant="outline">Not Available</Badge>
               </div>
               <div className="w-full bg-muted rounded-full h-2">
                 <div 
-                  className="bg-primary h-2 rounded-full" 
-                  style={{ width: '23%' }}
+                  className="bg-muted-foreground/30 h-2 rounded-full" 
+                  style={{ width: '0%' }}
                 />
               </div>
             </div>
@@ -269,12 +269,12 @@ export default function OrganizationSettings() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium">API Calls</span>
-                <Badge variant="secondary">1,247 / 10,000</Badge>
+                <Badge variant="outline">Not Available</Badge>
               </div>
               <div className="w-full bg-muted rounded-full h-2">
                 <div 
-                  className="bg-primary h-2 rounded-full" 
-                  style={{ width: '12%' }}
+                  className="bg-muted-foreground/30 h-2 rounded-full" 
+                  style={{ width: '0%' }}
                 />
               </div>
             </div>
