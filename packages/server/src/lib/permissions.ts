@@ -17,6 +17,7 @@ export const Adminstatements = {
 
     route: ["create", "read", "update", "delete", "assign", "activate", "optimize"],
     stop: ["create", "read", "update", "delete", "assign", "sequence"],
+    location: ["create", "read", "update", "delete"],
 
     payroll: ["create", "read", "update", "delete", "process", "approve", "export"],
     payrollReport: ["create", "read", "update", "delete", "generate", "export"],
@@ -48,6 +49,7 @@ export const Orgstatements = {
 
     route: ["create", "read", "update", "delete", "assign", "activate", "optimize"],
     stop: ["create", "read", "update", "delete", "assign", "sequence"],
+    location: ["create", "read", "update", "delete"],
 
     payroll: ["create", "read", "update", "delete", "process", "approve", "export"],
     payrollReport: ["create", "read", "update", "delete", "generate", "export"],
@@ -79,6 +81,7 @@ export const superadmin = AdminAc.newRole({
 
     route: ["create", "read", "update", "delete", "assign", "activate", "optimize"],
     stop: ["create", "read", "update", "delete", "assign", "sequence"],
+    location: ["create", "read", "update", "delete"],
 
     payroll: ["create", "read", "update", "delete", "process", "approve", "export"],
     payrollReport: ["create", "read", "update", "delete", "generate", "export"],
@@ -113,6 +116,7 @@ export const owner = OrgAc.newRole({
 
     route: ["create", "read", "update", "delete", "assign", "activate", "optimize"],
     stop: ["create", "read", "update", "delete", "assign", "sequence"],
+    location: ["create", "read", "update", "delete"],
 
     payroll: ["create", "read", "update", "delete", "process", "approve", "export"],
     payrollReport: ["create", "read", "update", "delete", "generate", "export"],
@@ -141,6 +145,7 @@ export const admin = OrgAc.newRole({
 
     route: ["create", "read", "update", "delete", "assign", "activate", "optimize"],
     stop: ["create", "read", "update", "delete", "assign", "sequence"],
+    location: ["create", "read", "update", "delete"],
 
     payroll: ["create", "read", "update", "delete", "process", "approve", "export"],
     payrollReport: ["create", "read", "update", "delete", "generate", "export"],
@@ -169,6 +174,7 @@ export const manager = OrgAc.newRole({
 
     route: ["create", "read", "update", "delete", "assign", "activate", "optimize"],
     stop: ["create", "read", "update", "delete", "assign", "sequence"],
+    location: ["read", "update"],
 
     payroll: ["create", "read", "update", "process", "export"],
     payrollReport: ["create", "read", "update", "generate", "export"],
@@ -191,6 +197,7 @@ export const driver = OrgAc.newRole({
 
     route: ["read"],
     stop: ["read"],
+    location: ["read"],
     ...memberAc.statements,
 });
 
@@ -205,5 +212,6 @@ export const employee = OrgAc.newRole({
 
     route: ["read"],
     stop: ["read"],
+    location: ["read"],
     ...memberAc.statements,
 });

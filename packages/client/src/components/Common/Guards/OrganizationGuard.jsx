@@ -42,8 +42,14 @@ export default function OrganizationGuard({ children }) {
 
   useEffect(() => {
     // Don't check if we're not authenticated or on excluded routes
-    if (!session || shouldSkipCheck || sessionLoading || orgsLoading) {
+    if (!session || shouldSkipCheck || sessionLoading) {
       setIsChecking(false);
+      return;
+    }
+
+    // If still loading organizations, wait
+    if (orgsLoading) {
+      setIsChecking(true);
       return;
     }
 
@@ -64,8 +70,8 @@ export default function OrganizationGuard({ children }) {
             await authClient.organization.setActive({
               organizationId: organizations[0].id
             });
-            // Refresh to update the active organization
-            window.location.reload();
+            // Don't reload immediately, let the hook update naturally
+            console.log('Set active organization to:', organizations[0].name);
           } catch (error) {
             console.error('Failed to set active organization:', error);
             // If setting active fails, redirect to organization selection

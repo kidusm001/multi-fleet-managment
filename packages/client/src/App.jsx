@@ -23,6 +23,7 @@ const VehicleManagement = lazy(() => import('@pages/ShuttleManagement')); // Ali
 const EmployeeManagement = lazy(() => import('@pages/EmployeeManagement'));
 const Payroll = lazy(() => import('@pages/Payroll'));
 const Settings = lazy(() => import('@pages/Settings'));
+const OrganizationManagement = lazy(() => import('@pages/OrganizationManagement'));
 const Login = lazy(() => import('@pages/Auth/Login'));
 const Signup = lazy(() => import('@pages/Auth/Signup'));
 const OrganizationSelection = lazy(() => import('@pages/OrganizationSelection'));
@@ -170,6 +171,14 @@ function AppContent() {
             <Route
             path="payroll"
             element={<Suspense fallback={<div />}> <Payroll /> </Suspense>}
+          />
+          <Route
+            path="organization-management"
+            element={
+              <ProtectedRoute allowedRoles={[ROLES.MANAGER, ROLES.ADMIN]}>
+                <Suspense fallback={<div />}> <OrganizationManagement /> </Suspense>
+              </ProtectedRoute>
+            }
           />
           {/* <Route
             path="notifications"

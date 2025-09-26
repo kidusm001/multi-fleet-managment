@@ -29,6 +29,7 @@ export const NAV_CONFIG: Record<RoleKey, NavItem[]> = {
     { label: "Vehicles", path: ROUTES.VEHICLES },
     { label: "Employees", path: ROUTES.EMPLOYEES },
     { label: "Payroll", path: ROUTES.PAYROLL },
+    { label: "Organizations", path: ROUTES.ORGANIZATION_MANAGEMENT },
     { label: "Settings", path: ROUTES.SETTINGS },
   ],
   [ROLES.MANAGER]: [
@@ -44,6 +45,7 @@ export const NAV_CONFIG: Record<RoleKey, NavItem[]> = {
     },
     { label: "Vehicles", path: ROUTES.VEHICLES },
     { label: "Employees", path: ROUTES.EMPLOYEES },
+    { label: "Organizations", path: ROUTES.ORGANIZATION_MANAGEMENT },
     { label: "Settings", path: ROUTES.SETTINGS },
   ],
   // Fallback for unauth/unknown role

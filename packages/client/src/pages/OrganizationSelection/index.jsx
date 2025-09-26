@@ -37,14 +37,73 @@ export default function OrganizationSelection() {
   const [createError, setCreateError] = useState('');
   const [newOrgName, setNewOrgName] = useState('');
   const [newOrgSlug, setNewOrgSlug] = useState('');
+  const [refreshing, setRefreshing] = useState(false);
 
   // Auth hooks
   const { data: session } = useSession();
-  const { data: organizations, isLoading: orgsLoading, error: orgsError } = useListOrganizations();
-  const { data: activeOrganization } = useActiveOrganization();
+  const { data: organizations, isLoading: orgsLoading, error: orgsError, refetch: refetchOrganizations } = useListOrganizations();
+  const { data: activeOrganization, isLoading: activeOrgLoading, refetch: refetchActiveOrg } = useActiveOrganization();
+
+  // Debug logging for troubleshooting (can be removed in production)
+  useEffect(() => {
+    if (organizations || activeOrganization) {
+      console.log('OrganizationSelection - Active org status:', {
+        organizationsCount: organizations?.length || 0,
+        activeOrganization: activeOrganization?.name || 'None',
+        activeOrgId: activeOrganization?.id || 'None'
+      });
+    }
+  }, [organizations, activeOrganization]);
 
   // Check if this is the user's first organization
   const isFirstOrganization = !orgsLoading && (!organizations || organizations.length === 0);
+  
+  // Show organizations list if not loading and organizations exist
+  const shouldShowOrganizations = !orgsLoading && organizations && organizations.length > 0;
+
+  // Auto-retry loading if no organizations are loaded after initial load
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!orgsLoading && !organizations && !orgsError && session) {
+        console.log('Auto-retrying organization fetch...');
+        refetchOrganizations?.();
+      }
+    }, 1500);
+
+    return () => clearTimeout(timer);
+  }, [orgsLoading, organizations, orgsError, session, refetchOrganizations]);
+
+  // Force initial fetch if needed
+  useEffect(() => {
+    if (session && !orgsLoading && !organizations && !orgsError && refetchOrganizations) {
+      console.log('Force initial organization fetch...');
+      refetchOrganizations();
+    }
+  }, [session]);
+
+  // Refetch active organization when organizations are loaded
+  useEffect(() => {
+    if (organizations && organizations.length > 0 && !activeOrgLoading && !activeOrganization && refetchActiveOrg) {
+      console.log('Refetching active organization...');
+      refetchActiveOrg();
+    }
+  }, [organizations, activeOrgLoading, activeOrganization, refetchActiveOrg]);
+
+  // Manual refresh handler
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try {
+      await Promise.all([
+        refetchOrganizations?.(),
+        refetchActiveOrg?.()
+      ]);
+      console.log('Refreshed organizations and active organization');
+    } catch (error) {
+      console.error('Failed to refresh organizations:', error);
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   // Auto-generate slug from name
   useEffect(() => {
@@ -65,18 +124,27 @@ export default function OrganizationSelection() {
     org.slug.toLowerCase().includes(searchTerm.toLowerCase())
   ) || [];
 
+  // Determine which organization should be considered active
+  // If no explicit active organization, consider the first one as potentially active
+  const effectiveActiveOrg = activeOrganization || (organizations && organizations.length > 0 ? organizations[0] : null);
+
   // Handle organization selection
   const handleSelectOrganization = async (org) => {
     try {
+      console.log(`Setting organization ${org.name} (${org.id}) as active...`);
+      
       // Set the selected organization as active
       await authClient.organization.setActive({
         organizationId: org.id
       });
       
+      console.log('Organization set as active, navigating to dashboard...');
+      
       // Navigate to dashboard
       navigate('/dashboard');
     } catch (error) {
       console.error('Failed to set active organization:', error);
+      // Optional: Show a toast notification about the error
     }
   };
 
@@ -186,23 +254,52 @@ export default function OrganizationSelection() {
               : 'Choose an organization to continue or create a new one'
             }
           </p>
+          {/* Active Organization Status */}
+          {activeOrgLoading ? (
+            <div className="mt-4 inline-flex items-center gap-2 px-3 py-1 bg-muted rounded-full text-sm">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>Loading active organization...</span>
+            </div>
+          ) : effectiveActiveOrg ? (
+            <div className="mt-4 inline-flex items-center gap-2 px-3 py-1 bg-primary/10 text-primary rounded-full text-sm">
+              <Building2 className="w-4 h-4" />
+              <span>Current: {effectiveActiveOrg.name}</span>
+            </div>
+          ) : organizations && organizations.length > 0 && (
+            <div className="mt-4 inline-flex items-center gap-2 px-3 py-1 bg-orange-100 text-orange-700 dark:bg-orange-900/20 dark:text-orange-400 rounded-full text-sm">
+              <AlertCircle className="w-4 h-4" />
+              <span>No active organization set</span>
+            </div>
+          )}
         </div>
 
-        {/* Search - Hide for first organization */}
-        {!isFirstOrganization && (
-          <div className="relative mb-6">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Search organizations..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
+        {/* Search and Refresh - Show when we have or expect organizations */}
+        {(shouldShowOrganizations || (!orgsLoading && !isFirstOrganization)) && (
+          <div className="flex gap-3 mb-6">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Search organizations..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <Button
+              variant="outline"
+              size="default"
+              onClick={handleRefresh}
+              disabled={refreshing || orgsLoading}
+              className="flex items-center space-x-2"
+            >
+              <Loader2 className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+              <span>Refresh</span>
+            </Button>
           </div>
         )}
 
-        {/* Organizations List - Hide for first organization */}
-        {!isFirstOrganization && (
+        {/* Organizations List - Show when we have or expect organizations */}
+        {(shouldShowOrganizations || (!orgsLoading && !isFirstOrganization)) && (
           <div className="space-y-4 mb-8">
           {orgsLoading ? (
             // Loading skeletons
@@ -226,9 +323,37 @@ export default function OrganizationSelection() {
                 <div className="text-center">
                   <AlertCircle className="w-12 h-12 mx-auto text-red-500 mb-4" />
                   <h3 className="text-lg font-semibold mb-2">Error Loading Organizations</h3>
-                  <p className="text-muted-foreground">
+                  <p className="text-muted-foreground mb-4">
                     {orgsError.message || 'Failed to load organizations'}
                   </p>
+                  <Button 
+                    onClick={handleRefresh}
+                    disabled={refreshing}
+                    className="flex items-center space-x-2"
+                  >
+                    <Loader2 className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+                    <span>Try Again</span>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ) : !organizations ? (
+            <Card className="w-full">
+              <CardContent className="p-6">
+                <div className="text-center">
+                  <AlertCircle className="w-12 h-12 mx-auto text-orange-500 mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">Organizations Not Loaded</h3>
+                  <p className="text-muted-foreground mb-4">
+                    Organization data failed to load. This might be a network issue.
+                  </p>
+                  <Button 
+                    onClick={handleRefresh}
+                    disabled={refreshing}
+                    className="flex items-center space-x-2"
+                  >
+                    <Loader2 className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+                    <span>Load Organizations</span>
+                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -251,16 +376,22 @@ export default function OrganizationSelection() {
             </Card>
           ) : (
             filteredOrganizations.map((org) => {
-              const isActive = activeOrganization?.id === org.id;
+              // More robust active organization comparison
+              const isActive = effectiveActiveOrg && org && (
+                effectiveActiveOrg.id === org.id || 
+                String(effectiveActiveOrg.id) === String(org.id)
+              );
+              
+
 
               return (
                 <Card 
                   key={org.id} 
                   className={cn(
                     "w-full cursor-pointer transition-all duration-200 hover:shadow-lg",
-                    isActive && "ring-2 ring-primary"
+                    isActive && "ring-2 ring-primary bg-primary/5 border-primary/20"
                   )}
-                  onClick={() => handleSelectOrganization(org)}
+                  onClick={() => !isActive && handleSelectOrganization(org)}
                 >
                   <CardContent className="p-6">
                     <div className="flex items-center justify-between">
@@ -294,11 +425,25 @@ export default function OrganizationSelection() {
                           <p className="text-sm text-muted-foreground">
                             @{org.slug}
                           </p>
+
                         </div>
                       </div>
 
-                      {/* Role and Members */}
+                      {/* Actions */}
                       <div className="flex items-center space-x-4 text-sm">
+                        {!isActive && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleSelectOrganization(org);
+                            }}
+                            className="text-xs"
+                          >
+                            Set Active
+                          </Button>
+                        )}
                         <ChevronRight className="w-4 h-4 text-muted-foreground" />
                       </div>
                     </div>
