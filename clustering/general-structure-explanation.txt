@@ -1,0 +1,109 @@
+Route Assignment System Explanation
+=================================
+
+Overview
+--------
+This system consists of two main files:
+1. assign_routes.py - Core routing logic and algorithms
+2. api.py - FastAPI interface for HTTP access to the routing system
+
+Components and Algorithms
+------------------------
+
+1. Core Components (assign_routes.py)
+-----------------------------------
+a) Distance and Bearing Calculation
+   - Uses Haversine formula to calculate distances between coordinates
+   - Calculates bearing (direction) between points using spherical trigonometry
+   - Creates two matrices:
+     * Distance Matrix: Contains distances between all location pairs
+     * Bearing Matrix: Contains directional bearings between all location pairs
+
+b) Route Optimization (Using Google OR-Tools)
+   - Implements Vehicle Routing Problem (VRP) solver
+   - Considers multiple constraints:
+     * Shuttle capacities
+     * Distance optimization
+     * Bearing penalties to prefer straighter routes
+   - Uses a combined cost function that weighs both distance and bearing changes
+
+2. API Layer (api.py)
+--------------------
+- Provides RESTful interface using FastAPI
+- Accepts POST requests with:
+  * HQ location (latitude, longitude)
+  * Employee locations (list of latitude/longitude pairs)
+  * Shuttle capacities (list of integers)
+- Returns optimized routes and verification status
+
+Key Variables Considered
+-----------------------
+1. Geographic:
+   - Latitude and longitude coordinates
+   - Distance between points
+   - Bearing/direction between points
+
+2. Capacity:
+   - Individual shuttle capacities
+   - Total fleet capacity vs. total demand
+   - One employee per pickup point
+
+3. Optimization:
+   - Route efficiency (distance)
+   - Route straightness (bearing changes)
+   - Time constraints (30-second solver limit)
+
+4. Constraints:
+   - Each employee must be picked up exactly once
+   - Shuttles cannot exceed their capacity
+   - All routes start and end at HQ
+   - No duplicate assignments
+
+Algorithm Implementation Details
+------------------------------
+1. Route Assignment:
+   - Uses OR-Tools' RoutingModel and RoutingIndexManager
+   - Implements custom cost callback combining:
+     * Distance cost (primary)
+     * Bearing penalty (secondary)
+   - Uses PATH_CHEAPEST_ARC for initial solution
+   - Applies GUIDED_LOCAL_SEARCH for optimization
+
+2. Verification:
+   - Checks for duplicate assignments
+   - Ensures all employees are assigned
+   - Validates capacity constraints
+   - Confirms route completeness
+
+Usage Flow
+----------
+1. Client sends POST request to /assign-routes with location and capacity data
+2. System calculates distance and bearing matrices
+3. OR-Tools solver generates optimized routes
+4. Routes are verified for correctness
+5. Results returned with success/failure status and route details
+
+Error Handling
+-------------
+- Input validation through Pydantic models
+- Solution feasibility checks
+- Capacity violation detection
+- HTTP error responses for various failure cases
+
+Performance Considerations
+------------------------
+- 30-second timeout for route optimization
+- Matrix pre-calculation for distances and bearings
+- Efficient data structures for route representation
+- Scalability limited by OR-Tools solver capacity
+
+Future Improvements Possible
+--------------------------
+1. Time window constraints
+2. Multiple depot support
+3. Real-time traffic consideration
+4. Dynamic capacity adjustment
+5. Route balancing between shuttles
+6. Alternative optimization objectives
+
+This system provides a robust solution for shuttle route optimization while considering multiple real-world constraints and practical implementation needs. 
