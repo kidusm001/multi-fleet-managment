@@ -184,7 +184,6 @@ class ShuttleService {
 
       const response = await api.post('/shuttles', formattedData);
       return response.data;
-      return response.data;
     } catch (error) {
       console.error('Error response:', error.response?.data);
       console.error('Error details:', {

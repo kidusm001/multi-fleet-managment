@@ -6,6 +6,7 @@ import {
   Building2, 
   Users, 
   Settings as SettingsIcon,
+  MapPin,
   UserPlus,
   Crown,
   Shield
@@ -16,10 +17,12 @@ import { cn } from "@/lib/utils";
 import OrganizationOverview from "./components/OrganizationOverview";
 import OrganizationAdmin from "@components/Common/Organizations/OrganizationAdmin";
 import OrganizationSettings from "./components/OrganizationSettings";
+import LocationManagement from "./components/LocationManagement";
 
 const tabs = [
   { id: "overview", label: "Overview", icon: Building2 },
   { id: "members", label: "Members", icon: Users },
+  { id: "locations", label: "Locations", icon: MapPin },
   { id: "settings", label: "Settings", icon: SettingsIcon },
 ];
 
@@ -49,6 +52,8 @@ export default function OrganizationManagement() {
         return <OrganizationOverview />;
       case "members":
         return <OrganizationAdmin />;
+      case "locations":
+        return <LocationManagement />;
       case "settings":
         return <OrganizationSettings />;
       default:

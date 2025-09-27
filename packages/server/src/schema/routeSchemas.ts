@@ -5,7 +5,7 @@ import { RouteStatus } from '@prisma/client';
 const BaseRouteSchema = z.object({
     name: z.string().min(1, 'Route name is required').max(255, 'Route name must be less than 255 characters'),
     description: z.string().max(1000, 'Description must be less than 1000 characters').optional().nullable(),
-    locationId: z.cuid('Location ID must be a valid CUID').optional().nullable(),
+    locationId: z.cuid('Location ID must be a valid CUID'),
     vehicleId: z.cuid('Vehicle ID must be a valid CUID').optional().nullable(),
     shiftId: z.cuid('Shift ID must be a valid CUID').optional().nullable(),
     date: z.iso.datetime('Invalid date format').optional().nullable(),
@@ -25,6 +25,7 @@ export const CreateRouteSchema = BaseRouteSchema.extend({
     })).min(1, 'At least one employee is required'),
 }).required({
     name: true,
+    locationId: true,
     shiftId: true,
     date: true,
     totalTime: true,
@@ -32,7 +33,16 @@ export const CreateRouteSchema = BaseRouteSchema.extend({
 });
 
 // Update Route schema (all fields optional except constraints)
-export const UpdateRouteSchema = BaseRouteSchema.partial();
+export const UpdateRouteSchema = BaseRouteSchema.partial().refine((data) => {
+    // If locationId is provided, it must be a valid CUID (not null/undefined)
+    if (data.locationId !== undefined) {
+        return data.locationId !== null && data.locationId.length > 0;
+    }
+    return true;
+}, {
+    message: 'Location ID must be provided and cannot be null',
+    path: ['locationId']
+});
 
 // Route ID parameter schema
 export const RouteIdParamSchema = z.object({

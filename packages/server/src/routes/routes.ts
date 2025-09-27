@@ -165,10 +165,21 @@ router.post('/superadmin', requireAuth, requireRole(["superadmin"]), async (req:
         if (!organizationId || typeof organizationId !== 'string') {
             return res.status(400).json({ message: 'Organization ID is required' });
         }
+        if (!locationId || typeof locationId !== 'string') {
+            return res.status(400).json({ message: 'Location ID is required' });
+        }
 
         const organization = await prisma.organization.findUnique({ where: { id: organizationId } });
         if (!organization) {
             return res.status(404).json({ message: 'Organization not found' });
+        }
+
+        // Validate location exists and belongs to organization
+        const location = await prisma.location.findFirst({
+            where: { id: locationId, organizationId }
+        });
+        if (!location) {
+            return res.status(400).json({ message: 'Location not found or does not belong to the organization' });
         }
 
         if (vehicleId) {
@@ -243,6 +254,16 @@ router.put('/superadmin/:id', requireAuth, requireRole(["superadmin"]), async (r
         const existingRoute = await prisma.route.findUnique({ where: { id } });
         if (!existingRoute) {
             return res.status(404).json({ message: 'Route not found' });
+        }
+
+        // Validate location if provided
+        if (locationId) {
+            const location = await prisma.location.findFirst({
+                where: { id: locationId, organizationId: existingRoute.organizationId }
+            });
+            if (!location) {
+                return res.status(400).json({ message: 'Location not found or does not belong to the organization' });
+            }
         }
 
         if (vehicleId) {
@@ -644,6 +665,9 @@ router.post('/', requireAuth, validateSchema(CreateRouteSchema, 'body'), async (
         if (!date) {
             return res.status(400).json({ message: 'date is required' });
         }
+        if (!locationId) {
+            return res.status(400).json({ message: 'locationId is required' });
+        }
 
         const hasPermission = await auth.api.hasPermission({
             headers: await fromNodeHeaders(req.headers),
@@ -651,6 +675,14 @@ router.post('/', requireAuth, validateSchema(CreateRouteSchema, 'body'), async (
         });
         if (!hasPermission.success) {
             return res.status(403).json({ message: 'Unauthorized' });
+        }
+
+        // Validate location exists and belongs to organization
+        const location = await prisma.location.findFirst({
+            where: { id: locationId, organizationId: activeOrgId }
+        });
+        if (!location) {
+            return res.status(400).json({ message: 'Location not found or does not belong to the organization' });
         }
 
         // Validate totalTime does not exceed 90 minutes
@@ -844,6 +876,16 @@ router.put('/:id', requireAuth, validateMultiple([{ schema: RouteIdParamSchema, 
 
         const existingRoute = await prisma.route.findFirst({ where: { id, organizationId: activeOrgId } });
         if (!existingRoute) return res.status(404).json({ message: 'Route not found' });
+
+        // Validate location if provided
+        if (locationId) {
+            const location = await prisma.location.findFirst({
+                where: { id: locationId, organizationId: activeOrgId }
+            });
+            if (!location) {
+                return res.status(400).json({ message: 'Location not found or does not belong to the organization' });
+            }
+        }
 
         if (totalTime && totalTime > 90) {
             return res.status(400).json({ error: 'Total time of the route cannot exceed 90 minutes.' });

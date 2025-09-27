@@ -114,18 +114,15 @@ export default function CreateRouteForm({
             { cache: false, timestamp }
           );
 
-        // Filter out non-active shuttles
+        // Filter out non-available shuttles - API returns "vehicles" array with "AVAILABLE" status
         const activeShuttles =
-          result.shuttles?.filter(
-            (shuttle) => shuttle.status?.toLowerCase() === "active"
+          result.vehicles?.filter(
+            (shuttle) => shuttle.status?.toLowerCase() === "available"
           ) || [];
 
-        if (result.shuttles?.length > 0 && activeShuttles.length === 0) {
-          toast({
-            title: "No Active Shuttles",
-            description:
-              "There are shuttles available but none are currently active. Please check shuttle status.",
-            variant: "warning",
+        if (result.vehicles?.length > 0 && activeShuttles.length === 0) {
+          toast.warning("No Available Shuttles", {
+            description: "There are shuttles but none are currently available. Please check shuttle status."
           });
         }
 
@@ -156,25 +153,17 @@ export default function CreateRouteForm({
               setHasClusterResults(true); // Set flag when clusters are received
             }
           } catch (error) {
-            toast({
-              title: "Error",
-              description: "Failed to fetch optimal clusters",
-              variant: "destructive",
-            });
+            toast.error("Failed to fetch optimal clusters");
             console.error("Error fetching clusters:", error);
-          } finally {
-            setIsLoading(false);
           }
         }
       } catch (error) {
-        toast({
-          title: "Error",
-          description: "Failed to fetch available shuttles",
-          variant: "destructive",
-        });
+        toast.error("Failed to fetch available shuttles");
         setHasClusterResults(false);
       } finally {
+        // Always reset loading states regardless of success or failure
         setIsLoadingShuttles(false);
+        setIsLoading(false);
         initialFetchDone.current = true;
       }
     };
@@ -197,11 +186,7 @@ export default function CreateRouteForm({
         setExistingRoutes(response.data || []);
       } catch (error) {
         console.error("Error fetching existing routes:", error);
-        toast({
-          title: "Error",
-          description: "Failed to fetch existing routes",
-          variant: "destructive",
-        });
+        toast.error("Failed to fetch existing routes");
       }
     };
 
@@ -235,9 +220,8 @@ export default function CreateRouteForm({
     setSelectedShuttle(shuttle);
     const currentCluster = shuttleClusters[shuttle.id] || [];
 
-    toast({
-      title: `Selected ${shuttle.name}`,
-      description: `${currentCluster.length} employees recommended for this shuttle`,
+    toast.success(`Selected ${shuttle.name}`, {
+      description: `${currentCluster.length} employees recommended for this shuttle`
     });
   };
 
@@ -250,12 +234,12 @@ export default function CreateRouteForm({
     if (action === "select") {
       const employeeWithStop = {
         ...employee,
-        stop: {
+        stop: employee.stop ? {
           id: employee.stop.id,
           latitude: employee.stop.latitude,
           longitude: employee.stop.longitude,
           location: employee.location,
-        },
+        } : null,
       };
 
       setRouteData((prev) => ({
@@ -276,10 +260,13 @@ export default function CreateRouteForm({
 
   const handleEmployeeSelect = (employee) => {
     if (!selectedShuttle) {
-      toast({
-        title: "Please select a shuttle first",
-        variant: "destructive",
-      });
+      toast.error("Please select a shuttle first");
+      return;
+    }
+
+    // Check if employee has valid stop data for route creation
+    if (!employee.stop && !routeData.selectedEmployees.some(emp => emp.id === employee.id)) {
+      toast.error("Cannot select employee without stop location data");
       return;
     }
 
@@ -298,9 +285,8 @@ export default function CreateRouteForm({
     setShuttleClusters(originalClusters);
     setSwappedEmployees({});
     setRouteData((prev) => ({ ...prev, selectedEmployees: [] }));
-    toast({
-      title: "Selection cleared",
-      description: "All selected employees have been cleared",
+    toast.success("Selection cleared", {
+      description: "All selected employees have been cleared"
     });
   };
 
@@ -354,9 +340,8 @@ export default function CreateRouteForm({
     const suggestedName = getSuggestedRouteName();
     if (suggestedName) {
       setRouteData((prev) => ({ ...prev, name: suggestedName }));
-      toast({
-        title: "Name Updated",
-        description: "Route name has been updated based on the furthest stop.",
+      toast.success("Name Updated", {
+        description: "Route name has been updated based on the furthest stop."
       });
     }
   }, [getSuggestedRouteName, setRouteData]);
@@ -446,10 +431,8 @@ export default function CreateRouteForm({
     if (validateForm()) {
       onPreview();
     } else {
-      toast({
-        title: "Validation Error",
-        description: "Please fix the errors before continuing",
-        variant: "destructive",
+      toast.error("Validation Error", {
+        description: "Please fix the errors before continuing"
       });
     }
   };
@@ -479,8 +462,8 @@ export default function CreateRouteForm({
           { cache: false, timestamp }
         );
         
-        const activeShuttles = result.shuttles?.filter(
-          shuttle => shuttle.status?.toLowerCase() === "active"
+        const activeShuttles = result.vehicles?.filter(
+          shuttle => shuttle.status?.toLowerCase() === "available"
         ) || [];
         
         const unassignedEmployees = employees.filter(emp => !emp.assigned);
@@ -507,10 +490,8 @@ export default function CreateRouteForm({
         }
       } catch (error) {
         console.error("Error refreshing clusters:", error);
-        toast({
-          title: "Refresh Failed",
-          description: "Could not refresh employee highlighting",
-          variant: "destructive",
+        toast.error("Refresh Failed", {
+          description: "Could not refresh employee highlighting"
         });
       } finally {
         setIsLoading(false);
@@ -693,10 +674,7 @@ export default function CreateRouteForm({
                       type="button"
                       onClick={() => {
                         if (!selectedShuttle) {
-                          toast({
-                            title: "Please select a shuttle first",
-                            variant: "destructive",
-                          });
+                          toast.error("Please select a shuttle first");
                           return;
                         }
                         const currentCluster = getCurrentShuttleCluster();
@@ -704,17 +682,16 @@ export default function CreateRouteForm({
                           ...prev,
                           selectedEmployees: currentCluster.map((emp) => ({
                             ...emp,
-                            stop: {
+                            stop: emp.stop ? {
                               id: emp.stop.id,
                               latitude: emp.stop.latitude,
                               longitude: emp.stop.longitude,
                               location: emp.location,
-                            },
+                            } : null,
                           })),
                         }));
-                        toast({
-                          title: "Recommended employees selected",
-                          description: `${currentCluster.length} employees have been selected`,
+                        toast.success("Recommended employees selected", {
+                          description: `${currentCluster.length} employees have been selected`
                         });
                       }}
                       className={styles.recommendButton}

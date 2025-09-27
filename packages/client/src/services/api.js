@@ -146,4 +146,13 @@ export const updateDepartment = (id, data) => api.patch(`/departments/${id}`, da
 export const deleteDepartment = (id) => api.delete(`/departments/${id}`);
 export const getDepartmentEmployees = (id) => api.get(`/departments/${id}/employees`);
 
+// Locations
+export const getLocations = (type) => api.get('/locations', { params: type ? { type } : {} });
+export const getLocationById = (id) => api.get(`/locations/${id}`);
+export const createLocation = (data) => api.post('/locations', data);
+export const updateLocation = (id, data) => api.put(`/locations/${id}`, data);
+export const deleteLocation = (id) => api.delete(`/locations/${id}`);
+export const getLocationEmployees = (id) => api.get(`/locations/${id}/employees`);
+export const getLocationRoutes = (id) => api.get(`/locations/${id}/routes`);
+
 export default api;
