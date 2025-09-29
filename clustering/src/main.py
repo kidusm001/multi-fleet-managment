@@ -24,7 +24,7 @@ class Employee(BaseModel):
     longitude: float
 
 class Shuttle(BaseModel):
-    id: int
+    id: str
     capacity: int
 
 class LocationData(BaseModel):
@@ -54,6 +54,21 @@ async def assign_routes_endpoint(request: RouteRequest, background_tasks: Backgr
     try:
         # Create new task
         async def process_request():
+            # Validate input data
+            if not request.shuttles:
+                return {
+                    "success": False,
+                    "message": "At least one shuttle is required for clustering",
+                    "routes": []
+                }
+            
+            if not request.locations.employees:
+                return {
+                    "success": True,
+                    "message": "No employees to assign",
+                    "routes": []
+                }
+            
             # Prepare locations list with HQ first, then employees
             hq = request.locations.HQ
             employees = request.locations.employees

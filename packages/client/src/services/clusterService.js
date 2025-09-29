@@ -10,8 +10,8 @@ function resolveEnv() {
 const env = resolveEnv();
 
 // Create a separate axios instance for FastAPI requests
-const ORIGIN = env.VITE_API_BASE || env.VITE_API_URL || 'http://localhost:3001';
-const BASE = env.DEV ? '/api' : `${ORIGIN.replace(/\/$/, '')}/api`;
+const ORIGIN = 'http://localhost:3000';
+const BASE = `${ORIGIN.replace(/\/$/, '')}/api`;
 const fastApi = axios.create({
   baseURL: BASE, // Express backend mounts FastAPI under /fastapi
   timeout: 60000, // Increased timeout to 60 seconds
@@ -57,8 +57,10 @@ export const clusterService = {
       }
 
       // Calculate total shuttle capacity
-      const totalCapacity = shuttles.reduce((sum, shuttle) =>
-        sum + (shuttle.category?.capacity || 0), 0);
+      const totalCapacity = shuttles.reduce((sum, shuttle) => {
+        const capacity = shuttle.capacity || shuttle.category?.capacity || 0;
+        return sum + capacity;
+      }, 0);
 
       // Check if total employees exceed capacity
       if (employees.length > totalCapacity) {
@@ -107,18 +109,48 @@ export const clusterService = {
       isRequestInProgress = true;
 
       // Format request data
+      // Filter out employees without valid coordinates to prevent 422 errors
+      const validEmployees = employees.filter(emp => 
+        emp.stop?.latitude && 
+        emp.stop?.longitude && 
+        emp.stop.latitude !== 0 && 
+        emp.stop.longitude !== 0
+      );
+
+      // Filter out shuttles without valid capacity
+      // Prefer vehicle's direct capacity, fallback to category capacity
+      const validShuttles = shuttles.filter(shuttle => {
+        const capacity = shuttle.capacity || shuttle.category?.capacity;
+        return capacity && capacity > 0;
+      });
+
+      // If no valid employees or shuttles, return early
+      if (validEmployees.length === 0 || validShuttles.length === 0) {
+        isRequestInProgress = false;
+        return {
+          success: false,
+          message: validEmployees.length === 0 ? 
+            "No employees with valid locations found" : 
+            "No shuttles with valid capacity found",
+          routes: [],
+          totalEmployees: employees.length,
+          totalCapacity: totalCapacity,
+          selectedDepartments: []
+        };
+      }
+
       const requestData = {
         locations: {
           HQ: [9.0222, 38.7468], // Addis Ababa coordinates as HQ
-          employees: employees.map(emp => ({
+          employees: validEmployees.map(emp => ({
             id: emp.id.toString(),
-            latitude: emp.stop?.latitude || 0,
-            longitude: emp.stop?.longitude || 0
+            latitude: emp.stop.latitude,
+            longitude: emp.stop.longitude
           }))
         },
-        shuttles: shuttles.map(shuttle => ({
+        shuttles: validShuttles.map(shuttle => ({
           id: shuttle.id,
-          capacity: shuttle.category?.capacity || 0
+          capacity: shuttle.capacity || shuttle.category?.capacity || 0
         }))
       };
 
@@ -137,9 +169,26 @@ export const clusterService = {
             [...new Set(employees.map(emp => emp.department?.name))]
         };
       } catch (error) {
+        currentOptimizeRequest = null;
+        isRequestInProgress = false;
+        
         if (axios.isCancel(error)) {
           throw error;
         }
+        
+        // Handle specific error codes
+        if (error.response?.status === 422) {
+          console.error('Clustering API validation error (422):', error.response.data);
+          return {
+            success: false,
+            message: "Invalid data provided to clustering service",
+            routes: [],
+            totalEmployees: employees.length,
+            totalCapacity: totalCapacity,
+            selectedDepartments: []
+          };
+        }
+        
         throw error;
       }
     } catch (error) {

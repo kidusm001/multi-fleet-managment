@@ -16,6 +16,12 @@ export default defineConfig({
         secure: false,
         rewrite: (path) => path.replace(/^\/_auth/, '/auth'),
       },
+      // '/api/fastapi': {
+      //   target: 'http://localhost:3000',
+      //   changeOrigin: true,
+      //   secure: false,
+      //   rewrite: (path) => path.replace(/^\/api\/fastapi/, '/fastapi'),
+      // },
       '/api': {
         target: 'http://localhost:3000',
         changeOrigin: true,

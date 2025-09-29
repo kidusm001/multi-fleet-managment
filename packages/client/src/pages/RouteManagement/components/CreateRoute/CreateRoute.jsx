@@ -36,6 +36,7 @@ function CreateRoute() {
     selectedEmployees: [],
     selectedShift: null,
     selectedShuttle: null,
+    selectedLocation: null,
     shiftEndTime: null,
     setName: (name) => handleNameChange(name),
   });
@@ -68,14 +69,14 @@ function CreateRoute() {
 
       // Find the selected shift data
       const selectedShiftData = shifts.find(
-        (s) => s.id === parseInt(selectedShift)
+        (s) => s.id === selectedShift || String(s.id) === String(selectedShift)
       );
 
       if (selectedShiftData) {
         setRouteData((prev) => ({
           ...prev,
           selectedShift: {
-            id: parseInt(selectedShift),
+            id: selectedShiftData.id,
             name: selectedShiftData.name,
             startTime: selectedShiftData.startTime,
             endTime: selectedShiftData.endTime,
@@ -168,6 +169,7 @@ function CreateRoute() {
       name: "",
       selectedEmployees: [],
       selectedShuttle: null,
+      selectedLocation: null,
       setName: (name) => handleNameChange(name),
     }));
   };
@@ -197,6 +199,7 @@ function CreateRoute() {
         selectedEmployees: [],
         selectedShift: routeData.selectedShift, // Keep shift data
         selectedShuttle: null,
+        selectedLocation: null, // Reset location
         shiftEndTime: routeData.shiftEndTime, // Keep shift end time
         setName: (name) => handleNameChange(name),
       });
@@ -306,7 +309,7 @@ function CreateRoute() {
           // Show form for both creating and preview states
           <>
             <CreateRouteForm
-              selectedShift={selectedShift}
+              selectedShift={routeData.selectedShift || selectedShift}
               routeData={routeData}
               setRouteData={setRouteData}
               onBack={handleBackToList}

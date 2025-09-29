@@ -28,6 +28,7 @@ function RouteAssignment({ refreshTrigger }) {
     totalRoutes: 0,
     availableSeats: 0,
   });
+  const [shuttles, setShuttles] = useState([]);
 
   const fetchShifts = useCallback(async () => {
     try {
@@ -55,6 +56,7 @@ function RouteAssignment({ refreshTrigger }) {
   const fetchRoutesAndStats = useCallback(async () => {
     if (!selectedShift) {
       setRoutes([]);
+      setShuttles([]);
       setStats({
         unassignedInShift: 0,
         totalRoutes: 0,
@@ -80,16 +82,19 @@ function RouteAssignment({ refreshTrigger }) {
       let totalAvailableSeats = 0;
 
       try {
-        const shuttles = await shuttleService.getShuttles();
+        const shuttlesData = await shuttleService.getShuttles();
+        setShuttles(shuttlesData); // Store shuttles data for use in availableRoutes filter
+        
         for (const route of routes) {
-          const shuttle = shuttles.find((s) => s.id === route.shuttleId);
-          if (shuttle?.capacity) {
+          const shuttle = shuttlesData.find((s) => s.id === route.vehicleId);
+          const shuttleCapacity = shuttle?.capacity || shuttle?.category?.capacity;
+          if (shuttleCapacity) {
             const assignedCount =
               route.stops?.reduce(
                 (count, stop) => (stop.employee ? count + 1 : count),
                 0
               ) || 0;
-            totalAvailableSeats += Math.max(0, shuttle.capacity - assignedCount);
+            totalAvailableSeats += Math.max(0, shuttleCapacity - assignedCount);
           }
         }
         setStats({
@@ -99,6 +104,7 @@ function RouteAssignment({ refreshTrigger }) {
         });
       } catch (err) {
         toast.warning("Error calculating available seats");
+        setShuttles([]); // Clear shuttles on error
       }
       
       setRoutes(routes);
@@ -122,9 +128,14 @@ function RouteAssignment({ refreshTrigger }) {
   }, [fetchRoutesAndStats, refreshTrigger]);
 
   // Add: filter out routes that are full based on stops count vs shuttle capacity
-  const availableRoutes = routes.filter(
-    (route) => route.stops.length < route.shuttle.capacity
-  );
+  const availableRoutes = routes.filter((route) => {
+    const shuttle = shuttles.find((s) => s.id === route.vehicleId);
+    const shuttleCapacity = shuttle?.capacity || shuttle?.category?.capacity;
+    if (!shuttleCapacity) {
+      return true; // Include routes without shuttle data to avoid crashes
+    }
+    return route.stops.length < shuttleCapacity;
+  });
 
   const _handleCreateNewRoute = () => {
     navigate("/route-management/create", {
@@ -200,29 +211,35 @@ function RouteAssignment({ refreshTrigger }) {
                 </Badge>
               </div>
               <div className="space-y-2">
-                {availableRoutes.map((routeOption) => (
-                  <button
-                    key={routeOption.id}
-                    className={cn(styles.routeOption, {
-                      [styles.selected]:
-                        selectedRoute?.id === routeOption.id,
-                    })}
-                    onClick={() => setSelectedRoute(routeOption)}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <Badge variant="outline">{routeOption.name}</Badge>
-                      <Badge className="bg-orange-100 text-orange-500">
-                        {routeOption.shuttle.name}
-                      </Badge>
-                    </div>
-                    <div className="flex items-center gap-2 text-sm text-gray-500">
-                      <Users className="w-4 h-4" />
-                      <span>
-                        {routeOption.stops.length} / {routeOption.shuttle.capacity} Passengers
-                      </span>
-                    </div>
-                  </button>
-                ))}
+                {availableRoutes.map((routeOption) => {
+                  const shuttle = shuttles.find(s => s.id === routeOption.vehicleId);
+                  const shuttleCapacity = shuttle?.capacity || shuttle?.category?.capacity || 0;
+                  const shuttleName = shuttle?.name || shuttle?.plateNumber || 'Unknown Vehicle';
+                  
+                  return (
+                    <button
+                      key={routeOption.id}
+                      className={cn(styles.routeOption, {
+                        [styles.selected]:
+                          selectedRoute?.id === routeOption.id,
+                      })}
+                      onClick={() => setSelectedRoute(routeOption)}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <Badge variant="outline">{routeOption.name}</Badge>
+                        <Badge className="bg-orange-100 text-orange-500">
+                          {shuttleName}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-gray-500">
+                        <Users className="w-4 h-4" />
+                        <span>
+                          {routeOption.stops.length} / {shuttleCapacity} Passengers
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>

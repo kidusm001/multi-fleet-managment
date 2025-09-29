@@ -7,6 +7,7 @@ import { toNodeHandler } from 'better-auth/node';
 
 import { auth } from './lib/auth';
 import apiRouter from './routes';
+import axios from 'axios';
 
 dotenv.config();
 
@@ -81,6 +82,8 @@ export function createApp() {
     app.all("/api/auth/*splat", toNodeHandler(auth));
 
     app.use(express.json());
+    app.use(express.urlencoded({ extended: true }));
+
 
     // Structured logging - minimal for development
     const isProd = process.env.NODE_ENV === 'production';
@@ -172,33 +175,80 @@ export function createApp() {
     });
 
     // FastAPI proxy middleware
-    app.use('/fastapi', async (req: Request, res: Response, next: NextFunction) => {
-        const adjustedPath = req.path.replace('/fastapi', '');
-        console.log(`Forwarding request to FastAPI: ${FASTAPI_URL}${adjustedPath}`);
+    // app.use('/fastapi', async (req: Request, res: Response, next: NextFunction) => {
+    //     const adjustedPath = req.path.replace('/fastapi', '');
+    //     console.log(`Forwarding request to FastAPI: ${FASTAPI_URL}${adjustedPath}`);
         
-        try {
-            const url = `${FASTAPI_URL}${adjustedPath}${req.url.includes('?') ? '?' + req.url.split('?')[1] : ''}`;
+    //     try {
+    //         const url = `${FASTAPI_URL}${adjustedPath}${req.url.includes('?') ? '?' + req.url.split('?')[1] : ''}`;
             
-            const response = await fetch(url, {
+    //         const response = await fetch(url, {
+    //             method: req.method,
+    //             headers: {
+    //                 'Content-Type': 'application/json',
+    //                 ...Object.fromEntries(
+    //                     Object.entries(req.headers).filter(([key]) => 
+    //                         !['host', 'connection', 'content-length'].includes(key.toLowerCase())
+    //                     )
+    //                 )
+    //             },
+    //             body: ['GET', 'HEAD'].includes(req.method) ? undefined : JSON.stringify(req.body)
+    //         });
+
+    //         const data = await response.json().catch(() => null);
+    //         res.status(response.status).json(data || { message: 'No content' });
+    //     } catch (error: any) {
+    //         console.error('FastAPI proxy error:', error);
+    //         res.status(500).json({ error: 'Failed to proxy request to FastAPI' });
+    //     }
+    // });
+    const fastApiProxy = async (req: Request, res: Response, next: NextFunction) => {
+        const targetPath = req.path || '/';
+        const targetUrl = `${FASTAPI_URL}${targetPath}`;
+
+        console.log(`Forwarding request to FastAPI: ${targetUrl}`);
+
+        try {
+            const filteredHeaders = Object.fromEntries(
+                Object.entries(req.headers).filter(([key]) =>
+                    !['host', 'connection', 'content-length'].includes(key.toLowerCase())
+                )
+            );
+
+            const response = await axios({
                 method: req.method,
+                url: targetUrl,
+                params: req.query,
+                data: ['GET', 'HEAD'].includes(req.method) ? undefined : req.body,
                 headers: {
-                    'Content-Type': 'application/json',
-                    ...Object.fromEntries(
-                        Object.entries(req.headers).filter(([key]) => 
-                            !['host', 'connection', 'content-length'].includes(key.toLowerCase())
-                        )
-                    )
+                    ...filteredHeaders,
+                    'Content-Type': 'application/json'
                 },
-                body: ['GET', 'HEAD'].includes(req.method) ? undefined : JSON.stringify(req.body)
+                validateStatus: () => true
             });
 
-            const data = await response.json().catch(() => null);
-            res.status(response.status).json(data || { message: 'No content' });
+            res.status(response.status);
+
+            const headerContentType = response.headers['content-type'];
+            const contentType = Array.isArray(headerContentType) ? headerContentType[0] : headerContentType;
+
+            if (contentType && contentType.includes('application/json')) {
+                res.json(response.data);
+            } else {
+                res.send(response.data);
+            }
         } catch (error: any) {
-            console.error('FastAPI proxy error:', error);
-            res.status(500).json({ error: 'Failed to proxy request to FastAPI' });
+            if (axios.isAxiosError(error) && error.response) {
+                res.status(error.response.status).send(error.response.data);
+            } else {
+                next(error);
+            }
         }
-    });
+    };
+
+    app.use('/api/fastapi', fastApiProxy);
+    app.use('/fastapi', fastApiProxy);
+
 
     // Routes
     // ...existing code...

@@ -182,6 +182,9 @@ const ShuttlePreview = ({ routeData, onClose, onAccept, show }) => {
     if (!selectedShift?.id) {
       validationErrors.push("Missing or invalid shift ID");
     }
+    if (!routeData.selectedLocation?.id) {
+      validationErrors.push("Missing or invalid location ID");
+    }
     if (!routeMetrics) {
       validationErrors.push("Missing route metrics");
     }
@@ -204,6 +207,7 @@ const ShuttlePreview = ({ routeData, onClose, onAccept, show }) => {
         name: routeData.name.trim(),
         shuttleId: parseInt(selectedShuttle.id),
         shiftId: parseInt(selectedShift.id),
+        locationId: routeData.selectedLocation?.id,
         date: dateStr,
         // Use precise Mapbox metrics for distance and time
         totalDistance: parseFloat(routeMetrics.totalDistance.toFixed(2)),

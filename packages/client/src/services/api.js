@@ -13,7 +13,7 @@ function resolveEnv() {
 const env = resolveEnv();
 
 // Build API base: Always use configured backend origin + /api (no proxy)
-const API_BASE = `${(env.VITE_API_BASE || env.VITE_API_URL || 'http://localhost:3000').replace(/\/$/, '')}/api`;
+const API_BASE = `${('http://localhost:3000').replace(/\/$/, '')}/api`;
 
 export const api = axios.create({
   baseURL: API_BASE,

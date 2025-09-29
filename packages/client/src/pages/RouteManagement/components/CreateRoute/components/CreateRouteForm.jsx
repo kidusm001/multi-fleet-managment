@@ -11,12 +11,14 @@ import LoadingWrapper from "@components/Common/LoadingAnimation/LoadingWrapper";
 import { clusterService } from "@services/clusterService";
 import { shuttleAvailabilityService } from "@services/shuttleAvailabilityService";
 import { getRoutesByShift } from "@services/api";
+import { locationService } from "@services/locationService";
 // Styles
 import styles from "../styles/CreateRouteForm.module.css";
 
 // Local components
 import SortableEmployeeTable from "./SortableEmployeeTable";
 import EmployeeClusterVisualization from "./EmployeeClusterVisualization";
+import LocationSelection from "./LocationSelection";
 
 export default function CreateRouteForm({
   selectedShift = null,
@@ -49,7 +51,6 @@ export default function CreateRouteForm({
   const [formErrors, setFormErrors] = useState({});
   const [hasClusterResults, setHasClusterResults] = useState(false);
   const [highlightKey, setHighlightKey] = useState(0); // Force re-render key
-
   // Add reference to track previous shift ID for change detection
   const previousShiftId = useRef(null);
 
@@ -67,6 +68,30 @@ export default function CreateRouteForm({
     if (!selectedShift) return null;
     return typeof selectedShift === "object" ? selectedShift.id : selectedShift;
   }, [selectedShift]);
+
+  // Get shift name from various sources
+  const getShiftName = useCallback(() => {
+    // First try to get name from selectedShift if it's an object
+    if (selectedShift?.name) {
+      return selectedShift.name;
+    }
+    
+    // Then try to get from routeData
+    if (routeData?.selectedShift?.name) {
+      return routeData.selectedShift.name;
+    }
+    
+    // Finally try to find in shifts array using the ID
+    const shiftId = getShiftId();
+    if (shiftId && _shifts.length > 0) {
+      const foundShift = _shifts.find(
+        (s) => s.id === shiftId || String(s.id) === String(shiftId)
+      );
+      return foundShift?.name;
+    }
+    
+    return 'Selected Shift';
+  }, [selectedShift, routeData, getShiftId, _shifts]);
 
   // Update the shift change detection logic
   useEffect(() => {
@@ -88,6 +113,7 @@ export default function CreateRouteForm({
         ...prev,
         selectedShuttle: null,
         selectedEmployees: [],
+        selectedLocation: null, // Reset location when shift changes
       }));
       
       // Update previous shift ID
@@ -153,8 +179,11 @@ export default function CreateRouteForm({
               setHasClusterResults(true); // Set flag when clusters are received
             }
           } catch (error) {
-            toast.error("Failed to fetch optimal clusters");
-            console.error("Error fetching clusters:", error);
+            // Don't show error toast for clustering failures - it's not critical
+            console.warn("Clustering service unavailable, continuing without optimization:", error);
+            // Set empty clusters so the component continues to work
+            setShuttleClusters({});
+            setOriginalClusters({});
           }
         }
       } catch (error) {
@@ -290,6 +319,19 @@ export default function CreateRouteForm({
     });
   };
 
+  const handleLocationChange = (location) => {
+    setRouteData((prev) => ({
+      ...prev,
+      selectedLocation: location,
+    }));
+    
+    if (location) {
+      toast.success(`Selected location: ${location.name}`, {
+        description: `Location type: ${location.type}`
+      });
+    }
+  };
+
   // removed unused handleSubmit (form uses handlePreview instead)
 
   // Generate suggested route name
@@ -422,6 +464,9 @@ export default function CreateRouteForm({
     if (!selectedShift) {
       errors.shift = "Shift must be selected";
     }
+    if (!routeData?.selectedLocation) {
+      errors.location = "Location must be selected";
+    }
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -489,10 +534,10 @@ export default function CreateRouteForm({
           setHighlightKey(prev => prev + 1);
         }
       } catch (error) {
-        console.error("Error refreshing clusters:", error);
-        toast.error("Refresh Failed", {
-          description: "Could not refresh employee highlighting"
-        });
+        console.warn("Clustering service unavailable during refresh:", error);
+        // Set empty clusters but don't show error toast
+        setShuttleClusters({});
+        setOriginalClusters({});
       } finally {
         setIsLoading(false);
       }
@@ -550,10 +595,20 @@ export default function CreateRouteForm({
               <div className={styles.shiftInfo}>
                 <span className={styles.shiftLabel}>Shift</span>
                 <span className={styles.shiftTime}>
-                  {selectedShift?.name} • {shiftEndTime}
+                  {getShiftName()} • {shiftEndTime}
                 </span>
                 {formErrors.shift && (
                   <span className={styles.errorText}>{formErrors.shift}</span>
+                )}
+              </div>
+
+              <div className={styles.locationInfo}>
+                <span className={styles.locationLabel}>Location</span>
+                <span className={styles.locationValue}>
+                  {routeData?.selectedLocation?.name || 'No location selected'}
+                </span>
+                {formErrors.location && (
+                  <span className={styles.errorText}>{formErrors.location}</span>
                 )}
               </div>
             </div>
@@ -636,6 +691,15 @@ export default function CreateRouteForm({
                   );
                 })
               )}
+            </div>
+
+            {/* Location Selection */}
+            <div className={styles.locationSection}>
+              <LocationSelection
+                selectedLocation={routeData?.selectedLocation?.id || null}
+                onLocationChange={handleLocationChange}
+                disabled={isLoading}
+              />
             </div>
 
             {selectedShuttle && (
