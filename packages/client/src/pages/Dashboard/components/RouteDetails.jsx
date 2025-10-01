@@ -1,15 +1,37 @@
-import { Clock, MapPin, Phone, Mail } from "lucide-react";
+import { Clock, MapPin, Phone, Mail, Power } from "lucide-react";
 import { motion } from "framer-motion";
 import PropTypes from "prop-types";
 import { useTheme } from "@contexts/ThemeContext";
+import { toast } from "sonner";
+import { useState } from "react";
+import { routeService } from "@services/routeService";
 
 const RouteDetails = ({
   selectedRoute,
   isDetailsExpanded,
   toggleRouteDetails,
+  onRouteUpdate,
 }) => {
   const { theme } = useTheme();
   const isDark = theme === "dark";
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+
+  const handleToggleStatus = async () => {
+    try {
+      setIsUpdatingStatus(true);
+      const newStatus = selectedRoute.status === "ACTIVE" ? "INACTIVE" : "ACTIVE";
+      await routeService.updateRouteStatus(selectedRoute.id, newStatus);
+      toast.success(`Route ${newStatus === "ACTIVE" ? "activated" : "deactivated"} successfully`);
+      if (onRouteUpdate) {
+        onRouteUpdate();
+      }
+    } catch (error) {
+      console.error("Failed to update route status:", error);
+      toast.error("Failed to update route status");
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  };
   
   if (!selectedRoute) return null;
 
@@ -40,7 +62,7 @@ const RouteDetails = ({
           </span>
           <div
             className={`px-2 py-0.5 rounded-full text-sm ${
-              selectedRoute.status === "active"
+              selectedRoute.status === "ACTIVE"
                 ? "bg-emerald-100/80 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400"
                 : "bg-[#f3684e]/10 dark:bg-[#ff965b]/10 text-[#f3684e] dark:text-[#ff965b]"
             }`}
@@ -89,6 +111,20 @@ const RouteDetails = ({
               </div>
             )}
           </div>
+
+          {/* Toggle Status Button */}
+          <button
+            onClick={handleToggleStatus}
+            disabled={isUpdatingStatus}
+            className={`w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-colors ${
+              selectedRoute.status === "ACTIVE"
+                ? "bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30"
+                : "bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/30"
+            } disabled:opacity-50 disabled:cursor-not-allowed`}
+          >
+            <Power className="w-4 h-4" />
+            {isUpdatingStatus ? "Updating..." : selectedRoute.status === "ACTIVE" ? "Deactivate Route" : "Activate Route"}
+          </button>
 
           {/* Route Stats */}
           <div className="grid grid-cols-2 gap-3">
@@ -204,6 +240,7 @@ RouteDetails.propTypes = {
   }),
   isDetailsExpanded: PropTypes.bool.isRequired,
   toggleRouteDetails: PropTypes.func.isRequired,
+  onRouteUpdate: PropTypes.func,
 };
 
 export default RouteDetails;

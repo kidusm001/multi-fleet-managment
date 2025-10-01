@@ -21,8 +21,11 @@ import {
 import { HQMarker, RouteMarkers } from "./components/Markers";
 import { addRouteLayer } from "./components/RouteLayer";
 
-// Configure mapbox
-mapboxgl.accessToken = MAPBOX_ACCESS_TOKEN;
+// Configure mapbox with validation
+if (!MAPBOX_ACCESS_TOKEN || MAPBOX_ACCESS_TOKEN === 'your_mapbox_access_token_here') {
+  console.error('Mapbox access token is missing or invalid. Please check your .env file.');
+}
+mapboxgl.accessToken = MAPBOX_ACCESS_TOKEN || '';
 
 const FIT_BOUNDS_OPTIONS = {
   padding: { top: 100, bottom: 100, left: 100, right: 100 },
@@ -71,8 +74,14 @@ function MapComponent({ selectedRoute, selectedShuttle, newStop, mapStyle, initi
       return;
 
     try {
+      // Double-check map is still valid before proceeding
+      if (!map.current) return;
+      
       // Wait for style to be fully loaded
       await waitForStyleLoad(map.current);
+      
+      // Check again after async operation
+      if (!map.current) return;
 
       // Remove existing markers
       markersRef.current.forEach((marker) => marker.remove());
@@ -86,9 +95,12 @@ function MapComponent({ selectedRoute, selectedShuttle, newStop, mapStyle, initi
         enableOptimization,
       });
 
+      // Check map is still valid after async operation
+      if (!map.current) return;
+
       if (optimizedRoute) {
         // Add HQ marker if not exists
-        if (!hqMarkerRef.current) {
+        if (!hqMarkerRef.current && map.current) {
           hqMarkerRef.current = HQMarker({ map: map.current });
         }
 
@@ -168,6 +180,9 @@ function MapComponent({ selectedRoute, selectedShuttle, newStop, mapStyle, initi
         bounds.extend(HQ_LOCATION.coords);
         map.current.fitBounds(bounds, FIT_BOUNDS_OPTIONS);
       } else if (showDirections) {
+        // Verify map is still valid before proceeding
+        if (!map.current) return;
+        
         // Simple route display without optimization for dashboard view
         // Create a GeoJSON source for the route line
         if (map.current.getSource("route")) {
@@ -310,16 +325,19 @@ function MapComponent({ selectedRoute, selectedShuttle, newStop, mapStyle, initi
       if (!map.current) return;
 
       map.current.once("style.load", () => {
+        // Check map is still valid after style load
+        if (!map.current) return;
+        
         // Restore view state
         map.current.setCenter(center);
         map.current.setZoom(zoom);
 
         // Re-add controls and route
         setupControls();
-        if (hqMarkerRef.current) {
+        if (hqMarkerRef.current && map.current) {
           hqMarkerRef.current = HQMarker({ map: map.current });
         }
-        if (selectedRoute) {
+        if (selectedRoute && map.current) {
           updateRoute();
         }
       });
@@ -330,6 +348,13 @@ function MapComponent({ selectedRoute, selectedShuttle, newStop, mapStyle, initi
   // Performance optimized map initialization with proper style and terrain handling
   const initializeMap = useCallback(() => {
     if (!mapContainer.current || map.current) return;
+
+    // Validate token before initializing
+    if (!MAPBOX_ACCESS_TOKEN || MAPBOX_ACCESS_TOKEN === 'your_mapbox_access_token_here') {
+      setMapError("Mapbox access token is not configured. Please contact your administrator.");
+      console.error('Mapbox token not configured');
+      return;
+    }
 
     try {
       // Determine which style to use, prioritizing custom mapStyle prop
@@ -382,19 +407,37 @@ function MapComponent({ selectedRoute, selectedShuttle, newStop, mapStyle, initi
         }
       });
 
-      // Add error handler with error filtering
+      // Add error handler with comprehensive error filtering
       map.current.on("error", (e) => {
-        // Filter out common non-fatal errors
-        if (!e.error?.message?.includes("source with ID") && 
-            !e.error?.message?.includes("does not exist in the map's style") &&
-            !e.error?.message?.includes("layer is not currently visible")) {
+        // Filter out common non-fatal errors and authentication errors
+        const errorMessage = e.error?.message || e.message || '';
+        const ignoredErrors = [
+          "source with ID",
+          "does not exist in the map's style",
+          "layer is not currently visible",
+          "errorCb is not a function",
+          "Failed to fetch",
+          "NetworkError"
+        ];
+        
+        const shouldIgnore = ignoredErrors.some(err => errorMessage.includes(err));
+        
+        if (!shouldIgnore) {
           console.error("Mapbox error:", e);
-          setMapError("An error occurred while loading the map");
+          // Only show error to user for critical issues
+          if (!errorMessage.includes("token") && !errorMessage.includes("auth")) {
+            setMapError("An error occurred while loading the map");
+          }
         }
       });
     } catch (error) {
       console.error("Map initialization error:", error);
-      setMapError("Failed to initialize map");
+      const errorMsg = error?.message || 'Unknown error';
+      if (errorMsg.includes('token') || errorMsg.includes('auth')) {
+        setMapError("Invalid or expired Mapbox access token. Please contact your administrator.");
+      } else {
+        setMapError("Failed to initialize map. Please refresh the page.");
+      }
     }
   }, [isDark, selectedRoute, updateRoute, setupControls, mapStyle, initialZoom]);
 
@@ -434,10 +477,11 @@ function MapComponent({ selectedRoute, selectedShuttle, newStop, mapStyle, initi
 
       map.current.setStyle(style);
       map.current.once("style.load", () => {
+        if (!map.current) return;
         map.current.setCenter(center);
         map.current.setZoom(zoom);
         setupControls();
-        if (selectedRoute) {
+        if (selectedRoute && map.current) {
           updateRoute();
         }
       });

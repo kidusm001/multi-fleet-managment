@@ -72,6 +72,7 @@ const columns = [
     cell: (info) => {
       const status = info.getValue() || "inactive";
       const colors = getStatusColor(status);
+      const lowerStatus = status.toLowerCase();
       return (
         <span
           className={cn(
@@ -82,8 +83,8 @@ const columns = [
         >
           <span className={cn(
             "w-2 h-2 rounded-full mr-2",
-            status === 'active' ? 'bg-green-500 dark:bg-green-400' :
-              status === 'maintenance' ? 'bg-yellow-500 dark:bg-yellow-400' :
+            lowerStatus === 'available' || lowerStatus === 'active' ? 'bg-green-500 dark:bg-green-400' :
+              lowerStatus === 'maintenance' ? 'bg-yellow-500 dark:bg-yellow-400' :
                 'bg-red-500 dark:bg-red-400'
           )} />
           {status.charAt(0).toUpperCase() + status.slice(1)}

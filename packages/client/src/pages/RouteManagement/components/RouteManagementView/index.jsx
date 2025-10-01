@@ -182,7 +182,9 @@ function RouteManagementView({ refreshTrigger }) {
         (route) =>
           route.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
           route.id.toString().includes(searchQuery.toLowerCase()) ||
-          route.shuttle?.name.toLowerCase().includes(searchQuery.toLowerCase())
+          route.shuttle?.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          route.vehicle?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          route.vehicle?.plateNumber?.toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
 
@@ -194,7 +196,7 @@ function RouteManagementView({ refreshTrigger }) {
     // Apply shuttle filter
     if (filterShuttle !== "all") {
       filtered = filtered.filter(
-        (route) => route.shuttleId === parseInt(filterShuttle)
+        (route) => (route.shuttleId === filterShuttle || route.vehicleId === filterShuttle)
       );
     }
 
@@ -202,7 +204,7 @@ function RouteManagementView({ refreshTrigger }) {
     if (filterDepartment !== "all") {
       filtered = filtered.filter((route) =>
         route.stops.some(
-          (stop) => stop.employee?.departmentId === parseInt(filterDepartment)
+          (stop) => stop.employee?.departmentId === filterDepartment
         )
       );
     }
@@ -210,7 +212,7 @@ function RouteManagementView({ refreshTrigger }) {
     // Apply shift filter
     if (filterShift !== "all") {
       filtered = filtered.filter(
-        (route) => route.shiftId === parseInt(filterShift)
+        (route) => route.shiftId === filterShift
       );
     }
 
@@ -265,6 +267,19 @@ function RouteManagementView({ refreshTrigger }) {
     } catch (err) {
       console.error("Error removing employee:", err);
       toast.error(err.message || "Failed to remove employee");
+    }
+  };
+
+  const handleRouteUpdate = async () => {
+    try {
+      await fetchInitialData();
+      // Update selected route with fresh data
+      if (selectedRoute) {
+        const updatedRoute = await routeService.getRouteById(selectedRoute.id);
+        setSelectedRoute(updatedRoute);
+      }
+    } catch (err) {
+      console.error("Error refreshing routes:", err);
     }
   };
 
@@ -636,6 +651,7 @@ function RouteManagementView({ refreshTrigger }) {
         onMapPreview={handleMapPreview}
         onRemoveEmployee={handleRemoveEmployee}
         onDeleteRoute={handleDelete}
+        onRouteUpdate={handleRouteUpdate}
       />
     </div>
   );

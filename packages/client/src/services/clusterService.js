@@ -48,7 +48,9 @@ let isRequestInProgress = false;
 
 export const clusterService = {
   // Get optimal clusters for multiple shuttles
-  optimizeClusters: async (employees, shuttles) => {
+  optimizeClusters: async (employees, shuttles, options = {}) => {
+    const { location } = options;
+
     try {
       // If a request is already in progress, don't start another one
       if (isRequestInProgress) {
@@ -110,10 +112,10 @@ export const clusterService = {
 
       // Format request data
       // Filter out employees without valid coordinates to prevent 422 errors
-      const validEmployees = employees.filter(emp => 
-        emp.stop?.latitude && 
-        emp.stop?.longitude && 
-        emp.stop.latitude !== 0 && 
+      const validEmployees = employees.filter(emp =>
+        emp.stop?.latitude &&
+        emp.stop?.longitude &&
+        emp.stop.latitude !== 0 &&
         emp.stop.longitude !== 0
       );
 
@@ -129,8 +131,8 @@ export const clusterService = {
         isRequestInProgress = false;
         return {
           success: false,
-          message: validEmployees.length === 0 ? 
-            "No employees with valid locations found" : 
+          message: validEmployees.length === 0 ?
+            "No employees with valid locations found" :
             "No shuttles with valid capacity found",
           routes: [],
           totalEmployees: employees.length,
@@ -141,7 +143,9 @@ export const clusterService = {
 
       const requestData = {
         locations: {
-          HQ: [9.0222, 38.7468], // Addis Ababa coordinates as HQ
+          HQ: location && location.longitude && location.latitude
+            ? [location.longitude, location.latitude] // Use selected location coordinates
+            : [9.0222, 38.7468], // Addis Ababa coordinates as fallback HQ
           employees: validEmployees.map(emp => ({
             id: emp.id.toString(),
             latitude: emp.stop.latitude,

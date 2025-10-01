@@ -13,6 +13,7 @@ import notificationRoutes from './notifications';
 import vehicleRequestRoutes from './vehicle-requests';
 import userRoutes from './users';
 import locationRoutes from './locations';
+import organizationRoutes from './organization';
 // import shiftRoutes from './shiftRoutes';
 // import employeeRoutes from './employeeRoutes';
 // import routeRoutes from './routeRoutes';
@@ -50,6 +51,7 @@ router.use('/notifications', notificationRoutes);
 router.use('/shuttle-requests', vehicleRequestRoutes);
 router.use('/users', userRoutes);
 router.use('/locations', locationRoutes);
+router.use('/organization', organizationRoutes);
 
 // Register routes
 // router.use('/shifts', shiftRoutes);

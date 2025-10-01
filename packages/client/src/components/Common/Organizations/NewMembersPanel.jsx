@@ -12,6 +12,7 @@ import {
   AlertCircle,
   CheckCircle
 } from 'lucide-react';
+import AddMemberModal from './AddMemberModal';
 import { Card, CardContent, CardHeader, CardTitle } from '@components/Common/UI/Card';
 import { Button } from '@components/Common/UI/Button';
 import { Input } from '@components/Common/UI/Input';
@@ -67,6 +68,7 @@ export default function NewMembersPanel() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [showInviteModal, setShowInviteModal] = useState(false);
+  const [showAddMemberModal, setShowAddMemberModal] = useState(false);
   const [lastLoadedOrgId, setLastLoadedOrgId] = useState(null);
 
   // Memoized loadMembers function to prevent infinite re-renders
@@ -232,6 +234,42 @@ export default function NewMembersPanel() {
     }
   };
 
+  const handleAddMember = async (userIdOrEmail, role, teamId) => {
+    try {
+      console.log('Adding member:', { userIdOrEmail, role, teamId });
+      
+      // Make API call to our custom endpoint
+      const response = await fetch('/api/organization/add-member', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          // Add authentication headers if needed
+        },
+        credentials: 'include', // Include cookies for authentication
+        body: JSON.stringify({
+          userId: userIdOrEmail,
+          role: role,
+          organizationId: activeOrganization.id,
+          teamId: teamId
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to add member');
+      }
+
+      // Reload members to get updated list - reset lastLoadedOrgId to force reload
+      setLastLoadedOrgId(null);
+      await loadMembers(activeOrganization.id);
+      setShowAddMemberModal(false);
+      toast.success('Member added successfully');
+    } catch (error) {
+      console.error('Failed to add member:', error);
+      toast.error(error.message || 'Failed to add member');
+    }
+  };
+
   if (orgLoading) {
     return (
       <div className="p-6">
@@ -263,10 +301,19 @@ export default function NewMembersPanel() {
             Manage organization members and their roles
           </p>
         </div>
-        <Button onClick={() => setShowInviteModal(true)}>
-          <UserPlus className="w-4 h-4 mr-2" />
-          Invite Member
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            variant="outline" 
+            onClick={() => setShowAddMemberModal(true)}
+          >
+            <User className="w-4 h-4 mr-2" />
+            Add Member
+          </Button>
+          <Button onClick={() => setShowInviteModal(true)}>
+            <UserPlus className="w-4 h-4 mr-2" />
+            Invite Member
+          </Button>
+        </div>
       </div>
 
       {/* Search and Stats */}
@@ -331,10 +378,19 @@ export default function NewMembersPanel() {
                 }
               </p>
               {!searchTerm && (
-                <Button onClick={() => setShowInviteModal(true)}>
-                  <UserPlus className="w-4 h-4 mr-2" />
-                  Invite Member
-                </Button>
+                <div className="flex gap-2">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setShowAddMemberModal(true)}
+                  >
+                    <User className="w-4 h-4 mr-2" />
+                    Add Member
+                  </Button>
+                  <Button onClick={() => setShowInviteModal(true)}>
+                    <UserPlus className="w-4 h-4 mr-2" />
+                    Invite Member
+                  </Button>
+                </div>
               )}
             </div>
           ) : (
@@ -456,6 +512,15 @@ export default function NewMembersPanel() {
           }}
         />
       )}
+
+      {/* Add Member Modal */}
+      {showAddMemberModal && (
+        <AddMemberModal
+          isOpen={showAddMemberModal}
+          onClose={() => setShowAddMemberModal(false)}
+          onAddMember={handleAddMember}
+        />
+      )}
     </div>
   );
 }
@@ -489,7 +554,7 @@ function InviteMemberModal({ isOpen, onClose, onInvite }) {
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-background rounded-lg shadow-xl p-6 w-96 max-w-[90vw]">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-96 max-w-[90vw]">
         <h3 className="text-lg font-semibold mb-4">Invite Member</h3>
         
         <div className="space-y-4">

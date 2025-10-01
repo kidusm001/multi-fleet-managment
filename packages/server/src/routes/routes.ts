@@ -16,6 +16,7 @@ import {
     RoutesByShiftParamSchema,
     RoutesByVehicleParamSchema,
     RoutesByLocationParamSchema,
+    RouteEmployeeParamSchema,
     CreateRouteInput,
     UpdateRouteInput,
     UpdateRouteStatusInput,
@@ -811,6 +812,33 @@ router.post('/', requireAuth, validateSchema(CreateRouteSchema, 'body'), async (
 
             const vehicle = await prisma.vehicle.findUnique({ where: { id: vehicleId } });
 
+            // Find an available driver for the vehicle
+            let driverId = vehicle?.driverId;
+            
+            if (!driverId) {
+                // Find any available driver in the organization for this shift
+                const availableDriver = await prisma.driver.findFirst({
+                    where: {
+                        organizationId: activeOrgId,
+                        isActive: true,
+                        // Check if driver is not already assigned to another vehicle for this shift/date
+                        vehicleAvailability: {
+                            none: {
+                                shiftId: shiftId,
+                                date: new Date(date),
+                                available: false,
+                            }
+                        }
+                    }
+                });
+
+                if (!availableDriver) {
+                    throw new Error('No available drivers found for this vehicle. Please assign a driver to the vehicle or ensure drivers are available.');
+                }
+
+                driverId = availableDriver.id;
+            }
+
             // Update or create VehicleAvailability
             await prisma.vehicleAvailability.upsert({
                 where: {
@@ -821,14 +849,14 @@ router.post('/', requireAuth, validateSchema(CreateRouteSchema, 'body'), async (
                     },
                 },
                 create: {
-                    vehicleId,
-                    shiftId,
+                    vehicle: { connect: { id: vehicleId } },
+                    shift: { connect: { id: shiftId } },
+                    organization: { connect: { id: activeOrgId } },
+                    driver: { connect: { id: driverId } },
                     date: new Date(date),
                     startTime: startTime,
                     endTime: endTime,
                     available: false,
-                    organizationId: activeOrgId,
-                    driverId: vehicle?.driverId || ''
                 },
                 update: {
                     available: false,
@@ -1172,7 +1200,7 @@ router.patch('/:routeId/stops/:stopId/add', requireAuth, validateMultiple([{ sch
  * @desc    Add an employee's stop to a route
  * @access  Private (User)
  */
-router.patch('/:routeId/employees/:employeeId/add-stop', requireAuth, validateMultiple([{ schema: RouteIdParamSchema, target: 'params' }]), async (req: Request, res: Response) => {
+router.patch('/:routeId/employees/:employeeId/add-stop', requireAuth, validateSchema(RouteEmployeeParamSchema, 'params'), async (req: Request, res: Response) => {
     const { routeId, employeeId } = req.params;
     const { totalDistance, totalTime } = req.body;
     const activeOrgId = req.session?.session?.activeOrganizationId;
@@ -1251,7 +1279,7 @@ router.patch('/:routeId/employees/:employeeId/add-stop', requireAuth, validateMu
  * @desc    Remove an employee's stop from a route
  * @access  Private (User)
  */
-router.patch('/:routeId/employees/:employeeId/remove-stop', requireAuth, validateMultiple([{ schema: RouteIdParamSchema, target: 'params' }]), async (req: Request, res: Response) => {
+router.patch('/:routeId/employees/:employeeId/remove-stop', requireAuth, validateSchema(RouteEmployeeParamSchema, 'params'), async (req: Request, res: Response) => {
     const { routeId, employeeId } = req.params;
     const { totalDistance, totalTime } = req.body;
     const activeOrgId = req.session?.session?.activeOrganizationId;

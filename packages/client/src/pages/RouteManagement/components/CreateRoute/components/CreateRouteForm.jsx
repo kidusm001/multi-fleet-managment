@@ -11,14 +11,13 @@ import LoadingWrapper from "@components/Common/LoadingAnimation/LoadingWrapper";
 import { clusterService } from "@services/clusterService";
 import { shuttleAvailabilityService } from "@services/shuttleAvailabilityService";
 import { getRoutesByShift } from "@services/api";
-import { locationService } from "@services/locationService";
+
 // Styles
 import styles from "../styles/CreateRouteForm.module.css";
 
 // Local components
 import SortableEmployeeTable from "./SortableEmployeeTable";
 import EmployeeClusterVisualization from "./EmployeeClusterVisualization";
-import LocationSelection from "./LocationSelection";
 
 export default function CreateRouteForm({
   selectedShift = null,
@@ -63,6 +62,12 @@ export default function CreateRouteForm({
     setIsFirefox(userAgent.includes('firefox') || userAgent.includes('mozilla'));
   }, []);
 
+  // Debug: Log routeData on mount and when it changes
+  useEffect(() => {
+    console.log('CreateRouteForm mounted/updated with routeData:', routeData);
+    console.log('  - selectedLocation:', routeData?.selectedLocation);
+  }, [routeData]);
+
   // Get shift ID whether it's passed as an object or number
   const getShiftId = useCallback(() => {
     if (!selectedShift) return null;
@@ -98,7 +103,7 @@ export default function CreateRouteForm({
     const shiftId = getShiftId();
     
     // Check if shift has changed
-    if (shiftId !== previousShiftId.current) {
+    if (shiftId !== previousShiftId.current && previousShiftId.current !== null) {
       
       // Reset all cluster-related state for the new shift
       setShuttleClusters({});
@@ -108,15 +113,17 @@ export default function CreateRouteForm({
       setHighlightKey(prev => prev + 1);
       initialFetchDone.current = false;
       
-      // Reset route data on shift change
-  setRouteData((prev) => ({
+      // Reset route data on shift change (but don't reset location - parent manages that)
+      setRouteData((prev) => ({
         ...prev,
         selectedShuttle: null,
         selectedEmployees: [],
-        selectedLocation: null, // Reset location when shift changes
       }));
       
       // Update previous shift ID
+      previousShiftId.current = shiftId;
+    } else if (previousShiftId.current === null) {
+      // First time initialization
       previousShiftId.current = shiftId;
     }
   }, [selectedShift, getShiftId, setRouteData]);
@@ -170,7 +177,11 @@ export default function CreateRouteForm({
             const clusters = await clusterService.optimizeClusters(
               unassignedEmployees,
               activeShuttles,
-              { cache: false, timestamp }
+              {
+                cache: false,
+                timestamp,
+                location: routeData.selectedLocation
+              }
             );
 
             if (Object.keys(clusters).length > 0) {
@@ -319,19 +330,6 @@ export default function CreateRouteForm({
     });
   };
 
-  const handleLocationChange = (location) => {
-    setRouteData((prev) => ({
-      ...prev,
-      selectedLocation: location,
-    }));
-    
-    if (location) {
-      toast.success(`Selected location: ${location.name}`, {
-        description: `Location type: ${location.type}`
-      });
-    }
-  };
-
   // removed unused handleSubmit (form uses handlePreview instead)
 
   // Generate suggested route name
@@ -457,6 +455,12 @@ export default function CreateRouteForm({
   }, [availableShuttles, shuttleClusters]);
 
   const validateForm = () => {
+    console.log('Validating form:');
+    console.log('  - routeData.selectedLocation:', routeData?.selectedLocation);
+    console.log('  - routeData.selectedEmployees.length:', routeData?.selectedEmployees?.length);
+    console.log('  - selectedShift:', selectedShift);
+    console.log('  - Full routeData:', routeData);
+    
     const errors = {};
     if (!routeData.selectedEmployees?.length) {
       errors.employees = "At least one employee must be selected";
@@ -465,7 +469,10 @@ export default function CreateRouteForm({
       errors.shift = "Shift must be selected";
     }
     if (!routeData?.selectedLocation) {
+      console.log('Location validation failed: routeData.selectedLocation is falsy');
       errors.location = "Location must be selected";
+    } else {
+      console.log('Location validation passed: routeData.selectedLocation =', routeData.selectedLocation);
     }
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
@@ -605,7 +612,7 @@ export default function CreateRouteForm({
               <div className={styles.locationInfo}>
                 <span className={styles.locationLabel}>Location</span>
                 <span className={styles.locationValue}>
-                  {routeData?.selectedLocation?.name || 'No location selected'}
+                  {routeData?.selectedLocation?.address || 'No location selected'}
                 </span>
                 {formErrors.location && (
                   <span className={styles.errorText}>{formErrors.location}</span>
@@ -693,16 +700,7 @@ export default function CreateRouteForm({
               )}
             </div>
 
-            {/* Location Selection */}
-            <div className={styles.locationSection}>
-              <LocationSelection
-                selectedLocation={routeData?.selectedLocation?.id || null}
-                onLocationChange={handleLocationChange}
-                disabled={isLoading}
-              />
-            </div>
-
-            {selectedShuttle && (
+             {selectedShuttle && (
               <div className={styles.clusterVisualizationContainer}>
                 <h3 className={styles.sectionTitle}>Route Visualization</h3>
                 <div className={styles.visualizationWrapper}>

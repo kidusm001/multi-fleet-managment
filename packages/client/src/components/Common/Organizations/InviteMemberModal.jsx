@@ -16,8 +16,8 @@ export default function InviteMemberModal({ open, onClose, onInvite }) {
   }
   if (!open) return null;
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-      <div className="bg-white rounded shadow-lg p-6 w-80">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-96 max-w-[90vw]">
         <h3 className="font-semibold mb-2">Invite Member</h3>
         <input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="Email" className="w-full mb-2 px-2 py-1 border rounded" />
         <select value={role} onChange={e => setRole(e.target.value)} className="w-full mb-2 px-2 py-1 border rounded">

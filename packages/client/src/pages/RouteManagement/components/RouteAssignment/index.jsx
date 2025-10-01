@@ -19,6 +19,7 @@ function RouteAssignment({ refreshTrigger }) {
   const [selectedShift, setSelectedShift] = useState("");
   const [selectedTime, setSelectedTime] = useState("");
   const [selectedRoute, setSelectedRoute] = useState("");
+  const [selectedLocation, setSelectedLocation] = useState(null);
   const [routes, setRoutes] = useState([]);
   const [shifts, setShifts] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -85,9 +86,14 @@ function RouteAssignment({ refreshTrigger }) {
         const shuttlesData = await shuttleService.getShuttles();
         setShuttles(shuttlesData); // Store shuttles data for use in availableRoutes filter
         
-        for (const route of routes) {
-          const shuttle = shuttlesData.find((s) => s.id === route.vehicleId);
-          const shuttleCapacity = shuttle?.capacity || shuttle?.category?.capacity;
+        // Transform routes to include shuttle property (backend returns 'vehicle')
+        const transformedRoutes = routes.map(route => ({
+          ...route,
+          shuttle: route.vehicle || shuttlesData.find((s) => s.id === route.vehicleId)
+        }));
+        
+        for (const route of transformedRoutes) {
+          const shuttleCapacity = route.shuttle?.capacity || route.shuttle?.category?.capacity;
           if (shuttleCapacity) {
             const assignedCount =
               route.stops?.reduce(
@@ -99,15 +105,21 @@ function RouteAssignment({ refreshTrigger }) {
         }
         setStats({
           unassignedInShift: employeesResponse.data.length,
-          totalRoutes: routesResponse.data.length,
+          totalRoutes: transformedRoutes.length,
           availableSeats: totalAvailableSeats,
         });
+        
+        setRoutes(transformedRoutes);
       } catch (err) {
         toast.warning("Error calculating available seats");
         setShuttles([]); // Clear shuttles on error
+        // Still set routes even if shuttle data fails, but with vehicle as shuttle
+        const transformedRoutes = routes.map(route => ({
+          ...route,
+          shuttle: route.vehicle
+        }));
+        setRoutes(transformedRoutes);
       }
-      
-      setRoutes(routes);
     } catch (err) {
       setError("Failed to load routes. Please try again.");
       setRoutes([]);
@@ -128,13 +140,21 @@ function RouteAssignment({ refreshTrigger }) {
   }, [fetchRoutesAndStats, refreshTrigger]);
 
   // Add: filter out routes that are full based on stops count vs shuttle capacity
+  // Also filter by location if one is selected
   const availableRoutes = routes.filter((route) => {
-    const shuttle = shuttles.find((s) => s.id === route.vehicleId);
-    const shuttleCapacity = shuttle?.capacity || shuttle?.category?.capacity;
+    const shuttleCapacity = route.shuttle?.capacity || route.shuttle?.category?.capacity;
     if (!shuttleCapacity) {
       return true; // Include routes without shuttle data to avoid crashes
     }
-    return route.stops.length < shuttleCapacity;
+    const hasCapacity = route.stops.length < shuttleCapacity;
+    
+    // Filter by location if one is selected
+    if (selectedLocation) {
+      const matchesLocation = String(route.locationId) === String(selectedLocation);
+      return hasCapacity && matchesLocation;
+    }
+    
+    return hasCapacity;
   });
 
   const _handleCreateNewRoute = () => {
@@ -188,6 +208,8 @@ function RouteAssignment({ refreshTrigger }) {
               setSelectedTime={setSelectedTime}
               selectedRoute={selectedRoute}
               setSelectedRoute={setSelectedRoute}
+              selectedLocation={selectedLocation}
+              setSelectedLocation={setSelectedLocation}
               routes={routes}
               shifts={shifts}
               loading={loading}
@@ -212,9 +234,8 @@ function RouteAssignment({ refreshTrigger }) {
               </div>
               <div className="space-y-2">
                 {availableRoutes.map((routeOption) => {
-                  const shuttle = shuttles.find(s => s.id === routeOption.vehicleId);
-                  const shuttleCapacity = shuttle?.capacity || shuttle?.category?.capacity || 0;
-                  const shuttleName = shuttle?.name || shuttle?.plateNumber || 'Unknown Vehicle';
+                  const shuttleCapacity = routeOption.shuttle?.capacity || routeOption.shuttle?.category?.capacity || 0;
+                  const shuttleName = routeOption.shuttle?.name || routeOption.shuttle?.plateNumber || 'Unknown Vehicle';
                   
                   return (
                     <button

@@ -9,7 +9,8 @@ import {
   Clock, 
   Bus,
   LayoutDashboard,
-  UserCog
+  UserCog,
+  Car
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -20,6 +21,7 @@ import DepartmentManagement from "./components/DepartmentManagement";
 import ShiftManagement from "./components/ShiftManagement";
 import UserManagement from "./components/UserManagement";
 import EmployeeManagement from "./components/EmployeeManagement";
+import VehicleCategoryManagement from "./components/VehicleCategoryManagement";
 
 const tabs = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -29,6 +31,7 @@ const tabs = [
   { id: "shifts", label: "Shifts", icon: Clock },
   { id: "users", label: "Users", icon: UserCog },
   { id: "shuttles", label: "Shuttles", icon: Bus },
+  { id: "categories", label: "Categories", icon: Car },
 ];
 
 export default function Settings() {
@@ -72,6 +75,8 @@ export default function Settings() {
         return <ShiftManagement />;
       case "users":
         return <UserManagement />;
+      case "categories":
+        return <VehicleCategoryManagement />;
       default:
         return null;
     }

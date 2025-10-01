@@ -122,6 +122,26 @@ class RouteService {
   });
 
   /**
+   * Update route status
+   * @param {string} id - Route ID
+   * @param {string} status - New status (ACTIVE or INACTIVE)
+   * @returns {Promise<Object>} Response message
+   */
+  updateRouteStatus = AsyncHandler(async (id, status) => {
+    const response = await api.patch(`/routes/${id}/status`, { status });
+
+    // Update cache if it exists
+    if (this.cache.routes) {
+      this.cache.routes = this.cache.routes.map(route =>
+        route.id === id ? { ...route, status } : route
+      );
+    }
+    this.cache.routeDetails.delete(`route_${id}`);
+
+    return response.data;
+  });
+
+  /**
    * Delete a route
    * @param {number} id - Route ID
    * @returns {Promise<void>}
@@ -251,9 +271,10 @@ class RouteService {
       throw new Error('Invalid route ID');
     }
 
-    // Validate employee ID is a valid UUID
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-    if (!uuidRegex.test(cleanEmployeeId)) {
+    // Validate employee ID is a valid CUID (starts with 'c' followed by alphanumeric)
+    const cuidRegex = /^c[a-z0-9]{24,}$/i;
+    if (!cuidRegex.test(cleanEmployeeId)) {
+      console.error('Invalid employee ID format:', cleanEmployeeId);
       throw new Error('Invalid employee ID format');
     }
 

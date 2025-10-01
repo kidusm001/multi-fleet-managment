@@ -198,25 +198,42 @@ const ShuttlePreview = ({ routeData, onClose, onAccept, show }) => {
     }
 
     try {
-      // Create base date for tomorrow
+      console.log('=== ShuttlePreview handleAccept DEBUG ===');
+      console.log('routeData:', routeData);
+      console.log('selectedShift:', selectedShift);
+      console.log('selectedShift type:', typeof selectedShift);
+      console.log('selectedShuttle:', selectedShuttle);
+      console.log('selectedShuttle.id:', selectedShuttle?.id);
+      console.log('routeData.selectedLocation:', routeData.selectedLocation);
+      console.log('validEmployees:', validEmployees);
+      
+      // Create base date for tomorrow at start of day in ISO format
       const baseDate = new Date();
       baseDate.setDate(baseDate.getDate() + 1);
-      const dateStr = baseDate.toISOString().split("T")[0];
+      baseDate.setHours(0, 0, 0, 0); // Set to start of day
+      const dateStr = baseDate.toISOString(); // Full ISO datetime format
 
       const routeApiData = {
         name: routeData.name.trim(),
-        shuttleId: parseInt(selectedShuttle.id),
-        shiftId: parseInt(selectedShift.id),
+        vehicleId: selectedShuttle.id, // Backend expects vehicleId, not shuttleId
+        shiftId: selectedShift.id,
         locationId: routeData.selectedLocation?.id,
-        date: dateStr,
+        date: dateStr, // ISO datetime format
         // Use precise Mapbox metrics for distance and time
         totalDistance: parseFloat(routeMetrics.totalDistance.toFixed(2)),
         totalTime: Math.round(routeMetrics.totalTime),
         employees: validEmployees.map((employee) => ({
           employeeId: employee.id,
-          stopId: parseInt(employee.stop.id),
+          stopId: employee.stop.id,
         })),
       };
+      
+      console.log('routeApiData being sent:', routeApiData);
+      console.log('routeApiData.shiftId:', routeApiData.shiftId);
+      console.log('routeApiData.shiftId type:', typeof routeApiData.shiftId);
+      console.log('routeApiData.vehicleId:', routeApiData.vehicleId);
+      console.log('routeApiData.date:', routeApiData.date);
+      console.log('=== End ShuttlePreview handleAccept DEBUG ===');
 
       // Create the route using the data
       await onAccept(routeApiData);

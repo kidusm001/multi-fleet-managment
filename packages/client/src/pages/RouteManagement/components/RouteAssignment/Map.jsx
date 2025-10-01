@@ -1,15 +1,20 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import PropTypes from "prop-types";
 import mapboxgl from "mapbox-gl";
 import { MAPBOX_ACCESS_TOKEN } from "@data/routeAssignmentData";
 import "mapbox-gl/dist/mapbox-gl.css";
 
-mapboxgl.accessToken = MAPBOX_ACCESS_TOKEN;
+// Configure mapbox with validation
+if (!MAPBOX_ACCESS_TOKEN || MAPBOX_ACCESS_TOKEN === 'your_mapbox_access_token_here') {
+  console.error('Mapbox access token is missing or invalid. Please check your .env file.');
+}
+mapboxgl.accessToken = MAPBOX_ACCESS_TOKEN || '';
 
 function Map({ selectedRoute, showDirections = false }) {
   const mapContainer = useRef(null);
   const map = useRef(null);
   const markersRef = useRef([]);
+  const [mapError, setMapError] = useState(null);
 
   useEffect(() => {
     if (
@@ -30,14 +35,45 @@ function Map({ selectedRoute, showDirections = false }) {
 
     const center = coordinates[0];
 
+    // Validate token before initializing
+    if (!MAPBOX_ACCESS_TOKEN || MAPBOX_ACCESS_TOKEN === 'your_mapbox_access_token_here') {
+      setMapError("Mapbox access token not configured");
+      return;
+    }
+
     // Initialize map if it doesn't exist
     if (!map.current) {
-      map.current = new mapboxgl.Map({
-        container: mapContainer.current,
-        style: "mapbox://styles/mapbox/dark-v11",
-        center: center,
-        zoom: 12,
-      });
+      try {
+        map.current = new mapboxgl.Map({
+          container: mapContainer.current,
+          style: "mapbox://styles/mapbox/dark-v11",
+          center: center,
+          zoom: 12,
+        });
+
+        // Add error handler
+        map.current.on("error", (e) => {
+          const errorMessage = e.error?.message || e.message || '';
+          const ignoredErrors = [
+            "source with ID",
+            "does not exist in the map's style",
+            "layer is not currently visible",
+            "errorCb is not a function",
+            "Failed to fetch",
+            "NetworkError"
+          ];
+          
+          const shouldIgnore = ignoredErrors.some(err => errorMessage.includes(err));
+          
+          if (!shouldIgnore) {
+            console.error("Mapbox error:", e);
+          }
+        });
+      } catch (error) {
+        console.error("Map initialization error:", error);
+        setMapError("Failed to initialize map");
+        return;
+      }
     } else {
       // If map exists, update the center
       map.current.setCenter(center);
@@ -167,8 +203,13 @@ function Map({ selectedRoute, showDirections = false }) {
   }, []);
 
   return (
-    <div className="bg-card rounded-2xl overflow-hidden shadow-sm">
+    <div className="bg-card rounded-2xl overflow-hidden shadow-sm relative">
       <div ref={mapContainer} className="h-[500px] rounded-xl" />
+      {mapError && (
+        <div className="absolute top-0 left-0 right-0 bg-red-500 text-white p-2 text-center text-sm">
+          {mapError}
+        </div>
+      )}
     </div>
   );
 }

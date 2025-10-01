@@ -15,9 +15,11 @@ import {
   getAvailableShuttles,
   createRoute,
 } from "@services/api";
+import { locationService } from "@services/locationService";
 
 // Local Components
 import ShiftSelection from "./components/ShiftSelection";
+import LocationSelection from "./components/LocationSelection";
 import RouteList from "./components/RouteList";
 import EmployeeTable from "./components/EmployeeTable";
 import CreateRouteForm from "./components/CreateRouteForm";
@@ -30,6 +32,7 @@ function CreateRoute() {
   const location = useLocation();
   const navigate = useNavigate();
   const [pageState, setPageState] = useState("initial");
+  const [selectedLocation, setSelectedLocation] = useState(null);
   const [selectedShift, setSelectedShift] = useState(null);
   const [routeData, setRouteData] = useState({
     name: "",
@@ -40,53 +43,61 @@ function CreateRoute() {
     shiftEndTime: null,
     setName: (name) => handleNameChange(name),
   });
+  const [locations, setLocations] = useState([]);
   const [shifts, setShifts] = useState([]);
-  const [employees, setEmployees] = useState([]);
+  const [allEmployees, setAllEmployees] = useState([]); // Full list for the shift
+  const [employees, setEmployees] = useState([]); // Filtered list for display
   const [routes, setRoutes] = useState([]);
   const [shuttles, setShuttles] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // Load shift from navigation state or stored state
+  // Load location from navigation state or stored state
   useEffect(() => {
-    // First check location state for shift data
-    if (location.state?.selectedShift) {
-      setSelectedShift(location.state.selectedShift);
+    console.log('Loading useEffect: location.state?.selectedLocation:', location.state?.selectedLocation, 'locations.length:', locations.length);
+    // First check location state for location data
+    if (location.state?.selectedLocation) {
+      const loc = location.state.selectedLocation;
+      const locId = typeof loc === 'object' ? loc.id : loc;
+      console.log('Loading from state, locId:', locId);
+      // Validate that the location exists in current locations
+      if (locations.length > 0) {
+        const exists = locations.some(l => String(l.id) === String(locId));
+        console.log('Location exists in locations:', exists);
+        if (exists) {
+          setSelectedLocation(locId);
+          console.log('Set selectedLocation from state');
+        }
+      } else {
+        // Store temporarily, will validate when locations load
+        setSelectedLocation(locId);
+        console.log('Set selectedLocation temporarily from state');
+      }
     }
-    // Then check if we have a stored shift in sessionStorage (for when we return to this page)
+    // Then check if we have a stored location in sessionStorage (for when we return to this page)
     else {
-      const storedShift = sessionStorage.getItem("selectedCreateRouteShift");
-      if (storedShift) {
-        setSelectedShift(storedShift);
+      const storedLocation = sessionStorage.getItem("selectedCreateRouteLocation");
+      console.log('Stored location:', storedLocation);
+      if (storedLocation) {
+        // Validate that the stored location exists in current locations
+        if (locations.length > 0) {
+          const exists = locations.some(l => String(l.id) === String(storedLocation));
+          console.log('Stored location exists in locations:', exists);
+          if (exists) {
+            setSelectedLocation(storedLocation);
+            console.log('Set selectedLocation from sessionStorage');
+          } else {
+            // Clear invalid stored location
+            sessionStorage.removeItem("selectedCreateRouteLocation");
+            console.log('Cleared invalid stored location');
+          }
+        } else {
+          // Store temporarily, will validate when locations load
+          setSelectedLocation(storedLocation);
+          console.log('Set selectedLocation temporarily from sessionStorage');
+        }
       }
     }
-  }, [location.state]);
-
-  // Update routeData with shift information whenever selectedShift or shifts change
-  useEffect(() => {
-    if (selectedShift && shifts.length) {
-      // Store selected shift in session storage for persistence
-      sessionStorage.setItem("selectedCreateRouteShift", selectedShift);
-
-      // Find the selected shift data
-      const selectedShiftData = shifts.find(
-        (s) => s.id === selectedShift || String(s.id) === String(selectedShift)
-      );
-
-      if (selectedShiftData) {
-        setRouteData((prev) => ({
-          ...prev,
-          selectedShift: {
-            id: selectedShiftData.id,
-            name: selectedShiftData.name,
-            startTime: selectedShiftData.startTime,
-            endTime: selectedShiftData.endTime,
-          },
-          shiftStartTime: selectedShiftData.startTime,
-          shiftEndTime: selectedShiftData.endTime,
-        }));
-      }
-    }
-  }, [selectedShift, shifts]);
+  }, [location.state?.selectedLocation, locations]);
 
   // Load shifts
   useEffect(() => {
@@ -114,21 +125,40 @@ function CreateRoute() {
     fetchShifts();
   }, []);
 
-  // Load shift-specific data
+  // Load locations
+  useEffect(() => {
+    const fetchLocations = async () => {
+      try {
+        const response = await locationService.getLocations();
+        setLocations(response.data || response);
+      } catch (error) {
+        toast.error("Failed to load locations: " + error.message);
+      }
+    };
+    fetchLocations();
+  }, []);
+
+  // Load shift-specific data (all employees for the shift)
   useEffect(() => {
     if (selectedShift) {
       const fetchShiftData = async () => {
         try {
-          // Validate selectedShift is a valid string ID
-          if (!selectedShift || typeof selectedShift !== 'string' || selectedShift.trim() === '' || selectedShift === 'NaN') {
+          // Extract shift ID from object or use directly if it's a string
+          const shiftId = typeof selectedShift === 'object' ? selectedShift.id : selectedShift;
+          
+          // Validate shift ID
+          if (!shiftId || typeof shiftId !== 'string' || shiftId.trim() === '' || shiftId === 'NaN') {
             throw new Error("Invalid shift ID");
           }
 
           const [employeesResponse, routesResponse] = await Promise.all([
-            getUnassignedEmployeesByShift(selectedShift),
-            getRoutesByShift(selectedShift),
+            getUnassignedEmployeesByShift(shiftId),
+            getRoutesByShift(shiftId),
           ]);
 
+          // Store all employees for this shift
+          setAllEmployees(employeesResponse.data);
+          // Initially show all employees (no location filter)
           setEmployees(employeesResponse.data);
           setRoutes(routesResponse.data);
         } catch (error) {
@@ -138,6 +168,55 @@ function CreateRoute() {
       fetchShiftData();
     }
   }, [selectedShift]);
+
+  // Filter employees by location (frontend filtering)
+  useEffect(() => {
+    if (allEmployees.length > 0) {
+      if (selectedLocation) {
+        // Filter by location
+        const filteredEmployees = allEmployees.filter(
+          (emp) => String(emp.workLocation?.id) === String(selectedLocation)
+        );
+        setEmployees(filteredEmployees);
+      } else {
+        // No location filter - show all employees for the shift
+        setEmployees(allEmployees);
+      }
+    }
+  }, [selectedLocation, allEmployees]);
+
+  // Save selectedLocation to sessionStorage whenever it changes
+  useEffect(() => {
+    if (selectedLocation) {
+      sessionStorage.setItem("selectedCreateRouteLocation", selectedLocation);
+    } else {
+      sessionStorage.removeItem("selectedCreateRouteLocation");
+    }
+  }, [selectedLocation]);
+
+  // Validate selectedLocation when locations load
+  useEffect(() => {
+    console.log('Validation useEffect: locations.length:', locations.length, 'selectedLocation:', selectedLocation);
+    if (locations.length > 0 && selectedLocation) {
+      const location = locations.find(l => String(l.id) === String(selectedLocation));
+      console.log('Found location:', location);
+      if (location) {
+        setRouteData((prev) => ({
+          ...prev,
+          selectedLocation: location,
+        }));
+        console.log('Set routeData.selectedLocation from validation useEffect');
+      } else {
+        setSelectedLocation(null);
+        setRouteData((prev) => ({
+          ...prev,
+          selectedLocation: null,
+        }));
+        sessionStorage.removeItem("selectedCreateRouteLocation");
+        console.log('Reset selectedLocation because location not found');
+      }
+    }
+  }, [locations, selectedLocation]);
 
   // Load available shuttles
   useEffect(() => {
@@ -152,24 +231,88 @@ function CreateRoute() {
     fetchShuttles();
   }, []);
 
+  const handleLocationChange = (location) => {
+    console.log('handleLocationChange called with location:', location);
+    if (location) {
+      setSelectedLocation(location.id);
+      // Update routeData immediately with the location object
+      setRouteData((prev) => ({
+        ...prev,
+        selectedLocation: location,
+      }));
+      console.log('Set routeData.selectedLocation to:', location);
+    } else {
+      setSelectedLocation(null);
+      setRouteData((prev) => ({
+        ...prev,
+        selectedLocation: null,
+      }));
+      console.log('Set routeData.selectedLocation to null');
+    }
+  };
+
   const handleShiftChange = (shift) => {
+    console.log('handleShiftChange called with shift:', shift);
     setSelectedShift(shift);
-    // Route data will update via the useEffect that watches selectedShift
+    // Reset location selection when shift changes
+    setSelectedLocation(null);
+    // Update routeData with the shift object
+    setRouteData((prev) => ({
+      ...prev,
+      selectedShift: shift,
+      shiftEndTime: shift?.endTime,
+    }));
   };
 
   const handleCreateRoute = () => {
+    console.log('=== handleCreateRoute DEBUG ===');
+    console.log('selectedLocation:', selectedLocation);
+    console.log('selectedShift:', selectedShift);
+    console.log('selectedShift type:', typeof selectedShift);
+    console.log('locations.length:', locations.length);
+    console.log('Current routeData:', routeData);
+    
+    // Ensure routeData has the current selected location before opening the form
+    if (selectedLocation && locations.length) {
+      const currentLocation = locations.find(
+        (loc) => loc.id === selectedLocation || String(loc.id) === String(selectedLocation)
+      );
+      console.log('Found currentLocation:', currentLocation);
+      if (currentLocation) {
+        // Ensure we have the full shift object
+        const shiftObject = typeof selectedShift === 'object' ? selectedShift : shifts.find(s => String(s.id) === String(selectedShift));
+        setRouteData((prev) => {
+          const newData = {
+            ...prev,
+            selectedLocation: currentLocation,
+            selectedShift: shiftObject, // Ensure shift object is set
+          };
+          console.log('Setting routeData with selectedLocation and selectedShift:', newData);
+          return newData;
+        });
+      } else {
+        console.warn('Location not found in locations array');
+        toast.error("Please select a valid location");
+        return;
+      }
+    } else {
+      console.warn('No selectedLocation or locations not loaded');
+      toast.error("Please select a location first");
+      return;
+    }
+    console.log('=== End handleCreateRoute DEBUG ===');
     setPageState("creating");
   };
 
   const handleBackToList = () => {
     setPageState("initial");
-    // Don't reset the shift data when going back
+    // Don't reset the shift or location data when going back
     setRouteData((prev) => ({
       ...prev,
       name: "",
       selectedEmployees: [],
       selectedShuttle: null,
-      selectedLocation: null,
+      // Keep selectedLocation - don't reset it
       setName: (name) => handleNameChange(name),
     }));
   };
@@ -184,11 +327,22 @@ function CreateRoute() {
       await createRoute(routeApiData);
 
       // Refresh the employees list to update assignments
-      if (selectedShift && typeof selectedShift === 'string' && selectedShift.trim() !== '') {
+      const shiftId = typeof selectedShift === 'object' ? selectedShift.id : selectedShift;
+      if (shiftId && typeof shiftId === 'string' && shiftId.trim() !== '') {
         const employeesResponse = await getUnassignedEmployeesByShift(
-          selectedShift
+          shiftId
         );
-        setEmployees(employeesResponse.data);
+        setAllEmployees(employeesResponse.data);
+
+        // Re-apply location filter
+        if (selectedLocation) {
+          const filteredEmployees = employeesResponse.data.filter(
+            (emp) => String(emp.workLocation?.id) === String(selectedLocation)
+          );
+          setEmployees(filteredEmployees);
+        } else {
+          setEmployees(employeesResponse.data);
+        }
       }
 
       toast.success("Route created successfully!");
@@ -208,8 +362,9 @@ function CreateRoute() {
       setPageState("initial");
 
       // Refresh routes list
+      const shiftIdForRoutes = typeof selectedShift === 'object' ? selectedShift.id : selectedShift;
       const updatedRoutesResponse = await getRoutesByShift(
-        Number(selectedShift)
+        shiftIdForRoutes
       );
       setRoutes(updatedRoutesResponse.data);
 
@@ -267,13 +422,25 @@ function CreateRoute() {
                   shuttlesCount: shuttles.length,
                 }}
               />
+
+              {/* Location Selection - only show when shift is selected */}
               {selectedShift && (
-                <div className={styles.createButtonWrapper}>
-                  <CustomButton onClick={handleCreateRoute}>
-                    Create Route
-                  </CustomButton>
+                <div className={styles.locationSelectionWrapper}>
+                  <LocationSelection
+                    selectedLocation={selectedLocation}
+                    onLocationChange={handleLocationChange}
+                    locations={locations}
+                  />
                 </div>
               )}
+
+               {selectedShift && (
+                 <div className={styles.createButtonWrapper}>
+                   <CustomButton onClick={handleCreateRoute} disabled={!selectedLocation}>
+                     Create Route
+                   </CustomButton>
+                 </div>
+               )}
             </div>
 
             {/* Main Content Grid - Always show */}
@@ -309,6 +476,7 @@ function CreateRoute() {
           // Show form for both creating and preview states
           <>
             <CreateRouteForm
+              key={`create-route-form-${pageState}`}
               selectedShift={routeData.selectedShift || selectedShift}
               routeData={routeData}
               setRouteData={setRouteData}
@@ -325,6 +493,7 @@ function CreateRoute() {
                 <ShuttlePreview
                   routeData={{
                     ...routeData,
+                    selectedShift: routeData.selectedShift || selectedShift,
                     setName: handleNameChange,
                   }}
                   show={true}

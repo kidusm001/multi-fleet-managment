@@ -36,9 +36,9 @@ const SearchAndFilter = ({
             All Routes
           </button>
           <button
-            onClick={() => setStatusFilter("active")}
+            onClick={() => setStatusFilter("ACTIVE")}
             className={`flex-1 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
-              statusFilter === "active"
+              statusFilter === "ACTIVE"
                 ? "bg-white dark:bg-[#0c1222] text-[#f3684e] dark:text-[#ff965b] shadow-sm"
                 : "text-gray-500 dark:text-gray-400 hover:text-[#f3684e] dark:hover:text-[#ff965b]"
             }`}
@@ -46,9 +46,9 @@ const SearchAndFilter = ({
             Active Only
           </button>
           <button
-            onClick={() => setStatusFilter("inactive")}
+            onClick={() => setStatusFilter("INACTIVE")}
             className={`flex-1 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${
-              statusFilter === "inactive"
+              statusFilter === "INACTIVE"
                 ? "bg-white dark:bg-[#0c1222] text-gray-500 shadow-sm"
                 : "text-gray-500 dark:text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
             }`}

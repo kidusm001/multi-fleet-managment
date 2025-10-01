@@ -104,13 +104,13 @@ const SearchAndFilterBar = ({
             )}>
               All Status
             </SelectItem>
-            <SelectItem value="active" className={cn(
+            <SelectItem value="ACTIVE" className={cn(
               "transition-colors",
               isDark ? "text-green-400 hover:bg-gray-700" : "text-green-600 hover:bg-gray-100"
             )}>
               Active
             </SelectItem>
-            <SelectItem value="inactive" className={cn(
+            <SelectItem value="INACTIVE" className={cn(
               "transition-colors",
               isDark ? "text-amber-400 hover:bg-gray-700" : "text-amber-600 hover:bg-gray-100"
             )}>

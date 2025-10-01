@@ -182,11 +182,11 @@ function DataSection({
         throw new Error("Invalid route ID");
       }
 
-      // Clean and validate employee ID
+      // Clean and validate employee ID (cuid format: starts with 'c' followed by alphanumeric)
       const cleanEmployeeId = String(employeeId).trim();
-      const uuidRegex =
-        /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-      if (!uuidRegex.test(cleanEmployeeId)) {
+      const cuidRegex = /^c[a-z0-9]{24,}$/i;
+      if (!cuidRegex.test(cleanEmployeeId)) {
+        console.error("Invalid employee ID format:", cleanEmployeeId);
         throw new Error("Invalid employee ID format");
       }
 
@@ -236,10 +236,7 @@ function DataSection({
       onRouteUpdate(updatedRoute);
 
       setShowModal(false);
-      toast({
-        title: "Success",
-        description: "Employee assigned successfully",
-      });
+      toast.success("Employee assigned successfully");
 
       // Navigate to the assignment tab with the correct state (instead of management tab)
       setTimeout(() => {

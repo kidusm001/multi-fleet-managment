@@ -94,6 +94,11 @@ export const RoutesByLocationParamSchema = z.object({
     locationId: z.cuid('Location ID must be a valid CUID'),
 });
 
+export const RouteEmployeeParamSchema = z.object({
+    routeId: z.cuid('Route ID must be a valid CUID'),
+    employeeId: z.cuid('Employee ID must be a valid CUID'),
+});
+
 // Export types for TypeScript
 export type CreateRouteInput = z.infer<typeof CreateRouteSchema>;
 export type UpdateRouteInput = z.infer<typeof UpdateRouteSchema>;

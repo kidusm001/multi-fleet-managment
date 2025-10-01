@@ -116,7 +116,7 @@ const RouteCard = ({
               className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-300"
             >
               <Bus className="h-4 w-4 text-sky-500 dark:text-sky-400" />
-              <span>{route.shuttle?.name || "Not assigned"}</span>
+              <span>{(route.shuttle?.name || route.vehicle?.name || route.vehicle?.plateNumber) || "Not assigned"}</span>
             </motion.div>
             <motion.div className="flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
               <Briefcase className="h-4 w-4 text-indigo-500 dark:text-indigo-400" />
@@ -132,8 +132,8 @@ const RouteCard = ({
                   "rounded-lg px-2.5 py-0.5 text-xs font-medium",
                   "shadow-sm hover:shadow-md scale-100 hover:scale-105",
                   route.status === "active"
-                    ? "bg-gradient-to-r from-emerald-500/20 to-green-500/20 text-emerald-500 dark:text-emerald-400"
-                    : "bg-gradient-to-r from-zinc-500/20 to-slate-500/20 text-zinc-500 dark:text-zinc-400"
+                    ? "bg-gradient-to-r from-emerald-500/20 to-green-500/20 text-emerald-600 dark:text-emerald-400"
+                    : "bg-gradient-to-r from-gray-200 to-gray-300 text-gray-700 dark:from-zinc-500/20 dark:to-slate-500/20 dark:text-zinc-400"
                 )}
               >
                 {route.status}

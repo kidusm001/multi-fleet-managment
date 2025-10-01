@@ -121,13 +121,13 @@ const RouteTable = ({ routes, onRouteClick }) => {
             pickupLocation: "HQ",
             dropOffLocation: stop.employee?.location || "N/A",
             driver: {
-              name: route.shuttle?.driver?.name || "Not Assigned",
-              phone: route.shuttle?.driver?.phone || "N/A",
+              name: (route.shuttle?.driver?.name || route.vehicle?.driver?.name) || "Not Assigned",
+              phone: (route.shuttle?.driver?.phone || route.vehicle?.driver?.phone) || "N/A",
             },
             shuttle: {
-              id: route.shuttle?.id,
-              name: route.shuttle?.name || "Not Assigned",
-              capacity: route.shuttle?.capacity || 0,
+              id: route.shuttle?.id || route.vehicle?.id,
+              name: (route.shuttle?.name || route.vehicle?.name || route.vehicle?.plateNumber) || "Not Assigned",
+              capacity: route.shuttle?.capacity || route.vehicle?.capacity || 0,
             },
             shift: {
               id: route.shift?.id,

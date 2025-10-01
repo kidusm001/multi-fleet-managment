@@ -10,7 +10,6 @@
   justify-content: center;
   z-index: 9999;
   overflow-y: auto;
-  transform: translate(-10%, -20%);
 }
 
 .modal {

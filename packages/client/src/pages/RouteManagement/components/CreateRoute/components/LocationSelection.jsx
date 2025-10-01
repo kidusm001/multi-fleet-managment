@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import PropTypes from "prop-types";
 import { MapPin, Building2, HelpCircle } from "lucide-react";
 import {
@@ -10,38 +10,14 @@ import {
   SelectValue,
 } from "@components/Common/UI/Select";
 import { Badge } from "@/components/Common/UI/Badge";
-import { locationService } from "@services/locationService";
-import { toast } from 'sonner';
 import styles from "../styles/LocationSelection.module.css";
 
 export default function LocationSelection({
   selectedLocation,
   onLocationChange,
+  locations = [],
   disabled = false,
 }) {
-  const [locations, setLocations] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState(null);
-
-  // Load locations on component mount
-  useEffect(() => {
-    const fetchLocations = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-        const data = await locationService.getLocations();
-        setLocations(data);
-      } catch (error) {
-        console.error('Failed to load locations:', error);
-        setError('Failed to load locations');
-        toast.error('Failed to load locations: ' + error.message);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchLocations();
-  }, []);
 
   // Find selected location data
   const selectedLocationData = useMemo(() => {
@@ -82,12 +58,14 @@ export default function LocationSelection({
     }
   };
 
-  if (error) {
+  if (!locations.length) {
     return (
       <div className={styles.container}>
-        <div className={styles.errorState}>
-          <MapPin className="w-5 h-5 text-red-500" />
-          <span className={styles.errorText}>Error loading locations</span>
+        <div className={styles.content}>
+          <h3 className={styles.selectTitle}>
+            <MapPin className="w-5 h-5" />
+            No Locations Available
+          </h3>
         </div>
       </div>
     );
@@ -105,15 +83,15 @@ export default function LocationSelection({
           <Select
             onValueChange={handleLocationChange}
             value={selectedLocation ? String(selectedLocation) : ""}
-            disabled={disabled || isLoading}
+            disabled={disabled}
           >
             <SelectTrigger className={styles.trigger}>
               <MapPin className="w-4 h-4 mr-2 text-primary" />
-              <SelectValue placeholder={isLoading ? "Loading locations..." : "Select a location"}>
+              <SelectValue placeholder="Select a location">
                 {selectedLocationData ? (
                   <div className="flex items-center gap-2">
                     {getLocationIcon(selectedLocationData.type)}
-                    <span>{selectedLocationData.name}</span>
+                    <span>{selectedLocationData.address || 'Unnamed Location'}</span>
                     <Badge variant="secondary" className="text-xs">
                       {getLocationTypeLabel(selectedLocationData.type)}
                     </Badge>
@@ -135,22 +113,22 @@ export default function LocationSelection({
                     value={String(location.id)}
                     className="font-medium"
                   >
-                    <div className="flex items-center gap-2">
-                      {getLocationIcon(location.type)}
-                      <div className="flex flex-col">
-                        <span>{location.name}</span>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <Badge variant="outline" className="text-xs">
-                            {getLocationTypeLabel(location.type)}
-                          </Badge>
-                          {location._count && (
-                            <span>
-                              {location._count.employees} employees • {location._count.routes} routes
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
+                     <div className="flex items-center gap-2">
+                       {getLocationIcon(location.type)}
+                       <div className="flex flex-col">
+                         <span>{location.address || 'Unnamed Location'}</span>
+                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                           <Badge variant="outline" className="text-xs">
+                             {getLocationTypeLabel(location.type)}
+                           </Badge>
+                           {location._count && (
+                             <span>
+                               {location._count.employees} employees • {location._count.routes} routes
+                             </span>
+                           )}
+                         </div>
+                       </div>
+                     </div>
                   </SelectItem>
                 ))}
               </SelectGroup>
@@ -161,7 +139,7 @@ export default function LocationSelection({
             <div className={styles.selectedLocationInfo}>
               <div className="flex items-center gap-2 text-sm">
                 {getLocationIcon(selectedLocationData.type)}
-                <span className="font-medium">{selectedLocationData.name}</span>
+                <span className="font-medium">{selectedLocationData.address || 'Unnamed Location'}</span>
                 <Badge variant="secondary" className="text-xs">
                   {getLocationTypeLabel(selectedLocationData.type)}
                 </Badge>
@@ -195,7 +173,7 @@ export default function LocationSelection({
               Available
             </span>
             <span className={styles.statValue}>
-              {locations.filter(loc => !disabled).length}
+              {locations.length}
             </span>
           </div>
         </div>
@@ -207,5 +185,6 @@ export default function LocationSelection({
 LocationSelection.propTypes = {
   selectedLocation: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
   onLocationChange: PropTypes.func.isRequired,
+  locations: PropTypes.array,
   disabled: PropTypes.bool,
 };

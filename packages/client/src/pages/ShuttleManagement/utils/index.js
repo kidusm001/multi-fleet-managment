@@ -3,6 +3,7 @@ import { format, isValid, parseISO } from 'date-fns';
 export const getStatusColor = (status) => {
   switch (status?.toLowerCase()) {
     case 'active':
+    case 'available':
       return {
         bg: 'bg-green-100 dark:bg-green-900/20',
         text: 'text-green-800 dark:text-green-400'

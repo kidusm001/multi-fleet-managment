@@ -70,6 +70,7 @@ interface OrganizationContextType {
   members: any[];
   listMembers: (organizationId?: string) => Promise<any[]>;
   inviteMember: (data: { email: string; role: string; organizationId?: string }) => Promise<any>;
+  addMember: (data: { userId: string; role: string; organizationId?: string; teamId?: string }) => Promise<any>;
   removeMember: (memberIdOrEmail: string, organizationId?: string) => Promise<void>;
   updateMemberRole: (memberId: string, role: string, organizationId?: string) => Promise<void>;
   loadMembers: () => Promise<void>;
@@ -230,7 +231,7 @@ export function OrganizationProvider({ children }: OrganizationProviderProps) {
   const listMembers = async (organizationId?: string) => {
     try {
       const result = await authClient.organization.listMembers({
-        organizationId,
+        query: organizationId ? { organizationId } : undefined,
       });
       
       if (result.error) {
@@ -261,7 +262,7 @@ export function OrganizationProvider({ children }: OrganizationProviderProps) {
     try {
       const result = await authClient.organization.inviteMember({
         email: data.email,
-        role: data.role,
+        role: data.role as any, // Cast to match auth client types
         organizationId: data.organizationId,
       });
       
@@ -280,7 +281,7 @@ export function OrganizationProvider({ children }: OrganizationProviderProps) {
     try {
       const result = await authClient.organization.removeMember({
         memberIdOrEmail,
-        organizationId,
+        organizationId: organizationId || activeOrganization?.id || '',
       });
       
       if (result.error) {
@@ -297,7 +298,7 @@ export function OrganizationProvider({ children }: OrganizationProviderProps) {
     try {
       const result = await authClient.organization.updateMemberRole({
         memberId,
-        role,
+        role: role as any, // Cast to match auth client types
         organizationId,
       });
       
@@ -311,11 +312,41 @@ export function OrganizationProvider({ children }: OrganizationProviderProps) {
     }
   };
 
+  const addMember = async (data: { userId: string; role: string; organizationId?: string; teamId?: string }) => {
+    try {
+      // Since addMember is server-only according to the documentation, 
+      // we'll need to make a direct API call to our backend
+      const response = await fetch('/api/organization/add-member', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: data.userId,
+          role: data.role,
+          organizationId: data.organizationId || activeOrganization?.id,
+          teamId: data.teamId
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to add member');
+      }
+
+      const result = await response.json();
+      await loadMembers(); // Refresh members
+      return result;
+    } catch (error: any) {
+      throw new Error(error.message || 'Failed to add member');
+    }
+  };
+
   // Invitation actions
   const listInvitations = async (organizationId?: string) => {
     try {
       const result = await authClient.organization.listInvitations({
-        organizationId,
+        query: organizationId ? { organizationId } : undefined,
       });
       
       if (result.error) {
@@ -460,6 +491,7 @@ export function OrganizationProvider({ children }: OrganizationProviderProps) {
     // Members
     listMembers,
     inviteMember,
+    addMember,
     removeMember,
     updateMemberRole,
     loadMembers,

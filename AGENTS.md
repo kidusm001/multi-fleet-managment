@@ -20,4 +20,4 @@
 - **Linting**: ESLint with TypeScript, React hooks, and React refresh rules
 
 ## Project Rules
-- Do not edit client code in `packages/client`
+- Do not edit client code in `packages/server`

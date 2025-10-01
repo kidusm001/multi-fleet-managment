@@ -103,7 +103,7 @@ class ShuttleService {
       try {
         // Handle status updates (keep this branch unchanged for maintenance functionality)
         if ('status' in updates && !updates.name) {
-          const statusData = { status: updates.status };
+          const statusData = { status: this.mapVehicleStatus(updates.status) };
           if (updates.status === 'maintenance') {
             statusData.lastMaintenance = new Date().toISOString();
             statusData.nextMaintenance = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();

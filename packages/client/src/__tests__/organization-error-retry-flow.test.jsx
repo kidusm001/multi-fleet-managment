@@ -9,7 +9,7 @@ function RetryHarness() {
   React.useEffect(() => { (async () => {
     await loadMembers();
     await loadInvitations();
-  })(); // eslint-disable-next-line react-hooks/exhaustive-deps
+  })();  
   }, [loadMembers, loadInvitations]);
   return <div data-testid="members-count">{members.length}</div>;
 }

@@ -1,4 +1,4 @@
-import { User, Mail, Phone, Building2, Clock, Briefcase, MapPin, MapIcon, Check, Info, Plus } from 'lucide-react';
+import { User, Mail, Phone, Building2, Clock, Briefcase, MapPin, MapIcon, Check, Info, Plus, Users } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import Button from "@/components/Common/UI/Button";
 import { Input } from "@/components/Common/UI/Input";
@@ -16,6 +16,8 @@ export default function SingleEmployeeForm({
   employee,
   departments,
   shifts,
+  locations = [],
+  members = [],
   phoneValid,
   emailValid,
   isLoading,
@@ -27,7 +29,8 @@ export default function SingleEmployeeForm({
   onSubmit,
   onCancel,
   onNavigateToDepartments,
-  onNavigateToShifts
+  onNavigateToShifts,
+  onMemberSelect
 }) {
   // Custom placeholder style classes for dark mode
   const placeholderClasses = isDark 
@@ -36,6 +39,62 @@ export default function SingleEmployeeForm({
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
+      {/* Member Selection Section */}
+      <div className={cn(
+        "p-4 rounded-lg border",
+        isDark ? "bg-gray-900/50 border-gray-700" : "bg-blue-50 border-blue-200"
+      )}>
+        <Label htmlFor="memberSelect" className="flex items-center gap-2 mb-2">
+          <Users className="h-4 w-4 text-gray-400" />
+          Select Organization Member <span className="text-red-500">*</span>
+        </Label>
+        <Select 
+          value={employee.selectedMemberId || ""} 
+          onValueChange={(value) => onMemberSelect?.(value)}
+          required
+        >
+          <SelectTrigger 
+            className={cn(
+              "w-full",
+              isDark ? "bg-gray-900 border-gray-700" : "bg-white",
+              !employee.selectedMemberId && isDark && "text-gray-500 opacity-50"
+            )}
+          >
+            <SelectValue placeholder="Select a member to create as employee..." />
+          </SelectTrigger>
+          <SelectContent>
+            {members.length === 0 && (
+              <div className="px-2 py-4 text-center">
+                <p className="text-sm text-gray-500">No members found</p>
+                <p className="text-xs text-gray-500 mt-1">Add members to your organization first</p>
+              </div>
+            )}
+            {members.map(member => {
+              const memberUser = member.user || {};
+              const displayName = memberUser.name || member.name || memberUser.email || member.userId || member.id;
+              const displayEmail = memberUser.email || member.email || member.userId;
+              
+              return (
+                <SelectItem key={member.id} value={member.id}>
+                  <div className="flex flex-col">
+                    <span className="font-medium">{displayName}</span>
+                    {displayEmail && displayEmail !== displayName && (
+                      <span className="text-xs text-gray-500">{displayEmail}</span>
+                    )}
+                  </div>
+                </SelectItem>
+              );
+            })}
+          </SelectContent>
+        </Select>
+        <p className={cn(
+          "text-xs mt-2",
+          isDark ? "text-gray-400" : "text-gray-600"
+        )}>
+          Select a member from your organization. Their information will be auto-filled. You'll then need to assign department, shift, and location.
+        </p>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Personal Information */}
         <div className="space-y-4">
@@ -133,7 +192,7 @@ export default function SingleEmployeeForm({
             <div className="flex gap-2">
               <Select 
                 value={employee.departmentId?.toString() || ""} 
-                onValueChange={(value) => onSelectChange("departmentId", parseInt(value))}
+                onValueChange={(value) => onSelectChange("departmentId", value)}
                 required
               >
                 <SelectTrigger 
@@ -191,7 +250,7 @@ export default function SingleEmployeeForm({
             <div className="flex gap-2">
               <Select 
                 value={employee.shiftId?.toString() || ""} 
-                onValueChange={(value) => onSelectChange("shiftId", parseInt(value))}
+                onValueChange={(value) => onSelectChange("shiftId", value)}
                 required
               >
                 <SelectTrigger 
@@ -240,11 +299,58 @@ export default function SingleEmployeeForm({
             )}
           </div>
           
-          {/* Location field with map picker */}
+          {/* Work Location field */}
+          <div className="space-y-2">
+            <Label htmlFor="locationId" className="flex items-center gap-2">
+              <Briefcase className="h-4 w-4 text-gray-400" />
+              Work Location <span className="text-red-500">*</span>
+            </Label>
+            <Select 
+              value={employee.locationId?.toString() || ""} 
+              onValueChange={(value) => onSelectChange("locationId", value)}
+              required
+            >
+              <SelectTrigger 
+                className={cn(
+                  "w-full",
+                  isDark ? "bg-gray-900 border-gray-700" : "bg-white",
+                  !employee.locationId && isDark && "text-gray-500 opacity-50"
+                )}
+              >
+                <SelectValue placeholder="Select a work location" />
+              </SelectTrigger>
+              <SelectContent>
+                {locations.length === 0 && (
+                  <div className="px-2 py-4 text-center">
+                    <p className="text-sm text-gray-500">No locations found</p>
+                    <p className="text-xs text-gray-500 mt-1">Add locations to your organization first</p>
+                  </div>
+                )}
+                {locations.map(location => (
+                  <SelectItem key={location.id} value={location.id.toString()}>
+                    <div className="flex flex-col">
+                      <span className="font-medium">{location.address}</span>
+                      {location.type && (
+                        <span className="text-xs text-gray-500">{location.type}</span>
+                      )}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className={cn(
+              "text-xs",
+              isDark ? "text-gray-400" : "text-gray-600"
+            )}>
+              Select the work location (branch/HQ) where this employee is based
+            </p>
+          </div>
+          
+          {/* Home Location field with map picker */}
           <div className="space-y-2">
             <Label htmlFor="location" className="flex items-center gap-2">
               <MapPin className="h-4 w-4 text-gray-400" />
-              Location <span className="text-red-500">*</span>
+              Home Address <span className="text-red-500">*</span>
             </Label>
             <div className="flex gap-2">
               <Input
@@ -280,7 +386,7 @@ export default function SingleEmployeeForm({
                 isDark ? "text-green-400" : "text-green-600"
               )}>
                 <Check className="w-3 h-3 mr-1" />
-                Location coordinates selected
+                Home coordinates selected
               </div>
             ) : (
               <div className={cn(
@@ -288,7 +394,7 @@ export default function SingleEmployeeForm({
                 isDark ? "text-amber-400" : "text-amber-600"
               )}>
                 <Info className="w-3 h-3 mr-1" />
-                Click the map icon to select coordinates
+                Click the map icon to select home coordinates
               </div>
             )}
           </div>
@@ -307,7 +413,7 @@ export default function SingleEmployeeForm({
         </Button>
         <Button
           type="submit"
-          disabled={isLoading || !phoneValid || !emailValid}
+          disabled={isLoading || !phoneValid || !emailValid || !employee.selectedMemberId || !employee.locationId}
           className={cn(
             isDark ? "bg-green-700 hover:bg-green-600" : "bg-green-600 hover:bg-green-500",
             "text-white"

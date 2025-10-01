@@ -27,6 +27,7 @@ import {
   X,
   Check,
   Trash2,
+  Power,
 } from "lucide-react";
 import PropTypes from "prop-types";
 import { cn } from "@lib/utils";
@@ -42,6 +43,7 @@ import {
   AlertDialogTitle,
 } from "@components/Common/UI/alert-dialog";
 import { toast } from "sonner";
+import { routeService } from "@services/routeService";
 
 const styles = `
 @keyframes slideOutDown {
@@ -75,11 +77,13 @@ const RouteDetailDrawer = ({
   onMapPreview,
   onRemoveEmployee,
   onDeleteRoute,
+  onRouteUpdate,
 }) => {
   const [activeTab, setActiveTab] = useState("overview");
   const [selectedEmployees, setSelectedEmployees] = useState([]);
   const [employeeToRemove, setEmployeeToRemove] = useState(null);
   const [employeesToRemove, setEmployeesToRemove] = useState(null);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   // sonner toast imported directly
 
   if (!route) return null;
@@ -175,10 +179,7 @@ const RouteDetailDrawer = ({
       route.stops = updatedStops;
       setEmployeeToRemove(null);
 
-      toast({
-        title: "Success",
-        description: "Employee removed from route successfully",
-      });
+      toast.success("Employee removed from route successfully");
 
       // Check if route should be deleted
       if (remainingEmployees.length === 0) {
@@ -189,11 +190,7 @@ const RouteDetailDrawer = ({
       }
     } catch (error) {
       console.error("Error removing employee:", error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to remove employee",
-        variant: "destructive",
-      });
+      toast.error(error.message || "Failed to remove employee");
     }
   };
 
@@ -296,6 +293,24 @@ const RouteDetailDrawer = ({
     }, 200);
   };
 
+  const handleToggleStatus = async (e) => {
+    e?.stopPropagation();
+    try {
+      setIsUpdatingStatus(true);
+      const newStatus = route.status === "ACTIVE" ? "INACTIVE" : "ACTIVE";
+      await routeService.updateRouteStatus(route.id, newStatus);
+      toast.success(`Route ${newStatus === "ACTIVE" ? "activated" : "deactivated"} successfully`);
+      if (onRouteUpdate) {
+        await onRouteUpdate();
+      }
+    } catch (error) {
+      console.error("Failed to update route status:", error);
+      toast.error("Failed to update route status");
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  };
+
   return (
     <>
       <Drawer open={isOpen} onOpenChange={handleClose}>
@@ -303,7 +318,7 @@ const RouteDetailDrawer = ({
         <DrawerContent
           className={cn(
             "fixed bottom-0 left-0 right-0 z-50",
-            "h-[85vh] max-w-3xl mx-auto",
+            "h-[85vh] max-w-5xl mx-auto",
             "bg-card",
             "border-t border-border",
             "animate-in slide-in-from-bottom duration-300",
@@ -322,10 +337,30 @@ const RouteDetailDrawer = ({
                 </DrawerTitle>
                 <DrawerDescription className="flex items-center gap-2 mt-1">
                   <Bus className="h-4 w-4 text-sky-500" />
-                  {route.shuttle?.name || "No shuttle assigned"}
+                  {(route.shuttle?.name || route.vehicle?.name || route.vehicle?.plateNumber) || "No shuttle assigned"}
                 </DrawerDescription>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
+                <Button
+                  variant={route.status === "ACTIVE" ? "outline" : "default"}
+                  size="sm"
+                  onClick={handleToggleStatus}
+                  disabled={isUpdatingStatus}
+                  className={cn(
+                    "gap-2",
+                    route.status === "ACTIVE"
+                      ? "text-red-600 hover:text-red-700 hover:bg-red-50"
+                      : "text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                  )}
+                >
+                  <Power className="h-4 w-4" />
+                  {isUpdatingStatus 
+                    ? "Updating..." 
+                    : route.status === "ACTIVE" 
+                      ? "Deactivate" 
+                      : "Activate"}
+                </Button>
+                <div className="h-8 w-px bg-border" />
                 <Button
                   variant="destructive"
                   size="sm"
@@ -677,6 +712,7 @@ RouteDetailDrawer.propTypes = {
   onMapPreview: PropTypes.func.isRequired,
   onRemoveEmployee: PropTypes.func.isRequired,
   onDeleteRoute: PropTypes.func, // Optional prop for route deletion
+  onRouteUpdate: PropTypes.func, // Optional prop for route updates
 };
 
 InfoCard.propTypes = {

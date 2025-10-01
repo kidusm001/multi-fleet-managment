@@ -1,8 +1,11 @@
 import { useState, useEffect, useCallback } from "react";
 import { utils, write } from 'xlsx';
-import { employeeService } from "../../services/employeeService";
-import { departmentService } from "../../services/departmentService";
-import { shiftService } from "../../services/shiftService";
+import api from "@/services/api";
+import { employeeService } from "@/services/employeeService";
+import { departmentService } from "@/services/departmentService";
+import { shiftService } from "@/services/shiftService";
+import { locationService } from "@/services/locationService";
+import { useOrganizations } from "@/contexts/OrganizationContext";
 import { useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -40,6 +43,7 @@ export default function EmployeeUploadSection({
   navigateToShiftManagement,
 }) {
   const _navigate = useNavigate();
+  const { members, loadMembers } = useOrganizations();
   
   // State for file upload and data preview
   const [selectedFile, setSelectedFile] = useState(null);
@@ -58,6 +62,7 @@ export default function EmployeeUploadSection({
   // State for form data
   const [departments, setDepartments] = useState([]);
   const [shifts, setShifts] = useState([]);
+  const [locations, setLocations] = useState([]);
   const [phoneValid, setPhoneValid] = useState(true);
   const [emailValid, setEmailValid] = useState(true);
 
@@ -106,12 +111,17 @@ export default function EmployeeUploadSection({
     const fetchDepartmentsAndShifts = async () => {
       try {
         setIsLoading(true);
-        const [deptResponse, shiftResponse] = await Promise.all([
-          departmentService.listDepartments(),
-          shiftService.listShifts()
+        const [deptResponse, shiftResponse, locationsResponse] = await Promise.all([
+          departmentService.getAllDepartments(),
+          shiftService.getAllShifts(),
+          locationService.getLocations()
         ]);
         setDepartments(deptResponse);
         setShifts(shiftResponse);
+        setLocations(locationsResponse);
+        
+        // Load members separately since it doesn't return data directly
+        await loadMembers();
       } catch (error) {
         console.error("Failed to fetch data:", error);
         toast.error("Failed to load department and shift data");
@@ -122,8 +132,12 @@ export default function EmployeeUploadSection({
     };
     
     fetchDepartmentsAndShifts();
-    return resetComponent;
-  }, [resetComponent]);
+    
+    // Cleanup function
+    return () => {
+      // Only reset on unmount, not on every render
+    };
+  }, []); // Empty dependency array - only run once on mount
 
   // Handlers for single employee form
   const handleEmployeeChange = useCallback((e) => {
@@ -151,6 +165,53 @@ export default function EmployeeUploadSection({
   const handlePhoneChange = useCallback((e) => {
     handleValidatedChange(e, validatePhoneNumber, setPhoneValid);
   }, [handleValidatedChange]);
+
+  // Handler for member selection
+  const handleMemberSelect = useCallback((memberId) => {
+    if (memberId === "none" || !memberId) {
+      // Clear the selected member but keep other form data
+      setSingleEmployee(prev => ({ ...prev, selectedMemberId: null }));
+      return;
+    }
+    
+    const selectedMember = members.find(m => m.id === memberId);
+    if (selectedMember) {
+      // Auto-fill name, email, phone from member data
+      // Better Auth member object may include user details
+      const memberUser = selectedMember.user || {};
+      const memberName = memberUser.name || 
+                        selectedMember.name || 
+                        memberUser.email?.split('@')[0]?.replace(/[._-]/g, ' ') || 
+                        selectedMember.userId?.split('@')[0]?.replace(/[._-]/g, ' ') || 
+                        '';
+      
+      const memberEmail = memberUser.email || 
+                         selectedMember.email || 
+                         (selectedMember.userId?.includes('@') ? selectedMember.userId : '');
+      
+      setSingleEmployee(prev => ({
+        ...prev,
+        selectedMemberId: memberId,
+        name: memberName,
+        email: memberEmail,
+        phone: memberUser.phone || '', // Try to get phone if available
+        // Keep existing department, shift, location data
+      }));
+      
+      // Validate the auto-filled email
+      if (memberEmail) {
+        setEmailValid(validateEmail(memberEmail));
+      }
+      
+      toast.success(
+        <div className="flex items-center">
+          <CheckCircle className="w-5 h-5 mr-2 text-green-500" />
+          <span>Member information loaded. Please fill in department, shift, and location.</span>
+        </div>,
+        { duration: 4000 }
+      );
+    }
+  }, [members]);
 
   // Handlers for map location
   const handleMapSelect = useCallback((lat, lng, address) => {
@@ -244,7 +305,48 @@ export default function EmployeeUploadSection({
     setErrorMessage("");
     
     try {
-      await employeeService.createEmployee(singleEmployee);
+      // Get userId from selected member
+      const selectedMember = singleEmployee.selectedMemberId 
+        ? members.find(m => m.id === singleEmployee.selectedMemberId)
+        : null;
+      
+      const userId = selectedMember?.userId || selectedMember?.user?.id;
+      
+      if (!userId) {
+        throw new Error("Please select a member or the member doesn't have a valid user ID");
+      }
+      
+      // Create a Stop first if coordinates are provided
+      let stopId = null;
+      if (singleEmployee.latitude && singleEmployee.longitude) {
+        const stopData = {
+          name: `${singleEmployee.name} - Home`,
+          address: singleEmployee.location || `${singleEmployee.name}'s location`,
+          latitude: parseFloat(singleEmployee.latitude),
+          longitude: parseFloat(singleEmployee.longitude),
+        };
+        
+        const stopResponse = await api.post('/stops', stopData);
+        stopId = stopResponse.data.id;
+      }
+      
+      // Validate required fields
+      if (!singleEmployee.locationId) {
+        throw new Error("Work location is required");
+      }
+      
+      // Prepare employee data for API
+      const employeeData = {
+        name: singleEmployee.name,
+        location: singleEmployee.location || null,
+        departmentId: singleEmployee.departmentId,
+        shiftId: singleEmployee.shiftId,
+        userId: userId,
+        stopId: stopId, // Use the created stop ID
+        locationId: singleEmployee.locationId, // Work location (required)
+      };
+      
+      await employeeService.createEmployee(employeeData);
       // Enhanced toast with green checkmark
       toast.success(
         <div className="flex items-center">
@@ -257,12 +359,13 @@ export default function EmployeeUploadSection({
       onSuccess?.();
     } catch (error) {
       console.error("Failed to add employee:", error);
-      setErrorMessage(error.message || "Failed to add employee");
-      toast.error(error.message || "Failed to add employee");
+      const errorMsg = error.response?.data?.message || error.message || "Failed to add employee";
+      setErrorMessage(errorMsg);
+      toast.error(errorMsg);
     } finally {
       setIsLoading(false);
     }
-  }, [singleEmployee, onSuccess, resetComponent]);
+  }, [singleEmployee, members, onSuccess, resetComponent]);
 
   // Process CSV data
   const processCsvData = useCallback((content) => {
@@ -794,6 +897,8 @@ export default function EmployeeUploadSection({
                 employee={singleEmployee}
                 departments={departments}
                 shifts={shifts}
+                locations={locations}
+                members={members}
                 phoneValid={phoneValid}
                 emailValid={emailValid}
                 isLoading={isLoading}
@@ -804,6 +909,7 @@ export default function EmployeeUploadSection({
                 onMapClick={() => setShowMapPicker(true)}
                 onSubmit={handleSingleEmployeeSubmit}
                 onCancel={resetComponent}
+                onMemberSelect={handleMemberSelect}
                 onAddDepartmentClick={handleNavigateToDepartments}
                 onAddShiftClick={handleNavigateToShifts}
                 onNavigateToDepartments={handleNavigateToDepartments}

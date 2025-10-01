@@ -1,16 +1,21 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import PropTypes from "prop-types";
 import {
   ClockIcon,
   MapPinIcon,
   PlusIcon,
   MagnifyingGlassIcon,
+  BuildingOfficeIcon,
 } from "@heroicons/react/24/outline";
 import { Input } from "@/components/Common/UI/Input";
+import { locationService } from "@/services/locationService";
+import { toast } from "sonner";
 
 function Controls({
   selectedShift,
   setSelectedShift,
+  selectedLocation,
+  setSelectedLocation,
   routes = [],
   shifts = [],
   _loading = false,
@@ -21,12 +26,33 @@ function Controls({
   },
 }) {
   const [searchShift, setSearchShift] = useState("");
+  const [searchLocation, setSearchLocation] = useState("");
+  const [locations, setLocations] = useState([]);
   const currentShift = shifts.find((s) => s.id === selectedShift);
+
+  // Fetch locations on component mount
+  useEffect(() => {
+    const fetchLocations = async () => {
+      try {
+        const response = await locationService.getLocations();
+        setLocations(response.data || response);
+      } catch (error) {
+        console.error("Failed to load locations:", error);
+        toast.error("Failed to load locations");
+      }
+    };
+    fetchLocations();
+  }, []);
 
   const filteredShifts = shifts.filter(
     (shift) =>
       shift.name.toLowerCase().includes(searchShift.toLowerCase()) ||
       shift.endTime.toLowerCase().includes(searchShift.toLowerCase())
+  );
+
+  const filteredLocations = locations.filter((location) =>
+    location.address?.toLowerCase().includes(searchLocation.toLowerCase()) ||
+    location.name?.toLowerCase().includes(searchLocation.toLowerCase())
   );
 
   // Format time to 12-hour format with AM/PM
@@ -97,6 +123,77 @@ function Controls({
           </div>
         </div>
       </div>
+
+      {selectedShift && (
+        <div className="bg-white dark:bg-card p-6 rounded-2xl border border-gray-200/50 dark:border-border/50 shadow-sm mb-8">
+          <h3 className="text-lg font-semibold mb-4 flex items-center gap-3 text-gray-900 dark:text-foreground">
+            <BuildingOfficeIcon className="w-5 h-5 text-green-600 dark:text-primary" />
+            Filter by Location
+          </h3>
+
+          <div className="relative mb-4">
+            <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-muted-foreground" />
+            <Input
+              type="text"
+              placeholder="Search locations..."
+              value={searchLocation}
+              onChange={(e) => setSearchLocation(e.target.value)}
+              className="pl-9 border-gray-200/50 dark:border-border/50 focus:border-green-500 focus:ring-green-500 dark:focus:border-primary dark:focus:ring-primary"
+            />
+          </div>
+
+          <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
+            <button
+              onClick={() => setSelectedLocation(null)}
+              className={`flex items-center justify-between w-full p-3 rounded-xl text-left transition-all border
+                ${
+                  selectedLocation === null
+                    ? "bg-green-50 text-green-700 border-green-200/50 dark:bg-primary/5 dark:text-primary dark:border-primary/20"
+                    : "bg-white dark:bg-card text-gray-600 dark:text-muted-foreground border-gray-200/50 dark:border-border/50 hover:border-green-100 hover:bg-green-50/50 dark:hover:border-primary/20 dark:hover:bg-primary/5"
+                }`}
+            >
+              <div className="flex items-center gap-3">
+                <MapPinIcon className="w-4 h-4" />
+                <span className="text-sm font-medium">All Locations</span>
+              </div>
+              {selectedLocation === null && (
+                <div className="w-5 h-5 rounded-full bg-green-600 dark:bg-primary flex items-center justify-center">
+                  <div className="w-2.5 h-2.5 rounded-full bg-white" />
+                </div>
+              )}
+            </button>
+            {filteredLocations.map((location) => (
+              <button
+                key={location.id}
+                onClick={() => setSelectedLocation(location.id)}
+                className={`flex items-center justify-between w-full p-3 rounded-xl text-left transition-all border
+                  ${
+                    selectedLocation === location.id
+                      ? "bg-green-50 text-green-700 border-green-200/50 dark:bg-primary/5 dark:text-primary dark:border-primary/20"
+                      : "bg-white dark:bg-card text-gray-600 dark:text-muted-foreground border-gray-200/50 dark:border-border/50 hover:border-green-100 hover:bg-green-50/50 dark:hover:border-primary/20 dark:hover:bg-primary/5"
+                  }`}
+              >
+                <div className="flex items-center gap-3">
+                  <MapPinIcon className="w-4 h-4" />
+                  <div>
+                    <div className="text-sm font-medium">{location.name || location.address}</div>
+                    {location.name && location.address && (
+                      <div className="text-xs text-gray-500 dark:text-muted-foreground mt-0.5">
+                        {location.address}
+                      </div>
+                    )}
+                  </div>
+                </div>
+                {selectedLocation === location.id && (
+                  <div className="w-5 h-5 rounded-full bg-green-600 dark:bg-primary flex items-center justify-center">
+                    <div className="w-2.5 h-2.5 rounded-full bg-white" />
+                  </div>
+                )}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {selectedShift && currentShift && (
         <div className="bg-white dark:bg-card p-6 rounded-2xl border border-gray-200/50 dark:border-border/50 shadow-sm">
@@ -174,6 +271,8 @@ function Controls({
 Controls.propTypes = {
   selectedShift: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
   setSelectedShift: PropTypes.func.isRequired,
+  selectedLocation: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  setSelectedLocation: PropTypes.func.isRequired,
   routes: PropTypes.arrayOf(
     PropTypes.shape({
       id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,

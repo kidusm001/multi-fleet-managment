@@ -35,9 +35,12 @@ export default function ShiftSelection({
   }
 
   const handleShiftChange = (value) => {
-    // Since shift IDs are strings (UUIDs), pass the value directly
+    // Find the full shift object and pass it
     if (value && value.trim() !== '') {
-      onShiftChange(value);
+      const shiftObject = shifts.find((s) => String(s.id) === String(value));
+      if (shiftObject) {
+        onShiftChange(shiftObject);
+      }
     }
   };
 

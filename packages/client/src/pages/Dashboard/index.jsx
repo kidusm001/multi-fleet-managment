@@ -88,8 +88,24 @@ function Dashboard() {
   // Toggle details panel
   const toggleRouteDetails = useCallback((e) => {
     if (e) e.stopPropagation();
-    setIsDetailsExpanded((prev) => !prev);
-  }, []);
+    setIsDetailsExpanded(!isDetailsExpanded);
+  }, [isDetailsExpanded]);
+
+  const handleRouteUpdate = useCallback(async () => {
+    try {
+      const routesData = await routeService.getAllRoutes();
+      setRoutes(routesData);
+      // Update selected route with fresh data
+      if (selectedRoute) {
+        const updatedRoute = routesData.find(r => r.id === selectedRoute.id);
+        if (updatedRoute) {
+          setSelectedRoute(updatedRoute);
+        }
+      }
+    } catch (err) {
+      console.error("Error refreshing routes:", err);
+    }
+  }, [selectedRoute]);
 
   // Filter routes
   const filteredRoutes = useMemo(() => {
@@ -132,7 +148,7 @@ function Dashboard() {
   const stats = useMemo(() => [
     {
       title: "Active Routes",
-      value: routes?.filter((r) => r.status === "active").length.toString() || "0",
+      value: routes?.filter((r) => r.status === "ACTIVE").length.toString() || "0",
       change: "+1",
       icon: <MapPin className="h-5 w-5 text-[#f3684e] dark:text-[#ff965b]" />,
     },
@@ -239,6 +255,7 @@ function Dashboard() {
                 selectedRoute={selectedRoute}
                 isDetailsExpanded={isDetailsExpanded}
                 toggleRouteDetails={toggleRouteDetails}
+                onRouteUpdate={handleRouteUpdate}
               />
             </div>
           )}
