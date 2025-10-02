@@ -52,7 +52,7 @@ export default function Settings() {
 
   const handleTabChange = (tabId) => {
     if (tabId === "shuttles") {
-      navigate("/shuttle-management");
+      navigate("/vehicles");
       return;
     }
     setActiveTab(tabId);
