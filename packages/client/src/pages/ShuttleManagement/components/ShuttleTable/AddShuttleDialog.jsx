@@ -8,6 +8,7 @@ import { Card } from "../../components/ui/Card";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/contexts/ThemeContext";
 import { shuttleCategoryService } from "@/services/shuttleCategoryService";
+import { driverService } from "@/services/driverService";
 import { useRole } from "@/contexts/RoleContext";
 
 
@@ -22,6 +23,7 @@ const initialFormState = {
   lastMaintenance: new Date().toISOString().split("T")[0],
   licensePlate: "",
   dailyRate: 0,
+  driverId: "",
 };
 
 export default function AddShuttleDialog({ onClose, onAdd }) {
@@ -32,6 +34,7 @@ export default function AddShuttleDialog({ onClose, onAdd }) {
   const [formData, setFormData] = useState(initialFormState);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [categories, setCategories] = useState([]);
+  const [drivers, setDrivers] = useState([]);
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -43,6 +46,16 @@ export default function AddShuttleDialog({ onClose, onAdd }) {
       }
     };
     fetchCategories();
+
+    const fetchDrivers = async () => {
+      try {
+        const fetchedDrivers = await driverService.getUnassignedDrivers();
+        setDrivers(fetchedDrivers);
+      } catch (error) {
+        console.error("Error fetching drivers:", error);
+      }
+    };
+    fetchDrivers();
   }, []);
 
   // Professional: Ensure capacity stays in sync with selected model
@@ -118,6 +131,7 @@ export default function AddShuttleDialog({ onClose, onAdd }) {
         categoryId: formData.categoryId,
         licensePlate: formData.licensePlate.trim().toUpperCase(),
         dailyRate: parseFloat(formData.dailyRate) || 0,
+        driverId: formData.driverId || null,
       };
 
       console.log("Sending shuttle data:", submitData);
@@ -394,6 +408,26 @@ export default function AddShuttleDialog({ onClose, onAdd }) {
                       required
                     />
                   </div>
+
+                  <Select
+                    label="Assign Driver (Optional)"
+                    value={formData.driverId}
+                    onChange={(e) =>
+                      setFormData({ ...formData, driverId: e.target.value })
+                    }
+                    className="w-full"
+                  >
+                    <option value="">No driver assigned</option>
+                    {drivers.map((driver) => (
+                      <option
+                        key={driver.id}
+                        value={driver.id}
+                        className="dark:bg-gray-800 dark:text-gray-100"
+                      >
+                        {driver.name} ({driver.licenseNumber})
+                      </option>
+                    ))}
+                  </Select>
                 </div>
               </div>
 

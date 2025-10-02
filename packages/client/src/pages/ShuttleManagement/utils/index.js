@@ -59,6 +59,8 @@ export const formatDriverStatus = (status) => {
       return 'Off Duty';
     case 'break':
       return 'On Break';
+    case 'active':
+      return 'Active';
     default:
       return 'Unknown';
   }

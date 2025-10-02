@@ -25,5 +25,10 @@ export const driverService = {
   unassignShuttle: AsyncHandler(async (driverId) => {
     const response = await api.post(`/drivers/${driverId}/unassign`);
     return response.data;
+  }),
+
+  getUnassignedDrivers: AsyncHandler(async () => {
+    const response = await api.get('/drivers/unassigned');
+    return response.data;
   })
 };

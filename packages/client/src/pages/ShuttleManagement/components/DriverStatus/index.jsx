@@ -19,7 +19,12 @@ export default function DriverStatus() {
       try {
         setLoading(true);
         const data = await driverService.getDrivers();
-        setDrivers(data);
+        // Normalize status to lowercase to match frontend expectations
+        const normalizedDrivers = data.map(driver => ({
+          ...driver,
+          status: driver.status?.toLowerCase()
+        }));
+        setDrivers(normalizedDrivers);
       } catch (err) {
         setError(err.message);
       } finally {
@@ -155,7 +160,7 @@ export default function DriverStatus() {
                   <span className={cn(
                     'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium',
                     {
-                      'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400': driver.status === 'on-duty',
+                      'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400': driver.status === 'on-duty' || driver.status === 'active',
                       'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400': driver.status === 'break',
                       'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400': driver.status === 'off-duty',
                     }

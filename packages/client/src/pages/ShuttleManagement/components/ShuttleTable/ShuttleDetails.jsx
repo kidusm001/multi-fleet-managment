@@ -6,7 +6,7 @@ import { Button } from "../ui/Button";
 import { Card } from "../ui/Card";
 import { Input } from "../ui/Input";
 import { cn } from "@/lib/utils";
-import { formatDate, getStatusColor } from "../../utils";
+import { formatDate, getStatusColor, formatDriverStatus } from "../../utils";
 import { useTheme } from "@/contexts/ThemeContext";
 import { driverService } from "@/services/driverService";
 import { shuttleCategoryService } from "@/services/shuttleCategoryService";
@@ -98,6 +98,9 @@ export default function ShuttleDetails({
   
   // Check if user is a manager (or similar role with limited permissions)
   const isManager = role === "fleetManager" || role === "manager";
+  
+  // Normalize status for consistent comparison (handle both UPPERCASE and lowercase)
+  const normalizedStatus = shuttle?.status?.toLowerCase() || 'inactive';
 
   const fetchData = useCallback(async () => {
     try {
@@ -110,7 +113,12 @@ export default function ShuttleDetails({
       // Fetch driver only if assigned and changed
       if (shuttle.driver?.[0]?.id && (!driver || driver.id !== shuttle.driver[0].id)) {
         const driverData = await driverService.getDriver(shuttle.driver[0].id);
-        setDriver(driverData);
+        // Normalize status to lowercase
+        const normalizedDriver = {
+          ...driverData,
+          status: driverData.status?.toLowerCase()
+        };
+        setDriver(normalizedDriver);
       }
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -150,7 +158,8 @@ export default function ShuttleDetails({
       setIsUpdating(true);
       setError(null);
       
-      const status = shuttle?.status === "maintenance" ? "active" : "maintenance";
+      const currentStatus = shuttle?.status?.toLowerCase();
+      const status = currentStatus === "maintenance" ? "active" : "maintenance";
       await shuttleService.updateShuttle(shuttle.id, { status });
       await onUpdate();
     } catch (error) {
@@ -470,7 +479,7 @@ export default function ShuttleDetails({
                             : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400"
                         )}
                       >
-                        {driver.status}
+                        {formatDriverStatus(driver.status)}
                       </div>
                     </div>
                     <div className="mt-2 grid grid-cols-2 gap-2">
@@ -521,43 +530,30 @@ export default function ShuttleDetails({
               </>
             ) : (
               <>
-                {shuttle?.status === 'inactive' ? (
-                  <Button
-                    variant="primary"
-                    onClick={handleActivate}
-                    loading={isUpdating}
-                    className="w-full"
-                    disabled={isManager} // Disable for managers
-                  >
-                    Activate Shuttle
-                  </Button>
-                ) : (
-                  <>
-                    <Button
-                      variant={shuttle?.status === "maintenance" ? "primary" : "secondary"}
-                      onClick={handleStatusUpdate}
-                      loading={isUpdating}
-                      className={cn(
-                        "w-full", 
-                        isManager && "opacity-60 cursor-not-allowed" // Gray out for managers
-                      )}
-                      disabled={isManager} // Disable for managers
-                    >
-                      {shuttle?.status === "maintenance" ? "End Maintenance" : "Start Maintenance"}
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      onClick={handleDeactivate}
-                      disabled={shuttle?.status === 'inactive' || isManager} // Disable for managers
-                      className={cn(
-                        "w-full",
-                        isManager && "opacity-60 cursor-not-allowed" // Gray out for managers
-                      )}
-                    >
-                      Deactivate Shuttle
-                    </Button>
-                  </>
-                )}
+                <Button
+                  variant={normalizedStatus === "maintenance" ? "primary" : "secondary"}
+                  onClick={handleStatusUpdate}
+                  loading={isUpdating}
+                  className={cn(
+                    "w-full", 
+                    isManager && "opacity-60 cursor-not-allowed" // Gray out for managers
+                  )}
+                  disabled={isManager} // Disable for managers
+                >
+                  {normalizedStatus === "maintenance" ? "End Maintenance" : "Start Maintenance"}
+                </Button>
+                <Button
+                  variant={normalizedStatus === 'inactive' ? "primary" : "secondary"}
+                  onClick={normalizedStatus === 'inactive' ? handleActivate : handleDeactivate}
+                  loading={isUpdating}
+                  className={cn(
+                    "w-full",
+                    isManager && "opacity-60 cursor-not-allowed" // Gray out for managers
+                  )}
+                  disabled={isManager} // Disable for managers
+                >
+                  {normalizedStatus === 'inactive' ? "Activate Shuttle" : "Deactivate Shuttle"}
+                </Button>
                 <Button
                   variant="destructive"
                   onClick={handleDeleteClick}

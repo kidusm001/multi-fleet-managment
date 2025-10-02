@@ -80,7 +80,7 @@ class ShuttleService {
         const response = await api.get('/shuttles');
         // Filter and transform the data locally to avoid additional API call
         return response.data
-          .filter(shuttle => shuttle.status === 'maintenance')
+          .filter(shuttle => shuttle.status?.toLowerCase() === 'maintenance')
           .map(shuttle => ({
             ...shuttle,
             maintenanceStartDate: shuttle.lastMaintenance,
