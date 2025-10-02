@@ -460,6 +460,45 @@ router.get('/', requireAuth, async (req: Request, res: Response) => {
 });
 
 /**
+ * @route   GET /unassigned
+ * @desc    Get all unassigned drivers in a specific org
+ * @access  Private (User)
+ */
+router.get('/unassigned', requireAuth, async (req: Request, res: Response) => {
+    try {
+        const activeOrgId: string | null | undefined = req.session?.session?.activeOrganizationId;
+        if (!activeOrgId) {
+            return res.status(400).json({ message: 'Active organization not found' });
+        }
+
+        const hasPermission = await auth.api.hasPermission({
+            headers: await fromNodeHeaders(req.headers),
+            body: {
+                permissions: {
+                    driver: ["read"]
+                }
+            }
+        });
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
+
+        const drivers = await prisma.driver.findMany({
+            where: {
+                organizationId: activeOrgId,
+                deleted: false,
+                assignedVehicles: { none: {} }
+            }
+        });
+
+        res.json(drivers);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+/**
  * @route   GET /:id
  * @desc    Get a specific Driver in a specific org by id
  * @access  Private (User)
@@ -478,7 +517,7 @@ router.get('/:id', requireAuth, validateSchema(DriverIdParam, 'params'), async (
             headers: await fromNodeHeaders(req.headers),
                 body: {
                     permissions: {
-                        vehicle: ["read"] 
+                        driver: ["read"] 
                     }
                 }
         });

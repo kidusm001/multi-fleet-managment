@@ -176,9 +176,9 @@ model Employee {
 model Driver {
   id              String       @id @default(cuid())
   name            String
-  email           String?      @unique
-  licenseNumber   String       @unique
-  phoneNumber     String?      @unique
+  email           String?
+  licenseNumber   String
+  phoneNumber     String?
   status          DriverStatus @default(ACTIVE) // active, off-duty, on-break
   experienceYears Int?
   rating          Float?       @default(0.0)
@@ -196,6 +196,9 @@ model Driver {
   payrollReports      PayrollReport[]
   assignedVehicles    Vehicle[]             @relation("VehicleDriver")
 
+  @@unique([organizationId, email])
+  @@unique([organizationId, licenseNumber])
+  @@unique([organizationId, phoneNumber])
   // Indexes
   @@index([organizationId])
   @@index([status])
