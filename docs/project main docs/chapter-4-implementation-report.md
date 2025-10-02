@@ -312,7 +312,7 @@ The solver works on a fully connected graph whose weights come from precomputed 
 #### Step-by-Step Logic
 The control flow inside `assign_routes_endpoint` orchestrates preprocessing and solver invocation:
 
-```text
+```python
 process_request(payload):
   hq = payload.locations.HQ
   employees = payload.locations.employees
@@ -400,7 +400,7 @@ Two cooperating modules deliver responsive route previews while the backend clus
 
 The shared hook `useRouteOptimizer.js` caches successful responses so repeat previews reuse the same geometry within five minutes. The nearest-neighbor algorithm and fallback logic mirror the source code:
 
-```text
+```Javascript 
 getInitialOrder(hqCoords, dropOffPoints):
   visited = [false] * len(dropOffPoints)
   order = []
