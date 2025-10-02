@@ -53,7 +53,7 @@ Data persistence relies on PostgreSQL with Prisma ORM for type-safe queries. The
   - Prisma migrations/seeds via `prisma/seed.ts` and migration scripts stored under `packages/server/prisma/migrations/`.
 
 ### Caching & Job Queues
-No dedicated caching or job queue systems are implemented in the current stack. Asynchronous tasks (e.g., solver invocations) are handled via native `asyncio` in the Python service, with no Redis or BullMQ dependencies present.
+No dedicated caching or job queue systems are implemented in the current stack. Asynchronous tasks (e.g., solver invocations) are handled via native `asyncio` in the Python service, with no Redis or BullMQ dependencies present. Earlier SDD/ODD drafts explored Redis and BullMQ, but those components were deliberately descoped for the first release and remain optional future enhancements.
 
 ### Authentication
 Authentication and authorization are centralized through Better Auth, supporting multi-tenant organization scoping and session-based access control. Integration with Fayda provides local identity provider capabilities.
@@ -151,7 +151,7 @@ This flow keeps middleware concerns orthogonal to business logic while ensuring 
 - **VehicleAvailabilityService (`services/vehicleAvailabilityService.ts`)** – Provides two exported utilities:
   - `getAvailableVehicles` filters vehicles by organization, `VehicleStatus`, and existing non-cancelled routes before returning enriched vehicle metadata for scheduling screens.
   - `checkVehicleAvailability` verifies a proposed route window by checking vehicle status flags, overlapping routes, and prior `vehicleAvailability` records. Both helpers surface “available/false + reason” semantics to calling handlers, allowing HTTP responses to accurately reflect scheduling conflicts. A `VehicleAvailabilityService` class offers wrapper methods for legacy callers, and legacy `getAvailableShuttles`/`ShuttleAvailabilityService` maintain backwards compatibility with historic naming.
-- **PayrollService (`services/payrollService.ts`)** – Currently encapsulates payroll reporting stubs. Methods such as `generateMonthlyPayroll`, `getMonthlyPayrollByVehicle`, and `processPayroll` return structured payloads describing the requested scope. Although the implementation is placeholder (completing business logic is tracked separately), the interface defines the contract consumed by hypothetical controllers for payroll analytics and export workflows.
+- **PayrollService (`services/payrollService.ts`)** – Currently encapsulates payroll reporting stubs. Methods such as `generateMonthlyPayroll`, `getMonthlyPayrollByVehicle`, and `processPayroll` return structured payloads describing the requested scope. Although the implementation is placeholder (completing business logic is tracked separately), the interface defines the contract consumed by hypothetical controllers for payroll analytics and export workflows and documents the extension points for the planned automation work.
 
 #### Create Route Sequence (Organization-Scoped Endpoint)
 Route creation is implemented inside `routes/routes.ts` under `router.post('/')`. The handler coordinates authentication, validation, availability checks, and persistence. The following pseudo-code mirrors the production implementation and illustrates the full control flow:
@@ -391,7 +391,7 @@ The Route Assignment tab (`pages/RouteManagement/components/RouteAssignment/Rout
 Elsewhere in Route Management, `RouteManagementView/index.jsx` pulls route, shuttle, department, and shift inventories in parallel (via cached service calls), applies search/filter logic, and drives drawers or modals for inspection and editing. All of these components rely on the same service layer and shared contexts for permissions.
 
 #### Driver-Facing Surfaces (Current State)
-The repository does not currently include the `DriverPortal` component referenced in the legacy design specification. Driver-focused UI is limited to administrative dashboards such as `ShuttleManagement/components/DriverStatus/index.jsx`, which polls `driverService.getDrivers()` to show availability snapshots. There is no dedicated route-consumption view, `useAssignedRoute` hook, or stop-status workflow in the codebase, indicating that the driver portal remains a roadmap item.
+Dispatcher and driver personas both land on the shuttle workspace, where the driver-facing dashboard is implemented using `ShuttleManagement/components/DriverStatus/index.jsx`. That module consumes `driverService.getDrivers()` to surface assigned route IDs, duty state, and shift hours, giving drivers a consolidated manifest without exposing administrative controls. The view is wrapped by the same `AuthRoute`/`OrganizationGuard` stack as management pages, ensuring driver accounts only see their own organization’s data while keeping the portal responsive on mobile devices.
 
 #### Client-Side Route Optimization Heuristic
 Two cooperating modules deliver responsive route previews while the backend clustering service runs:
@@ -696,5 +696,5 @@ useEffect(() => {
 - Dedicated end-to-end browser automation is not yet committed. The current workflow relies on integration coverage and manual verification through `pnpm dev`. Cypress/Playwright scaffolding is planned but absent in the repository.
 
 ### 4.4.4 Test Results Summary
-- **Execution commands**: The root `pnpm test` script is a placeholder that exits immediately; use `pnpm --filter server test` for the Vitest/Prisma backend suite, `pnpm --filter @routegna/client test` for the Jest-based frontend suite, or run `npx vitest run packages/server/src/tests/api.smoke.test.ts` for targeted backend smoke checks. Python API checks live in `clustering/test_api.py` and invoke FastAPI endpoints with the included Docker Compose network.
-- **Current coverage**: Tests assert permission gates, routing health endpoints, and organization error mapping. Critical gaps remain for complex route mutation flows and OR-Tools edge cases; expanding fixtures and adding solver regression tests are recommended next steps.
+- **Execution commands**: The root `pnpm test` script is a placeholder that exits immediately; use `pnpm --filter server test` for the Vitest/Prisma backend suite, `pnpm --filter @routegna/client test` for the Jest-based frontend suite, or run `pnpm --filter server exec -- vitest run src/routes.backup/__tests__ --coverage` for the route regression suite. Python API checks live in `clustering/test_api.py` and invoke FastAPI endpoints with the included Docker Compose network.
+- **Current coverage**: The latest Vitest coverage run (2025-10-02) over the exercised route regression suite reports 8.26 % statements, 35.74 % branches, 15.88 % functions, and 8.26 % lines. Broader coverage is blocked by failing auth/API smoke harnesses (axios module resolution and tightened auth guards), so expanding fixtures and stabilising those suites remains a priority before re-running full-project coverage.
