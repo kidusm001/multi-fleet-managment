@@ -237,6 +237,10 @@ router.post('/superadmin', requireAuth, requireRole(["superadmin"]), async (req:
             }
         }
 
+        // Determine final status and set maintenance dates if needed
+        const finalStatus = status || VehicleStatus.AVAILABLE;
+        const isMaintenanceStatus = finalStatus === VehicleStatus.MAINTENANCE;
+        
         const vehicle = await prisma.vehicle.create({
             data: {
                 plateNumber,
@@ -247,9 +251,9 @@ router.post('/superadmin', requireAuth, requireRole(["superadmin"]), async (req:
                 vendor,
                 capacity: parseInt(capacity.toString()),
                 year: year ? parseInt(year.toString()) : null,
-                status: status || VehicleStatus.AVAILABLE,
-                lastMaintenance: lastMaintenance ? new Date(lastMaintenance) : null,
-                nextMaintenance: nextMaintenance ? new Date(nextMaintenance) : null,
+                status: finalStatus,
+                lastMaintenance: isMaintenanceStatus && !lastMaintenance ? new Date() : (lastMaintenance ? new Date(lastMaintenance) : null),
+                nextMaintenance: isMaintenanceStatus && !nextMaintenance ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) : (nextMaintenance ? new Date(nextMaintenance) : null),
                 dailyRate: dailyRate ? parseFloat(dailyRate.toString()) : null,
                 categoryId,
                 driverId,
@@ -607,6 +611,12 @@ router.patch('/superadmin/:id/status', requireAuth, requireRole(["superadmin"]),
             updateData.driverId = null;
         }
 
+        // Set maintenance dates when status changes to MAINTENANCE
+        if (status === VehicleStatus.MAINTENANCE) {
+            updateData.lastMaintenance = new Date();
+            updateData.nextMaintenance = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days from now
+        }
+
         const vehicle = await prisma.vehicle.update({
             where: { id },
             data: updateData,
@@ -918,11 +928,24 @@ router.post('/', requireAuth, validateSchema(CreateVehicleSchema, 'body'), async
             }
         }
 
+        // Set maintenance dates automatically if status is MAINTENANCE
+        const isMaintenanceStatus = vehicleData.status === VehicleStatus.MAINTENANCE;
+        const createData: any = {
+            ...vehicleData,
+            organizationId: activeOrgId,
+        };
+        
+        if (isMaintenanceStatus) {
+            if (!createData.lastMaintenance) {
+                createData.lastMaintenance = new Date();
+            }
+            if (!createData.nextMaintenance) {
+                createData.nextMaintenance = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+            }
+        }
+        
         const vehicle = await prisma.vehicle.create({
-            data: {
-                ...vehicleData,
-                organizationId: activeOrgId,
-            },
+            data: createData,
             include: {
                 category: true,
                 driver: true,
@@ -1211,6 +1234,12 @@ router.patch('/:id/status', requireAuth, validateMultiple([{ schema: VehicleIdPa
             status === VehicleStatus.INACTIVE
         ) {
             updateData.driverId = null;
+        }
+
+        // Set maintenance dates when status changes to MAINTENANCE
+        if (status === VehicleStatus.MAINTENANCE) {
+            updateData.lastMaintenance = new Date();
+            updateData.nextMaintenance = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days from now
         }
 
         const vehicle = await prisma.vehicle.update({
