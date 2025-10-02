@@ -104,15 +104,17 @@ const StatsPanel = ({ routes, shifts, shuttles }) => {
     };
     
     const activeShuttleIds = new Set();
-  const _totalCapacity = 0;
     let maxCapacityShuttle = 0;
     
     routes.forEach(route => {
-      if (route.status === 'active' && route.shuttleId) {
-        activeShuttleIds.add(route.shuttleId);
+      // Count shuttles from both shuttleId and vehicleId fields
+      // Don't filter by status - count all assigned shuttles
+      const shuttleId = route.shuttleId || route.vehicleId;
+      if (shuttleId) {
+        activeShuttleIds.add(shuttleId);
         
         // Find shuttle capacity if available
-        const shuttle = shuttles.find(s => s.id === route.shuttleId);
+        const shuttle = shuttles.find(s => s.id === shuttleId);
         if (shuttle?.capacity) {
           maxCapacityShuttle = Math.max(maxCapacityShuttle, shuttle.capacity);
         }
@@ -122,7 +124,7 @@ const StatsPanel = ({ routes, shifts, shuttles }) => {
     const activeShuttles = activeShuttleIds.size;
     
     return {
-      utilization: Math.round((activeShuttles / shuttles.length) * 100),
+      utilization: shuttles.length > 0 ? Math.round((activeShuttles / shuttles.length) * 100) : 0,
       activeCount: activeShuttles,
       total: shuttles.length,
       maxCapacity: maxCapacityShuttle

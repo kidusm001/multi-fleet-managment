@@ -44,6 +44,7 @@ export default function EmployeeUploadSection({
 }) {
   const _navigate = useNavigate();
   const { members, loadMembers } = useOrganizations();
+  const [availableMembers, setAvailableMembers] = useState([]);
   
   // State for file upload and data preview
   const [selectedFile, setSelectedFile] = useState(null);
@@ -137,7 +138,55 @@ export default function EmployeeUploadSection({
     return () => {
       // Only reset on unmount, not on every render
     };
-  }, []); // Empty dependency array - only run once on mount
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount - loadMembers causes infinite loop if included
+
+  // Compute available members for the "Add Single Employee" selector:
+  // - only members whose role is 'employee' (case-insensitive)
+  // - exclude members who already exist in the employees table
+  useEffect(() => {
+    let cancelled = false;
+
+    const computeAvailable = async () => {
+      try {
+        if (!members || members.length === 0) {
+          setAvailableMembers([]);
+          return;
+        }
+
+        // Fetch existing employees and build a set of userIds to exclude
+        const existingEmployees = await employeeService.listEmployees();
+        const existingUserIds = new Set(existingEmployees.map(e => e.userId));
+
+        const filtered = members.filter(m => {
+          const role = (m.role || '').toString().toLowerCase();
+          if (role !== 'employee') return false;
+
+          // Try to resolve a stable user id from the member object
+          const memberUserId = (m.user && m.user.id) || m.userId || m.id;
+          // Exclude if this member maps to an existing employee userId
+          if (memberUserId && existingUserIds.has(memberUserId)) return false;
+
+          return true;
+        });
+
+        if (!cancelled) setAvailableMembers(filtered);
+      } catch (err) {
+        console.error('Failed to compute available members for employee selector:', err);
+        // Fallback: show members with role employee only
+        try {
+          const fallback = (members || []).filter(m => ((m.role || '').toString().toLowerCase() === 'employee'));
+          if (!cancelled) setAvailableMembers(fallback);
+        } catch (e) {
+          if (!cancelled) setAvailableMembers([]);
+        }
+      }
+    };
+
+    computeAvailable();
+
+    return () => { cancelled = true; };
+  }, [members]);
 
   // Handlers for single employee form
   const handleEmployeeChange = useCallback((e) => {
@@ -174,7 +223,7 @@ export default function EmployeeUploadSection({
       return;
     }
     
-    const selectedMember = members.find(m => m.id === memberId);
+  const selectedMember = availableMembers.find(m => m.id === memberId) || members.find(m => m.id === memberId);
     if (selectedMember) {
       // Auto-fill name, email, phone from member data
       // Better Auth member object may include user details
@@ -212,6 +261,7 @@ export default function EmployeeUploadSection({
       );
     }
   }, [members]);
+
 
   // Handlers for map location
   const handleMapSelect = useCallback((lat, lng, address) => {
@@ -306,8 +356,8 @@ export default function EmployeeUploadSection({
     
     try {
       // Get userId from selected member
-      const selectedMember = singleEmployee.selectedMemberId 
-        ? members.find(m => m.id === singleEmployee.selectedMemberId)
+      const selectedMember = singleEmployee.selectedMemberId
+        ? (availableMembers.find(m => m.id === singleEmployee.selectedMemberId) || members.find(m => m.id === singleEmployee.selectedMemberId))
         : null;
       
       const userId = selectedMember?.userId || selectedMember?.user?.id;
@@ -365,7 +415,7 @@ export default function EmployeeUploadSection({
     } finally {
       setIsLoading(false);
     }
-  }, [singleEmployee, members, onSuccess, resetComponent]);
+  }, [singleEmployee, members, availableMembers, onSuccess, resetComponent]);
 
   // Process CSV data
   const processCsvData = useCallback((content) => {
@@ -898,7 +948,7 @@ export default function EmployeeUploadSection({
                 departments={departments}
                 shifts={shifts}
                 locations={locations}
-                members={members}
+                members={availableMembers}
                 phoneValid={phoneValid}
                 emailValid={emailValid}
                 isLoading={isLoading}

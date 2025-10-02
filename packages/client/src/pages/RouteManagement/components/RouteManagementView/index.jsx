@@ -511,7 +511,8 @@ function RouteManagementView({ refreshTrigger }) {
                 : "grid-cols-1"
             )}
             style={{
-              minHeight: viewMode === "grid" ? "280px" : "auto",
+              // Further reduced area for grid view (~10% smaller)
+              minHeight: viewMode === "grid" ? "224px" : "auto",
             }}
           >
             <AnimatePresence mode="popLayout">
@@ -521,12 +522,14 @@ function RouteManagementView({ refreshTrigger }) {
                   variants={itemVariants}
                   layoutId={`route-${route.id}`}
                   layout="position"
-                  className={cn(
+                    className={cn(
                     "group w-full",
                     viewMode === "list" && "col-span-full",
+                    // Make individual grid items taller but reduced from earlier change (~10% smaller)
                     viewMode === "grid" &&
                       activeRouteId !== route.id &&
-                      "h-[280px]"
+                      // further reduced heights for items
+                      "h-[19rem] md:h-[21rem]"
                   )}
                 >
                   <motion.div layout className="h-full">

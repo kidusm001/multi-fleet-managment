@@ -30,7 +30,7 @@ export default function RouteList({ routes }) {
               <div className="flex justify-between items-start mb-2">
                 <h4 className={styles.routeName}>{route.name}</h4>
                 <Badge variant="outline" className={styles.shuttleBadge}>
-                  {route.shuttle?.name || 'No Shuttle'}
+                  {route.shuttle?.name || route.vehicle?.name || 'No Shuttle'}
                 </Badge>
               </div>
               <div className={styles.routeDetails}>

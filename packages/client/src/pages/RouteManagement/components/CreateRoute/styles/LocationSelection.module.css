@@ -102,53 +102,57 @@
 }
 
 /* Dark mode support */
-[data-theme="dark"] .content {
+:global(.dark) .content {
   background-color: hsl(var(--card));
   border-color: hsl(var(--border));
 }
 
-[data-theme="dark"] .selectTitle {
+:global(.dark) .selectTitle {
   color: hsl(var(--foreground));
 }
 
-[data-theme="dark"] .trigger {
+:global(.dark) .trigger {
   background-color: hsl(var(--background));
   border-color: hsl(var(--border));
   color: hsl(var(--foreground));
 }
 
-[data-theme="dark"] .trigger:hover {
+:global(.dark) .trigger:hover {
   border-color: hsl(var(--primary));
 }
 
-[data-theme="dark"] .trigger:focus {
+:global(.dark) .trigger:focus {
   border-color: hsl(var(--primary));
   box-shadow: 0 0 0 2px hsl(var(--primary) / 0.2);
 }
 
-[data-theme="dark"] .trigger:disabled {
+:global(.dark) .trigger:disabled {
   background-color: hsl(var(--muted));
 }
 
-[data-theme="dark"] .selectedLocationInfo {
+:global(.dark) .selectedLocationInfo {
   background-color: hsl(var(--primary) / 0.1);
   border-color: hsl(var(--primary) / 0.2);
 }
 
-[data-theme="dark"] .statLabel {
+:global(.dark) .locationStats {
+  border-top-color: hsl(var(--border));
+}
+
+:global(.dark) .statLabel {
   color: hsl(var(--muted-foreground));
 }
 
-[data-theme="dark"] .statValue {
+:global(.dark) .statValue {
   color: hsl(var(--primary));
 }
 
-[data-theme="dark"] .errorState {
+:global(.dark) .errorState {
   background-color: hsl(var(--destructive) / 0.1);
   border-color: hsl(var(--destructive) / 0.3);
 }
 
-[data-theme="dark"] .errorText {
+:global(.dark) .errorText {
   color: hsl(var(--destructive));
 }
 

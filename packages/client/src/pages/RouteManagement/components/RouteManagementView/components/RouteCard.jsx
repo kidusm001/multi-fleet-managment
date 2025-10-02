@@ -45,6 +45,8 @@ const RouteCard = ({
     <Card
       className={cn(
         "w-full h-full cursor-pointer transition-all duration-300",
+  // Make cards slightly shorter again (~10% reduction)
+  viewMode === "grid" ? "min-h-[11rem] md:min-h-[13rem]" : "",
         "rounded-2xl border shadow-sm",
         "bg-gradient-to-br from-white to-zinc-50/80 dark:from-zinc-900 dark:to-zinc-800/80",
         "hover:-translate-y-0.5 hover:shadow-md",

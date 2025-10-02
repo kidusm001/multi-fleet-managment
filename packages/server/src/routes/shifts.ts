@@ -710,6 +710,17 @@ router.get('/', requireAuth, async (req: Request, res: Response) => {
             where: {
                 organizationId: activeOrgId,
             },
+            include: {
+                _count: {
+                    select: {
+                        employees: {
+                            where: {
+                                deleted: false
+                            }
+                        }
+                    }
+                }
+            }
         })
 
         res.json(shifts);

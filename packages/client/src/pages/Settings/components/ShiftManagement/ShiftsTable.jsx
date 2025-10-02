@@ -159,7 +159,7 @@ export default function ShiftsTable({
                         ? "bg-blue-900/30 text-blue-400" 
                         : "bg-blue-100 text-blue-700"
                     )}>
-                      {shift.employees?.length || 0} employees
+                      {(shift._count && typeof shift._count.employees === 'number' ? shift._count.employees : (shift.employees?.length || 0))} employees
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right py-4 pr-4">

@@ -136,6 +136,14 @@ export default function ShuttleDetails({
         ...shuttle,
         categoryId: shuttle.category?.id || '',  // Use empty string instead of null
         model: shuttle.model || '',  // Ensure model is never null
+        // Normalize backend type enums (IN_HOUSE / OUTSOURCED) to UI values ('in-house' / 'outsourced')
+        type: (function normalizeType(t) {
+          if (!t) return t;
+          const lowered = String(t).toLowerCase();
+          if (lowered === 'in_house' || lowered === 'in-house' || lowered === 'in_house' || lowered === 'inhouse' || lowered === 'in house' || lowered === 'in_house') return 'in-house';
+          if (lowered === 'outsourced' || lowered === 'out_sourced' || lowered === 'out-sourced' || lowered === 'outsourced') return 'outsourced';
+          return t;
+        })(shuttle.type)
       };
       setEditedData(shuttleData);
       // Clear any previous errors when shuttle data changes
@@ -600,7 +608,8 @@ ShuttleDetails.propTypes = {
     id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
     name: PropTypes.string.isRequired,
     model: PropTypes.string,
-    type: PropTypes.oneOf(["in-house", "outsourced"]),
+    // Accept both UI values and backend enum values to avoid warnings
+    type: PropTypes.oneOf(["in-house", "outsourced", "IN_HOUSE", "OUTSOURCED"]),
     status: PropTypes.string,
     capacity: PropTypes.number,
     lastMaintenance: PropTypes.string,

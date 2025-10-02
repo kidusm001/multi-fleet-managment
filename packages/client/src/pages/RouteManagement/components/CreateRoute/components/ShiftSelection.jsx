@@ -44,8 +44,11 @@ export default function ShiftSelection({
     }
   };
 
+  // Extract shift ID whether selectedShift is an object or an ID
+  const selectedShiftId = selectedShift?.id ?? selectedShift;
+  
   const selectedShiftData = shifts.find((s) => 
-    s.id === selectedShift || String(s.id) === String(selectedShift)
+    s.id === selectedShiftId || String(s.id) === String(selectedShiftId)
   );
 
   return (
@@ -58,7 +61,7 @@ export default function ShiftSelection({
         <div className={styles.selectWrapper}>
           <Select
             onValueChange={handleShiftChange}
-            value={selectedShift ? String(selectedShift) : undefined}
+            value={selectedShiftId ? String(selectedShiftId) : undefined}
           >
             <SelectTrigger className={styles.trigger}>
               <Clock className="w-4 h-4 mr-2 text-primary" />
