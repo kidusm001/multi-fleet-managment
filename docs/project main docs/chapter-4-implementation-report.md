@@ -11,7 +11,7 @@ The backend service, housed in `packages/server`, provides RESTful APIs for CRUD
   - `Node.js` runtime (not pinned; `pnpm@10.x` and Express 5 require Node ≥ 18).
   - `Express 5.1.0` (`packages/server/package.json`) for HTTP server management, middleware stacking, and API routing.
 - **Execution and Compilation**:
-  - `tsx 4.20.3` (root) / `tsx 4.19.3` (client) for TypeScript-first development and hot-reloading during `pnpm dev`.
+  - `tsx 4.20.3` (root) powers TypeScript scripts and the server-side `nodemon` dev workflow, while the client relies on `vite 5.0.0` for its hot-reload development server; the client’s `tsx 4.19.3` install is limited to utility scripts.
 
 ### Optimization Microservice
 The clustering service, located in `clustering/`, implements heuristic route assignment using OR-Tools. Containerized for portability, it exposes a FastAPI interface for solver invocations, ensuring scalable optimization without blocking the main backend.
@@ -226,17 +226,28 @@ handleCreateRoute(request):
     prisma.employee.updateMany({ where: { id: { in: employeeIds } }, data: { assigned: true } })
 
     vehicle = prisma.vehicle.findUnique({ where: { id: vehicleId } })
+    driverId = vehicle?.driverId ?? prisma.driver.findFirst({
+      where: {
+        organizationId: activeOrgId,
+        isActive: true,
+        vehicleAvailability: {
+          none: { shiftId, date: new Date(date), available: false }
+        }
+      }
+    })?.id
+    abort 500 if driverId missing → surfaces "No available drivers" error
+
     prisma.vehicleAvailability.upsert({
       where: { vehicleId_shiftId_date: { vehicleId, shiftId, date: new Date(date) } },
       create: {
-        vehicleId,
-        shiftId,
+        vehicle: { connect: { id: vehicleId } },
+        shift: { connect: { id: shiftId } },
+        organization: { connect: { id: activeOrgId } },
+        driver: { connect: { id: driverId } },
         date: new Date(date),
         startTime,
         endTime,
         available: false,
-        organizationId: activeOrgId,
-        driverId: vehicle?.driverId || '',
       },
       update: { available: false },
     })
@@ -248,6 +259,7 @@ handleCreateRoute(request):
 **Notes on orchestration**
 - The handler assumes route-stop assignments originate from upstream clustering. When clients need algorithmic assistance, they call the FastAPI microservice through the `/fastapi` proxy prior to invoking this endpoint. The Express server itself does not currently invoke a `ClusteringOrchestrator`; instead, it validates and persists the assignments it receives.
 - Optimistic concurrency via a `version` column is not yet implemented. Transactions ensure atomicity, and Prisma’s default isolation level protects against conflicting updates for the scope of the transaction. Introducing versioned `WHERE` clauses would be the next step if multi-writer conflicts become a concern.
+- Driver assignment is automatic: if the selected vehicle lacks an attached driver, the handler searches for an active driver without conflicting availability records. If none are free the transaction aborts with a 500 (“No available drivers”).
 
 ### 4.2.2 Optimization Service Implementation (Python/FastAPI)
 
@@ -371,10 +383,10 @@ The SPA under `packages/client/src` is composed in `App.jsx`, which layers provi
 Server interactions flow through a single Axios instance (`services/api.js`) that injects Better Auth cookies, handles 401 redirects, and exposes helper methods like `getRoutes`, `createRoute`, and `optimizeClusters`. Rather than relying on TanStack Query or Zustand, module-scoped service classes (for example, `routeService.js`, `shuttleService.js`) provide lightweight in-memory caching; debounced write logic is explicitly implemented where needed (e.g. `shuttleService.js`) and not universally applied. UI components then manage view state with React hooks (`useState`, `useEffect`) and domain contexts. Authentication and tenant metadata come from custom contexts that wrap the Better Auth React client (`lib/auth-client.ts`), while `OrganizationContext/index.tsx` enriches Better Auth organization hooks with additional loading/error state and helper actions (e.g., `inviteMember`, `mapOrgError`). A lightweight toast context plus Sonner’s `<Toaster />` surface global notifications, and `useRouteOptimizer.js` keeps a five-minute memoized cache of Mapbox responses on the client.
 
 #### Route Assignment Experience (`RouteAssignment` flow)
-The Route Assignment tab (`pages/RouteManagement/components/RouteAssignment/RouteAssignment.jsx`) operates as the route-assignment wizard described in the design docs. It orchestrates three coordinated components:
-- **`Controls.jsx`** manages shift/time/route selection, pulling shift options from `shiftService.getAllShifts()` and propagating the selected shift ID.
+The Route Assignment tab (`pages/RouteManagement/components/RouteAssignment/RouteAssignment.jsx`) operates as the route-assignment wizard described in the design docs. The container component fetches shift options (`shiftService.getAllShifts()`), hydrates routes on shift change (`routeService.getRoutesByShift()`), and hands both datasets to its children. It orchestrates three coordinated components:
+- **`Controls.jsx`** receives the pre-fetched `shifts` list from its parent, lets dispatchers search/filter the options, and optionally scopes by location via `locationService.getLocations()`; it does not fetch shifts itself or expose a separate route/time picker.
 - **`DataSection.jsx`** reacts to those selections by fetching available employees via `getUnassignedEmployeesByShift` (REST call defined in `services/api.js`), applying client-side filtering/pagination, and presenting the assignment table. When the user selects an employee, it opens the modal and passes the current route list.
-- **`AssignmentModal.jsx`** handles the heavy lifting for previewing assignments. It invokes the Mapbox-backed optimization helper (`services/routeOptimization.js`) to render a provisional route on the map, computes metrics, and invokes `routeService.addEmployeeToRoute` with the updated totals. Capacity guardrails (`route.stops.length < route.shuttle.capacity`) and ID validation (UUID regex checks) match backend constraints. Upon success, the parent view patches local state so the updated route appears immediately without a full refetch.
+- **`AssignmentModal.jsx`** handles the heavy lifting for previewing assignments. It invokes the Mapbox-backed optimization helper (`services/routeOptimization.js`) to render a provisional route on the map, computes metrics, and hands the confirmed assignment to its `onAssign` callback; `DataSection.jsx` owns the actual `routeService.addEmployeeToRoute` mutation plus subsequent list refresh. Capacity guardrails (`route.stops.length < route.shuttle.capacity`) and ID format validation (CUID regex checks) match backend constraints. Upon success, the parent view patches local state so the updated route appears immediately without a full refetch.
 
 Elsewhere in Route Management, `RouteManagementView/index.jsx` pulls route, shuttle, department, and shift inventories in parallel (via cached service calls), applies search/filter logic, and drives drawers or modals for inspection and editing. All of these components rely on the same service layer and shared contexts for permissions.
 
@@ -482,6 +494,27 @@ router.post('/', requireAuth, validateSchema(CreateRouteSchema, 'body'), async (
     });
 
     const vehicle = await tx.vehicle.findUnique({ where: { id: payload.vehicleId } });
+    let driverId = vehicle?.driverId;
+    if (!driverId) {
+      const availableDriver = await tx.driver.findFirst({
+        where: {
+          organizationId: activeOrgId,
+          isActive: true,
+          vehicleAvailability: {
+            none: {
+              shiftId: payload.shiftId,
+              date: new Date(payload.date),
+              available: false,
+            },
+          },
+        },
+      });
+      if (!availableDriver) {
+        throw new Error('No available drivers found for this vehicle.');
+      }
+      driverId = availableDriver.id;
+    }
+
     await tx.vehicleAvailability.upsert({
       where: {
         vehicleId_shiftId_date: {
@@ -491,14 +524,14 @@ router.post('/', requireAuth, validateSchema(CreateRouteSchema, 'body'), async (
         },
       },
       create: {
-        vehicleId: payload.vehicleId,
-        shiftId: payload.shiftId,
+        vehicle: { connect: { id: payload.vehicleId } },
+        shift: { connect: { id: payload.shiftId } },
+        organization: { connect: { id: activeOrgId } },
+        driver: { connect: { id: driverId } },
         date: new Date(payload.date),
         startTime,
         endTime,
         available: false,
-        organizationId: activeOrgId,
-        driverId: vehicle?.driverId || '',
       },
       update: { available: false },
     });
@@ -507,7 +540,7 @@ router.post('/', requireAuth, validateSchema(CreateRouteSchema, 'body'), async (
   });
 });
 ```
-*This handler begins by enforcing Better Auth permissions, then uses a Prisma transaction so route creation, stop assignment, employee status updates, and vehicle availability state changes either succeed together or fail together.*
+*This handler begins by enforcing Better Auth permissions, then uses a Prisma transaction so route creation, stop assignment, employee status updates, and vehicle availability state changes either succeed together or fail together; when the chosen vehicle lacks a driver, in-transaction fallback logic selects an available driver or aborts with an error.*
 
 ### Tenant Context Hydration (Better Auth Middleware)
 Organization-aware routes wrap their controllers with `withOrganization` (`packages/server/src/middleware/organization.ts`) so downstream handlers receive tenant context without repeating boilerplate logic.
@@ -663,5 +696,5 @@ useEffect(() => {
 - Dedicated end-to-end browser automation is not yet committed. The current workflow relies on integration coverage and manual verification through `pnpm dev`. Cypress/Playwright scaffolding is planned but absent in the repository.
 
 ### 4.4.4 Test Results Summary
-- **Execution commands**: `pnpm test` runs Vitest suites across server and client packages; `npx vitest run packages/server/src/tests/api.smoke.test.ts` exercises the backend smoke path, while `pnpm --filter client test` targets React tests. Python API checks live in `clustering/test_api.py` and invoke FastAPI endpoints with the included Docker Compose network.
+- **Execution commands**: The root `pnpm test` script is a placeholder that exits immediately; use `pnpm --filter server test` for the Vitest/Prisma backend suite, `pnpm --filter @routegna/client test` for the Jest-based frontend suite, or run `npx vitest run packages/server/src/tests/api.smoke.test.ts` for targeted backend smoke checks. Python API checks live in `clustering/test_api.py` and invoke FastAPI endpoints with the included Docker Compose network.
 - **Current coverage**: Tests assert permission gates, routing health endpoints, and organization error mapping. Critical gaps remain for complex route mutation flows and OR-Tools edge cases; expanding fixtures and adding solver regression tests are recommended next steps.
