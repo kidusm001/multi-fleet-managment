@@ -2,6 +2,7 @@ import dotenv from 'dotenv';
 import { createServer } from 'http';
 import { createApp } from './app';
 import { setupSocketIO } from './lib/socket';
+import { initializeNotificationBroadcaster } from './lib/notificationBroadcaster';
 
 dotenv.config();
 
@@ -9,8 +10,8 @@ const port = process.env.PORT || 3001;
 const app = createApp();
 const httpServer = createServer(app);
 
-// Setup Socket.IO
 const io = setupSocketIO(httpServer);
+initializeNotificationBroadcaster(io);
 
 httpServer.listen(port, () => {
   console.log(`🚀 Server running on port ${port}`);

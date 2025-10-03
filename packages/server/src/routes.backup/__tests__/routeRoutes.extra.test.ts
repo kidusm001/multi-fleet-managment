@@ -48,6 +48,8 @@ vi.mock('../../middleware/requireRole', () => ({
   }
 }));
 
+vi.mock('../../services/notificationService', () => ({ notificationService: { createNotification: vi.fn().mockResolvedValue(undefined) } }));
+
 vi.mock('../../db', () => ({
   default: prismaMock as any
 }));

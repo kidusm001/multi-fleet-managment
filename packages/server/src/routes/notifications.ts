@@ -1,17 +1,542 @@
 import express, { Request, Response } from 'express';
 import { PrismaClient, Notification, NotificationStatus, NotificationType, ImportanceLevel } from '@prisma/client';
+import { fromNodeHeaders } from 'better-auth/node';
+import { auth } from '../lib/auth';
 import { requireAuth, requireRole } from '../middleware/auth';
+import { validateSchema, validateMultiple } from '../middleware/zodValidation';
+import { notificationService } from '../services/notificationService';
+import { broadcastNotification } from '../lib/notificationBroadcaster';
+import { getUserOrganizationRole } from '../lib/auth/organizationRole';
+import { 
+    NotificationIdParam, 
+    NotificationTypeParam, 
+    NotificationQuerySchema,
+    SuperAdminCreateNotificationSchema,
+    UpdateNotificationSchema 
+} from '../schema/notificationSchema';
 
 const prisma = new PrismaClient();
 const router = express.Router();
 
-/**
- * @route   GET /superadmin
- * @desc    Get all notifications
- * @access  Private (superadmin)
- */
+router.get('/', requireAuth, validateSchema(NotificationQuerySchema, 'query'), async (req: Request, res: Response) => {
+    try {
+        const activeOrgId: string | null | undefined = req.session?.session?.activeOrganizationId;
+        if (!activeOrgId) {
+            return res.status(400).json({ message: 'No active organization found in session' });
+        }
+
+        const hasPermission = await auth.api.hasPermission({
+            headers: await fromNodeHeaders(req.headers),
+            body: {
+                permissions: {
+                    notification: ["read"]
+                }
+            }
+        });
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Forbidden: Insufficient permissions' });
+        }
+
+        const userId = req.user?.id;
+        const userRole = await getUserOrganizationRole(userId, activeOrgId);
+        const { page, limit, type, status, importance } = req.query;
+        
+        const result = await notificationService.getNotifications({
+            userId,
+            organizationId: activeOrgId,
+            role: userRole,
+            type: type as NotificationType,
+            status: status as NotificationStatus,
+            importance: importance as ImportanceLevel,
+            page: page ? parseInt(page as string) : 1,
+            limit: limit ? parseInt(limit as string) : 10,
+        });
+
+        res.json({
+            notifications: result.items,
+            pagination: {
+                page: result.page,
+                total: result.total,
+                pages: result.pages,
+                perPage: limit ? parseInt(limit as string) : 10,
+            },
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+router.get('/unread', requireAuth, validateSchema(NotificationQuerySchema, 'query'), async (req: Request, res: Response) => {
+    try {
+        const activeOrgId: string | null | undefined = req.session?.session?.activeOrganizationId;
+        if (!activeOrgId) {
+            return res.status(400).json({ message: 'No active organization found in session' });
+        }
+
+        const hasPermission = await auth.api.hasPermission({
+            headers: await fromNodeHeaders(req.headers),
+            body: {
+                permissions: {
+                    notification: ["read"]
+                }
+            }
+        });
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Forbidden: Insufficient permissions' });
+        }
+
+        const userId = req.user?.id;
+        const userRole = await getUserOrganizationRole(userId, activeOrgId);
+        const { page, limit } = req.query;
+        
+        const result = await notificationService.getUnreadNotifications({
+            userId,
+            organizationId: activeOrgId,
+            role: userRole,
+            page: page ? parseInt(page as string) : 1,
+            limit: limit ? parseInt(limit as string) : 10,
+        });
+
+        res.json({
+            notifications: result.items,
+            pagination: {
+                page: result.page,
+                total: result.total,
+                pages: result.pages,
+                perPage: limit ? parseInt(limit as string) : 10,
+            },
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+router.get('/read', requireAuth, validateSchema(NotificationQuerySchema, 'query'), async (req: Request, res: Response) => {
+    try {
+        const activeOrgId: string | null | undefined = req.session?.session?.activeOrganizationId;
+        if (!activeOrgId) {
+            return res.status(400).json({ message: 'No active organization found in session' });
+        }
+
+        const hasPermission = await auth.api.hasPermission({
+            headers: await fromNodeHeaders(req.headers),
+            body: {
+                permissions: {
+                    notification: ["read"]
+                }
+            }
+        });
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Forbidden: Insufficient permissions' });
+        }
+
+        const userId = req.user?.id;
+        const userRole = await getUserOrganizationRole(userId, activeOrgId);
+        const { page, limit } = req.query;
+        
+        const result = await notificationService.getReadNotifications({
+            userId,
+            organizationId: activeOrgId,
+            role: userRole,
+            page: page ? parseInt(page as string) : 1,
+            limit: limit ? parseInt(limit as string) : 10,
+        });
+
+        res.json({
+            notifications: result.items,
+            pagination: {
+                page: result.page,
+                total: result.total,
+                pages: result.pages,
+                perPage: limit ? parseInt(limit as string) : 10,
+            },
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+router.get('/unseen-count', requireAuth, async (req: Request, res: Response) => {
+    try {
+        const activeOrgId: string | null | undefined = req.session?.session?.activeOrganizationId;
+        if (!activeOrgId) {
+            return res.status(400).json({ message: 'No active organization found in session' });
+        }
+
+        const hasPermission = await auth.api.hasPermission({
+            headers: await fromNodeHeaders(req.headers),
+            body: {
+                permissions: {
+                    notification: ["read"]
+                }
+            }
+        });
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Forbidden: Insufficient permissions' });
+        }
+
+        const userId = req.user?.id;
+        if (!userId) {
+            return res.status(401).json({ message: 'User not authenticated' });
+        }
+
+        const userRole = await getUserOrganizationRole(userId, activeOrgId);
+        const count = await notificationService.getUnseenCount(
+            userId,
+            activeOrgId,
+            userRole
+        );
+
+        res.json({ count });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+router.get('/type/:type', requireAuth, validateMultiple([{ schema: NotificationTypeParam, target: 'params' }, { schema: NotificationQuerySchema, target: 'query' }]), async (req: Request, res: Response) => {
+    try {
+        const activeOrgId: string | null | undefined = req.session?.session?.activeOrganizationId;
+        if (!activeOrgId) {
+            return res.status(400).json({ message: 'No active organization found in session' });
+        }
+
+        const hasPermission = await auth.api.hasPermission({
+            headers: await fromNodeHeaders(req.headers),
+            body: {
+                permissions: {
+                    notification: ["read"]
+                }
+            }
+        });
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Forbidden: Insufficient permissions' });
+        }
+
+        const userId = req.user?.id;
+        const userRole = await getUserOrganizationRole(userId, activeOrgId);
+        const { type } = req.params;
+        const { page, limit } = req.query;
+        
+        const result = await notificationService.getNotificationsByType(
+            type as NotificationType,
+            {
+                userId,
+                organizationId: activeOrgId,
+                role: userRole,
+                page: page ? parseInt(page as string) : 1,
+                limit: limit ? parseInt(limit as string) : 10,
+            }
+        );
+
+        res.json({
+            notifications: result.items,
+            pagination: {
+                page: result.page,
+                total: result.total,
+                pages: result.pages,
+                perPage: limit ? parseInt(limit as string) : 10,
+            },
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+router.get('/sorted-by-importance', requireAuth, validateSchema(NotificationQuerySchema, 'query'), async (req: Request, res: Response) => {
+    try {
+        const activeOrgId: string | null | undefined = req.session?.session?.activeOrganizationId;
+        if (!activeOrgId) {
+            return res.status(400).json({ message: 'No active organization found in session' });
+        }
+
+        const hasPermission = await auth.api.hasPermission({
+            headers: await fromNodeHeaders(req.headers),
+            body: {
+                permissions: {
+                    notification: ["read"]
+                }
+            }
+        });
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Forbidden: Insufficient permissions' });
+        }
+
+        const userId = req.user?.id;
+        const userRole = await getUserOrganizationRole(userId, activeOrgId);
+        const { page, limit, status, type } = req.query;
+        
+        const result = await notificationService.getNotificationsSortedByImportance({
+            userId,
+            organizationId: activeOrgId,
+            role: userRole,
+            status: status as NotificationStatus,
+            type: type as NotificationType,
+            page: page ? parseInt(page as string) : 1,
+            limit: limit ? parseInt(limit as string) : 10,
+        });
+
+        res.json({
+            notifications: result.items,
+            pagination: {
+                page: result.page,
+                total: result.total,
+                pages: result.pages,
+                perPage: limit ? parseInt(limit as string) : 10,
+            },
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+router.patch('/:id/mark-seen', requireAuth, validateSchema(NotificationIdParam, 'params'), async (req: Request, res: Response) => {
+    try {
+        const activeOrgId: string | null | undefined = req.session?.session?.activeOrganizationId;
+        if (!activeOrgId) {
+            return res.status(400).json({ message: 'No active organization found in session' });
+        }
+
+        const hasPermission = await auth.api.hasPermission({
+            headers: await fromNodeHeaders(req.headers),
+            body: {
+                permissions: {
+                    notification: ["update"]
+                }
+            }
+        });
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Forbidden: Insufficient permissions' });
+        }
+
+        const userId = req.user?.id;
+        if (!userId) {
+            return res.status(401).json({ message: 'User not authenticated' });
+        }
+
+        const { id } = req.params;
+
+        const notification = await prisma.notification.findUnique({ where: { id } });
+        if (!notification) {
+            return res.status(404).json({ message: 'Notification not found' });
+        }
+
+        if (notification.organizationId !== activeOrgId) {
+            return res.status(403).json({ message: 'Forbidden: Notification does not belong to your organization' });
+        }
+
+        const updated = await notificationService.markAsSeen(id, userId);
+        
+        res.json(updated);
+    } catch (error: any) {
+        console.error(error);
+        if (error.message === 'Notification not found') {
+            return res.status(404).json({ message: error.message });
+        }
+        if (error.message === 'Unauthorized') {
+            return res.status(403).json({ message: error.message });
+        }
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+router.patch('/:id/mark-read', requireAuth, validateSchema(NotificationIdParam, 'params'), async (req: Request, res: Response) => {
+    try {
+        const activeOrgId: string | null | undefined = req.session?.session?.activeOrganizationId;
+        if (!activeOrgId) {
+            return res.status(400).json({ message: 'No active organization found in session' });
+        }
+
+        const hasPermission = await auth.api.hasPermission({
+            headers: await fromNodeHeaders(req.headers),
+            body: {
+                permissions: {
+                    notification: ["update"]
+                }
+            }
+        });
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Forbidden: Insufficient permissions' });
+        }
+
+        const userId = req.user?.id;
+        if (!userId) {
+            return res.status(401).json({ message: 'User not authenticated' });
+        }
+
+        const { id } = req.params;
+
+        const notification = await prisma.notification.findUnique({ where: { id } });
+        if (!notification) {
+            return res.status(404).json({ message: 'Notification not found' });
+        }
+
+        if (notification.organizationId !== activeOrgId) {
+            return res.status(403).json({ message: 'Forbidden: Notification does not belong to your organization' });
+        }
+
+        const updated = await notificationService.markAsRead(id, userId);
+        
+        res.json(updated);
+    } catch (error: any) {
+        console.error(error);
+        if (error.message === 'Notification not found') {
+            return res.status(404).json({ message: error.message });
+        }
+        if (error.message === 'Unauthorized') {
+            return res.status(403).json({ message: error.message });
+        }
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+router.patch('/:id/mark-unread', requireAuth, validateSchema(NotificationIdParam, 'params'), async (req: Request, res: Response) => {
+    try {
+        const activeOrgId: string | null | undefined = req.session?.session?.activeOrganizationId;
+        if (!activeOrgId) {
+            return res.status(400).json({ message: 'No active organization found in session' });
+        }
+
+        const hasPermission = await auth.api.hasPermission({
+            headers: await fromNodeHeaders(req.headers),
+            body: {
+                permissions: {
+                    notification: ["update"]
+                }
+            }
+        });
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Forbidden: Insufficient permissions' });
+        }
+
+        const userId = req.user?.id;
+        if (!userId) {
+            return res.status(401).json({ message: 'User not authenticated' });
+        }
+
+        const { id } = req.params;
+
+        const notification = await prisma.notification.findUnique({ where: { id } });
+        if (!notification) {
+            return res.status(404).json({ message: 'Notification not found' });
+        }
+
+        if (notification.organizationId !== activeOrgId) {
+            return res.status(403).json({ message: 'Forbidden: Notification does not belong to your organization' });
+        }
+
+        const updated = await notificationService.markAsUnread(id, userId);
+        
+        res.json(updated);
+    } catch (error: any) {
+        console.error(error);
+        if (error.message === 'Notification not found') {
+            return res.status(404).json({ message: error.message });
+        }
+        if (error.message === 'Unauthorized') {
+            return res.status(403).json({ message: error.message });
+        }
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+router.post('/mark-all-seen', requireAuth, async (req: Request, res: Response) => {
+    try {
+        const activeOrgId: string | null | undefined = req.session?.session?.activeOrganizationId;
+        if (!activeOrgId) {
+            return res.status(400).json({ message: 'No active organization found in session' });
+        }
+
+        const hasPermission = await auth.api.hasPermission({
+            headers: await fromNodeHeaders(req.headers),
+            body: {
+                permissions: {
+                    notification: ["update"]
+                }
+            }
+        });
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Forbidden: Insufficient permissions' });
+        }
+
+        const userId = req.user?.id;
+        if (!userId) {
+            return res.status(401).json({ message: 'User not authenticated' });
+        }
+
+        const userRole = await getUserOrganizationRole(userId, activeOrgId);
+
+        const result = await notificationService.markAllAsSeen(
+            userId,
+            activeOrgId,
+            userRole
+        );
+        
+        res.json(result);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+router.post('/mark-all-read', requireAuth, async (req: Request, res: Response) => {
+    try {
+        const activeOrgId: string | null | undefined = req.session?.session?.activeOrganizationId;
+        if (!activeOrgId) {
+            return res.status(400).json({ message: 'No active organization found in session' });
+        }
+
+        const hasPermission = await auth.api.hasPermission({
+            headers: await fromNodeHeaders(req.headers),
+            body: {
+                permissions: {
+                    notification: ["update"]
+                }
+            }
+        });
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Forbidden: Insufficient permissions' });
+        }
+
+        const userId = req.user?.id;
+        if (!userId) {
+            return res.status(401).json({ message: 'User not authenticated' });
+        }
+
+        const userRole = await getUserOrganizationRole(userId, activeOrgId);
+
+        const result = await notificationService.markAllAsRead(
+            userId,
+            activeOrgId,
+            userRole
+        );
+        
+        res.json(result);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
 router.get('/superadmin', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
+        const hasPermission = await auth.api.hasPermission({
+            headers: await fromNodeHeaders(req.headers),
+            body: {
+                permissions: {
+                    notification: ["read"]
+                }
+            }
+        });
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Forbidden: Insufficient permissions' });
+        }
+
         const { organizationId, userId, status, type } = req.query;
 
         const where: any = {};
@@ -36,13 +561,20 @@ router.get('/superadmin', requireAuth, requireRole(["superadmin"]), async (req: 
     }
 });
 
-/**
- * @route   GET /superadmin/:id
- * @desc    Get a specific notification by ID
- * @access  Private (superadmin)
- */
-router.get('/superadmin/:id', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.get('/superadmin/:id', requireAuth, requireRole(["superadmin"]), validateSchema(NotificationIdParam, 'params'), async (req: Request, res: Response) => {
     try {
+        const hasPermission = await auth.api.hasPermission({
+            headers: await fromNodeHeaders(req.headers),
+            body: {
+                permissions: {
+                    notification: ["read"]
+                }
+            }
+        });
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Forbidden: Insufficient permissions' });
+        }
+
         const { id } = req.params;
         const notification = await prisma.notification.findUnique({
             where: { id },
@@ -60,36 +592,43 @@ router.get('/superadmin/:id', requireAuth, requireRole(["superadmin"]), async (r
     }
 });
 
-/**
- * @route   POST /superadmin
- * @desc    Create a new notification
- * @access  Private (superadmin)
- */
-router.post('/superadmin', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.post('/superadmin', requireAuth, requireRole(["superadmin"]), validateSchema(SuperAdminCreateNotificationSchema, 'body'), async (req: Request, res: Response) => {
     try {
+        const hasPermission = await auth.api.hasPermission({
+            headers: await fromNodeHeaders(req.headers),
+            body: {
+                permissions: {
+                    notification: ["create"]
+                }
+            }
+        });
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Forbidden: Insufficient permissions' });
+        }
+
         const {
             organizationId,
             title,
             message,
             toRoles,
-            ...rest
+            type = 'INFO',
+            importance = 'MEDIUM',
+            actionUrl,
+            metadata,
         } = req.body;
-
-        if (!organizationId || !title || !message || !toRoles) {
-            return res.status(400).json({ message: 'Organization ID, title, message, and toRoles are required' });
-        }
 
         const organization = await prisma.organization.findUnique({ where: { id: organizationId } });
         if (!organization) return res.status(404).json({ message: 'Organization not found' });
 
-        const newNotification = await prisma.notification.create({
-            data: {
-                organizationId,
-                title,
-                message,
-                toRoles,
-                ...rest,
-            },
+        const newNotification = await broadcastNotification({
+            title,
+            message,
+            type,
+            importance,
+            toRoles,
+            organizationId,
+            actionUrl,
+            metadata,
         });
 
         res.status(201).json(newNotification);
@@ -99,13 +638,20 @@ router.post('/superadmin', requireAuth, requireRole(["superadmin"]), async (req:
     }
 });
 
-/**
- * @route   PUT /superadmin/:id
- * @desc    Update a notification
- * @access  Private (superadmin)
- */
-router.put('/superadmin/:id', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.put('/superadmin/:id', requireAuth, requireRole(["superadmin"]), validateMultiple([{ schema: NotificationIdParam, target: 'params' }, { schema: UpdateNotificationSchema, target: 'body' }]), async (req: Request, res: Response) => {
     try {
+        const hasPermission = await auth.api.hasPermission({
+            headers: await fromNodeHeaders(req.headers),
+            body: {
+                permissions: {
+                    notification: ["update"]
+                }
+            }
+        });
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Forbidden: Insufficient permissions' });
+        }
+
         const { id } = req.params;
         const { ...dataToUpdate } = req.body;
 
@@ -126,13 +672,20 @@ router.put('/superadmin/:id', requireAuth, requireRole(["superadmin"]), async (r
     }
 });
 
-/**
- * @route   DELETE /superadmin/:id
- * @desc    Delete a notification
- * @access  Private (superadmin)
- */
-router.delete('/superadmin/:id', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
+router.delete('/superadmin/:id', requireAuth, requireRole(["superadmin"]), validateSchema(NotificationIdParam, 'params'), async (req: Request, res: Response) => {
     try {
+        const hasPermission = await auth.api.hasPermission({
+            headers: await fromNodeHeaders(req.headers),
+            body: {
+                permissions: {
+                    notification: ["delete"]
+                }
+            }
+        });
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Forbidden: Insufficient permissions' });
+        }
+
         const { id } = req.params;
         await prisma.notification.delete({
             where: { id },
@@ -144,13 +697,20 @@ router.delete('/superadmin/:id', requireAuth, requireRole(["superadmin"]), async
     }
 });
 
-/**
- * @route   GET /superadmin/stats/summary
- * @desc    Get summary statistics for notifications
- * @access  Private (superadmin)
- */
 router.get('/superadmin/stats/summary', requireAuth, requireRole(["superadmin"]), async (req: Request, res: Response) => {
     try {
+        const hasPermission = await auth.api.hasPermission({
+            headers: await fromNodeHeaders(req.headers),
+            body: {
+                permissions: {
+                    notification: ["read"]
+                }
+            }
+        });
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Forbidden: Insufficient permissions' });
+        }
+
         const totalNotifications = await prisma.notification.count();
         
         const notificationsByStatus = await prisma.notification.groupBy({

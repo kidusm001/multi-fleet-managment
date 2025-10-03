@@ -14,6 +14,8 @@ const prismaMock = vi.hoisted(() => ({
 }));
 // Bypass role checks
 vi.mock('../../middleware/requireRole', () => ({ requireRole: () => (_req: any, _res: any, next: any) => next() }));
+// Mock notifications
+vi.mock('../../services/notificationService', () => ({ notificationService: { createNotification: vi.fn().mockResolvedValue(undefined) } }));
 // Mock prisma
 vi.mock('../../db', () => ({ default: prismaMock }));
 

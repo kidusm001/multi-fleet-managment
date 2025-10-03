@@ -17,6 +17,7 @@ import {
     AssignDriverInput,
     UpdateVehicleStatusInput
 } from '../schema/vehicleSchemas';
+import { broadcastNotification } from '../lib/notificationBroadcaster';
 
 const prisma = new PrismaClient();
 const router = express.Router();
@@ -952,6 +953,17 @@ router.post('/', requireAuth, validateSchema(CreateVehicleSchema, 'body'), async
             }
         });
 
+        await broadcastNotification({
+            title: 'New Vehicle Added',
+            message: `Vehicle ${vehicle.plateNumber} (${vehicle.name}) has been added to the fleet`,
+            type: 'INFO',
+            importance: 'MEDIUM',
+            toRoles: ['owner', 'admin'],
+            organizationId: activeOrgId,
+            actionUrl: `/vehicles/${vehicle.id}`,
+            metadata: { vehicleId: vehicle.id, plateNumber: vehicle.plateNumber }
+        });
+
         res.status(201).json(vehicle);
     } catch (error) {
         console.error(error);
@@ -1074,6 +1086,21 @@ router.delete('/:id', requireAuth, validateSchema(VehicleIdParamSchema, 'params'
             }
         });
 
+        await broadcastNotification({
+            title: 'Vehicle Deleted',
+            message: `Vehicle ${existingVehicle.plateNumber} (${existingVehicle.name}) has been removed from the fleet`,
+            type: 'WARNING',
+            importance: 'MEDIUM',
+            toRoles: ['owner', 'admin'],
+            organizationId: activeOrgId,
+            actionUrl: `/vehicles`,
+            metadata: { 
+                vehicleId: existingVehicle.id, 
+                plateNumber: existingVehicle.plateNumber,
+                vehicleName: existingVehicle.name
+            }
+        });
+
         res.status(204).send();
     } catch (error) {
         console.error(error);
@@ -1125,6 +1152,21 @@ router.patch('/:id/restore', requireAuth, validateSchema(VehicleIdParamSchema, '
             include: {
                 category: true,
                 driver: true,
+            }
+        });
+
+        await broadcastNotification({
+            title: 'Vehicle Restored',
+            message: `Vehicle ${vehicle.plateNumber} (${vehicle.name}) has been restored and is now available`,
+            type: 'INFO',
+            importance: 'MEDIUM',
+            toRoles: ['owner', 'admin'],
+            organizationId: activeOrgId,
+            actionUrl: `/vehicles/${vehicle.id}`,
+            metadata: { 
+                vehicleId: vehicle.id, 
+                plateNumber: vehicle.plateNumber,
+                vehicleName: vehicle.name
             }
         });
 
@@ -1185,6 +1227,38 @@ router.patch('/:id/assign-driver', requireAuth, validateMultiple([{ schema: Vehi
                 driver: true,
             }
         });
+
+        if (driverId && vehicle.driver) {
+            await broadcastNotification({
+                title: 'Driver Assigned to Vehicle',
+                message: `Driver ${vehicle.driver.name} has been assigned to vehicle ${vehicle.plateNumber} (${vehicle.name})`,
+                type: 'INFO',
+                importance: 'MEDIUM',
+                toRoles: ['owner', 'admin'],
+                organizationId: activeOrgId,
+                actionUrl: `/vehicles/${vehicle.id}`,
+                metadata: { 
+                    vehicleId: vehicle.id, 
+                    plateNumber: vehicle.plateNumber,
+                    driverId: vehicle.driver.id,
+                    driverName: vehicle.driver.name
+                }
+            });
+        } else {
+            await broadcastNotification({
+                title: 'Driver Unassigned from Vehicle',
+                message: `Driver has been unassigned from vehicle ${vehicle.plateNumber} (${vehicle.name})`,
+                type: 'INFO',
+                importance: 'LOW',
+                toRoles: ['owner', 'admin'],
+                organizationId: activeOrgId,
+                actionUrl: `/vehicles/${vehicle.id}`,
+                metadata: { 
+                    vehicleId: vehicle.id, 
+                    plateNumber: vehicle.plateNumber
+                }
+            });
+        }
 
         res.json({
             message: driverId ? 'Driver assigned successfully' : 'Driver unassigned successfully',
@@ -1248,6 +1322,31 @@ router.patch('/:id/status', requireAuth, validateMultiple([{ schema: VehicleIdPa
             include: {
                 category: true,
                 driver: true,
+            }
+        });
+
+        const statusChangeNotifications: Record<VehicleStatus, { importance: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL', type: 'INFO' | 'WARNING' | 'ALERT' }> = {
+            AVAILABLE: { importance: 'LOW', type: 'INFO' },
+            IN_USE: { importance: 'LOW', type: 'INFO' },
+            MAINTENANCE: { importance: 'HIGH', type: 'WARNING' },
+            OUT_OF_SERVICE: { importance: 'CRITICAL', type: 'ALERT' },
+            INACTIVE: { importance: 'MEDIUM', type: 'WARNING' }
+        };
+
+        const notificationConfig = statusChangeNotifications[status];
+        await broadcastNotification({
+            title: 'Vehicle Status Updated',
+            message: `Vehicle ${vehicle.plateNumber} (${vehicle.name}) status changed to ${status}`,
+            type: notificationConfig.type,
+            importance: notificationConfig.importance,
+            toRoles: ['owner', 'admin'],
+            organizationId: activeOrgId,
+            actionUrl: `/vehicles/${vehicle.id}`,
+            metadata: { 
+                vehicleId: vehicle.id, 
+                plateNumber: vehicle.plateNumber,
+                oldStatus: existingVehicle.status,
+                newStatus: status
             }
         });
 
@@ -1407,6 +1506,38 @@ router.patch('/:id/maintenance-status', requireAuth, validateSchema(VehicleIdPar
                 }
             }
         });
+
+        if (status === VehicleStatus.MAINTENANCE) {
+            await broadcastNotification({
+                title: 'Vehicle Scheduled for Maintenance',
+                message: `Vehicle ${vehicle.plateNumber} (${vehicle.name}) is now under maintenance. Next service scheduled for ${vehicle.nextMaintenance?.toLocaleDateString()}`,
+                type: 'WARNING',
+                importance: 'HIGH',
+                toRoles: ['owner', 'admin'],
+                organizationId: activeOrgId,
+                actionUrl: `/vehicles/${vehicle.id}`,
+                metadata: { 
+                    vehicleId: vehicle.id, 
+                    plateNumber: vehicle.plateNumber,
+                    lastMaintenance: vehicle.lastMaintenance,
+                    nextMaintenance: vehicle.nextMaintenance
+                }
+            });
+        } else if (oldVehicle.status === VehicleStatus.MAINTENANCE && status === VehicleStatus.AVAILABLE) {
+            await broadcastNotification({
+                title: 'Vehicle Maintenance Completed',
+                message: `Vehicle ${vehicle.plateNumber} (${vehicle.name}) maintenance completed and is now available`,
+                type: 'INFO',
+                importance: 'MEDIUM',
+                toRoles: ['owner', 'admin'],
+                organizationId: activeOrgId,
+                actionUrl: `/vehicles/${vehicle.id}`,
+                metadata: { 
+                    vehicleId: vehicle.id, 
+                    plateNumber: vehicle.plateNumber
+                }
+            });
+        }
 
         res.json({
             message: `Vehicle status changed from ${oldVehicle.status} to ${status}${
