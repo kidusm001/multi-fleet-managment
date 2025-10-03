@@ -1,6 +1,5 @@
-import { PrismaClient, NotificationStatus, NotificationType, ImportanceLevel } from '@prisma/client';
-
-const prisma = new PrismaClient();
+import { NotificationStatus, NotificationType, ImportanceLevel } from '@prisma/client';
+import prisma from '../db';
 
 interface NotificationQuery {
   userId?: string;

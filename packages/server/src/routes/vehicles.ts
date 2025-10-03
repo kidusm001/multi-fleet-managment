@@ -1,5 +1,5 @@
 import express, { RequestHandler, Request, Response } from 'express';
-import { Vehicle, VehicleAvailability, VehicleCategory, VehicleStatus, VehicleRequest, VehicleType, PrismaClient } from '@prisma/client';
+import { Vehicle, VehicleAvailability, VehicleCategory, VehicleStatus, VehicleRequest, VehicleType } from '@prisma/client';
 import { requireAuth, requireRole } from '../middleware/auth';
 import { requireRole as test } from '../middleware/requireRole';
 import { fromNodeHeaders } from 'better-auth/node';
@@ -18,8 +18,8 @@ import {
     UpdateVehicleStatusInput
 } from '../schema/vehicleSchemas';
 import { broadcastNotification } from '../lib/notificationBroadcaster';
+import prisma from '../db';
 
-const prisma = new PrismaClient();
 const router = express.Router();
 
 
