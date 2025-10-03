@@ -1,0 +1,246 @@
+@startuml Multi-Fleet Management Class Diagram
+
+title Multi-Fleet Management Class Diagram (Based on Prisma Schema)
+
+class Organization {
+  +id: String
+  +name: String
+  +description: String?
+  +createdAt: DateTime
+  +updatedAt: DateTime
+  --
+  +departments: Department[]
+  +employees: Employee[]
+  +vehicles: Vehicle[]
+  +routes: Route[]
+  +notifications: Notification[]
+}
+
+class Department {
+  +id: String
+  +name: String
+  +description: String?
+  +organizationId: String
+  +createdAt: DateTime
+  +updatedAt: DateTime
+  --
+  +organization: Organization
+  +employees: Employee[]
+}
+
+class Employee {
+  +id: String
+  +firstName: String
+  +lastName: String
+  +email: String
+  +phone: String?
+  +role: EmployeeRole
+  +departmentId: String?
+  +organizationId: String
+  +createdAt: DateTime
+  +updatedAt: DateTime
+  --
+  +department: Department?
+  +organization: Organization
+  +assignedVehicles: Vehicle[]
+  +shifts: Shift[]
+}
+
+class Vehicle {
+  +id: String
+  +licensePlate: String
+  +make: String
+  +model: String
+  +year: Int
+  +status: VehicleStatus
+  +categoryId: String
+  +organizationId: String
+  +assignedDriverId: String?
+  +createdAt: DateTime
+  +updatedAt: DateTime
+  --
+  +category: VehicleCategory
+  +organization: Organization
+  +assignedDriver: Employee?
+  +routes: Route[]
+  +vehicleRequests: VehicleRequest[]
+}
+
+class VehicleCategory {
+  +id: String
+  +name: String
+  +description: String?
+  +organizationId: String
+  +createdAt: DateTime
+  +updatedAt: DateTime
+  --
+  +organization: Organization
+  +vehicles: Vehicle[]
+}
+
+class Route {
+  +id: String
+  +name: String
+  +description: String?
+  +status: RouteStatus
+  +organizationId: String
+  +assignedVehicleId: String?
+  +createdAt: DateTime
+  +updatedAt: DateTime
+  --
+  +organization: Organization
+  +assignedVehicle: Vehicle?
+  +stops: Stop[]
+  +shifts: Shift[]
+}
+
+class Stop {
+  +id: String
+  +name: String
+  +latitude: Float
+  +longitude: Float
+  +sequence: Int
+  +routeId: String
+  +estimatedArrival: DateTime?
+  +actualArrival: DateTime?
+  +createdAt: DateTime
+  +updatedAt: DateTime
+  --
+  +route: Route
+}
+
+class Shift {
+  +id: String
+  +startTime: DateTime
+  +endTime: DateTime?
+  +employeeId: String
+  +routeId: String?
+  +status: ShiftStatus
+  +createdAt: DateTime
+  +updatedAt: DateTime
+  --
+  +employee: Employee
+  +route: Route?
+}
+
+class VehicleRequest {
+  +id: String
+  +requesterId: String
+  +vehicleId: String?
+  +purpose: String
+  +startDate: DateTime
+  +endDate: DateTime?
+  +status: RequestStatus
+  +organizationId: String
+  +createdAt: DateTime
+  +updatedAt: DateTime
+  --
+  +requester: Employee
+  +vehicle: Vehicle?
+  +organization: Organization
+}
+
+class Notification {
+  +id: String
+  +title: String
+  +message: String
+  +toRoles: String[]
+  +fromRole: String
+  +type: NotificationType
+  +importance: ImportanceLevel
+  +status: NotificationStatus
+  +organizationId: String
+  +userId: String?
+  +relatedEntityId: String?
+  +createdAt: DateTime
+  +updatedAt: DateTime
+  --
+  +organization: Organization
+}
+
+' Relationships
+Organization ||--o{ Department
+Organization ||--o{ Employee
+Organization ||--o{ Vehicle
+Organization ||--o{ Route
+Organization ||--o{ Notification
+Organization ||--o{ VehicleCategory
+
+Department ||--o{ Employee
+
+Employee ||--o{ Vehicle : assignedDriver
+Employee ||--o{ Shift
+
+VehicleCategory ||--o{ Vehicle
+
+Vehicle ||--o{ Route : assignedVehicle
+Vehicle ||--o{ VehicleRequest
+
+Route ||--o{ Stop
+Route ||--o{ Shift
+
+' Enums
+enum EmployeeRole {
+  superadmin
+  admin
+  manager
+  driver
+  employee
+}
+
+enum VehicleStatus {
+  AVAILABLE
+  IN_USE
+  MAINTENANCE
+  OUT_OF_SERVICE
+  INACTIVE
+}
+
+enum RouteStatus {
+  ACTIVE
+  INACTIVE
+  CANCELLED
+}
+
+enum ShiftStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum NotificationType {
+  GENERAL
+  MAINTENANCE
+  ASSIGNMENT
+  ALERT
+  SYSTEM
+}
+
+enum ImportanceLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum NotificationStatus {
+  PENDING
+  DELIVERED
+  READ
+}
+
+note bottom
+  Class diagram based on Prisma schema analysis
+  Relationships show actual database constraints
+  Enums reflect current enum definitions
+end note
+
+@enduml

@@ -275,6 +275,26 @@ endlegend
 
 **Detailed Prompt:** Generate a component diagram illustrating client, application, data, optimization, and external layers for the Routegna system. Represent React and driver clients interacting with Express controllers, middleware, domain services, WebSocket hub, and worker queue. Show connections to PostgreSQL, audit ledger, notification store, Redis cache, FastAPI clustering, Mapbox, Fayda OAuth, and email/SMS services, including legend entries for production components, externals, and data stores.
 
+### 3.2.5 State Transition Rules
+
+The system implements strict business logic for managing state transitions in both route and vehicle lifecycles. These rules ensure operational integrity while preventing invalid state combinations that could compromise fleet management.
+
+#### Route State Transitions
+
+Routes follow a three-state lifecycle with clear business constraints governing transitions between ACTIVE, INACTIVE, and CANCELLED states. The state machine diagram illustrates the allowed transitions and business rules that prevent invalid combinations.
+
+[diagram here]
+
+#### Vehicle State Transitions
+
+Vehicle status management incorporates complex business logic around maintenance scheduling, driver assignments, and operational availability across AVAILABLE, IN_USE, MAINTENANCE, OUT_OF_SERVICE, and INACTIVE states. The state machine diagram shows the comprehensive transition rules and automatic actions triggered during status changes.
+
+[diagram here]
+
+Critical business constraints prevent vehicles with active routes from being placed into maintenance or out-of-service status, ensuring operational continuity. Driver assignments are automatically managed during status transitions, with unassignment occurring when vehicles move to non-operational states. Maintenance scheduling automatically calculates next service dates, and all transitions are validated against current route assignments to maintain system consistency.
+
+---
+
 ### 3.4 Data & Control Flow
 - **Route Lifecycle:** React client submits route -> Express validates -> FastAPI clusters -> Mapbox directions -> Prisma persists -> SSE/WebSocket pushes driver updates.
 - **Payroll Pipeline:** Scheduled worker aggregates time sheets & route completions -> deducts allowances -> exports CSV/XLSX -> pushes to Payroll Admin UI.

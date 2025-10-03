@@ -1,0 +1,44 @@
+@startuml Notification Delivery Sequence (Current Implementation)
+
+title Notification Delivery Sequence (Current Implementation)
+
+actor "User/Admin" as User
+participant "Frontend" as Frontend
+participant "Backend API" as API
+participant "Database" as DB
+participant "Socket.IO Server" as Socket
+participant "NotificationService" as Service
+
+== Notification Creation ==
+User -> Frontend: Create/Send Notification
+Frontend -> API: POST /api/notifications/superadmin
+API -> DB: INSERT notification record
+DB --> API: Notification created
+API --> Frontend: Success response
+
+== Notification Retrieval (Polling) ==
+User -> Frontend: View Notifications
+Frontend -> API: GET /api/notifications/superadmin
+API -> DB: SELECT notifications
+DB --> API: Notification data
+API --> Frontend: Notification list
+
+== Real-time Subscription (Designed but not implemented) ==
+note right: Socket.IO is set up but notifications are not sent via WebSocket
+Frontend -> Socket: subscribe-role(role)
+Socket --> Frontend: Subscription confirmed
+
+note over Service: NotificationService is a stub - no actual delivery
+Service -> Service: createNotification() [NO-OP]
+Service -> Service: sendNotification() [NO-OP]
+
+== Status Updates ==
+User -> Frontend: Mark as read/seen
+Frontend -> API: PUT /api/notifications/superadmin/:id
+API -> DB: UPDATE notification status
+DB --> API: Status updated
+API --> Frontend: Success response
+
+note right: No real-time status broadcasts implemented
+
+@enduml
