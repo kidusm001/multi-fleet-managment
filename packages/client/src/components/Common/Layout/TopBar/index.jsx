@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { ROLES, ROLE_LABELS } from "@data/constants";
 import { cn } from "@lib/utils";
-// import { NotificationDropdown } from "@components/Common/Notifications/NotificationDropdown";
+import { NotificationDropdown } from "@components/Common/Notifications/NotificationDropdown";
 import { UserDropdown } from "@/components/Common/Layout/TopBar/user-dropdown-menu";
 import { Loader2 } from "lucide-react";
 import { useClickOutside } from "../../../../hooks/useClickOutside";
@@ -316,7 +316,7 @@ function TopBar() {
 
           {/* Right section: User/Theme */}
           <div className="flex items-center gap-4">
-            {/* <NotificationDropdown /> */}
+            <NotificationDropdown />
             <ThemeToggle />
             <UserDropdown
               username={username}
