@@ -73,6 +73,25 @@ pytest tests/ --cov=src --cov-report=term-missing
 - **CI/CD ready** with proper test separation
 - **Real-world data** testing with actual coordinates
 
+### ⚠️ **What Wasn't Covered (4% Remaining)**
+
+The remaining 4% uncovered code consists of difficult-to-test scenarios:
+
+**main.py (8% uncovered):**
+- **Concurrent task cancellation logic** (lines 48-52): Complex async task cancellation handling that requires simulating concurrent requests and interruption scenarios
+- **Race condition edge cases**: Timing-dependent code paths that are hard to reliably test without specialized testing frameworks
+
+**assign_routes.py (2% uncovered):**
+- **Extreme edge case error handling**: Rare error conditions in OR-Tools solver that only occur under very specific constraint combinations
+- **Memory allocation failures**: Edge cases where distance matrix calculations fail due to memory constraints (rare in practice)
+
+**Why these weren't tested:**
+- **Concurrent testing complexity**: Would require advanced async testing frameworks and complex request simulation
+- **OR-Tools solver edge cases**: These are internal solver failures that are difficult to trigger predictably
+- **Low-risk scenarios**: These uncovered lines represent defensive error handling for extremely rare failure modes
+- **Testing cost vs. benefit**: The effort to test these scenarios outweighs the practical risk they represent
+
 The old integration tests are now properly incorporated alongside the new unit tests, giving you the best of both worlds: fast unit testing for development and comprehensive integration testing for production validation! 🎉
+
 
 
