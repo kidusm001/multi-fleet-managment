@@ -62,7 +62,7 @@ export default function SingleEmployeeForm({
           >
             <SelectValue placeholder="Select a member to create as employee..." />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="max-h-[300px] overflow-y-auto">
             {members.length === 0 && (
               <div className="px-2 py-4 text-center">
                 <p className="text-sm text-gray-500">No members found</p>
