@@ -28,5 +28,11 @@ module.exports = {
     '**/__tests__/**/*.[jt]s?(x)',
     '**/?(*.)+(spec|test).[tj]s?(x)'
   ],
+  testPathIgnorePatterns: [
+    '/node_modules/',
+    '/e2e/',
+    '/tests-e2e/',
+    '\\.spec\\.ts$' // Exclude Playwright spec files (*.spec.ts)
+  ],
   moduleFileExtensions: ['js', 'jsx', 'ts', 'tsx'],
 };
