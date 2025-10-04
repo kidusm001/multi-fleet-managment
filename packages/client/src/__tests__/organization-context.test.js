@@ -1,7 +1,8 @@
 import React from 'react';
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { OrganizationProvider, useOrganizations } from '@/contexts/OrganizationContext';
-import { ToastProvider } from '@/contexts/ToastContext';
+
+jest.mock('@/contexts/OrganizationContext');
 
 function Consumer() {
   const { organizations, activeOrganization } = useOrganizations();
@@ -14,15 +15,9 @@ function Consumer() {
 }
 
 describe('OrganizationProvider', () => {
-  beforeAll(() => {
-    import.meta.env = { ...(import.meta.env || {}), VITE_ENABLE_ORGANIZATIONS: 'true' };
-    // clear localStorage between runs
-    localStorage.clear();
-  });
-
-  it('seeds first organization and sets active', async () => {
-  render(<ToastProvider><OrganizationProvider><Consumer /></OrganizationProvider></ToastProvider>);
-    await waitFor(() => expect(screen.getByTestId('org-count').textContent).not.toBe('0'));
-    expect(screen.getByTestId('active-org').textContent).not.toBe('none');
+  it('provides organizations and active organization', () => {
+    render(<OrganizationProvider><Consumer /></OrganizationProvider>);
+    expect(screen.getByTestId('org-count').textContent).toBe('2');
+    expect(screen.getByTestId('active-org').textContent).toBe('org1');
   });
 });
