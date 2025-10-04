@@ -414,7 +414,7 @@ model Notification {
   title           String
   message         String
   type            NotificationType   @default(INFO)
-  status          NotificationStatus @default(UNREAD)
+  status          NotificationStatus @default(UNREAD) // Kept for backwards compatibility
   toRoles         String[] // Array of role strings
   fromRole        String?
   importance      ImportanceLevel    @default(MEDIUM)
@@ -427,7 +427,8 @@ model Notification {
   updatedAt DateTime @updatedAt
 
   // Relations
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  seenBy       NotificationSeen[] @relation("NotificationSeenBy")
 
   // Indexes
   @@index([organizationId])
@@ -436,6 +437,27 @@ model Notification {
   @@index([type])
   @@index([createdAt])
   @@map("notifications")
+}
+
+model NotificationSeen {
+  id             String    @id @default(cuid())
+  userId         String
+  notificationId String
+  seenAt         DateTime  @default(now())
+  readAt         DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  user         User         @relation("UserSeenNotifications", fields: [userId], references: [id], onDelete: Cascade)
+  notification Notification @relation("NotificationSeenBy", fields: [notificationId], references: [id], onDelete: Cascade)
+
+  // Indexes
+  @@unique([userId, notificationId])
+  @@index([userId])
+  @@index([notificationId])
+  @@map("notification_seen")
 }
 
 model VehicleRequest {
@@ -490,6 +512,8 @@ model User {
   employees     Employee[] // Back-reference to Employee
 
   isSubscribed Boolean?
+
+  seenNotifications NotificationSeen[] @relation("UserSeenNotifications")
 
   @@unique([email])
   @@map("user")

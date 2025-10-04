@@ -1,10 +1,11 @@
 import express, { Request, Response } from 'express';
-import { Route, PrismaClient, RouteStatus } from '@prisma/client';
+import { Route, RouteStatus } from '@prisma/client';
 import { requireAuth, requireRole } from '../middleware/auth';
 import { fromNodeHeaders } from 'better-auth/node';
 import { auth } from '../lib/auth';
 import { validateSchema, validateMultiple } from '../middleware/zodValidation';
 import { VehicleAvailabilityService } from '../services/vehicleAvailabilityService';
+import prisma from '../db';
 import {
     CreateRouteSchema,
     UpdateRouteSchema,
@@ -25,7 +26,6 @@ import {
     UpdateRouteStopsInput
 } from '../schema/routeSchemas';
 
-const prisma = new PrismaClient();
 const router = express.Router();
 
 type RouteList = Route[];
@@ -1004,7 +1004,7 @@ router.delete('/:id', requireAuth, validateSchema(RouteIdParamSchema, 'params'),
         });
         if (!hasPermission.success) return res.status(403).json({ message: 'Unauthorized' });
 
-        await prisma.$transaction(async (prisma) => {
+        const result: { success?: boolean; error?: string; status?: number } = await prisma.$transaction(async (prisma) => {
             const route = await prisma.route.findFirst({
                 where: { id, organizationId: activeOrgId },
                 include: {
@@ -1019,10 +1019,10 @@ router.delete('/:id', requireAuth, validateSchema(RouteIdParamSchema, 'params'),
             });
 
             if (!route) {
-                return res.status(404).json({ message: 'Route not found' });
+                return { error: 'Route not found', status: 404 };
             }
             if (route.deleted) {
-                return res.status(400).json({ message: 'Route is already deleted' });
+                return { error: 'Route is already deleted', status: 400 };
             }
 
             const employeeIds = route.stops
@@ -1058,7 +1058,13 @@ router.delete('/:id', requireAuth, validateSchema(RouteIdParamSchema, 'params'),
                 where: { id },
                 data: { deleted: true, deletedAt: new Date(), isActive: false, status: RouteStatus.INACTIVE }
             });
+
+            return { success: true };
         });
+
+        if (result.error && result.status) {
+            return res.status(result.status).json({ message: result.error });
+        }
 
         res.status(204).send();
     } catch (error) {

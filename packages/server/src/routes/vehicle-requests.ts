@@ -1,5 +1,5 @@
 import express, { Request, Response } from 'express';
-import { PrismaClient, VehicleRequest, ApprovalStatus } from '@prisma/client';
+import {  VehicleRequest, ApprovalStatus } from '@prisma/client';
 import { requireAuth, requireRole } from '../middleware/auth';
 import { fromNodeHeaders } from 'better-auth/node';
 import { auth } from '../lib/auth';
@@ -15,8 +15,8 @@ import {
     RejectVehicleRequestInput
 } from '../schema/vehicleRequestSchema';
 import { validateSchema } from '../middleware/zodValidation';
+import prisma from '../db';
 
-const prisma = new PrismaClient();
 const router = express.Router();
 
 /**

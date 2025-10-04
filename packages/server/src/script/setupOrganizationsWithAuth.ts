@@ -332,16 +332,14 @@ async function main() {
     }
 }
 
-if (require.main === module) {
-    main()
-        .then(() => {
-            console.log('\n✅ Setup completed successfully!');
-            process.exit(0);
-        })
-        .catch((error) => {
-            console.error('\n❌ Setup failed:', error);
-            process.exit(1);
-        });
-}
+main()
+    .then(() => {
+        console.log('\n✅ Setup completed successfully!');
+        process.exit(0);
+    })
+    .catch((error) => {
+        console.error('\n❌ Setup failed:', error);
+        process.exit(1);
+    });
 
 export { main as setupOrganizationsWithAuth };

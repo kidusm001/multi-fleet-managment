@@ -1,12 +1,12 @@
 import express, { Request, Response } from 'express';
-import { VehicleCategory, PrismaClient } from '@prisma/client';
+import { VehicleCategory } from '@prisma/client';
 import { requireAuth, requireRole } from '../middleware/auth';
 import { fromNodeHeaders } from 'better-auth/node';
 import { auth } from '../lib/auth';
 import { validateSchema, validateMultiple } from '../middleware/zodValidation';
 import { VehicleCategoryIdParam, CreateVehicleCategorySchema, UpdateVehicleCategorySchema, CreateVehicleCategoryInput, UpdateVehicleCategoryInput } from '../schema/vehicleCategorySchema';
+import prisma from '../db';
 
-const prisma = new PrismaClient();
 const router = express.Router();
 
 type VehicleCategoryList = VehicleCategory[];

@@ -1,12 +1,12 @@
 import express, { Request, Response } from 'express';
-import { Driver, PrismaClient } from '@prisma/client';
+import { Driver } from '@prisma/client';
 import { requireAuth, requireRole } from '../middleware/auth';
 import { CreateDriver, CreateDriverSchema, DriverIdParam, UpdateDriverSchema } from '../schema/driverSchema';
 import { validateSchema, validateMultiple } from '../middleware/zodValidation';
 import { fromNodeHeaders } from 'better-auth/node';
 import { auth } from '../lib/auth';
+import prisma from '../db';
 
-const prisma = new PrismaClient();
 const router = express.Router();
 
 type DriverList = Driver[];

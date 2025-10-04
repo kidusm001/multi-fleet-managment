@@ -1,5 +1,5 @@
 import express, { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import  prisma  from '../db';
 import { requireAuth } from '../middleware/auth';
 import { fromNodeHeaders } from 'better-auth/node';
 import { auth } from '../lib/auth';
@@ -18,7 +18,6 @@ import {
     VehicleAvailabilityInput
 } from '../schema/clusterSchemas';
 
-const prisma = new PrismaClient();
 const router = express.Router();
 
 /**
