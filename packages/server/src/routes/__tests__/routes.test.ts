@@ -34,10 +34,14 @@ vi.mock('../../db', () => ({
       update: vi.fn(),
       delete: vi.fn(),
       deleteMany: vi.fn(),
+      updateMany: vi.fn(),
+      findFirst: vi.fn(),
     },
     employee: {
       findUnique: vi.fn(),
       findMany: vi.fn(),
+      updateMany: vi.fn(),
+      findFirst: vi.fn(),
     },
     vehicleAvailability: {
       update: vi.fn(),
@@ -69,6 +73,7 @@ vi.mock('../../db', () => ({
       },
       stop: {
         findMany: vi.fn(),
+        findFirst: vi.fn(),
         create: vi.fn(),
         update: vi.fn(),
         delete: vi.fn(),
@@ -79,6 +84,7 @@ vi.mock('../../db', () => ({
         findUnique: vi.fn(),
         findMany: vi.fn(),
         updateMany: vi.fn(),
+        findFirst: vi.fn(),
       },
       vehicleAvailability: {
         update: vi.fn(),
@@ -146,6 +152,9 @@ vi.mock('../../services/vehicleAvailabilityService', () => ({
 import routeRouter from '../routes';
 import prisma from '../../db';
 
+// Utility to build date strings consistently
+const iso = (d: Date) => d.toISOString();
+
 const mockPrisma = prisma as any;
 
 describe('Route Routes', () => {
@@ -159,6 +168,35 @@ describe('Route Routes', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  /************************************
+   * SUPERADMIN ENDPOINTS (Additional)
+   ************************************/
+  describe('GET /routes/superadmin', () => {
+    it('returns all routes (superadmin) excluding deleted by default', async () => {
+      mockPrisma.route.findMany.mockResolvedValueOnce([
+        { id: 'sr_1', name: 'SR1', deleted: false, organization: { name: 'Org A' }, isActive: true, _count: { stops: 0 } },
+      ]);
+      await request(app).get('/routes/superadmin').expect(200);
+      const args = mockPrisma.route.findMany.mock.calls[0][0];
+      expect(args.where).toMatchObject({ deleted: false });
+    });
+
+    it('applies includeDeleted=true filter', async () => {
+      mockPrisma.route.findMany.mockResolvedValueOnce([]);
+      await request(app).get('/routes/superadmin').query({ includeDeleted: 'true' }).expect(200);
+      const args = mockPrisma.route.findMany.mock.calls[0][0];
+      expect(args.where).not.toHaveProperty('deleted');
+    });
+  });
+
+  describe('GET /routes/superadmin/:id', () => {
+    it('returns 404 when route not found (superadmin)', async () => {
+      mockPrisma.route.findUnique.mockResolvedValueOnce(null);
+      const res = await request(app).get('/routes/superadmin/missing').expect(404);
+      expect(res.body.message).toBeDefined();
+    });
   });
 
   describe('GET /routes', () => {
@@ -344,6 +382,33 @@ describe('Route Routes', () => {
 
       expect(response.body).toHaveProperty('message');
     });
+
+    it('rejects when vehicle availability service reports conflict', async () => {
+      const VehicleAvailabilityService = (await import('../../services/vehicleAvailabilityService')).VehicleAvailabilityService as any;
+      (VehicleAvailabilityService.checkVehicleAvailability as any).mockResolvedValueOnce({ available: false, reason: 'overlap' });
+
+      mockPrisma.organization.findUnique.mockResolvedValue({ id: 'org_test_123' });
+      mockPrisma.location.findFirst.mockResolvedValue({ id: 'loc_123', organizationId: 'org_test_123' });
+      mockPrisma.vehicle.findUnique.mockResolvedValue({ id: 'veh_1', organizationId: 'org_test_123', driverId: 'driver_1', isActive: true, deleted: false, status: 'AVAILABLE' });
+      mockPrisma.shift.findFirst.mockResolvedValue({ id: 'shift_1', organizationId: 'org_test_123', endTime: new Date() });
+      mockPrisma.employee.findMany.mockResolvedValue([{ id: 'emp_1' }]);
+      mockPrisma.stop.findMany.mockResolvedValue([{ id: 'stop_1', employee: { id: 'emp_1', assigned: false }, routeId: null, organizationId: 'org_test_123' }]);
+
+      const res = await request(app)
+        .post('/routes')
+        .send({
+          name: 'Conflict Route',
+          vehicleId: 'veh_1',
+          shiftId: 'shift_1',
+          date: iso(new Date()),
+          totalTime: 30,
+          employees: [{ employeeId: 'emp_1', stopId: 'stop_1' }],
+          locationId: 'loc_123',
+        })
+        .expect(400);
+
+      expect(res.body.error || res.body.message).toBeDefined();
+    });
   });
 
   describe('PUT /routes/:id', () => {
@@ -380,6 +445,19 @@ describe('Route Routes', () => {
         .put('/routes/nonexistent')
         .send({ name: 'Updated Name' })
         .expect(404);
+    });
+
+    it('rejects update when availability conflict', async () => {
+      const VehicleAvailabilityService = (await import('../../services/vehicleAvailabilityService')).VehicleAvailabilityService as any;
+      (VehicleAvailabilityService.checkVehicleAvailability as any).mockResolvedValueOnce({ available: false, reason: 'conflict' });
+      mockPrisma.route.findFirst.mockResolvedValue({ id: 'route_123', organizationId: 'org_test_123' });
+      mockPrisma.shift.findFirst.mockResolvedValue({ id: 'shift_1', organizationId: 'org_test_123', endTime: new Date() });
+
+      const res = await request(app)
+        .put('/routes/route_123')
+        .send({ vehicleId: 'veh_1', shiftId: 'shift_1', date: iso(new Date()), totalTime: 30 })
+        .expect(400);
+      expect(res.body.error || res.body.message).toBeDefined();
     });
   });
 
@@ -435,6 +513,19 @@ describe('Route Routes', () => {
 
       await request(app).delete('/routes/nonexistent').expect(404);
     });
+
+    it('returns 400 when route already deleted', async () => {
+      mockPrisma.$transaction.mockImplementation(async (callback: any) => {
+        const txPrisma = {
+          route: {
+            findFirst: vi.fn().mockResolvedValue({ id: 'route_123', deleted: true, organizationId: 'org_test_123', stops: [], vehicleId: null, shiftId: null, date: null }),
+          },
+        };
+        return callback(txPrisma);
+      });
+      const res = await request(app).delete('/routes/route_123').expect(400);
+      expect(res.body.message).toBeDefined();
+    });
   });
 
   describe('PATCH /routes/:id/restore', () => {
@@ -469,6 +560,12 @@ describe('Route Routes', () => {
           }),
         })
       );
+    });
+
+    it('returns 400 when restoring a route that is not deleted', async () => {
+      mockPrisma.route.findFirst.mockResolvedValue({ id: 'route_active', deleted: false, organizationId: 'org_test_123' });
+      const res = await request(app).patch('/routes/route_active/restore').expect(400);
+      expect(res.body.message).toBeDefined();
     });
   });
 
@@ -585,6 +682,93 @@ describe('Route Routes', () => {
           }),
         })
       );
+    });
+  });
+
+  describe('PUT /routes/:routeId/stops', () => {
+    it('reorders stops for a route', async () => {
+      mockPrisma.route.findFirst.mockResolvedValue({ id: 'route_123', organizationId: 'org_test_123' });
+      mockPrisma.stop.updateMany.mockResolvedValue({});
+      mockPrisma.stop.update = vi.fn().mockResolvedValue({});
+      mockPrisma.stop.findMany.mockResolvedValue([
+        { id: 'stop_1', sequence: 1 },
+        { id: 'stop_2', sequence: 2 },
+      ]);
+      const res = await request(app)
+        .put('/routes/route_123/stops')
+        .send({ stops: [{ stopId: 'stop_2', sequence: 1 }, { stopId: 'stop_1', sequence: 2 }] })
+        .expect(200);
+      expect(res.body).toHaveLength(2);
+    });
+  });
+
+  describe('PATCH /routes/:routeId/stops/:stopId/remove', () => {
+    it('returns 404 when stop not on route', async () => {
+      mockPrisma.route.findFirst.mockResolvedValue({ id: 'route_123', organizationId: 'org_test_123' });
+      mockPrisma.stop.findFirst.mockResolvedValue(null);
+      const res = await request(app).patch('/routes/route_123/stops/stop_missing/remove').expect(404);
+      expect(res.body.message).toBeDefined();
+    });
+  });
+
+  describe('PATCH /routes/:routeId/stops/:stopId/add', () => {
+    it('returns 404 when stop not found or already assigned', async () => {
+      mockPrisma.route.findFirst.mockResolvedValue({ id: 'route_123', organizationId: 'org_test_123' });
+      mockPrisma.stop.findFirst.mockResolvedValue(null);
+      const res = await request(app).patch('/routes/route_123/stops/stop_missing/add').expect(404);
+      expect(res.body.message).toBeDefined();
+    });
+  });
+
+  describe('PATCH /routes/:routeId/employees/:employeeId/add-stop', () => {
+    it('returns 400 when capacity reached', async () => {
+      mockPrisma.route.findFirst.mockResolvedValue({ id: 'route_1', organizationId: 'org_test_123', vehicle: { capacity: 1 }, stops: [{ id: 'existing' }] });
+      mockPrisma.employee.findFirst.mockResolvedValue({ id: 'emp_2', stopId: 'stop_2' });
+      mockPrisma.stop.findFirst.mockResolvedValue({ id: 'stop_2', routeId: null });
+      const res = await request(app).patch('/routes/route_1/employees/emp_2/add-stop').send({ totalDistance: 10, totalTime: 20 }).expect(400);
+      expect(res.body.error).toBeDefined();
+    });
+
+    it('returns 404 when employee stop missing', async () => {
+      mockPrisma.route.findFirst.mockResolvedValue({ id: 'route_1', organizationId: 'org_test_123', vehicle: { capacity: 10 }, stops: [] });
+      mockPrisma.employee.findFirst.mockResolvedValue({ id: 'emp_2', stopId: null });
+      const res = await request(app).patch('/routes/route_1/employees/emp_2/add-stop').send({ totalDistance: 10, totalTime: 20 }).expect(404);
+      expect(res.body.error).toBeDefined();
+    });
+  });
+
+  describe('PATCH /routes/:routeId/employees/:employeeId/remove-stop', () => {
+    it('returns 404 when employee stop not on route', async () => {
+      mockPrisma.route.findFirst.mockResolvedValue({ id: 'route_1', organizationId: 'org_test_123' });
+      mockPrisma.employee.findFirst.mockResolvedValue({ id: 'emp_3', stopId: 'stop_3' });
+      mockPrisma.stop.findFirst.mockResolvedValue(null);
+      const res = await request(app).patch('/routes/route_1/employees/emp_3/remove-stop').send({ totalDistance: 10, totalTime: 20 }).expect(404);
+      expect(res.body.error || res.body.message).toBeDefined();
+    });
+  });
+
+  describe('GET /routes/stats/summary', () => {
+    it('returns user org stats summary', async () => {
+      mockPrisma.route.findMany.mockResolvedValueOnce([
+        { id: 'r1', isActive: true, _count: { stops: 2 } },
+        { id: 'r2', isActive: false, _count: { stops: 1 } },
+      ]);
+      const res = await request(app).get('/routes/stats/summary').expect(200);
+      expect(res.body.totalRoutes).toBe(2);
+      expect(res.body.totalStops).toBe(3);
+    });
+  });
+
+  describe('GET /routes/superadmin/stats/summary', () => {
+    it('returns global stats summary', async () => {
+      mockPrisma.route.findMany.mockResolvedValueOnce([
+        { id: 'r1', isActive: true, organization: { name: 'Org A' }, _count: { stops: 2 } },
+        { id: 'r2', isActive: false, organization: { name: 'Org B' }, _count: { stops: 5 } },
+      ]);
+      const res = await request(app).get('/routes/superadmin/stats/summary').expect(200);
+      expect(res.body.totalRoutes).toBe(2);
+      expect(res.body.totalStops).toBe(7);
+      expect(res.body.routesByOrganization['Org A']).toBeDefined();
     });
   });
 });
