@@ -16,6 +16,7 @@ interface NotificationContextType {
   unreadCount: number;
   isConnected: boolean;
   markAsSeen: (notificationId: string) => void;
+  markAsRead: (notificationId: string) => void;
   markAllAsSeen: () => void;
   clearAll: () => void;
   removeNotification: (id: string) => void;
@@ -26,6 +27,7 @@ const NotificationContext = createContext<NotificationContextType>({
   unreadCount: 0,
   isConnected: false,
   markAsSeen: () => {},
+  markAsRead: () => {},
   markAllAsSeen: () => {},
   clearAll: () => {},
   removeNotification: () => {},
@@ -161,9 +163,20 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     try {
       await notificationApi.markAsSeen(notificationId);
       socketClient.markNotificationSeen(notificationId);
-      setUnreadCount(prev => Math.max(0, prev - 1));
     } catch (error) {
       console.error('Failed to mark notification as seen:', error);
+    }
+  }, []);
+
+  const markAsRead = useCallback(async (notificationId: string) => {
+    try {
+      await notificationApi.markAsRead(notificationId);
+      setUnreadCount(prev => Math.max(0, prev - 1));
+      setNotifications(prev => 
+        prev.map(n => n.id === notificationId ? { ...n, status: 'Read' } : n)
+      );
+    } catch (error) {
+      console.error('Failed to mark notification as read:', error);
     }
   }, []);
 
@@ -193,6 +206,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     unreadCount,
     isConnected,
     markAsSeen,
+    markAsRead,
     markAllAsSeen,
     clearAll,
     removeNotification,

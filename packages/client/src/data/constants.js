@@ -33,7 +33,7 @@ export const ROUTES = {
   PAYROLL: '/payroll',
   ORGANIZATIONS: '/organizations',
   ORGANIZATION_MANAGEMENT: '/organization-management',
-  // NOTIFICATIONS: '/notifications', // Disabled - not implemented on server yet
+  NOTIFICATIONS: '/notifications',
   SETTINGS: '/settings'
 };
 

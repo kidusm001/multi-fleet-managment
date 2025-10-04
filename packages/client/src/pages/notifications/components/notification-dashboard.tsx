@@ -22,6 +22,7 @@ import { TooltipProvider } from "./ui/tooltip";
 import "../styles/notifications.css";
 import { cn } from "@/lib/utils";
 import { notificationApi } from "@/services/notificationApi";
+import { useAuth } from "@/contexts/AuthContext";
 
 type SortOption = "time" | "importance";
 
@@ -37,7 +38,13 @@ interface ApiNotificationItem {
   localTime: string;
   relatedEntityId: string;
   status: string;
-  seenBy: { id: string }[];
+  seenBy: {
+    id: string;
+    userId: string;
+    notificationId: string;
+    seenAt: string;
+    readAt: string | null;
+  }[];
 }
 
 interface ApiNotificationResponse {
@@ -54,6 +61,7 @@ interface NotificationDashboardProps {
 }
 
 export function NotificationDashboard({ userRole: _userRole = "admin" }: NotificationDashboardProps) {
+  const { user } = useAuth();
   const [readFilter, setReadFilter] = useState("all");
   const [sortBy, setSortBy] = useState<SortOption>("time");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -74,10 +82,14 @@ export function NotificationDashboard({ userRole: _userRole = "admin" }: Notific
     unread: 0,
   });
 
-  // Helper function to check if notification is read
   const isNotificationSeen = (notification: ApiNotificationItem): boolean => {
-    // For now, assume any item in seenBy means it's read
-    return notification.seenBy.length > 0;
+    if (!user?.id) return false;
+    return notification.seenBy?.some(seen => seen.userId === user.id) ?? false;
+  };
+
+  const isNotificationRead = (notification: ApiNotificationItem): boolean => {
+    if (!user?.id) return false;
+    return notification.seenBy?.some(seen => seen.userId === user.id && seen.readAt !== null) ?? false;
   };
 
   // Fetch notifications based on filters and pagination
@@ -171,7 +183,7 @@ export function NotificationDashboard({ userRole: _userRole = "admin" }: Notific
     timestamp: new Date(notification.createdAt),
     importance: getImportanceLevel(mapImportance(notification.importance)),
     source: notification.fromRole as NotificationSource,
-    isRead: isNotificationSeen(notification),
+    isRead: isNotificationRead(notification),
     metadata: {
       relatedEntityId: notification.relatedEntityId,
     }
@@ -186,21 +198,15 @@ export function NotificationDashboard({ userRole: _userRole = "admin" }: Notific
   const handleMarkRead = async () => {
     try {
       for (const id of selectedIds) {
-        await notificationApi.markAsSeen(id);
+        await notificationApi.markAsRead(id);
       }
       const query = { page: currentPage, limit: pagination.perPage };
       const response: ApiNotificationResponse = await notificationApi.getAll(query);
       setNotifications(response.notifications);
       setSelectedIds([]);
-      // Update stats after marking as read
-      const markedCount = selectedIds.filter(id => notifications.find(n => n.id === id && !isNotificationSeen(n))).length;
-      setStats(prev => ({
-        ...prev,
-        read: prev.read + markedCount,
-        unread: prev.unread - markedCount,
-      }));
+      await fetchStats();
     } catch (error) {
-      console.error("Failed to mark notifications as seen:", error);
+      console.error("Failed to mark notifications as read:", error);
     }
   };
 

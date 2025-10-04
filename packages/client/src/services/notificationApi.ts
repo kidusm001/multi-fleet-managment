@@ -103,6 +103,11 @@ export const notificationApi = {
     return response.data;
   },
 
+  markAsRead: async (id: string) => {
+    const response = await api.patch(`/notifications/${id}/mark-read`);
+    return response.data;
+  },
+
   markAsUnread: async (id: string) => {
     const response = await api.patch(`/notifications/${id}/mark-unread`);
     return response.data;
@@ -110,6 +115,11 @@ export const notificationApi = {
 
   markAllAsSeen: async () => {
     const response = await api.post('/notifications/mark-all-seen');
+    return response.data;
+  },
+
+  markAllAsRead: async () => {
+    const response = await api.post('/notifications/mark-all-read');
     return response.data;
   },
 
