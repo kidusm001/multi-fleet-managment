@@ -1,5 +1,6 @@
 import express, { Request, Response } from 'express';
-import { Stop, PrismaClient } from '@prisma/client';
+import { Stop } from '@prisma/client';
+import prisma from '../db';
 import { requireAuth, requireRole } from '../middleware/auth';
 import { fromNodeHeaders } from 'better-auth/node';
 import { auth } from '../lib/auth';
@@ -17,7 +18,7 @@ import {
     ReorderStopInput
 } from '../schema/stopSchemas';
 
-const prisma = new PrismaClient();
+
 const router = express.Router();
 
 type StopList = Stop[];

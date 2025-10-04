@@ -1,10 +1,10 @@
 import express, { Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import prisma from '../db';
 import { requireAuth, requireRole } from '../middleware/auth';
 import { auth } from '../lib/auth';
 import { fromNodeHeaders } from 'better-auth/node';
 
-const prisma = new PrismaClient();
+
 const router = express.Router();
 
 /**

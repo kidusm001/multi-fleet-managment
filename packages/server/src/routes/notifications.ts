@@ -1,5 +1,5 @@
 import express, { Request, Response } from 'express';
-import { PrismaClient, Notification, NotificationStatus, NotificationType, ImportanceLevel } from '@prisma/client';
+import {  Notification, NotificationStatus, NotificationType, ImportanceLevel } from '@prisma/client';
 import { fromNodeHeaders } from 'better-auth/node';
 import { auth } from '../lib/auth';
 import { requireAuth, requireRole } from '../middleware/auth';
@@ -14,8 +14,8 @@ import {
     SuperAdminCreateNotificationSchema,
     UpdateNotificationSchema 
 } from '../schema/notificationSchema';
+import prisma from '../db';
 
-const prisma = new PrismaClient();
 const router = express.Router();
 
 router.get('/', requireAuth, validateSchema(NotificationQuerySchema, 'query'), async (req: Request, res: Response) => {

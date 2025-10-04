@@ -1,8 +1,8 @@
 import express, { Request, Response } from 'express';
-import { PrismaClient, PayrollReport, PaymentStatus } from '@prisma/client';
+import {  PayrollReport, PaymentStatus } from '@prisma/client';
 import { requireAuth, requireRole } from '../middleware/auth';
+import prisma from '../db';
 
-const prisma = new PrismaClient();
 const router = express.Router();
 
 /**
