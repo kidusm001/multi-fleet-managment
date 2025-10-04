@@ -1,12 +1,11 @@
 import express, { Request, Response } from 'express';
-import { Employee, PrismaClient } from '@prisma/client';
+import { Employee } from '@prisma/client';
 import { fromNodeHeaders } from 'better-auth/node';
 import { auth } from '../lib/auth';
 import { requireAuth, requireRole } from '../middleware/auth';
 import { validateMultiple, validateSchema } from '../middleware/zodValidation';
 import { CreateEmployeeSchema, CreateEmployee, EmployeeIdParam, UpdateEmployeeSchema, DepartmentIdParam, OrganizationIdParam, ShiftIdParam, SuperAdminCreateEmployeeSchema, SuperAdminUpdateEmployeeSchema, WorkLocationIdParam } from '../schema/employeeSchema';
-
-const prisma = new PrismaClient();
+import prisma from '../db';
 const router = express.Router();
 
 type EmployeeList = Employee[];

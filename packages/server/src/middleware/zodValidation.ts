@@ -23,7 +23,6 @@ export const validateSchema = (schema: z.ZodSchema, target: 'body' | 'params' | 
 
       const validatedData = schema.parse(dataToValidate);
       
-      // Replace the original data with validated data
       switch (target) {
         case 'body':
           req.body = validatedData;
@@ -32,7 +31,7 @@ export const validateSchema = (schema: z.ZodSchema, target: 'body' | 'params' | 
           req.params = validatedData as any;
           break;
         case 'query':
-          req.query = validatedData as any;
+          Object.assign(req.query, validatedData);
           break;
       }
       
@@ -80,7 +79,6 @@ export const validateMultiple = (validations: Array<{
 
         const validatedData = validation.schema.parse(dataToValidate);
         
-        // Replace the original data with validated data
         switch (validation.target) {
           case 'body':
             req.body = validatedData;
@@ -89,7 +87,7 @@ export const validateMultiple = (validations: Array<{
             req.params = validatedData as any;
             break;
           case 'query':
-            req.query = validatedData as any;
+            Object.assign(req.query, validatedData);
             break;
         }
       }

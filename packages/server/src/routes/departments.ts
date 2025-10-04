@@ -1,5 +1,5 @@
 import express, { Request, Response } from 'express';
-import { Department, PrismaClient } from '@prisma/client';
+import { Department } from '@prisma/client';
 import { requireAuth, requireRole } from '../middleware/auth';
 import { auth } from '../lib/auth';
 import { fromNodeHeaders } from 'better-auth/node';
@@ -13,8 +13,8 @@ import {
     DeleteDepartmentQuery,
     EmployeeListQuery
 } from '../schema/departmentSchema';
+import prisma from '../db';
 
-const prisma = new PrismaClient();
 const router = express.Router();
 
 type DepartmentList = Department[];

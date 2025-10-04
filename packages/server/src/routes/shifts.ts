@@ -1,12 +1,12 @@
 import express, { Request, Response } from 'express';
-import { Shift, PrismaClient } from '@prisma/client';
+import { Shift } from '@prisma/client';
 import { requireAuth, requireRole } from '../middleware/auth';
 import { CreateShift, CreateShiftSchema, ShiftIdParam, UpdateShiftSchema } from '../schema/shiftSchema';
 import { validateSchema, validateMultiple } from '../middleware/zodValidation';
 import { fromNodeHeaders } from 'better-auth/node';
 import { auth } from '../lib/auth';
+import prisma from '../db';
 
-const prisma = new PrismaClient();
 const router = express.Router();
 
 type ShiftList = Shift[];

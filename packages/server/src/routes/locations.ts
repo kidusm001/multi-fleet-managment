@@ -1,5 +1,5 @@
 import express, { Request, Response } from 'express';
-import { Location, PrismaClient } from '@prisma/client';
+import { Location } from '@prisma/client';
 import { requireAuth, requireRole } from '../middleware/auth';
 import { auth } from '../lib/auth';
 import { fromNodeHeaders } from 'better-auth/node';
@@ -14,8 +14,8 @@ import {
     EmployeeListQuery,
     RouteListQuery
 } from '../schema/locationSchema';
+import prisma from '../db';
 
-const prisma = new PrismaClient();
 const router = express.Router();
 
 type LocationList = Location[];
