@@ -1,11 +1,20 @@
 // External dependencies
 import React from 'react';
 import { createRoot } from 'react-dom/client';
+import mapboxgl from 'mapbox-gl';
 
 // Internal dependencies
 import App from './App';
 import ErrorBoundary from './components/Common/ErrorBoundary';
 import './styles/index.css';
+
+// Set Mapbox access token globally before any map components load
+const mapboxToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
+if (mapboxToken) {
+  mapboxgl.accessToken = mapboxToken;
+} else {
+  console.error('VITE_MAPBOX_ACCESS_TOKEN environment variable is not set');
+}
 
 const root = createRoot(document.getElementById('root'));
 

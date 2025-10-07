@@ -25,7 +25,7 @@ import { addRouteLayer } from "./components/RouteLayer";
 if (!MAPBOX_ACCESS_TOKEN || MAPBOX_ACCESS_TOKEN === 'your_mapbox_access_token_here') {
   console.error('Mapbox access token is missing or invalid. Please check your .env file.');
 }
-mapboxgl.accessToken = MAPBOX_ACCESS_TOKEN || '';
+// Note: mapboxgl.accessToken is now set globally in main.jsx
 
 const FIT_BOUNDS_OPTIONS = {
   padding: { top: 100, bottom: 100, left: 100, right: 100 },
@@ -349,7 +349,7 @@ function MapComponent({ selectedRoute, selectedShuttle, newStop, mapStyle, initi
   const initializeMap = useCallback(() => {
     if (!mapContainer.current || map.current) return;
 
-    // Validate token before initializing
+    // Validate token before initializing (should already be set globally)
     if (!MAPBOX_ACCESS_TOKEN || MAPBOX_ACCESS_TOKEN === 'your_mapbox_access_token_here') {
       setMapError("Mapbox access token is not configured. Please contact your administrator.");
       console.error('Mapbox token not configured');
