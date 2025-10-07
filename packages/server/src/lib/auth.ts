@@ -48,6 +48,7 @@ export const auth = betterAuth({
               return await gotSubscribed(user.id);
             },
             organizationLimit: 5,
+            membershipLimit: 500, // Increased from default 100 to accommodate more employees
             ac: OrgAc,
             roles: {
                 owner,

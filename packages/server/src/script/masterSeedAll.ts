@@ -136,6 +136,11 @@ async function main() {
     );
 
     await runCommand(
+      'npx tsx src/script/cleanupOrphanedMembers.ts',
+      'Step 1.5: Cleanup orphaned members (if any exist)'
+    );
+
+    await runCommand(
       'npx tsx src/script/createUsers.ts',
       'Step 2: Create 121 users via Better Auth'
     );
@@ -173,6 +178,21 @@ async function main() {
     await runCommand(
       'npx tsx src/script/addStopsToSterling.ts',
       'Step 9: Create stops for new Sterling employees'
+    );
+
+    await runCommand(
+      'npx tsx src/script/addEmployeesFromOldSeed.ts',
+      'Step 10: Add employees from old seed.ts to Sterling (all in one shift)'
+    );
+
+    await runCommand(
+      'npx tsx src/script/addSingleLocationToSterling.ts',
+      'Step 11: Assign all Sterling employees to single primary location'
+    );
+
+    await runCommand(
+      'npx tsx src/script/addStopsFromOldSeed.ts',
+      'Step 12: Create stops for employees from old seed.ts'
     );
 
     await verifyData();

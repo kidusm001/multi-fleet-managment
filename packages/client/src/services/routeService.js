@@ -29,7 +29,7 @@ class RouteService {
 
     const response = await api.get('/routes', {
       params: {
-        include: 'shuttle,shift,stops.employee.department', // Include all necessary relations
+        include: 'shuttle,shift,location,stops.employee.department', // Include all necessary relations
       },
     });
 
@@ -48,7 +48,7 @@ class RouteService {
   getRoutesByShift = AsyncHandler(async (shiftId) => {
     const response = await api.get(`/routes/shift/${shiftId}`, {
       params: {
-        include: 'shuttle,stops.employee',
+        include: 'shuttle,location,stops.employee',
       },
     });
     return response.data;
@@ -70,7 +70,7 @@ class RouteService {
 
     const response = await api.get(`/routes/${id}`, {
       params: {
-        include: 'shuttle,shift,stops.employee.department',
+        include: 'shuttle,shift,location,stops.employee.department',
       },
     });
 

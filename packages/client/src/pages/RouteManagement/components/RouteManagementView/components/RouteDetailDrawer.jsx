@@ -111,8 +111,13 @@ const RouteDetailDrawer = ({
         return null;
       }
 
+      // Get route's location coordinates or fallback to null (will use HQ)
+      const startLocation = route.location?.longitude && route.location?.latitude
+        ? [route.location.longitude, route.location.latitude]
+        : null;
+
       // Calculate new metrics
-      const metrics = await calculateRouteMetrics(coordinates);
+      const metrics = await calculateRouteMetrics(coordinates, startLocation);
       return metrics;
     } catch (error) {
       console.error("Error updating route metrics:", error);
@@ -136,7 +141,12 @@ const RouteDetailDrawer = ({
           stop.latitude,
         ]);
 
-        const newMetrics = await calculateRouteMetrics(coordinates);
+        // Get route's location coordinates
+        const startLocation = route.location?.longitude && route.location?.latitude
+          ? [route.location.longitude, route.location.latitude]
+          : null;
+
+        const newMetrics = await calculateRouteMetrics(coordinates, startLocation);
 
         if (newMetrics) {
           // Remove employee with updated metrics
@@ -211,7 +221,12 @@ const RouteDetailDrawer = ({
           stop.latitude,
         ]);
 
-        newMetrics = await calculateRouteMetrics(coordinates);
+        // Get route's location coordinates
+        const startLocation = route.location?.longitude && route.location?.latitude
+          ? [route.location.longitude, route.location.latitude]
+          : null;
+
+        newMetrics = await calculateRouteMetrics(coordinates, startLocation);
         if (!newMetrics) {
           throw new Error("Failed to calculate new route metrics");
         }

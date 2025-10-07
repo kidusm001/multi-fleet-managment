@@ -4,19 +4,23 @@ import { HQ_LOCATION } from '@/config';
 /**
  * Calculate route metrics using route optimization
  * @param {Array} coordinates Array of [longitude, latitude] pairs
+ * @param {Array} startLocation Optional [longitude, latitude] start location (defaults to HQ)
  * @returns {Promise<{totalDistance: number, totalTime: number}>}
  */
-export async function calculateRouteMetrics(coordinates) {
+export async function calculateRouteMetrics(coordinates, startLocation = null) {
     if (!coordinates || coordinates.length < 2) {
         throw new Error('Need at least 2 coordinates to calculate route');
     }
 
     try {
-        // Add HQ as start and end point
+        // Use provided start location or fall back to HQ
+        const start = startLocation || HQ_LOCATION.coords;
+        
+        // Add start location as start and end point
         const routeCoordinates = [
-            HQ_LOCATION.coords,
+            start,
             ...coordinates,
-            HQ_LOCATION.coords
+            start
         ];
 
         // Optimize the route
