@@ -9,7 +9,6 @@ import {
   MAP_CONFIG,
   MAP_STYLES,
   MAPBOX_ACCESS_TOKEN,
-  HQ_LOCATION,
 } from "./config";
 import {
   addNavigationControl,

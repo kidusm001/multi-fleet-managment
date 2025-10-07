@@ -209,7 +209,7 @@ export default function CreateRouteForm({
     };
 
     fetchShuttlesAndClusters();
-  }, [selectedShift, getShiftId, employees]);
+  }, [selectedShift, getShiftId, employees, routeData.selectedLocation]);
 
   // Fetch existing routes when shift changes
   useEffect(() => {

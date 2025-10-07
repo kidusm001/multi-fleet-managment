@@ -7,7 +7,7 @@ function resolveEnv() {
   const g = globalThis;
   return (g.__IMETA && g.__IMETA.env) || g.importMetaEnv || {};
 }
-const env = resolveEnv();
+const _env = resolveEnv();
 
 // Create a separate axios instance for FastAPI requests
 const ORIGIN = 'http://localhost:3000';

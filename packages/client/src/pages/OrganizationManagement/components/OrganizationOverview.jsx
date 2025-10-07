@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { authClient } from '@/lib/auth-client';
-import { Building2, Users, Calendar, Crown, Loader2, Edit3 } from 'lucide-react';
+import { Building2, Users, Calendar, Crown, Edit3 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@components/Common/UI/Card';
 import { Button } from '@components/Common/UI/Button';
 import { Badge } from '@components/Common/UI/Badge';

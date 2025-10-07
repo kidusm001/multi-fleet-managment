@@ -91,7 +91,7 @@ export default function SingleEmployeeForm({
           "text-xs mt-2",
           isDark ? "text-gray-400" : "text-gray-600"
         )}>
-          Select a member from your organization. Their information will be auto-filled. You'll then need to assign department, shift, and location.
+          Select a member from your organization. Their information will be auto-filled. You&apos;ll then need to assign department, shift, and location.
         </p>
       </div>
 

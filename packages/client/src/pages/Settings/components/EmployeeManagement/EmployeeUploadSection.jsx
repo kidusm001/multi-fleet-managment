@@ -260,7 +260,7 @@ export default function EmployeeUploadSection({
         { duration: 4000 }
       );
     }
-  }, [members]);
+  }, [members, availableMembers]);
 
 
   // Handlers for map location

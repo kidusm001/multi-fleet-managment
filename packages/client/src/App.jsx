@@ -73,6 +73,7 @@ function AppContent() {
       }
       prevPathRef.current = location.pathname;
     } catch (e) {
+      // Intentionally ignore errors in navigation cleanup
     }
   }, [location]);
 

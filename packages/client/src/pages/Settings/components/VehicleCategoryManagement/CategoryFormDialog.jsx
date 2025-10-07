@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Car, X } from "lucide-react";
+import { Car } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Button from "@/components/Common/UI/Button";
 import { Input } from "@/components/Common/UI/Input";

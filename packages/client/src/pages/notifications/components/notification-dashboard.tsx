@@ -21,40 +21,10 @@ import {
 import { TooltipProvider } from "./ui/tooltip";
 import "../styles/notifications.css";
 import { cn } from "@/lib/utils";
-import { notificationApi } from "@/services/notificationApi";
+import { notificationApi, ApiNotificationItem, ApiNotificationResponse } from "@/services/notificationApi";
 import { useAuth } from "@/contexts/AuthContext";
 
 type SortOption = "time" | "importance";
-
-interface ApiNotificationItem {
-  id: string;
-  toRoles: string[];
-  fromRole: string;
-  notificationType: string;
-  subject: string;
-  message: string;
-  importance: string;
-  createdAt: string;
-  localTime: string;
-  relatedEntityId: string;
-  status: string;
-  seenBy: {
-    id: string;
-    userId: string;
-    notificationId: string;
-    seenAt: string;
-    readAt: string | null;
-  }[];
-}
-
-interface ApiNotificationResponse {
-  notifications: ApiNotificationItem[];
-  pagination: {
-    total: number;
-    pages: number;
-    perPage: number;
-  };
-}
 
 interface NotificationDashboardProps {
   userRole?: UserRole;
@@ -65,7 +35,7 @@ export function NotificationDashboard({ userRole: _userRole = "admin" }: Notific
   const [readFilter, setReadFilter] = useState("all");
   const [sortBy, setSortBy] = useState<SortOption>("time");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [notifications, setNotifications] = useState<ApiNotificationItem[]>([]);
+  const [notifications, setNotifications] = useState<ApiNotificationItem[]>([] as ApiNotificationItem[]);
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [selectedTab, setSelectedTab] = useState(0);
@@ -82,7 +52,7 @@ export function NotificationDashboard({ userRole: _userRole = "admin" }: Notific
     unread: 0,
   });
 
-  const isNotificationSeen = (notification: ApiNotificationItem): boolean => {
+  const _isNotificationSeen = (notification: ApiNotificationItem): boolean => {
     if (!user?.id) return false;
     return notification.seenBy?.some(seen => seen.userId === user.id) ?? false;
   };

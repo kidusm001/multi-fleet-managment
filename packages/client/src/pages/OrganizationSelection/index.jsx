@@ -11,7 +11,6 @@ import {
   Plus, 
   Search, 
   ChevronRight, 
-  Users, 
   Loader2,
   AlertCircle,
   LogOut
@@ -79,7 +78,7 @@ export default function OrganizationSelection() {
       console.log('Force initial organization fetch...');
       refetchOrganizations();
     }
-  }, [session]);
+  }, [session, organizations, orgsError, orgsLoading, refetchOrganizations]);
 
   // Refetch active organization when organizations are loaded
   useEffect(() => {
@@ -175,7 +174,7 @@ export default function OrganizationSelection() {
         createdAt: new Date().toISOString()
       };
 
-      const { data, error } = await authClient.organization.create({
+      const { data: _data, error } = await authClient.organization.create({
         name: newOrgName.trim(),
         slug: newOrgSlug.trim(),
         metadata,

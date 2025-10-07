@@ -40,11 +40,11 @@ export function FaydaAuthExample() {
       <div className="text-sm text-gray-600">
         <h4 className="font-medium mb-2">How it works:</h4>
         <ol className="list-decimal list-inside space-y-1">
-          <li>Click the "Continue with Fayda" button</li>
-          <li>You'll be redirected to Fayda's authentication page</li>
+          <li>Click the &quot;Continue with Fayda&quot; button</li>
+          <li>You&apos;ll be redirected to Fayda&apos;s authentication page</li>
           <li>Sign in with your Fayda credentials</li>
-          <li>You'll be redirected back to your dashboard</li>
-          <li>Your Fayda account will be linked to your local account if you're already logged in</li>
+          <li>You&apos;ll be redirected back to your dashboard</li>
+          <li>Your Fayda account will be linked to your local account if you&apos;re already logged in</li>
         </ol>
       </div>
     </div>

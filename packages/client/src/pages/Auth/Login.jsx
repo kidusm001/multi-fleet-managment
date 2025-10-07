@@ -231,7 +231,7 @@ export default function Login() {
               transition={{ delay: 0.6 }}
             >
               <p className="text-white/70">
-                Don't have an account?{" "}
+                Don&apos;t have an account?{" "}
                 <Link to="/auth/signup" className="text-[#f3684e] hover:text-[#f3684e]/80 font-medium transition-colors">
                   Sign Up
                 </Link>

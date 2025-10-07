@@ -15,7 +15,7 @@ import { EmployeeTable } from "./components/EmployeeTable";
 // Removed legacy review components
 
 export default function EmployeeManagement() {
-  const { role, setRole } = useRole();
+  const { role, _setRole } = useRole();
   const [employees, setEmployees] = useState([]);
   const [filteredEmployees, setFilteredEmployees] = useState([]);
   const [isLoading, setIsLoading] = useState(false);

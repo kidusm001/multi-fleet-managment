@@ -1,4 +1,3 @@
-import { AsyncHandler } from '../utils/asyncHandler';
 import api from './api';
 
 /**

@@ -173,7 +173,7 @@ const MobileNavMenu = ({ isOpen, onClose, isDark }) => {
                       key={item.label}
                       ref={index === 0 ? firstLinkRef : null}
                       to={item.path}
-                      onClick={(e) => {
+                      onClick={(_e) => {
                         // Removed notifications-specific hard reload workaround since notifications are disabled
                         // if (location.pathname === '/notifications' && item.path !== '/notifications') {
                         //   e.preventDefault();
