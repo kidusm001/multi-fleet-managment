@@ -155,7 +155,7 @@ export default function EmployeeUploadSection({
         }
 
         // Fetch existing employees and build a set of userIds to exclude
-        const existingEmployees = await employeeService.listEmployees();
+        const existingEmployees = await employeeService.getAllEmployees();
         const existingUserIds = new Set(existingEmployees.map(e => e.userId));
 
         const filtered = members.filter(m => {

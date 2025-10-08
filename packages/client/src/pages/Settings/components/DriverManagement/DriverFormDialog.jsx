@@ -50,13 +50,6 @@ export default function DriverFormDialog({
   const [loadingMembers, setLoadingMembers] = useState(false);
   const [selectedMember, setSelectedMember] = useState(null);
 
-  // Load organization members when dialog opens
-  useEffect(() => {
-    if (isOpen && activeOrganization?.id && !editMode) {
-      loadMembers();
-    }
-  }, [isOpen, activeOrganization?.id, editMode, loadMembers]);
-
   // Load organization members
   const loadMembers = useCallback(async () => {
     if (!activeOrganization?.id) return;
@@ -105,6 +98,13 @@ export default function DriverFormDialog({
       setLoadingMembers(false);
     }
   }, [activeOrganization?.id]);
+
+  // Load organization members when dialog opens
+  useEffect(() => {
+    if (isOpen && activeOrganization?.id && !editMode) {
+      loadMembers();
+    }
+  }, [isOpen, activeOrganization?.id, editMode, loadMembers]);
 
   // Handle member selection
   const handleMemberSelect = (memberId) => {

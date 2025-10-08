@@ -1719,6 +1719,60 @@ router.patch('/:id/restore', requireAuth, validateSchema(EmployeeIdParam, 'param
 });
 
 /**
+ * @route   GET /stats
+ * @desc    Get basic employee statistics for the user's organization
+ * @access  Private (User)
+ */
+router.get('/stats', requireAuth, async (req: Request, res: Response) => {
+    try {
+        let activeOrgId = req.session?.session?.activeOrganizationId;
+
+        // If no active organization in session, get user's organizations and use first one
+        if (!activeOrgId) {
+            const orgs = await auth.api.listOrganizations({
+                headers: fromNodeHeaders(req.headers)
+            });
+            if (orgs && orgs.length > 0) {
+                activeOrgId = orgs[0].id;
+            } else {
+                return res.status(400).json({ message: 'No organizations found' });
+            }
+        }
+
+        const hasPermission = await auth.api.hasPermission({
+            headers: fromNodeHeaders(req.headers),
+            body: { permissions: { employee: ["read"] } }
+        });
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
+
+        const employees = await prisma.employee.findMany({
+            where: {
+                organizationId: activeOrgId,
+                deleted: false
+            }
+        });
+
+        const total = employees.length;
+        const assigned = employees.filter(emp => emp.assigned || emp.stopId).length;
+        const departments = new Set(employees.map(emp => emp.departmentId).filter(Boolean)).size;
+        
+        const weekAgo = new Date();
+        weekAgo.setDate(weekAgo.getDate() - 7);
+        const recentlyAdded = employees.filter(emp => {
+            const createdAt = emp.createdAt ? new Date(emp.createdAt) : null;
+            return createdAt ? createdAt > weekAgo : false;
+        }).length;
+
+        res.json({ total, assigned, departments, recentlyAdded });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+/**
  * @route   GET /stats/summary
  * @desc    Get employee statistics for the user's organization
  * @access  Private (User)

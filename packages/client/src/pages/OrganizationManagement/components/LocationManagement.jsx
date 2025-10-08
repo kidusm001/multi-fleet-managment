@@ -69,6 +69,44 @@ export default function LocationManagement() {
     forceRefresh
   });
 
+  const loadLocations = useCallback(async () => {
+    const currentActiveOrgId = activeOrg?.id;
+    console.log('loadLocations called for organization:', currentActiveOrgId);
+    
+    if (!currentActiveOrgId) {
+      console.log('No active organization, skipping location load');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Add a small delay to ensure backend session is updated
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      console.log('Fetching locations for org:', currentActiveOrgId);
+      const data = await locationService.getLocations();
+      
+      console.log('Received locations:', data.length, 'items for org:', currentActiveOrgId);
+      
+      // Double-check we're still on the same organization
+      if (activeOrg?.id === currentActiveOrgId) {
+        setLocations(data);
+        console.log('Successfully set locations for org:', currentActiveOrgId);
+      } else {
+        console.log('Organization changed during fetch, discarding results');
+      }
+    } catch (err) {
+      console.error('Failed to load locations for org:', currentActiveOrgId, err);
+      setError('Failed to load locations');
+      toast.error('Failed to load locations');
+    } finally {
+      setLoading(false);
+    }
+  }, [activeOrg?.id]);
+
   // Load locations when component mounts or organization changes
   useEffect(() => {
     console.log('useEffect triggered:', { 
@@ -109,44 +147,6 @@ export default function LocationManagement() {
       setError('No active organization selected');
     }
   }, [activeOrg, currentOrgId, orgLoading, forceRefresh, loadLocations]);
-
-  const loadLocations = useCallback(async () => {
-    const currentActiveOrgId = activeOrg?.id;
-    console.log('loadLocations called for organization:', currentActiveOrgId);
-    
-    if (!currentActiveOrgId) {
-      console.log('No active organization, skipping location load');
-      setLoading(false);
-      return;
-    }
-
-    try {
-      setLoading(true);
-      setError(null);
-      
-      // Add a small delay to ensure backend session is updated
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      console.log('Fetching locations for org:', currentActiveOrgId);
-      const data = await locationService.getLocations();
-      
-      console.log('Received locations:', data.length, 'items for org:', currentActiveOrgId);
-      
-      // Double-check we're still on the same organization
-      if (activeOrg?.id === currentActiveOrgId) {
-        setLocations(data);
-        console.log('Successfully set locations for org:', currentActiveOrgId);
-      } else {
-        console.log('Organization changed during fetch, discarding results');
-      }
-    } catch (err) {
-      console.error('Failed to load locations for org:', currentActiveOrgId, err);
-      setError('Failed to load locations');
-      toast.error('Failed to load locations');
-    } finally {
-      setLoading(false);
-    }
-  }, [activeOrg?.id]);
 
   const handleCreateLocation = async (e) => {
     e.preventDefault();

@@ -1,19 +1,27 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import { authClient, useSession } from '@/lib/auth-client';
 
-const AuthContext = createContext({
+const AuthContext = createContext(/** @type {{
+  isAuthenticated: boolean;
+  user: User | null;
+  login: (credentials: { email: string; password: string }) => Promise<{ success: boolean; error?: string }>;
+  logout: () => Promise<{ success: boolean; error?: string }>;
+  loginWithEmail: (email: string) => Promise<{ success: boolean; error?: string }>;
+  loginWithFayda: (callbackURL?: string) => Promise<{ success: boolean; error?: string }>;
+  isLoading?: boolean;
+}} */ ({
   isAuthenticated: false,
   user: null,
   login: () => {},
   logout: () => {},
   loginWithEmail: () => {},
   loginWithFayda: () => {},
-});
+}));
 
 export function AuthProvider({ children }) {
   const { data: session, isPending } = useSession();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(/** @type {User | null} */ null);
 
   useEffect(() => {
     if (session) {
