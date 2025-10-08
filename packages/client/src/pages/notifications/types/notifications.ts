@@ -45,7 +45,13 @@ export interface ApiNotification {
   localTime: string;
   relatedEntityId: string;
   status: string;
-  seenBy: {id: string}[];
+  seenBy: {
+    id: string;
+    userId: string;
+    notificationId: string;
+    seenAt: string;
+    readAt: string | null;
+  }[];
 }
 
 export interface ApiPagination {

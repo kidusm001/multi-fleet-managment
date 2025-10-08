@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { MapPin, Plus, Edit3, Trash2, Eye, Users, Route, AlertTriangle, Loader2 } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { MapPin, Plus, Edit3, Trash2, Users, Route, AlertTriangle, Loader2 } from 'lucide-react';
 import { authClient } from '@/lib/auth-client';
 import { Card, CardContent, CardHeader, CardTitle } from '@components/Common/UI/Card';
 import { Button } from '@components/Common/UI/Button';
@@ -108,9 +108,9 @@ export default function LocationManagement() {
       setLoading(false);
       setError('No active organization selected');
     }
-  }, [activeOrg?.id, currentOrgId, orgLoading, forceRefresh]);
+  }, [activeOrg, currentOrgId, orgLoading, forceRefresh, loadLocations]);
 
-  const loadLocations = async () => {
+  const loadLocations = useCallback(async () => {
     const currentActiveOrgId = activeOrg?.id;
     console.log('loadLocations called for organization:', currentActiveOrgId);
     
@@ -146,7 +146,7 @@ export default function LocationManagement() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [activeOrg?.id]);
 
   const handleCreateLocation = async (e) => {
     e.preventDefault();
@@ -476,7 +476,7 @@ export default function LocationManagement() {
                         <AlertDialogHeader>
                           <AlertDialogTitle>Delete Location</AlertDialogTitle>
                           <AlertDialogDescription>
-                            Are you sure you want to delete "{location.address}"? 
+                            Are you sure you want to delete &quot;{location.address}&quot;? 
                             This action cannot be undone and will fail if there are active employees or routes using this location.
                           </AlertDialogDescription>
                         </AlertDialogHeader>

@@ -142,7 +142,7 @@ export default function OrganizationSettings() {
           <div>
             <CardTitle>General Settings</CardTitle>
             <p className="text-sm text-muted-foreground mt-1">
-              Manage your organization's basic information
+              Manage your organization&apos;s basic information
             </p>
           </div>
           {!isEditing ? (

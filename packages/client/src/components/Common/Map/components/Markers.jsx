@@ -3,7 +3,10 @@ import mapboxgl from "mapbox-gl";
 
 import { HQ_LOCATION } from "@/config";
 
-export function HQMarker({ map }) {
+export function HQMarker({ map, location = null }) {
+  // Use provided location or fallback to default HQ
+  const markerLocation = location || HQ_LOCATION;
+  
   // Create HQ marker element
   const el = document.createElement("div");
   el.className = "drop-off-order hq-marker";
@@ -19,7 +22,7 @@ export function HQMarker({ map }) {
     z-index: 2;
     cursor: pointer;
   `;
-  el.innerHTML = "HQ";
+  el.innerHTML = markerLocation.type === 'BRANCH' ? "Branch" : "HQ";
 
   const popup = new mapboxgl.Popup({
     closeButton: false,
@@ -29,8 +32,8 @@ export function HQMarker({ map }) {
     focusAfterOpen: false,
   }).setHTML(`
     <div style="padding: 8px; min-width: 150px;">
-      <div style="color: #10B981; font-weight: bold; margin-bottom: 4px;">Routegna HQ</div>
-      <div style="margin: 0; font-size: 12px;">Addis Ababa, Ethiopia</div>
+      <div style="color: #10B981; font-weight: bold; margin-bottom: 4px;">${markerLocation.name || markerLocation.address || 'Location'}</div>
+      <div style="margin: 0; font-size: 12px;">${markerLocation.address || 'Addis Ababa, Ethiopia'}</div>
     </div>
   `);
 
@@ -38,7 +41,7 @@ export function HQMarker({ map }) {
     element: el,
     anchor: "center",
   })
-    .setLngLat(HQ_LOCATION.coords)
+    .setLngLat(markerLocation.coords || [markerLocation.longitude, markerLocation.latitude])
     .setPopup(popup)
     .addTo(map);
 
@@ -114,6 +117,14 @@ export function RouteMarkers({ map, route, shuttle }) {
 
 HQMarker.propTypes = {
   map: PropTypes.object.isRequired,
+  location: PropTypes.shape({
+    name: PropTypes.string,
+    address: PropTypes.string,
+    type: PropTypes.string,
+    coords: PropTypes.arrayOf(PropTypes.number),
+    longitude: PropTypes.number,
+    latitude: PropTypes.number,
+  }),
 };
 
 RouteMarkers.propTypes = {

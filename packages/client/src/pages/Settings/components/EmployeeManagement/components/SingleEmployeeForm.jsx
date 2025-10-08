@@ -62,7 +62,7 @@ export default function SingleEmployeeForm({
           >
             <SelectValue placeholder="Select a member to create as employee..." />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="max-h-[300px] overflow-y-auto">
             {members.length === 0 && (
               <div className="px-2 py-4 text-center">
                 <p className="text-sm text-gray-500">No members found</p>
@@ -91,7 +91,7 @@ export default function SingleEmployeeForm({
           "text-xs mt-2",
           isDark ? "text-gray-400" : "text-gray-600"
         )}>
-          Select a member from your organization. Their information will be auto-filled. You'll then need to assign department, shift, and location.
+          Select a member from your organization. Their information will be auto-filled. You&apos;ll then need to assign department, shift, and location.
         </p>
       </div>
 

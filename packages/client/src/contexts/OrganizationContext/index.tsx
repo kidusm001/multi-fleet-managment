@@ -1,6 +1,60 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { authClient, useSession } from '@/lib/auth-client';
 
+// Type definitions
+interface Organization {
+  id: string;
+  name: string;
+  slug: string;
+  createdAt: Date;
+  updatedAt?: Date;
+  logo?: string | null;
+  metadata?: Record<string, unknown>;
+}
+
+interface Member {
+  id: string;
+  userId: string;
+  organizationId: string;
+  role: string;
+  createdAt: Date;
+  user?: {
+    id: string;
+    name: string;
+    email: string;
+    image?: string | null;
+  };
+}
+
+interface Invitation {
+  id: string;
+  email: string;
+  role: string;
+  organizationId: string;
+  status: 'pending' | 'accepted' | 'rejected' | 'expired' | 'canceled';
+  expiresAt: Date;
+  createdAt?: Date;
+  inviterId?: string;
+  organization?: Organization;
+}
+
+interface Team {
+  id: string;
+  name: string;
+  organizationId: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+interface Role {
+  id: string;
+  name: string;
+  organizationId?: string;
+  permissions: string[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 // Error mapping function
 export function mapOrgError(error: string): string {
   const errorMappings: Record<string, string> = {
@@ -38,8 +92,8 @@ export function mapOrgError(error: string): string {
 
 interface OrganizationContextType {
   // Organization data
-  organizations: any[];
-  activeOrganization: any | null;
+  organizations: Organization[];
+  activeOrganization: Organization | null;
   
   // Loading states
   isLoading: boolean;
@@ -60,42 +114,42 @@ interface OrganizationContextType {
   };
   
   // Actions
-  createOrganization: (data: { name: string; slug?: string }) => Promise<any>;
+  createOrganization: (data: { name: string; slug?: string }) => Promise<Organization>;
   setActiveOrganization: (organizationId: string) => Promise<void>;
-  updateOrganization: (organizationId: string, data: { name?: string; slug?: string }) => Promise<any>;
+  updateOrganization: (organizationId: string, data: { name?: string; slug?: string }) => Promise<Organization>;
   deleteOrganization: (organizationId: string) => Promise<void>;
   refresh: () => Promise<void>;
   
   // Members
-  members: any[];
-  listMembers: (organizationId?: string) => Promise<any[]>;
-  inviteMember: (data: { email: string; role: string; organizationId?: string }) => Promise<any>;
-  addMember: (data: { userId: string; role: string; organizationId?: string; teamId?: string }) => Promise<any>;
+  members: Member[];
+  listMembers: (organizationId?: string) => Promise<Member[]>;
+  inviteMember: (data: { email: string; role: string; organizationId?: string }) => Promise<Invitation>;
+  addMember: (data: { userId: string; role: string; organizationId?: string; teamId?: string }) => Promise<Member>;
   removeMember: (memberIdOrEmail: string, organizationId?: string) => Promise<void>;
   updateMemberRole: (memberId: string, role: string, organizationId?: string) => Promise<void>;
   loadMembers: () => Promise<void>;
   
   // Invitations
-  invitations: any[];
-  listInvitations: (organizationId?: string) => Promise<any[]>;
+  invitations: Invitation[];
+  listInvitations: (organizationId?: string) => Promise<Invitation[]>;
   acceptInvitation: (invitationId: string) => Promise<void>;
   cancelInvitation: (invitationId: string) => Promise<void>;
   loadInvitations: () => Promise<void>;
   
   // Teams
-  teams: any[];
+  teams: Team[];
   loadTeams: () => Promise<void>;
   
   // Roles
-  roles: any[];
+  roles: Role[];
   loadRoles: () => Promise<void>;
   
   // Permissions
   hasPermission: (domain: string, action: string) => boolean;
   
   // Roles management (dynamic roles)
-  createRole?: (name: string) => Promise<any>;
-  updateRole?: (id: string, name: string) => Promise<any>;
+  createRole?: (name: string) => Promise<Role>;
+  updateRole?: (id: string, name: string) => Promise<Role>;
   deleteRole?: (id: string) => Promise<void>;
 }
 
@@ -106,17 +160,17 @@ interface OrganizationProviderProps {
 }
 
 export function OrganizationProvider({ children }: OrganizationProviderProps) {
-  const { data: session } = useSession();
+  const { data: _session } = useSession();
   
   // Use better-auth organization hooks
   const { data: organizations, isPending: isLoadingOrganizations, refetch: refetchOrganizations } = authClient.useListOrganizations();
   const { data: activeOrganization, isPending: isLoadingActiveOrg } = authClient.useActiveOrganization();
   
   // Local state for additional data
-  const [members, setMembers] = useState<any[]>([]);
-  const [invitations, setInvitations] = useState<any[]>([]);
-  const [teams, setTeams] = useState<any[]>([]);
-  const [roles, setRoles] = useState<any[]>([]);
+  const [members, setMembers] = useState<Member[]>([]);
+  const [invitations, setInvitations] = useState<Invitation[]>([]);
+  const [teams, setTeams] = useState<Team[]>([]);
+  const [roles, setRoles] = useState<Role[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState({
     loadingOrganizations: isLoadingOrganizations,
@@ -151,8 +205,8 @@ export function OrganizationProvider({ children }: OrganizationProviderProps) {
       
       await refetchOrganizations();
       return result.data;
-    } catch (error: any) {
-      const errorMsg = error.message || 'Failed to create organization';
+    } catch (error: unknown) {
+      const errorMsg = error instanceof Error ? error.message : 'Failed to create organization';
       setError(errorMsg);
       setStatus(prev => ({ ...prev, error: errorMsg }));
       throw new Error(errorMsg);
@@ -171,8 +225,8 @@ export function OrganizationProvider({ children }: OrganizationProviderProps) {
       if (result.error) {
         throw new Error(result.error.message);
       }
-    } catch (error: any) {
-      const errorMsg = error.message || 'Failed to set active organization';
+    } catch (error: unknown) {
+      const errorMsg = error instanceof Error ? error.message : 'Failed to set active organization';
       setError(errorMsg);
       setStatus(prev => ({ ...prev, error: errorMsg }));
       throw new Error(errorMsg);
@@ -194,8 +248,8 @@ export function OrganizationProvider({ children }: OrganizationProviderProps) {
       
       await refetchOrganizations();
       return result.data;
-    } catch (error: any) {
-      throw new Error(error.message || 'Failed to update organization');
+    } catch (error: unknown) {
+      throw new Error(error instanceof Error ? error.message : 'Failed to update organization');
     }
   };
 
@@ -210,8 +264,8 @@ export function OrganizationProvider({ children }: OrganizationProviderProps) {
       }
       
       await refetchOrganizations();
-    } catch (error: any) {
-      throw new Error(error.message || 'Failed to delete organization');
+    } catch (error: unknown) {
+      throw new Error(error instanceof Error ? error.message : 'Failed to delete organization');
     }
   };
 
@@ -220,8 +274,8 @@ export function OrganizationProvider({ children }: OrganizationProviderProps) {
     setStatus(prev => ({ ...prev, error: null }));
     try {
       await refetchOrganizations();
-    } catch (error: any) {
-      const errorMsg = error.message || 'Failed to refresh organizations';
+    } catch (error: unknown) {
+      const errorMsg = error instanceof Error ? error.message : 'Failed to refresh organizations';
       setError(errorMsg);
       setStatus(prev => ({ ...prev, error: errorMsg }));
     }
@@ -239,8 +293,8 @@ export function OrganizationProvider({ children }: OrganizationProviderProps) {
       }
       
       return result.data?.members || [];
-    } catch (error: any) {
-      throw new Error(error.message || 'Failed to list members');
+    } catch (error: unknown) {
+      throw new Error(error instanceof Error ? error.message : 'Failed to list members');
     }
   };
 
@@ -249,8 +303,8 @@ export function OrganizationProvider({ children }: OrganizationProviderProps) {
     try {
       const membersList = await listMembers();
       setMembers(membersList);
-    } catch (error: any) {
-      const errorMsg = error.message || 'Failed to load members';
+    } catch (error: unknown) {
+      const errorMsg = error instanceof Error ? error.message : 'Failed to load members';
       setError(errorMsg);
       setStatus(prev => ({ ...prev, error: errorMsg }));
     } finally {
@@ -262,7 +316,7 @@ export function OrganizationProvider({ children }: OrganizationProviderProps) {
     try {
       const result = await authClient.organization.inviteMember({
         email: data.email,
-        role: data.role as any, // Cast to match auth client types
+        role: data.role as "admin" | "employee" | "driver" | "owner" | "manager",
         organizationId: data.organizationId,
       });
       
@@ -272,8 +326,8 @@ export function OrganizationProvider({ children }: OrganizationProviderProps) {
       
       await loadInvitations(); // Refresh invitations
       return result.data;
-    } catch (error: any) {
-      throw new Error(error.message || 'Failed to invite member');
+    } catch (error: unknown) {
+      throw new Error(error instanceof Error ? error.message : 'Failed to invite member');
     }
   };
 
@@ -289,8 +343,8 @@ export function OrganizationProvider({ children }: OrganizationProviderProps) {
       }
       
       await loadMembers(); // Refresh members
-    } catch (error: any) {
-      throw new Error(error.message || 'Failed to remove member');
+    } catch (error: unknown) {
+      throw new Error(error instanceof Error ? error.message : 'Failed to remove member');
     }
   };
 
@@ -298,7 +352,7 @@ export function OrganizationProvider({ children }: OrganizationProviderProps) {
     try {
       const result = await authClient.organization.updateMemberRole({
         memberId,
-        role: role as any, // Cast to match auth client types
+        role: role as "admin" | "employee" | "driver" | "owner" | "manager",
         organizationId,
       });
       
@@ -307,8 +361,8 @@ export function OrganizationProvider({ children }: OrganizationProviderProps) {
       }
       
       await loadMembers(); // Refresh members
-    } catch (error: any) {
-      throw new Error(error.message || 'Failed to update member role');
+    } catch (error: unknown) {
+      throw new Error(error instanceof Error ? error.message : 'Failed to update member role');
     }
   };
 
@@ -337,8 +391,8 @@ export function OrganizationProvider({ children }: OrganizationProviderProps) {
       const result = await response.json();
       await loadMembers(); // Refresh members
       return result;
-    } catch (error: any) {
-      throw new Error(error.message || 'Failed to add member');
+    } catch (error: unknown) {
+      throw new Error(error instanceof Error ? error.message : 'Failed to add member');
     }
   };
 
@@ -354,8 +408,8 @@ export function OrganizationProvider({ children }: OrganizationProviderProps) {
       }
       
       return result.data || [];
-    } catch (error: any) {
-      throw new Error(error.message || 'Failed to list invitations');
+    } catch (error: unknown) {
+      throw new Error(error instanceof Error ? error.message : 'Failed to list invitations');
     }
   };
 
@@ -364,8 +418,8 @@ export function OrganizationProvider({ children }: OrganizationProviderProps) {
     try {
       const invitationsList = await listInvitations();
       setInvitations(invitationsList);
-    } catch (error: any) {
-      const errorMsg = error.message || 'Failed to load invitations';
+    } catch (error: unknown) {
+      const errorMsg = error instanceof Error ? error.message : 'Failed to load invitations';
       setError(errorMsg);
       setStatus(prev => ({ ...prev, error: errorMsg }));
     } finally {
@@ -384,8 +438,8 @@ export function OrganizationProvider({ children }: OrganizationProviderProps) {
       }
       
       await loadInvitations(); // Refresh invitations
-    } catch (error: any) {
-      throw new Error(error.message || 'Failed to accept invitation');
+    } catch (error: unknown) {
+      throw new Error(error instanceof Error ? error.message : 'Failed to accept invitation');
     }
   };
 
@@ -400,8 +454,8 @@ export function OrganizationProvider({ children }: OrganizationProviderProps) {
       }
       
       await loadInvitations(); // Refresh invitations
-    } catch (error: any) {
-      throw new Error(error.message || 'Failed to cancel invitation');
+    } catch (error: unknown) {
+      throw new Error(error instanceof Error ? error.message : 'Failed to cancel invitation');
     }
   };
 
@@ -411,8 +465,8 @@ export function OrganizationProvider({ children }: OrganizationProviderProps) {
     try {
       // TODO: Implement when teams are enabled
       setTeams([]);
-    } catch (error: any) {
-      const errorMsg = error.message || 'Failed to load teams';
+    } catch (error: unknown) {
+      const errorMsg = error instanceof Error ? error.message : 'Failed to load teams';
       setError(errorMsg);
       setStatus(prev => ({ ...prev, error: errorMsg }));
     } finally {
@@ -426,8 +480,8 @@ export function OrganizationProvider({ children }: OrganizationProviderProps) {
     try {
       // TODO: Implement dynamic roles if needed
       setRoles([]);
-    } catch (error: any) {
-      const errorMsg = error.message || 'Failed to load roles';
+    } catch (error: unknown) {
+      const errorMsg = error instanceof Error ? error.message : 'Failed to load roles';
       setError(errorMsg);
       setStatus(prev => ({ ...prev, error: errorMsg }));
     } finally {
@@ -436,29 +490,25 @@ export function OrganizationProvider({ children }: OrganizationProviderProps) {
   };
 
   // Permission checking (simplified - may need to match specific expected behavior)
-  const hasPermission = (domain: string, action: string) => {
+  const hasPermission = (_domain: string, _action: string) => {
     // This is a simplified implementation
     // The real implementation should check better-auth permissions
-    try {
-      // For now, return true - this should be replaced with actual permission checking
-      return true;
-    } catch (error) {
-      return false;
-    }
+    // For now, return true - this should be replaced with actual permission checking
+    return true;
   };
 
   // Dynamic roles management (placeholder implementations)
-  const createRole = async (name: string) => {
+  const createRole = async (_name: string) => {
     // TODO: Implement dynamic role creation when needed
     throw new Error('Dynamic roles are not yet implemented');
   };
 
-  const updateRole = async (id: string, name: string) => {
+  const updateRole = async (_id: string, _name: string) => {
     // TODO: Implement dynamic role updating when needed
     throw new Error('Dynamic roles are not yet implemented');
   };
 
-  const deleteRole = async (id: string) => {
+  const deleteRole = async (_id: string) => {
     // TODO: Implement dynamic role deletion when needed
     throw new Error('Dynamic roles are not yet implemented');
   };

@@ -101,7 +101,7 @@ export default function Login() {
       <motion.div initial={{ scale: 0.98, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="w-full max-w-5xl">
         <div className="relative grid grid-cols-1 md:grid-cols-2 bg-black/20 backdrop-blur-xl rounded-[2rem] shadow-2xl border border-white/10 overflow-hidden">
           <div className="hidden md:block relative min-h-[520px]">
-            <img src="/assets/images/login-hero.jpg" alt="Fleet operations" className="absolute inset-0 w-full h-full object-cover" />
+            <img src="/assets/images/login-hero.png" alt="Fleet operations" className="absolute inset-0 w-full h-full object-cover" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/20 to-transparent z-10" />
             <div className="absolute bottom-10 left-10 z-20">
               <motion.h2 initial={{ y: 12, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="text-4xl font-bold text-white mb-2">
@@ -231,7 +231,7 @@ export default function Login() {
               transition={{ delay: 0.6 }}
             >
               <p className="text-white/70">
-                Don't have an account?{" "}
+                Don&apos;t have an account?{" "}
                 <Link to="/auth/signup" className="text-[#f3684e] hover:text-[#f3684e]/80 font-medium transition-colors">
                   Sign Up
                 </Link>

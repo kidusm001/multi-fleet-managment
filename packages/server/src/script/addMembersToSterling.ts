@@ -77,7 +77,9 @@ async function addMembersToSterling() {
         for (const member of newMembers) {
             try {
                 let userData;
+                let userCreated = false;
                 
+                // Step 1: Create or get user via Better Auth
                 try {
                     userData = await auth.api.signUpEmail({
                         body: {
@@ -88,6 +90,7 @@ async function addMembersToSterling() {
                     });
                     console.log(`✅ Created user: ${member.name} (${member.email})`);
                     usersCreated++;
+                    userCreated = true;
                 } catch (error: any) {
                     if (error.body?.code === 'USER_ALREADY_EXISTS') {
                         console.log(`⚠️  User ${member.email} already exists, fetching...`);
@@ -96,34 +99,66 @@ async function addMembersToSterling() {
                         });
                         
                         if (!existingUser) {
-                            console.log(`❌ Could not find user ${member.email}\n`);
+                            console.log(`❌ Could not find user ${member.email}, skipping...\n`);
                             continue;
                         }
                         
                         userData = { user: existingUser };
                     } else {
-                        throw error;
+                        console.log(`❌ Failed to create user ${member.name}: ${error.message}\n`);
+                        continue;
                     }
                 }
 
+                // Verify user exists before proceeding
+                const userExists = await prisma.user.findUnique({
+                    where: { id: userData.user.id }
+                });
+
+                if (!userExists) {
+                    console.log(`❌ User verification failed for ${member.name}, skipping...\n`);
+                    continue;
+                }
+
+                // Step 2: Add as member to organization via Better Auth
+                let memberAdded = false;
                 try {
                     await auth.api.addMember({
                         body: {
                             organizationId: org.id,
                             userId: userData.user.id,
-                            role: member.role,
+                            role: member.role as 'employee',
                         },
                     });
                     console.log(`   ➕ Added to organization as ${member.role}`);
                     membersAdded++;
+                    memberAdded = true;
                 } catch (error: any) {
                     if (error.body?.code === 'MEMBER_ALREADY_EXISTS' || error.message?.includes('already exists')) {
                         console.log(`   ⚠️  Already a member of organization`);
+                        memberAdded = true;
                     } else {
-                        console.log(`   ⚠️  Could not add to org: ${error.message}`);
+                        console.log(`   ❌ Could not add to org: ${error.message}, skipping...\n`);
+                        continue;
                     }
                 }
 
+                // Verify member was created
+                if (memberAdded) {
+                    const memberExists = await prisma.member.findFirst({
+                        where: {
+                            userId: userData.user.id,
+                            organizationId: org.id
+                        }
+                    });
+
+                    if (!memberExists) {
+                        console.log(`   ❌ Member verification failed for ${member.name}, skipping...\n`);
+                        continue;
+                    }
+                }
+
+                // Step 3: Create employee record (only if user and member exist)
                 const existingEmployee = await prisma.employee.findFirst({
                     where: {
                         userId: userData.user.id,

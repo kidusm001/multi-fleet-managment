@@ -29,7 +29,7 @@ function RouteAssignment({ refreshTrigger }) {
     totalRoutes: 0,
     availableSeats: 0,
   });
-  const [shuttles, setShuttles] = useState([]);
+  const [_shuttles, setShuttles] = useState([]);
 
   const fetchShifts = useCallback(async () => {
     try {

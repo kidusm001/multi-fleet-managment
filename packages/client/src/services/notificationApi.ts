@@ -10,8 +10,38 @@ export interface NotificationQuery {
   status?: string;
 }
 
+export interface ApiNotificationItem {
+  id: string;
+  toRoles: string[];
+  fromRole: string;
+  notificationType: string;
+  subject: string;
+  message: string;
+  importance: string;
+  createdAt: string;
+  localTime: string;
+  relatedEntityId: string;
+  status: string;
+  seenBy: {
+    id: string;
+    userId: string;
+    notificationId: string;
+    seenAt: string;
+    readAt: string | null;
+  }[];
+}
+
+export interface ApiNotificationResponse {
+  notifications: ApiNotificationItem[];
+  pagination: {
+    total: number;
+    pages: number;
+    perPage: number;
+  };
+}
+
 export const notificationApi = {
-  getAll: async (query: NotificationQuery = {}) => {
+  getAll: async (query: NotificationQuery = {}): Promise<ApiNotificationResponse> => {
     const response = await api.get('/notifications', { params: query });
     const data = response.data || {};
     const notifications = data.notifications || data.items || [];
@@ -33,7 +63,7 @@ export const notificationApi = {
     };
   },
 
-  getSortedByImportance: async (query: NotificationQuery = {}) => {
+  getSortedByImportance: async (query: NotificationQuery = {}): Promise<ApiNotificationResponse> => {
     const response = await api.get('/notifications/sorted-by-importance', { params: query });
     const data = response.data || {};
     const notifications = data.notifications || data.items || [];
@@ -50,7 +80,7 @@ export const notificationApi = {
     };
   },
 
-  getUnread: async (page = 1, limit = 10) => {
+  getUnread: async (page = 1, limit = 10): Promise<ApiNotificationResponse> => {
     const response = await api.get('/notifications/unread', { params: { page, limit } });
     const data = response.data || {};
     const notifications = data.notifications || data.items || [];
@@ -66,7 +96,7 @@ export const notificationApi = {
     };
   },
 
-  getRead: async (page = 1, limit = 10) => {
+  getRead: async (page = 1, limit = 10): Promise<ApiNotificationResponse> => {
     const response = await api.get('/notifications/read', { params: { page, limit } });
     const data = response.data || {};
     const notifications = data.notifications || data.items || [];
@@ -82,7 +112,7 @@ export const notificationApi = {
     };
   },
 
-  getByType: async (type: string, page = 1, limit = 10) => {
+  getByType: async (type: string, page = 1, limit = 10): Promise<ApiNotificationResponse> => {
     const response = await api.get(`/notifications/type/${type}`, { params: { page, limit } });
     const data = response.data || {};
     const notifications = data.notifications || data.items || [];
@@ -103,6 +133,11 @@ export const notificationApi = {
     return response.data;
   },
 
+  markAsRead: async (id: string) => {
+    const response = await api.patch(`/notifications/${id}/mark-read`);
+    return response.data;
+  },
+
   markAsUnread: async (id: string) => {
     const response = await api.patch(`/notifications/${id}/mark-unread`);
     return response.data;
@@ -110,6 +145,11 @@ export const notificationApi = {
 
   markAllAsSeen: async () => {
     const response = await api.post('/notifications/mark-all-seen');
+    return response.data;
+  },
+
+  markAllAsRead: async () => {
+    const response = await api.post('/notifications/mark-all-read');
     return response.data;
   },
 

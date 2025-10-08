@@ -2,14 +2,11 @@ import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useTheme } from "@/contexts/ThemeContext";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  Building2, 
-  Users, 
+import {
+  Building2,
+  Users,
   Settings as SettingsIcon,
-  MapPin,
-  UserPlus,
-  Crown,
-  Shield
+  MapPin
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 

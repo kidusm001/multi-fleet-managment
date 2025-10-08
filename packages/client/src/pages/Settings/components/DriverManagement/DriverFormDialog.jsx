@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Truck, AlertCircle, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Button from "@/components/Common/UI/Button";
@@ -55,10 +55,10 @@ export default function DriverFormDialog({
     if (isOpen && activeOrganization?.id && !editMode) {
       loadMembers();
     }
-  }, [isOpen, activeOrganization?.id, editMode]);
+  }, [isOpen, activeOrganization?.id, editMode, loadMembers]);
 
   // Load organization members
-  const loadMembers = async () => {
+  const loadMembers = useCallback(async () => {
     if (!activeOrganization?.id) return;
     
     setLoadingMembers(true);
@@ -104,7 +104,7 @@ export default function DriverFormDialog({
     } finally {
       setLoadingMembers(false);
     }
-  };
+  }, [activeOrganization?.id]);
 
   // Handle member selection
   const handleMemberSelect = (memberId) => {
@@ -337,7 +337,7 @@ export default function DriverFormDialog({
             )}
             {!editMode && selectedMember && !formData.phoneNumber && (
               <p className={`text-xs ${isDark ? "text-amber-400" : "text-amber-600"}`}>
-                Member doesn't have a phone number on file. Please enter one.
+                Member doesn&apos;t have a phone number on file. Please enter one.
               </p>
             )}
           </div>

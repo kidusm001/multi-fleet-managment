@@ -9,7 +9,6 @@ import {
   MAP_CONFIG,
   MAP_STYLES,
   MAPBOX_ACCESS_TOKEN,
-  HQ_LOCATION,
 } from "./config";
 import {
   addNavigationControl,
@@ -99,9 +98,14 @@ function MapComponent({ selectedRoute, selectedShuttle, newStop, mapStyle, initi
       if (!map.current) return;
 
       if (optimizedRoute) {
-        // Add HQ marker if not exists
+        // Add location marker (HQ or Branch) if not exists
         if (!hqMarkerRef.current && map.current) {
-          hqMarkerRef.current = HQMarker({ map: map.current });
+          // Pass the route's location if available
+          const location = selectedRoute?.location;
+          hqMarkerRef.current = HQMarker({ 
+            map: map.current,
+            location: location
+          });
         }
 
         // Add route markers using RouteMarkers component
@@ -177,7 +181,7 @@ function MapComponent({ selectedRoute, selectedShuttle, newStop, mapStyle, initi
         if (newStop) {
           bounds.extend([newStop.longitude, newStop.latitude]);
         }
-        bounds.extend(HQ_LOCATION.coords);
+        // Note: optimizedRoute.coordinates already includes the route's location as first coordinate
         map.current.fitBounds(bounds, FIT_BOUNDS_OPTIONS);
       } else if (showDirections) {
         // Verify map is still valid before proceeding
@@ -335,7 +339,11 @@ function MapComponent({ selectedRoute, selectedShuttle, newStop, mapStyle, initi
         // Re-add controls and route
         setupControls();
         if (hqMarkerRef.current && map.current) {
-          hqMarkerRef.current = HQMarker({ map: map.current });
+          const location = selectedRoute?.location;
+          hqMarkerRef.current = HQMarker({ 
+            map: map.current,
+            location: location
+          });
         }
         if (selectedRoute && map.current) {
           updateRoute();
@@ -392,8 +400,12 @@ function MapComponent({ selectedRoute, selectedShuttle, newStop, mapStyle, initi
         // Add controls to the map
         setupControls();
         
-        // Add HQ marker
-        hqMarkerRef.current = HQMarker({ map: map.current });
+        // Add location marker (HQ or Branch)
+        const location = selectedRoute?.location;
+        hqMarkerRef.current = HQMarker({ 
+          map: map.current,
+          location: location
+        });
         
         // Preconnect to Mapbox resources to improve performance
         const linkEl = document.createElement('link');

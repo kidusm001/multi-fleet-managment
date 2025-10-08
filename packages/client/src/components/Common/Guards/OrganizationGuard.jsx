@@ -130,7 +130,7 @@ export default function OrganizationGuard({ children }) {
           <Building2 className="w-16 h-16 mx-auto mb-4 text-primary" />
           <h2 className="text-2xl font-bold mb-2">Welcome to Fleet Management!</h2>
           <p className="text-muted-foreground mb-4">
-            To get started, you'll need to create or join an organization.
+            To get started, you&apos;ll need to create or join an organization.
           </p>
           <p className="text-sm text-muted-foreground">
             Redirecting you to organization setup...

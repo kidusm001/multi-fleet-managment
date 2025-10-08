@@ -9,8 +9,7 @@ import {
   Shield, 
   User, 
   Loader2,
-  AlertCircle,
-  CheckCircle
+  AlertCircle
 } from 'lucide-react';
 import AddMemberModal from './AddMemberModal';
 import { Card, CardContent, CardHeader, CardTitle } from '@components/Common/UI/Card';

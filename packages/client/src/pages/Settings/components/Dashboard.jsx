@@ -19,7 +19,7 @@ import { useNavigate } from "react-router-dom";
  * and recent activity, pulling real-time data from various services.
  */
 export default function Dashboard() {
-  const navigate = useNavigate();
+  const _navigate = useNavigate();
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const [_isLoading, setIsLoading] = useState(true);
   const [showAdminContent, setShowAdminContent] = useState(false);
@@ -36,7 +36,7 @@ export default function Dashboard() {
   // Verify user is authenticated and has admin privileges
   const checkPermissions = useCallback(() => {
     // Check if user has admin role - checking both common role formats
-    const isAdmin = 
+    const _isAdmin = 
       (user?.role === "admin") || 
       (user?.role?.toLowerCase?.() === "admin") ||
       (user?.roles?.includes?.("admin")) || 
@@ -46,7 +46,7 @@ export default function Dashboard() {
     if (isAuthenticated === true) {
       setShowAdminContent(true);
     }
-  }, [isAuthenticated, navigate, user]);
+  }, [isAuthenticated, user]);
 
   useEffect(() => {
     // Only check permissions after authentication has fully loaded

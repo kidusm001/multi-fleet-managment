@@ -13,6 +13,33 @@ The Notifications API manages system notifications, alerts, and communication fo
 - Superadmin routes require `superadmin` role
 - Organization-scoped routes require appropriate notification permissions
 
+## Role-Based Notification Targeting
+
+Notifications use the `toRoles` field to target specific organization member roles:
+
+### Organization Member Roles
+- `owner` - Organization owner (full access)
+- `admin` - Organization administrator
+- `member` - Regular organization member
+
+**Important:** The `toRoles` field uses **organization-specific member roles** from the `Member` table, NOT global user roles. When creating notifications:
+
+```typescript
+// Target only owners
+{ toRoles: ["owner"] }
+
+// Target admins and owners
+{ toRoles: ["admin", "owner"] }
+
+// Target all members
+{ toRoles: ["owner", "admin", "member"] }
+```
+
+Notifications are filtered based on the user's role in their **active organization**. Users will only see notifications where:
+1. The notification belongs to their active organization
+2. Their organization role is included in the `toRoles` array
+3. The notification is either user-specific (`userId` set) or organization-wide (`userId` is null)
+
 ---
 
 ## Superadmin Endpoints

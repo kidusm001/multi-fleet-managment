@@ -27,8 +27,8 @@ export function OrganizationSelector({
     try {
       await setActiveOrganization(organizationId);
       setIsOpen(false);
-    } catch (error: any) {
-      console.error('Failed to change organization:', error.message);
+    } catch (error: unknown) {
+      console.error('Failed to change organization:', error instanceof Error ? error.message : String(error));
     } finally {
       setIsChanging(false);
     }

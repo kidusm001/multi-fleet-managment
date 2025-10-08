@@ -32,9 +32,14 @@ export async function addRouteLayer({ map, route, enableOptimization = true }) {
     // Clean up existing layers and sources
     await removeRouteLayer(map);
 
-    // Get optimized route including HQ
+    // Get route's location coordinates (HQ or branch), fallback to default HQ if not available
+    const startLocation = route.location?.longitude && route.location?.latitude
+      ? [route.location.longitude, route.location.latitude]
+      : HQ_LOCATION.coords;
+
+    // Get optimized route including start location
     const optimizedRoute = await optimizeRoute([
-      HQ_LOCATION.coords,
+      startLocation,
       ...route.coordinates,
     ], enableOptimization);
 
