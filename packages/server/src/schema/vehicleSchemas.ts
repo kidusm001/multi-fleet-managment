@@ -25,6 +25,7 @@ const BaseVehicleSchema = z.object({
   dailyRate: z.number().positive('Daily rate must be positive').optional().nullable(),
   categoryId: z.cuid('Invalid category ID format').optional().nullable(),
   driverId: z.cuid('Invalid driver ID format').optional().nullable(),
+  serviceProviderId: z.cuid('Invalid service provider ID format').optional().nullable(),
 });
 
 // Schema for creating a new vehicle
@@ -50,6 +51,7 @@ export const UpdateVehicleSchema = z.object({
   dailyRate: z.number().positive('Daily rate must be positive').optional().nullable(),
   categoryId: z.cuid('Invalid category ID format').optional().nullable(),
   driverId: z.cuid('Invalid driver ID format').optional().nullable(),
+  serviceProviderId: z.cuid('Invalid service provider ID format').optional().nullable(),
   isActive: z.boolean().optional(),
 });
 

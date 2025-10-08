@@ -27,7 +27,9 @@ router.get('/superadmin', requireAuth, requireRole(["superadmin"]), async (req: 
                 organization: true,
                 vehicleAvailability: true,
                 payrollReports: true,
-                assignedVehicles: true
+                assignedVehicles: true,
+                attendanceRecords: true,
+                payrollEntries: true
             },
             orderBy: {
                 createdAt: 'desc'
@@ -57,7 +59,9 @@ router.get('/superadmin/:id', requireAuth, requireRole(["superadmin"]), async (r
                 organization: true,
                 vehicleAvailability: true,
                 payrollReports: true,
-                assignedVehicles: true
+                assignedVehicles: true,
+                attendanceRecords: true,
+                payrollEntries: true
             }
         });
         if (!driver) {
@@ -91,7 +95,9 @@ router.get('/superadmin/by-organization/:organizationId', requireAuth, requireRo
                 organization: true,
                 vehicleAvailability: true,
                 payrollReports: true,
-                assignedVehicles: true
+                assignedVehicles: true,
+                attendanceRecords: true,
+                payrollEntries: true
             },
             orderBy: {
                 name: 'asc'
@@ -120,7 +126,12 @@ router.post('/superadmin', requireAuth, requireRole(["superadmin"]), async (req:
             experienceYears,
             rating,
             isActive,
-            organizationId
+            organizationId,
+            baseSalary,
+            hourlyRate,
+            overtimeRate,
+            bankAccountNumber,
+            bankName
         } = req.body;
         // Validate required fields
         if (!name || typeof name !== 'string') {
@@ -166,7 +177,12 @@ router.post('/superadmin', requireAuth, requireRole(["superadmin"]), async (req:
                 experienceYears: experienceYears ? parseInt(experienceYears.toString()) : null,
                 rating: rating ? parseFloat(rating.toString()) : 0.0,
                 isActive: isActive !== undefined ? isActive : true,
-                organizationId
+                organizationId,
+                baseSalary: baseSalary || null,
+                hourlyRate: hourlyRate || null,
+                overtimeRate: overtimeRate !== undefined ? overtimeRate : 1.5,
+                bankAccountNumber: bankAccountNumber || null,
+                bankName: bankName || null
             },
             include: {
                 organization: true
@@ -198,7 +214,12 @@ router.put('/superadmin/:id', requireAuth, requireRole(["superadmin"]), async (r
             status,
             experienceYears,
             rating,
-            isActive
+            isActive,
+            baseSalary,
+            hourlyRate,
+            overtimeRate,
+            bankAccountNumber,
+            bankName
         } = req.body;
         if (!id || typeof id !== 'string') {
             return res.status(400).json({ message: 'Valid driver ID is required' });
@@ -241,6 +262,11 @@ router.put('/superadmin/:id', requireAuth, requireRole(["superadmin"]), async (r
         if (experienceYears !== undefined) updateData.experienceYears = parseInt(experienceYears.toString());
         if (rating !== undefined) updateData.rating = parseFloat(rating.toString());
         if (isActive !== undefined) updateData.isActive = isActive;
+        if (baseSalary !== undefined) updateData.baseSalary = baseSalary;
+        if (hourlyRate !== undefined) updateData.hourlyRate = hourlyRate;
+        if (overtimeRate !== undefined) updateData.overtimeRate = overtimeRate;
+        if (bankAccountNumber !== undefined) updateData.bankAccountNumber = bankAccountNumber;
+        if (bankName !== undefined) updateData.bankName = bankName;
         const driver = await prisma.driver.update({
             where: { id },
             data: updateData,
@@ -535,7 +561,9 @@ router.get('/:id', requireAuth, validateSchema(DriverIdParam, 'params'), async (
                 organization: true,
                 vehicleAvailability: true,
                 payrollReports: true,
-                assignedVehicles: true
+                assignedVehicles: true,
+                attendanceRecords: true,
+                payrollEntries: true
             }
         });
 
@@ -568,6 +596,11 @@ router.post('/', requireAuth, validateSchema(CreateDriverSchema, 'body'), async 
             experienceYears,
             rating,
             isActive,
+            baseSalary,
+            hourlyRate,
+            overtimeRate,
+            bankAccountNumber,
+            bankName
         } : CreateDriver = req.body;
 
         const activeOrgId: string | null | undefined = req.session?.session?.activeOrganizationId;
@@ -612,7 +645,12 @@ router.post('/', requireAuth, validateSchema(CreateDriverSchema, 'body'), async 
                 experienceYears: experienceYears ? parseInt(experienceYears.toString()) : null,
                 rating: rating ? parseFloat(rating.toString()) : 0.0,
                 isActive: isActive !== undefined ? isActive : true,
-                organizationId: activeOrgId
+                organizationId: activeOrgId,
+                baseSalary: baseSalary || null,
+                hourlyRate: hourlyRate || null,
+                overtimeRate: overtimeRate !== undefined ? overtimeRate : 1.5,
+                bankAccountNumber: bankAccountNumber || null,
+                bankName: bankName || null
             },
             include: {
                 organization: true
@@ -649,7 +687,12 @@ router.put('/:id',
                 status,
                 experienceYears,
                 rating,
-                isActive
+                isActive,
+                baseSalary,
+                hourlyRate,
+                overtimeRate,
+                bankAccountNumber,
+                bankName
             } = req.body;
 
             const activeOrgId: string | null | undefined = req.session?.session?.activeOrganizationId;
@@ -707,9 +750,13 @@ router.put('/:id',
             if (phoneNumber !== undefined) updateData.phoneNumber = phoneNumber;
             if (status !== undefined) updateData.status = status;
             if (experienceYears !== undefined) updateData.experienceYears = parseInt(experienceYears.toString());
-
             if (rating !== undefined) updateData.rating = parseFloat(rating.toString());
             if (isActive !== undefined) updateData.isActive = isActive;
+            if (baseSalary !== undefined) updateData.baseSalary = baseSalary;
+            if (hourlyRate !== undefined) updateData.hourlyRate = hourlyRate;
+            if (overtimeRate !== undefined) updateData.overtimeRate = overtimeRate;
+            if (bankAccountNumber !== undefined) updateData.bankAccountNumber = bankAccountNumber;
+            if (bankName !== undefined) updateData.bankName = bankName;
 
             const driver = await prisma.driver.update({
                 where: {id},

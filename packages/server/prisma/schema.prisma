@@ -53,6 +53,22 @@ enum PaymentStatus {
   PENDING
   PROCESSED
   CANCELLED
+  PAID
+}
+
+enum PayrollType {
+  SALARY
+  SERVICE_FEE
+  OVERTIME
+  BONUS
+  ALLOWANCE
+  PENALTY
+}
+
+enum PaymentMethod {
+  BANK_TRANSFER
+  CASH
+  CHECK
 }
 
 enum ApprovalStatus {
@@ -187,6 +203,15 @@ model Driver {
   deleted         Boolean      @default(false)
   deletedAt       DateTime?
 
+  // Payroll fields for employees
+  baseSalary   Decimal? @db.Decimal(10, 2)
+  hourlyRate   Decimal? @db.Decimal(10, 2)
+  overtimeRate Float?   @default(1.5)
+
+  // Banking details
+  bankAccountNumber String?
+  bankName          String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -195,6 +220,8 @@ model Driver {
   vehicleAvailability VehicleAvailability[]
   payrollReports      PayrollReport[]
   assignedVehicles    Vehicle[]             @relation("VehicleDriver")
+  attendanceRecords   AttendanceRecord[]
+  payrollEntries      PayrollEntry[]
 
   @@unique([organizationId, email])
   @@unique([organizationId, licenseNumber])
@@ -226,26 +253,61 @@ model VehicleCategory {
   @@map("vehicle_categories")
 }
 
+model ServiceProvider {
+  id            String  @id @default(cuid())
+  companyName   String
+  contactPerson String
+  email         String
+  phoneNumber   String
+  address       String?
+
+  // Contract terms
+  monthlyRate Decimal? @db.Decimal(10, 2)
+  perKmRate   Decimal? @db.Decimal(10, 2)
+  perTripRate Decimal? @db.Decimal(10, 2)
+
+  // Banking details
+  bankAccountNumber String?
+  bankName          String?
+
+  isActive       Boolean @default(true)
+  organizationId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicles       Vehicle[]
+  payrollEntries PayrollEntry[]
+
+  @@unique([organizationId, email])
+  @@index([organizationId])
+  @@index([isActive])
+  @@map("service_providers")
+}
+
 model Vehicle {
-  id              String        @id @default(cuid())
-  plateNumber     String        @unique
-  name            String?
-  model           String
-  make            String?
-  type            VehicleType   @default(IN_HOUSE) // in-house or outsourced
-  vendor          String? // For outsourced vehicles
-  capacity        Int
-  year            Int?
-  status          VehicleStatus @default(AVAILABLE)
-  lastMaintenance DateTime?
-  nextMaintenance DateTime?
-  dailyRate       Decimal?      @db.Decimal(10, 2)
-  isActive        Boolean       @default(true)
-  categoryId      String?
-  driverId        String? // Assigned driver
-  organizationId  String
-  deleted         Boolean       @default(false)
-  deletedAt       DateTime?
+  id                String        @id @default(cuid())
+  plateNumber       String        @unique
+  name              String?
+  model             String
+  make              String?
+  type              VehicleType   @default(IN_HOUSE) // in-house or outsourced
+  vendor            String? // For outsourced vehicles
+  capacity          Int
+  year              Int?
+  status            VehicleStatus @default(AVAILABLE)
+  lastMaintenance   DateTime?
+  nextMaintenance   DateTime?
+  dailyRate         Decimal?      @db.Decimal(10, 2)
+  isActive          Boolean       @default(true)
+  categoryId        String?
+  driverId          String? // Assigned driver
+  serviceProviderId String? // For service provider vehicles
+  organizationId    String
+  deleted           Boolean       @default(false)
+  deletedAt         DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -254,9 +316,12 @@ model Vehicle {
   organization        Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   category            VehicleCategory?      @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   driver              Driver?               @relation("VehicleDriver", fields: [driverId], references: [id], onDelete: SetNull)
+  serviceProvider     ServiceProvider?      @relation(fields: [serviceProviderId], references: [id], onDelete: SetNull)
   vehicleAvailability VehicleAvailability[]
   payrollReports      PayrollReport[]
   routes              Route[]
+  attendanceRecords   AttendanceRecord[]
+  payrollEntries      PayrollEntry[]
 
   // Indexes
   // For filtering by vehicle status
@@ -264,6 +329,7 @@ model Vehicle {
   @@index([organizationId])
   @@index([categoryId])
   @@index([driverId])
+  @@index([serviceProviderId])
   @@index([status])
   @@index([type])
   @@index([isActive])
@@ -407,6 +473,109 @@ model PayrollReport {
   @@index([driverId])
   @@index([period])
   @@map("payroll_reports")
+}
+
+model AttendanceRecord {
+  id        String   @id @default(cuid())
+  driverId  String? // Only for in-house drivers
+  vehicleId String
+  date      DateTime
+
+  // Work metrics
+  hoursWorked    Float?
+  tripsCompleted Int    @default(0)
+  kmsCovered     Float?
+
+  // Expenses
+  fuelCost Decimal? @db.Decimal(8, 2)
+  tollCost Decimal? @db.Decimal(8, 2)
+
+  organizationId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  driver       Driver?      @relation(fields: [driverId], references: [id], onDelete: SetNull)
+  vehicle      Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([driverId])
+  @@index([vehicleId])
+  @@index([date])
+  @@map("attendance_records")
+}
+
+model PayrollPeriod {
+  id          String        @id @default(cuid())
+  name        String // "January 2024"
+  startDate   DateTime
+  endDate     DateTime
+  totalAmount Decimal       @db.Decimal(12, 2)
+  status      PaymentStatus @default(PENDING)
+
+  organizationId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  payrollEntries PayrollEntry[]
+
+  @@index([organizationId])
+  @@index([startDate, endDate])
+  @@map("payroll_periods")
+}
+
+model PayrollEntry {
+  id              String @id @default(cuid())
+  payrollPeriodId String
+
+  // Recipient (only one should be filled)
+  driverId          String? // For employee salary
+  serviceProviderId String? // For service provider payment
+  vehicleId         String? // Vehicle involved
+
+  payrollType PayrollType
+  description String?
+
+  // Payment details
+  amount     Decimal @db.Decimal(10, 2)
+  bonuses    Decimal @default(0) @db.Decimal(10, 2)
+  deductions Decimal @default(0) @db.Decimal(10, 2)
+  netPay     Decimal @db.Decimal(10, 2)
+
+  // Work summary
+  daysWorked     Int    @default(0)
+  hoursWorked    Float?
+  tripsCompleted Int    @default(0)
+  kmsCovered     Float?
+
+  // Payment processing
+  paymentMethod PaymentMethod @default(BANK_TRANSFER)
+  status        PaymentStatus @default(PENDING)
+  paidAt        DateTime?
+
+  organizationId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  payrollPeriod   PayrollPeriod    @relation(fields: [payrollPeriodId], references: [id], onDelete: Cascade)
+  driver          Driver?          @relation(fields: [driverId], references: [id], onDelete: SetNull)
+  serviceProvider ServiceProvider? @relation(fields: [serviceProviderId], references: [id], onDelete: SetNull)
+  vehicle         Vehicle?         @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId])
+  @@index([payrollPeriodId])
+  @@index([driverId])
+  @@index([serviceProviderId])
+  @@index([payrollType])
+  @@map("payroll_entries")
 }
 
 model Notification {
@@ -579,6 +748,12 @@ model Organization {
   payrollReports      PayrollReport[]
   notifications       Notification[]
   vehicleRequests     VehicleRequest[]
+
+  // Payroll relations
+  serviceProviders  ServiceProvider[]
+  attendanceRecords AttendanceRecord[]
+  payrollPeriods    PayrollPeriod[]
+  payrollEntries    PayrollEntry[]
 
   @@unique([slug])
   @@map("organization")

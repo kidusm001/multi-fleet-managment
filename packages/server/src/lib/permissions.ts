@@ -9,6 +9,7 @@ export const Adminstatements = {
     shift: ["create", "read", "update", "delete", "assign"],
     employee: ["create", "read", "update", "delete", "assign", "transfer"],
     driver: ["create", "read", "update", "delete", "assign", "activate", "rate"],
+    serviceProvider: ["create", "read", "update", "delete"],
 
     vehicle: ["create", "read", "update", "delete", "assign", "activate", "maintenance"],
     vehicleCategory: ["create", "read", "update", "delete"],
@@ -41,6 +42,7 @@ export const Orgstatements = {
     shift: ["create", "read", "update", "delete", "assign"],
     employee: ["create", "read", "update", "delete", "assign", "transfer"],
     driver: ["create", "read", "update", "delete", "assign", "activate", "rate"],
+    serviceProvider: ["create", "read", "update", "delete"],
 
     vehicle: ["create", "read", "update", "delete", "assign", "activate", "maintenance"],
     vehicleCategory: ["create", "read", "update", "delete"],
@@ -73,6 +75,7 @@ export const superadmin = AdminAc.newRole({
     shift: ["create", "read", "update", "delete", "assign"],
     employee: ["create", "read", "update", "delete", "assign", "transfer"],
     driver: ["create", "read", "update", "delete", "assign", "activate", "rate"],
+    serviceProvider: ["create", "read", "update", "delete"],
 
     vehicle: ["create", "read", "update", "delete", "assign", "activate", "maintenance"],
     vehicleCategory: ["create", "read", "update", "delete"],
@@ -108,6 +111,7 @@ export const owner = OrgAc.newRole({
     shift: ["create", "read", "update", "delete", "assign"],
     employee: ["create", "read", "update", "delete", "assign", "transfer"],
     driver: ["create", "read", "update", "delete", "assign", "activate", "rate"],
+    serviceProvider: ["create", "read", "update", "delete"],
 
     vehicle: ["create", "read", "update", "delete", "assign", "activate", "maintenance"],
     vehicleCategory: ["create", "read", "update", "delete"],
@@ -137,6 +141,7 @@ export const admin = OrgAc.newRole({
     shift: ["create", "read", "update", "delete", "assign"],
     employee: ["create", "read", "update", "delete", "assign", "transfer"],
     driver: ["create", "read", "update", "delete", "assign", "activate", "rate"],
+    serviceProvider: ["create", "read", "update", "delete"],
 
     vehicle: ["create", "read", "update", "delete", "assign", "activate", "maintenance"],
     vehicleCategory: ["create", "read", "update", "delete"],
@@ -166,6 +171,7 @@ export const manager = OrgAc.newRole({
     shift: ["create", "read", "update", "delete", "assign"],
     employee: ["read", "update", "assign"],
     driver: ["read", "update", "assign", "activate", "rate"],
+    serviceProvider: ["read"],
 
     vehicle: ["read", "update", "assign", "activate", "maintenance"],
     vehicleCategory: ["read"],
@@ -190,6 +196,7 @@ export const driver = OrgAc.newRole({
     shift: ["read"],
     employee: ["read"],
     driver: ["read"],
+    serviceProvider: ["read"],
 
     vehicle: ["read"],
     vehicleCategory: ["read"],
@@ -206,6 +213,7 @@ export const employee = OrgAc.newRole({
     shift: ["read"],
     employee: ["read"],
     driver: ["read"],
+    serviceProvider: ["read"],
 
     vehicle: ["read"],
     vehicleCategory: ["read"],
