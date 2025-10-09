@@ -13,10 +13,7 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   EllipsisHorizontalIcon,
-  EyeIcon,
 } from "@heroicons/react/24/outline";
-import Map from "@/components/Common/Map/MapComponent";
-import { MAP_CONFIG } from "@/data/constants";
 import { Input } from "@/components/Common/UI/Input";
 import { Button } from "@/components/Common/UI/Button";
 import {
@@ -41,7 +38,6 @@ function DataSection({
   const [error, setError] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
-  const [previewEmployee, setPreviewEmployee] = useState(null);
 
   // Search and filter states
   const [searchQuery, setSearchQuery] = useState("");
@@ -300,7 +296,7 @@ function DataSection({
           Available Employees
         </h3>
 
-  <div className="grid grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-4 gap-4 mb-6">
           <div className="col-span-2">
             <div className="relative">
               <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-muted-foreground" />
@@ -343,36 +339,6 @@ function DataSection({
             </SelectContent>
           </Select>
         </div>
-        {/* Management-style preview map: shows selected previewEmployee if any */}
-        {previewEmployee && (
-          <div className="mt-4 mb-6 h-64 rounded-md overflow-hidden border border-gray-200/50 dark:border-border/50">
-            <Map
-              center={MAP_CONFIG.HQ_LOCATION.coords}
-              zoom={11}
-              showDirections={false}
-              isLoading={false}
-              newStop={
-                previewEmployee.stop
-                  ? {
-                      latitude: previewEmployee.stop.latitude,
-                      longitude: previewEmployee.stop.longitude,
-                      name: previewEmployee.name,
-                      isNew: true,
-                      icon: "plus",
-                    }
-                  : previewEmployee.workLocation
-                  ? {
-                      latitude: previewEmployee.workLocation.latitude,
-                      longitude: previewEmployee.workLocation.longitude,
-                      name: `${previewEmployee.name} (Work Location)`,
-                      isNew: true,
-                      icon: "user",
-                    }
-                  : null
-              }
-            />
-          </div>
-        )}
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-gray-200/50 dark:border-border/50">
@@ -430,7 +396,7 @@ function DataSection({
                       {employee.workLocation?.address || "No Work Location"}
                     </td>
                     <td className="py-4 px-6 text-sm text-gray-500 dark:text-muted-foreground">
-                      {employee.stop?.address || employee.workLocation?.address || "No Address"}
+                      {employee.stop?.address || "No Stop Address"}
                     </td>
                     <td className="py-4 px-6">
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100/50 dark:bg-primary/10 text-indigo-600 dark:text-primary">
@@ -439,17 +405,7 @@ function DataSection({
                           "No Department"}
                       </span>
                     </td>
-                    <td className="py-4 px-6 flex items-center gap-2">
-                      <Button
-                        onClick={() => setPreviewEmployee(prev => prev?.id === employee.id ? null : employee)}
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 px-2 text-xs font-medium bg-transparent text-gray-600 dark:text-muted-foreground hover:text-indigo-600 dark:hover:text-primary flex items-center gap-1.5 rounded-md transition-colors"
-                        aria-label={previewEmployee?.id === employee.id ? 'Close preview' : 'Preview on map'}
-                      >
-                        <EyeIcon className="w-4 h-4" />
-                      </Button>
-
+                    <td className="py-4 px-6">
                       <Button
                         onClick={() => handleAssignClick(employee)}
                         variant="ghost"
