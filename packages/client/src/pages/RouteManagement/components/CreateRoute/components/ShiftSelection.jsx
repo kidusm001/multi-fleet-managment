@@ -142,7 +142,16 @@ export default function ShiftSelection({
 }
 
 ShiftSelection.propTypes = {
-  selectedShift: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+  selectedShift: PropTypes.oneOfType([
+    PropTypes.number, 
+    PropTypes.string,
+    PropTypes.shape({
+      id: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+      name: PropTypes.string,
+      startTime: PropTypes.string,
+      endTime: PropTypes.string,
+    })
+  ]),
   onShiftChange: PropTypes.func.isRequired,
   shifts: PropTypes.arrayOf(
     PropTypes.shape({

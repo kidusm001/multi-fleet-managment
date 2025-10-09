@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import PropTypes from "prop-types";
 import { X, ChevronDown, MapPin, Clock, Users, Plus } from "lucide-react";
 import { Badge } from "@/components/Common/UI/Badge";
@@ -13,12 +13,102 @@ import { cn } from "@/lib/utils";
 
 import styles from "./AssignmentModal.module.css";
 
+const formatAddress = (address) => {
+  if (!address || typeof address !== "string") return "";
+  return address.replace(/,?\s*Ethiopia$/i, "").trim();
+};
+
+const buildStopDisplayName = (stop) => {
+  if (!stop) return "";
+  const primary = formatAddress(
+    stop.employee?.stop?.address || stop.employee?.area || stop.location || stop.area
+  );
+  const employeeName = stop.employee?.name;
+
+  if (employeeName) {
+    return primary ? `${employeeName} (${primary})` : employeeName;
+  }
+
+  return primary || "";
+};
+
 const AssignmentModal = ({ employee, routes, onClose, onAssign, show }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedRoute, setSelectedRoute] = useState(null);
   const [optimizedRoute, setOptimizedRoute] = useState(null);
   const [routeMetrics, setRouteMetrics] = useState(null);
   const [isStopsExpanded, setIsStopsExpanded] = useState(false);
+
+  const employeeStopAddress = formatAddress(
+    employee.stop?.address || employee.area || employee.location
+  );
+  const employeeWorkAddress = formatAddress(employee.workLocation?.address);
+  const employeeFallbackLocation = formatAddress(employee.location);
+  const displayStopAddress = employeeStopAddress || employeeFallbackLocation;
+  const displayWorkAddress = employeeWorkAddress || employeeFallbackLocation;
+  const { employeeStopForOptimization, mapNewStop, mapCenter } = useMemo(() => {
+    const hasStopCoordinates =
+      employee.stopId &&
+      employee.stop &&
+      typeof employee.stop.latitude === "number" &&
+      typeof employee.stop.longitude === "number";
+
+    const hasWorkCoordinates =
+      employee.workLocation &&
+      typeof employee.workLocation.latitude === "number" &&
+      typeof employee.workLocation.longitude === "number";
+
+    const computedStop = hasStopCoordinates
+      ? {
+          id: employee.stopId,
+          latitude: employee.stop.latitude,
+          longitude: employee.stop.longitude,
+          location: displayStopAddress,
+          area: displayStopAddress,
+          displayName: displayStopAddress
+            ? `${employee.name} (${displayStopAddress})`
+            : employee.name,
+          isNew: true,
+        }
+      : hasWorkCoordinates
+      ? {
+          id: `worklocation-${employee.id}`,
+          latitude: employee.workLocation.latitude,
+          longitude: employee.workLocation.longitude,
+          location: displayWorkAddress,
+          area: displayWorkAddress,
+          displayName: displayWorkAddress
+            ? `${employee.name} (${displayWorkAddress})`
+            : `${employee.name} (Work Location)`,
+          isNew: true,
+        }
+      : null;
+
+    const center = computedStop
+      ? [computedStop.longitude, computedStop.latitude]
+      : MAP_CONFIG.HQ_LOCATION.coords;
+
+    const computedMapStop = computedStop
+      ? {
+          latitude: computedStop.latitude,
+          longitude: computedStop.longitude,
+          name:
+            computedStop.displayName ||
+            computedStop.location ||
+            employee.name,
+          isNew: true,
+        }
+      : null;
+
+    return {
+      employeeStopForOptimization: computedStop,
+      mapNewStop: computedMapStop,
+      mapCenter: center,
+    };
+  }, [employee, displayStopAddress, displayWorkAddress]);
+
+  const primaryLocationLabel =
+    displayStopAddress || displayWorkAddress || employeeFallbackLocation || "Location unavailable";
 
   useEffect(() => {
     if (show) {
@@ -35,30 +125,27 @@ const AssignmentModal = ({ employee, routes, onClose, onAssign, show }) => {
     const calculateOptimalRoute = async () => {
       setIsLoading(true);
       try {
-        // Validate employee has a stop
-        if (!employee.stopId || !employee.stop) {
-          throw new Error("Employee must have a valid stop location");
+        if (!employeeStopForOptimization) {
+          throw new Error(
+            "Employee must have a valid stop location or work location"
+          );
         }
 
-        // Get all stops including the new employee's stop
         const allStops = [
-          ...selectedRoute.stops.map((stop) => ({
-            ...stop,
-            displayName: stop.employee
-              ? `${stop.employee.name} (${stop.employee.area})`
-              : stop.area,
-          })),
-          {
-            id: employee.stopId,
-            latitude: employee.stop.latitude,
-            longitude: employee.stop.longitude,
-            location: employee.location,
-            area: employee.area || employee.location,
-            displayName: `${employee.name} (${
-              employee.area || employee.location
-            })`,
-            isNew: true,
-          },
+          ...selectedRoute.stops.map((stop) => {
+            const displayName = buildStopDisplayName(stop);
+            const normalizedLocation = formatAddress(
+              stop.location || stop.area || stop.employee?.area
+            );
+
+            return {
+              ...stop,
+              displayName: displayName || normalizedLocation,
+              area: normalizedLocation || displayName,
+              location: normalizedLocation || displayName,
+            };
+          }),
+          employeeStopForOptimization,
         ];
 
         // Filter out stops without valid coordinates
@@ -76,7 +163,7 @@ const AssignmentModal = ({ employee, routes, onClose, onAssign, show }) => {
             stop.longitude,
             stop.latitude,
           ]),
-          areas: validStops.map((stop) => stop.displayName),
+          areas: validStops.map((stop) => stop.displayName || stop.area || stop.location || ""),
         };
 
         // Optimize the route
@@ -86,7 +173,7 @@ const AssignmentModal = ({ employee, routes, onClose, onAssign, show }) => {
         const optimizedRouteData = {
           id: selectedRoute.id,
           coordinates: optimized.coordinates,
-          areas: optimized.areas,
+          areas: optimized.areas.map(formatAddress),
           stops: validStops,
           status: "preview",
         };
@@ -121,22 +208,29 @@ const AssignmentModal = ({ employee, routes, onClose, onAssign, show }) => {
 
         setOptimizedRoute(optimizedRouteData);
       } catch (error) {
-  toast.error("Failed to create route preview: " + error.message);
+        toast.error("Failed to create route preview: " + error.message);
       } finally {
         setIsLoading(false);
       }
     };
 
     calculateOptimalRoute();
-  }, [selectedRoute, show, employee]);
+  }, [
+    selectedRoute,
+    show,
+    employee,
+    displayStopAddress,
+    displayWorkAddress,
+    employeeStopForOptimization,
+  ]);
 
   const handleConfirm = async () => {
     if (!selectedRoute || !employee) return;
 
     try {
-      // Validate employee has a stop
-      if (!employee.stopId || !employee.stop) {
-        throw new Error("Employee must have a valid stop location");
+      // Validate employee has either a stop or workLocation
+      if ((!employee.stopId || !employee.stop) && !employee.workLocation) {
+        throw new Error("Employee must have a valid stop location or work location to be assigned to a route.");
       }
 
       // Ensure we have route metrics
@@ -147,7 +241,7 @@ const AssignmentModal = ({ employee, routes, onClose, onAssign, show }) => {
       await onAssign(selectedRoute.id, employee.id, routeMetrics);
       onClose();
     } catch (error) {
-  toast.error(error.message || "Failed to assign employee to route");
+      toast.error(error.message || "Failed to assign employee to route");
     }
   };
 
@@ -213,57 +307,51 @@ const AssignmentModal = ({ employee, routes, onClose, onAssign, show }) => {
                   {selectedRoute && optimizedRoute ? (
                     <Map
                       key={selectedRoute.id}
-                      selectedRoute={optimizedRoute}
+                      selectedRoute={{
+                        id: optimizedRoute.id,
+                        coordinates: optimizedRoute.coordinates,
+                        areas: optimizedRoute.areas,
+                        dropOffOrder: optimizedRoute.stops.map((_, i) => i),
+                        stops: optimizedRoute.stops.length,
+                        passengers: optimizedRoute.stops.filter((stop) => stop.employee).length,
+                        status: optimizedRoute.status,
+                      }}
                       selectedShuttle={selectedRoute?.shuttle}
-                      center={MAP_CONFIG.HQ_LOCATION.coords}
+                      center={mapCenter}
                       zoom={11}
                       showDirections={true}
                       isLoading={isLoading}
-                      newStop={{
-                        latitude: employee.stop.latitude,
-                        longitude: employee.stop.longitude,
-                        name: employee.name,
-                        isNew: true,
-                        icon: "plus",
-                      }}
+                      newStop={mapNewStop}
                     />
                   ) : (
                     <Map
-                      center={MAP_CONFIG.HQ_LOCATION.coords}
+                      center={mapCenter}
                       zoom={11}
                       showDirections={false}
                       isLoading={false}
-                      newStop={{
-                        latitude: employee.stop.latitude,
-                        longitude: employee.stop.longitude,
-                        name: employee.name,
-                        isNew: true,
-                        icon: "plus",
-                      }}
+                      newStop={mapNewStop}
                     />
                   )}
+                </div>
               </div>
-            </div>
 
               {/* Routes Section - Right Side */}
               <div className={styles.routesSection}>
                 {/* Employee Info */}
                 <div className={styles.employeeInfo}>
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center justify-between">
                     <h4 className="text-lg font-semibold truncate">
                       {employee.name}
                     </h4>
-                    <div className="flex items-center gap-2 text-gray-500">
-                      <MapPin className="w-4 h-4 text-orange-500 flex-shrink-0" />
-                      <span className="truncate">{employee.location}</span>
-                    </div>
-                    <Badge className="bg-orange-500 text-white text-sm px-3 py-1 ml-auto flex-shrink-0">
+                    <Badge className="bg-orange-500 text-white text-sm px-3 py-1 flex-shrink-0">
                       {employee.department.name}
                     </Badge>
                   </div>
-                    </div>
-
-                {/* Route Metrics */}
+                  <div className="flex items-center gap-2 text-gray-500 mt-2">
+                    <MapPin className="w-4 h-4 text-orange-500 flex-shrink-0" />
+                    <span className="truncate">{primaryLocationLabel}</span>
+                  </div>
+                </div>                {/* Route Metrics */}
                 {selectedRoute && routeMetrics && (
                   <div className={styles.routeMetrics}>
                     <div className={styles.metricCard}>
@@ -275,7 +363,7 @@ const AssignmentModal = ({ employee, routes, onClose, onAssign, show }) => {
                         {routeMetrics.totalTime}{" "}
                         <span className="text-sm text-gray-500">min</span>
                       </p>
-                      </div>
+                    </div>
                     <div className={styles.metricCard}>
                       <div className="flex items-center gap-2 text-orange-500 mb-1">
                         <MapPin className="w-4 h-4" />
@@ -317,15 +405,11 @@ const AssignmentModal = ({ employee, routes, onClose, onAssign, show }) => {
                             <div key={stop.id} className={styles.stopItem}>
                               <span className={styles.stopNumber}>
                                 {index + 1}
-                          </span>
+                              </span>
                               <span className={styles.stopLocation}>
-                                {stop.employee
-                                  ? `${stop.employee.name} (${
-                                      stop.employee.area ||
-                                      stop.employee.location
-                                    })`
-                                  : stop.area}
-                          </span>
+                                {buildStopDisplayName(stop) ||
+                                  formatAddress(stop.location || stop.area)}
+                              </span>
                             </div>
                           ))}
                           <div className={styles.newStop}>
@@ -333,16 +417,15 @@ const AssignmentModal = ({ employee, routes, onClose, onAssign, show }) => {
                               <Plus className="w-3 h-3" />
                             </span>
                             <span className={styles.stopLocation}>
-                              {`${employee.name} (${
-                                employee.area || employee.location
-                              })`}
+                              {employeeStopForOptimization?.displayName ||
+                                `${employee.name} (Work Location)`}
                             </span>
                             <Badge className={styles.newBadge}>New</Badge>
-                            </div>
+                          </div>
                         </div>
                       </div>
                     )}
-            </div>
+                  </div>
                 )}
 
                 {/* Available Routes List */}
@@ -352,7 +435,7 @@ const AssignmentModal = ({ employee, routes, onClose, onAssign, show }) => {
                     <Badge variant="outline" className="text-orange-500">
                       {availableRoutes.length} routes
                     </Badge>
-              </div>
+                  </div>
                   <div className="space-y-2">
                     {availableRoutes.map((routeOption) => (
                       <button
@@ -368,7 +451,7 @@ const AssignmentModal = ({ employee, routes, onClose, onAssign, show }) => {
                           <Badge className="bg-orange-100 text-orange-500">
                             {routeOption.shuttle.name}
                           </Badge>
-            </div>
+                        </div>
 
                         <div className="flex items-center gap-2 text-sm text-gray-500">
                           <Users className="w-4 h-4" />
@@ -379,7 +462,7 @@ const AssignmentModal = ({ employee, routes, onClose, onAssign, show }) => {
                         </div>
                       </button>
                     ))}
-                </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -419,6 +502,14 @@ AssignmentModal.propTypes = {
       id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
       latitude: PropTypes.number,
       longitude: PropTypes.number,
+      address: PropTypes.string,
+    }),
+    workLocation: PropTypes.shape({
+      id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+      latitude: PropTypes.number,
+      longitude: PropTypes.number,
+      address: PropTypes.string,
+      type: PropTypes.string,
     }),
     department: PropTypes.shape({
         name: PropTypes.string.isRequired,

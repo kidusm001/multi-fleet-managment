@@ -2,41 +2,76 @@ import { PrismaClient, LocationType } from '@prisma/client'
 
 const prisma = new PrismaClient()
 
-// Addis Ababa location data for organizations
+// Addis Ababa location data for organizations based on real locations
 const addisAbabaLocations = [
   {
-    name: 'Headquarters',
-    address: 'Bole International Airport Area, Addis Ababa, Ethiopia',
-    latitude: 8.9779,
-    longitude: 38.7994,
+    name: 'Piassa Headquarters',
+    address: 'Piassa Central Business District, Addis Ababa, Ethiopia',
+    latitude: 9.0336984,
+    longitude: 38.7547538,
     type: LocationType.HQ
   },
   {
-    name: 'Piassa Branch',
-    address: 'Piassa Central Business District, Addis Ababa, Ethiopia',
-    latitude: 9.0301,
-    longitude: 38.7408,
+    name: 'Bole International Airport Branch',
+    address: 'Bole International Airport Area, Addis Ababa, Ethiopia',
+    latitude: 8.9779,
+    longitude: 38.7994,
     type: LocationType.BRANCH
   },
   {
-    name: 'Merkato Depot',
+    name: 'Merkato Industrial Depot',
     address: 'Merkato Industrial Area, Addis Ababa, Ethiopia',
-    latitude: 9.0331,
-    longitude: 38.7374,
+    latitude: 9.0309985,
+    longitude: 38.7370686,
     type: LocationType.BRANCH
   },
   {
-    name: 'Kazanchis Office',
+    name: 'Kazanchis Commercial Office',
     address: 'Kazanchis Commercial District, Addis Ababa, Ethiopia',
-    latitude: 9.0167,
-    longitude: 38.7667,
+    latitude: 9.0159277,
+    longitude: 38.7712221,
     type: LocationType.BRANCH
   },
   {
     name: 'Mexico Square Branch',
     address: 'Mexico Square, Addis Ababa, Ethiopia',
-    latitude: 9.0122,
-    longitude: 38.7578,
+    latitude: 9.0103817,
+    longitude: 38.7444829,
+    type: LocationType.BRANCH
+  },
+  {
+    name: 'Shiromeda Market Office',
+    address: 'Shiromeda Market Area, Addis Ababa, Ethiopia',
+    latitude: 9.0605328,
+    longitude: 38.7613693,
+    type: LocationType.BRANCH
+  },
+  {
+    name: 'Entoto Hill Station',
+    address: 'Entoto Hill Residential Area, Addis Ababa, Ethiopia',
+    latitude: 9.0626389,
+    longitude: 38.761254,
+    type: LocationType.BRANCH
+  },
+  {
+    name: 'Ayat Condominiums Office',
+    address: 'Ayat Condominiums, Addis Ababa, Ethiopia',
+    latitude: 9.0345734,
+    longitude: 38.8460555,
+    type: LocationType.BRANCH
+  },
+  {
+    name: 'CMC Technology Hub',
+    address: 'CMC Technology District, Addis Ababa, Ethiopia',
+    latitude: 9.019766,
+    longitude: 38.8475773,
+    type: LocationType.BRANCH
+  },
+  {
+    name: 'Gerji Commercial Center',
+    address: 'Gerji Commercial District, Addis Ababa, Ethiopia',
+    latitude: 8.9953787,
+    longitude: 38.8094849,
     type: LocationType.BRANCH
   }
 ]

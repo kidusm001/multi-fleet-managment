@@ -348,7 +348,7 @@ const RouteDetailDrawer = ({
             <div className="flex items-center justify-between">
               <div>
                 <DrawerTitle className="text-xl">
-                  Route #{route.id} - {route.name}
+                  {route.name}
                 </DrawerTitle>
                 <DrawerDescription className="flex items-center gap-2 mt-1">
                   <Bus className="h-4 w-4 text-sky-500" />
@@ -383,7 +383,7 @@ const RouteDetailDrawer = ({
                   className="gap-2"
                 >
                   <Trash2 className="h-4 w-4" />
-                  Delete Route
+                  Delete
                 </Button>
                 <DrawerClose asChild>
                   <Button variant="ghost" size="icon">

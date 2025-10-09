@@ -59,7 +59,7 @@ const ShuttlePreview = ({ routeData, onClose, onAccept, show }) => {
           ],
           areas: [
             "HQ",
-            ...validEmployees.map((emp) => emp.location || "Unknown"),
+            ...validEmployees.map((emp) => (emp.stop?.address || emp.location || "Unknown").replace(', Ethiopia', '')),
             "HQ",
           ],
         };
@@ -144,7 +144,10 @@ const ShuttlePreview = ({ routeData, onClose, onAccept, show }) => {
         
         if (distance > furthestDistance) {
           furthestDistance = distance;
-          furthestArea = employee.location;
+          // Use stop address and extract first part (Main District part)
+          const fullAddress = (employee.stop?.address || employee.location || '').replace(', Ethiopia', '');
+          const addressParts = fullAddress.split(',');
+          furthestArea = addressParts.length > 1 ? addressParts[0].trim() : fullAddress;
         }
       }
     });
@@ -262,7 +265,7 @@ const ShuttlePreview = ({ routeData, onClose, onAccept, show }) => {
           <div className={styles.employeeName}>{employee.name}</div>
           <div className={styles.employeeLocation}>
             <Badge variant="secondary" className={styles.locationBadge}>
-              {employee.location}
+              {(employee.stop?.address || employee.workLocation?.address || 'N/A').replace(', Ethiopia', '')}
             </Badge>
             <span className={styles.department}>
               {employee.department.name}
@@ -458,7 +461,7 @@ ShuttlePreview.propTypes = {
           latitude: PropTypes.number.isRequired,
           longitude: PropTypes.number.isRequired,
         }),
-        location: PropTypes.string.isRequired,
+        location: PropTypes.string,
         department: PropTypes.shape({
           name: PropTypes.string.isRequired,
         }).isRequired,

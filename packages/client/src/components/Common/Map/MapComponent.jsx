@@ -278,10 +278,118 @@ function MapComponent({ selectedRoute, selectedShuttle, newStop, mapStyle, initi
           markersRef.current.push(marker);
         });
 
+        // Add new stop marker if provided
+        if (newStop?.latitude && newStop?.longitude) {
+          const el = document.createElement("div");
+          el.className = "drop-off-order new-stop";
+          el.style.cssText = `
+            background-color: #f97316;
+            color: white;
+            padding: 6px 10px;
+            border-radius: 16px;
+            font-size: 14px;
+            font-weight: bold;
+            border: 3px solid white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            cursor: pointer;
+          `;
+          el.innerHTML = "+";
+
+          const popup = new mapboxgl.Popup({
+            offset: 25,
+            closeButton: false,
+            className: "drop-off-popup",
+            anchor: "bottom",
+            focusAfterOpen: false,
+          }).setHTML(`
+            <div style="padding: 8px;">
+              <div style="font-weight: bold;">New Stop</div>
+              <div>${newStop.name}</div>
+            </div>
+          `);
+
+          const marker = new mapboxgl.Marker({
+            element: el,
+            anchor: "center",
+          })
+            .setLngLat([newStop.longitude, newStop.latitude])
+            .setPopup(popup)
+            .addTo(map.current);
+
+          // Handle click event to close other popups
+          el.addEventListener("click", (e) => {
+            e.stopPropagation();
+            // Close other popups
+            document
+              .querySelectorAll(".mapboxgl-popup")
+              .forEach((p) => p.remove());
+          });
+
+          markersRef.current.push(marker);
+        }
+
         // Fit bounds to show all markers
         const bounds = new mapboxgl.LngLatBounds();
         selectedRoute.coordinates.forEach((coord) => bounds.extend(coord));
+        if (newStop) {
+          bounds.extend([newStop.longitude, newStop.latitude]);
+        }
         map.current.fitBounds(bounds, FIT_BOUNDS_OPTIONS);
+      } else {
+        // No route selected, but check if we have a newStop to display
+        if (newStop?.latitude && newStop?.longitude) {
+          const el = document.createElement("div");
+          el.className = "drop-off-order new-stop";
+          el.style.cssText = `
+            background-color: #f97316;
+            color: white;
+            padding: 6px 10px;
+            border-radius: 16px;
+            font-size: 14px;
+            font-weight: bold;
+            border: 3px solid white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            cursor: pointer;
+          `;
+          el.innerHTML = "+";
+
+          const popup = new mapboxgl.Popup({
+            offset: 25,
+            closeButton: false,
+            className: "drop-off-popup",
+            anchor: "bottom",
+            focusAfterOpen: false,
+          }).setHTML(`
+            <div style="padding: 8px;">
+              <div style="font-weight: bold;">New Stop</div>
+              <div>${newStop.name}</div>
+            </div>
+          `);
+
+          const marker = new mapboxgl.Marker({
+            element: el,
+            anchor: "center",
+          })
+            .setLngLat([newStop.longitude, newStop.latitude])
+            .setPopup(popup)
+            .addTo(map.current);
+
+          // Handle click event to close other popups
+          el.addEventListener("click", (e) => {
+            e.stopPropagation();
+            // Close other popups
+            document
+              .querySelectorAll(".mapboxgl-popup")
+              .forEach((p) => p.remove());
+          });
+
+          markersRef.current.push(marker);
+
+          // Fit bounds to show the new stop marker
+          const bounds = new mapboxgl.LngLatBounds();
+          bounds.extend([newStop.longitude, newStop.latitude]);
+          map.current.fitBounds(bounds, FIT_BOUNDS_OPTIONS);
+        }
       }
     } catch (error) {
       console.error("Error updating route:", error);

@@ -41,6 +41,12 @@ export default function SortableEmployeeTable({
       bValue = b.department?.name || "";
     }
 
+    // Special handling for location sorting
+    if (sortConfig.key === "location") {
+      aValue = (a.stop?.address || a.workLocation?.address || "").replace(', Ethiopia', '');
+      bValue = (b.stop?.address || b.workLocation?.address || "").replace(', Ethiopia', '');
+    }
+
     // Special handling for status sorting
     if (sortConfig.key === "status") {
       const getStatusPriority = (emp) => {
@@ -182,7 +188,7 @@ export default function SortableEmployeeTable({
                 <td className="font-medium">{employee.name}</td>
                 <td>
                   <Badge variant="outline" className="font-normal">
-                    {employee.location}
+                    {(employee.stop?.address || employee.workLocation?.address || 'N/A').replace(', Ethiopia', '')}
                   </Badge>
                 </td>
                 <td>
@@ -226,7 +232,7 @@ SortableEmployeeTable.propTypes = {
     PropTypes.shape({
       id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
       name: PropTypes.string.isRequired,
-      location: PropTypes.string.isRequired,
+      location: PropTypes.string,
       assigned: PropTypes.bool,
       stop: PropTypes.shape({
         id: PropTypes.oneOfType([PropTypes.string, PropTypes.number])

@@ -110,7 +110,7 @@ const RouteCard = ({
                 layoutId={`title-${route.id}`}
                 className="text-lg font-semibold text-foreground group-hover:text-sky-500 dark:group-hover:text-sky-400 transition-colors"
               >
-                Route #{route.id} - {route.name}
+                {route.name}
               </motion.h3>
             </div>
             <motion.div

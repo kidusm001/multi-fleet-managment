@@ -45,7 +45,7 @@ export default function RouteList({ routes }) {
                       variant="secondary"
                       className={styles.areaBadge}
                     >
-                      {employee.location}
+                      {(employee.stop?.address || employee.workLocation?.address || employee.location || 'N/A').replace(', Ethiopia', '')}
                     </Badge>
                   ))}
                 </div>
@@ -71,7 +71,7 @@ RouteList.propTypes = {
           employee: PropTypes.shape({
             id: PropTypes.oneOfType([PropTypes.string, PropTypes.number])
               .isRequired,
-            location: PropTypes.string.isRequired,
+            location: PropTypes.string,
           }),
         })
       ),

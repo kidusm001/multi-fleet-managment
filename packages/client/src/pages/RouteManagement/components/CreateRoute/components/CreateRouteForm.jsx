@@ -278,7 +278,7 @@ export default function CreateRouteForm({
           id: employee.stop.id,
           latitude: employee.stop.latitude,
           longitude: employee.stop.longitude,
-          location: employee.location,
+          address: employee.stop.address, // Use stop address, not location field
         } : null,
       };
 
@@ -362,7 +362,10 @@ export default function CreateRouteForm({
         
         if (distance > furthestDistance) {
           furthestDistance = distance;
-          furthestArea = employee.location;
+          // Use stop location and extract first part (Main District part)
+          const fullAddress = (employee.stop?.address || employee.location || '').replace(', Ethiopia', '');
+          const addressParts = fullAddress.split(',');
+          furthestArea = addressParts.length > 1 ? addressParts[0].trim() : fullAddress;
         }
       }
     });
@@ -748,7 +751,7 @@ export default function CreateRouteForm({
                               id: emp.stop.id,
                               latitude: emp.stop.latitude,
                               longitude: emp.stop.longitude,
-                              location: emp.location,
+                              address: emp.stop.address, // Use stop address, not location field
                             } : null,
                           })),
                         }));

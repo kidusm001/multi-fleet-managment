@@ -2,7 +2,7 @@ import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()
 
-// Addis Ababa stop locations with realistic coordinates and addresses
+// Addis Ababa stop locations with realistic coordinates and addresses based on real locations
 const addisAbabaStops = [
   {
     name: 'Bole International Airport',
@@ -11,58 +11,88 @@ const addisAbabaStops = [
     longitude: 38.7994
   },
   {
-    name: 'Piassa Central',
-    address: 'Piassa, Addis Ababa, Ethiopia',
-    latitude: 9.0301,
-    longitude: 38.7408
+    name: 'Piassa Central Transport Hub',
+    address: 'Piassa Central Business District, Addis Ababa, Ethiopia',
+    latitude: 9.0336984,
+    longitude: 38.7547538
+  },
+  {
+    name: 'Merkato Market Terminal',
+    address: 'Merkato Market Area, Addis Ababa, Ethiopia',
+    latitude: 9.0309985,
+    longitude: 38.7370686
+  },
+  {
+    name: 'Kazanchis District Stop',
+    address: 'Kazanchis Commercial District, Addis Ababa, Ethiopia',
+    latitude: 9.0159277,
+    longitude: 38.7712221
+  },
+  {
+    name: 'Mexico Square Station',
+    address: 'Mexico Square, Addis Ababa, Ethiopia',
+    latitude: 9.0103817,
+    longitude: 38.7444829
+  },
+  {
+    name: 'Shiromeda Market Stop',
+    address: 'Shiromeda Market Area, Addis Ababa, Ethiopia',
+    latitude: 9.0605328,
+    longitude: 38.7613693
   },
   {
     name: 'Entoto Hill Station',
-    address: 'Entoto Hill, Addis Ababa, Ethiopia',
-    latitude: 9.0942,
-    longitude: 38.7636
+    address: 'Entoto Hill Residential Area, Addis Ababa, Ethiopia',
+    latitude: 9.0626389,
+    longitude: 38.761254
   },
   {
-    name: 'Merkato Market',
-    address: 'Merkato, Addis Ababa, Ethiopia',
-    latitude: 9.0331,
-    longitude: 38.7374
+    name: 'Ayat Condominiums Stop',
+    address: 'Ayat Condominiums, Addis Ababa, Ethiopia',
+    latitude: 9.0345734,
+    longitude: 38.8460555
   },
   {
-    name: 'Kazanchis District',
-    address: 'Kazanchis, Addis Ababa, Ethiopia',
-    latitude: 9.0167,
-    longitude: 38.7667
+    name: 'CMC Technology District',
+    address: 'CMC Technology District, Addis Ababa, Ethiopia',
+    latitude: 9.019766,
+    longitude: 38.8475773
   },
   {
-    name: 'Mexico Square',
-    address: 'Mexico Square, Addis Ababa, Ethiopia',
-    latitude: 9.0122,
-    longitude: 38.7578
+    name: 'Gerji Commercial Stop',
+    address: 'Gerji Commercial District, Addis Ababa, Ethiopia',
+    latitude: 8.9953787,
+    longitude: 38.8094849
   },
   {
-    name: 'Shiromeda Market',
-    address: 'Shiromeda, Addis Ababa, Ethiopia',
-    latitude: 9.0167,
-    longitude: 38.7333
+    name: 'Meskel Square Terminal',
+    address: 'Meskel Square, Addis Ababa, Ethiopia',
+    latitude: 9.0102293,
+    longitude: 38.7606309
   },
   {
-    name: 'Old Airport Area',
-    address: 'Old Airport, Addis Ababa, Ethiopia',
-    latitude: 9.0333,
-    longitude: 38.7667
+    name: 'Kebena District Stop',
+    address: 'Kebena Residential Area, Addis Ababa, Ethiopia',
+    latitude: 9.0348997,
+    longitude: 38.7786041
   },
   {
-    name: 'CMC Area',
-    address: 'CMC, Addis Ababa, Ethiopia',
-    latitude: 9.0167,
-    longitude: 38.7833
+    name: 'Kality Industrial Zone',
+    address: 'Kality Industrial Area, Addis Ababa, Ethiopia',
+    latitude: 8.9037834,
+    longitude: 38.7680749
   },
   {
-    name: 'Ayat Condominiums',
-    address: 'Ayat, Addis Ababa, Ethiopia',
-    latitude: 9.0167,
-    longitude: 38.8167
+    name: 'Lafto Condominium Stop',
+    address: 'Lafto Condominium Area, Addis Ababa, Ethiopia',
+    latitude: 8.954213,
+    longitude: 38.7463883
+  },
+  {
+    name: 'Yeka Abado Station',
+    address: 'Yeka Abado Residential Area, Addis Ababa, Ethiopia',
+    latitude: 9.0661627,
+    longitude: 38.8772707
   }
 ]
 

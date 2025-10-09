@@ -1,4 +1,8 @@
 import { PrismaClient, ApprovalStatus, VehicleStatus, RouteStatus, NotificationType, NotificationStatus, DriverStatus, PaymentStatus } from '@prisma/client'
+import { createAdditionalEmployees } from './employee-data'
+import { auth } from '../src/lib/auth'
+import * as fs from 'fs'
+import * as path from 'path'
 
 const prisma = new PrismaClient()
 
@@ -26,6 +30,41 @@ const prisma = new PrismaClient()
  */
 
 
+
+// Helper function to load location data from CSV
+function loadLocationData(): Array<{district: string, subArea: string, latitude: number, longitude: number}> {
+  try {
+    const csvPath = path.join(process.cwd(), 'Final.csv')
+    const csvContent = fs.readFileSync(csvPath, 'utf-8')
+    const lines = csvContent.split('\n').slice(1) // Skip header
+    
+    const locations = lines
+      .filter(line => line.trim())
+      .map(line => {
+        const [district, subArea, lat, lng] = line.split(',')
+        return {
+          district: district?.trim(),
+          subArea: subArea?.trim(),
+          latitude: parseFloat(lat?.trim()),
+          longitude: parseFloat(lng?.trim())
+        }
+      })
+      .filter(loc => !isNaN(loc.latitude) && !isNaN(loc.longitude))
+    
+    console.log(`Loaded ${locations.length} locations from CSV`)
+    return locations
+  } catch (error) {
+    console.log('Could not load CSV data, using fallback locations:', error)
+    // Fallback locations if CSV is not available
+    return [
+      { district: 'Central', subArea: 'Downtown', latitude: 9.0300, longitude: 38.7400 },
+      { district: 'Bole', subArea: 'Airport Area', latitude: 8.9800, longitude: 38.8000 },
+      { district: 'Kirkos', subArea: 'Kazanchis', latitude: 9.0160, longitude: 38.7710 },
+      { district: 'Piassa', subArea: 'Merkato', latitude: 9.0310, longitude: 38.7370 },
+      { district: 'Entoto', subArea: 'Residential', latitude: 9.0630, longitude: 38.7610 }
+    ]
+  }
+}
 
 // Helper function to get current date with time set to start of day
 function getToday(): Date {
@@ -105,6 +144,166 @@ async function getUsersByRole(organizationId: string) {
   return { members, usersByRole }
 }
 
+async function createOrganizationLocations(org: any) {
+  console.log(`   🏢 Creating locations for ${org.name}...`)
+
+  // Check if HQ location already exists
+  const existingHq = await prisma.location.findFirst({
+    where: {
+      organizationId: org.id,
+      type: 'HQ'
+    }
+  });
+
+  if (existingHq) {
+    console.log(`   ⚠️  HQ location already exists for ${org.name}`)
+    return existingHq;
+  }
+
+  // HQ and branch locations for each organization - using Addis Ababa coordinates for consistency
+  const locationData: Record<string, any[]> = {
+    'mitchell-transport': [
+      {
+        address: '1234 Industrial Blvd, Addis Ababa, Ethiopia',
+        latitude: 9.0300,
+        longitude: 38.7400,
+        type: 'HQ'
+      },
+      {
+        address: '5678 Warehouse District, Addis Ababa, Ethiopia',
+        latitude: 9.0320,
+        longitude: 38.7420,
+        type: 'BRANCH'
+      },
+      {
+        address: '9012 Downtown Terminal, Addis Ababa, Ethiopia',
+        latitude: 9.0340,
+        longitude: 38.7440,
+        type: 'BRANCH'
+      }
+    ],
+    'metro-transit': [
+      {
+        address: '5678 Transit Plaza, Addis Ababa, Ethiopia',
+        latitude: 9.0360,
+        longitude: 38.7460,
+        type: 'HQ'
+      },
+      {
+        address: '1234 North Station, Addis Ababa, Ethiopia',
+        latitude: 9.0380,
+        longitude: 38.7480,
+        type: 'BRANCH'
+      },
+      {
+        address: '9012 South Depot, Addis Ababa, Ethiopia',
+        latitude: 9.0400,
+        longitude: 38.7500,
+        type: 'BRANCH'
+      }
+    ],
+    'garcia-freight': [
+      {
+        address: '9012 Freight Way, Addis Ababa, Ethiopia',
+        latitude: 9.0420,
+        longitude: 38.7520,
+        type: 'HQ'
+      },
+      {
+        address: '3456 Logistics Center, Addis Ababa, Ethiopia',
+        latitude: 9.0440,
+        longitude: 38.7540,
+        type: 'BRANCH'
+      },
+      {
+        address: '7890 Distribution Hub, Addis Ababa, Ethiopia',
+        latitude: 9.0460,
+        longitude: 38.7560,
+        type: 'BRANCH'
+      }
+    ],
+    'johnson-delivery': [
+      {
+        address: '3456 Delivery Drive, Addis Ababa, Ethiopia',
+        latitude: 9.0480,
+        longitude: 38.7580,
+        type: 'HQ'
+      },
+      {
+        address: '1234 Express Lane, Addis Ababa, Ethiopia',
+        latitude: 9.0500,
+        longitude: 38.7600,
+        type: 'BRANCH'
+      },
+      {
+        address: '5678 Courier Center, Addis Ababa, Ethiopia',
+        latitude: 9.0520,
+        longitude: 38.7620,
+        type: 'BRANCH'
+      }
+    ],
+    'sterling-logistics': [
+      {
+        address: '7890 Logistics Lane, Addis Ababa, Ethiopia',
+        latitude: 9.0540,
+        longitude: 38.7640,
+        type: 'HQ'
+      },
+      {
+        address: '1234 Supply Chain Blvd, Addis Ababa, Ethiopia',
+        latitude: 9.0560,
+        longitude: 38.7660,
+        type: 'BRANCH'
+      },
+      {
+        address: '5678 Fulfillment Center, Addis Ababa, Ethiopia',
+        latitude: 9.0580,
+        longitude: 38.7680,
+        type: 'BRANCH'
+      },
+      {
+        address: '9012 Warehouse Complex, Addis Ababa, Ethiopia',
+        latitude: 9.0600,
+        longitude: 38.7700,
+        type: 'BRANCH'
+      }
+    ]
+  };
+
+  const locations = locationData[org.slug] || [
+    {
+      address: `${org.name} Headquarters, Main Street, Addis Ababa, Ethiopia`,
+      latitude: 9.0300 + (Math.random() - 0.5) * 0.1,
+      longitude: 38.7400 + (Math.random() - 0.5) * 0.1,
+      type: 'HQ'
+    },
+    {
+      address: `${org.name} Branch Office, Second Street, Addis Ababa, Ethiopia`,
+      latitude: 9.0320 + (Math.random() - 0.5) * 0.1,
+      longitude: 38.7420 + (Math.random() - 0.5) * 0.1,
+      type: 'BRANCH'
+    }
+  ];
+
+  const createdLocations: any[] = [];
+  for (const locData of locations) {
+    const location = await prisma.location.create({
+      data: {
+        address: locData.address,
+        latitude: locData.latitude,
+        longitude: locData.longitude,
+        type: locData.type,
+        organizationId: org.id
+      }
+    });
+    createdLocations.push(location);
+  }
+
+  const hqLocation = createdLocations.find(loc => loc.type === 'HQ');
+  console.log(`   ✅ Created ${createdLocations.length} locations (${createdLocations.filter(l => l.type === 'HQ').length} HQ, ${createdLocations.filter(l => l.type === 'BRANCH').length} branches)`)
+  return hqLocation;
+}
+
 async function createDepartmentsAndShifts(org: any) {
   console.log(`   📂 Creating departments and shifts for ${org.name}...`)
 
@@ -126,67 +325,155 @@ async function createDepartmentsAndShifts(org: any) {
     createdDepartments.push(department)
   }
 
-  // Create realistic shifts for fleet operations
-  const now = new Date()
-  const shifts = [
-    {
-      name: 'Morning Shift',
-      startHour: 6,
-      endHour: 14
-    },
-    {
-      name: 'Afternoon Shift', 
-      startHour: 14,
-      endHour: 22
-    },
-    {
-      name: 'Night Shift',
-      startHour: 22,
-      endHour: 6
-    }
-  ]
+  // Create realistic shifts for fleet operations (only once per organization)
+  const existingShifts = await prisma.shift.findMany({
+    where: { organizationId: org.id }
+  });
 
-  const createdShifts: any[] = []
-  for (const shiftData of shifts) {
-    const startTime = new Date(now)
-    startTime.setHours(shiftData.startHour, 0, 0, 0)
-    const endTime = new Date(now)
-    endTime.setHours(shiftData.endHour, 0, 0, 0)
-
-    const shift = await prisma.shift.create({
-      data: {
-        name: shiftData.name,
-        startTime: startTime,
-        endTime: endTime,
-        timeZone: 'UTC',
-        organizationId: org.id,
+  let createdShifts: any[] = [];
+  if (existingShifts.length === 0) {
+    const now = new Date()
+    const shifts = [
+      {
+        name: 'Morning Shift',
+        startHour: 6,
+        endHour: 14
       },
-    })
-    createdShifts.push(shift)
+      {
+        name: 'Afternoon Shift',
+        startHour: 14,
+        endHour: 22
+      },
+      {
+        name: 'Night Shift',
+        startHour: 22,
+        endHour: 6
+      }
+    ]
+
+    for (const shiftData of shifts) {
+      const startTime = new Date(now)
+      startTime.setHours(shiftData.startHour, 0, 0, 0)
+      const endTime = new Date(now)
+      endTime.setHours(shiftData.endHour, 0, 0, 0)
+
+      const shift = await prisma.shift.create({
+        data: {
+          name: shiftData.name,
+          startTime: startTime,
+          endTime: endTime,
+          timeZone: 'UTC',
+          organizationId: org.id,
+        },
+      })
+      createdShifts.push(shift)
+    }
+  } else {
+    createdShifts = existingShifts;
+    console.log(`   ⚠️  Shifts already exist for ${org.name}, using existing ones`)
   }
 
   console.log(`   ✅ Created ${createdDepartments.length} departments and ${createdShifts.length} shifts`)
   return { departments: createdDepartments, shifts: createdShifts }
 }
-async function createEmployeesFromMembers(org: any, departments: any[], shifts: any[], usersByRole: any) {
-  console.log(`   👥 Creating employee records for ${org.name}...`)
+async function createEmployeesFromMembers(org: any, departments: any[], shifts: any[], usersByRole: any, locations: any[]) {
+  console.log(`   👥 Creating employee records and stops for ${org.name}...`)
+
+  // Load location data from CSV
+  const locationData = loadLocationData()
 
   const employeeRoles = ['admin', 'manager', 'employee']
   const eligibleMembers = Object.values(usersByRole).flat().filter((member: any) => 
     employeeRoles.includes(member.role)
   ) as any[]
 
+  // Special handling for Sterling Logistics - create more concentrated employee groups
+  let employeesToCreate = eligibleMembers
+  if (org.slug === 'sterling-logistics') {
+    console.log(`   📈 Sterling Logistics: Creating concentrated employee groups (30+ per shift/location)`)
+    
+    // For Sterling Logistics, create multiple employees per shift/location combination
+    // to ensure at least 30 employees per shift per location
+    const concentratedEmployees = []
+    
+    // Get all locations for Sterling Logistics
+    const allLocations = await prisma.location.findMany({
+      where: { organizationId: org.id }
+    })
+    
+    // For each shift, create employees concentrated in ALL locations
+    for (const shift of shifts) {
+      for (const location of allLocations) {
+        // Create 30-35 employees per shift/location combination
+        const employeesForThisCombo = Math.floor(Math.random() * 6) + 30 // 30-35 employees
+        
+        for (let i = 0; i < employeesForThisCombo; i++) {
+          // Use existing members in round-robin fashion
+          const member = eligibleMembers[i % eligibleMembers.length]
+          concentratedEmployees.push({
+            member,
+            department: departments[Math.floor(Math.random() * departments.length)],
+            shift,
+            location
+          })
+        }
+      }
+    }
+    
+    // Convert to the format expected by the rest of the function
+    employeesToCreate = concentratedEmployees.map(item => item.member)
+    
+    // Store the concentrated assignments for later use
+    ;(global as any).sterlingAssignments = concentratedEmployees
+  }
+
   let createdEmployees = 0
-  for (const member of eligibleMembers) {
-    const department = getRandomElement(departments)
-    const shift = getRandomElement(shifts)
+  for (let i = 0; i < employeesToCreate.length; i++) {
+    const member = employeesToCreate[i]
+    
+    // Get pre-assigned values for Sterling Logistics, or random for others
+    let department, shift, location
+    if (org.slug === 'sterling-logistics' && (global as any).sterlingAssignments) {
+      const assignment = (global as any).sterlingAssignments[i]
+      department = assignment.department
+      shift = assignment.shift
+      location = assignment.location
+    } else {
+      department = getRandomElement(departments)
+      shift = getRandomElement(shifts)
+      location = getRandomElement(locations) // Randomly assign to any location
+    }
+
+    // Get a random location from CSV data, or generate one if not enough data
+    let employeeLocation = getRandomElement(locationData)
+    if (!employeeLocation) {
+      // Fallback if CSV data is insufficient
+      employeeLocation = {
+        district: 'Central',
+        subArea: `${member.user.name}'s Area`,
+        latitude: 9.0300 + (Math.random() - 0.5) * 0.1,
+        longitude: 38.7400 + (Math.random() - 0.5) * 0.1
+      }
+    }
+
+    // Create a pickup stop for this employee using real location data
+    const employeeStop = await prisma.stop.create({
+      data: {
+        name: `${employeeLocation.subArea} - ${member.user.name} Pickup`,
+        address: `${employeeLocation.district}, ${employeeLocation.subArea}, Addis Ababa`,
+        latitude: employeeLocation.latitude,
+        longitude: employeeLocation.longitude,
+        organizationId: org.id
+      }
+    })
 
     try {
       await prisma.employee.create({
         data: { 
           name: member.user.name, 
-          location: member.role === 'admin' ? 'Head Office' : 
-                   member.role === 'manager' ? 'Operations Center' : 'Field Office', 
+          location: location.address, 
+          locationId: location.id,
+          stopId: employeeStop.id, // Assign the pickup stop
           departmentId: department.id, 
           shiftId: shift.id, 
           organizationId: org.id, 
@@ -199,7 +486,7 @@ async function createEmployeesFromMembers(org: any, departments: any[], shifts: 
     }
   }
   
-  console.log(`   ✅ Created ${createdEmployees} employee records`)
+  console.log(`   ✅ Created ${createdEmployees} employee records with realistic pickup stops`)
   return createdEmployees
 }
 
@@ -256,10 +543,10 @@ async function createVehicleCategories(org: any) {
   console.log(`   🚐 Creating vehicle categories for ${org.name}...`)
 
   const categories = [
-    { name: 'Standard Shuttle', capacity: 14 },
-    { name: 'Mini Bus', capacity: 22 },
-    { name: 'Large Coach', capacity: 45 },
-    { name: 'Van', capacity: 8 },
+    { name: 'Compact Shuttle', capacity: 4 },
+    { name: 'Standard Shuttle', capacity: 6 },
+    { name: 'Large Shuttle', capacity: 8 },
+    { name: 'Mini Coach', capacity: 12 },
   ]
 
   const createdCategories: any[] = []
@@ -281,16 +568,54 @@ async function createVehicleCategories(org: any) {
 async function createVehiclesForOrg(org: any, categories: any[], drivers: any[]) {
   console.log(`   🚗 Creating vehicles for ${org.name}...`)
 
+  // Create more vehicles with desired capacity distribution
+  // Most should be 4 and 6, some 8 and 12, none over 20
   const vehicleTemplates = [
-    { name: 'Fleet Shuttle 1', plateNumber: 'ABC-001', model: 'Toyota Hiace', make: 'Toyota', year: 2022, status: VehicleStatus.AVAILABLE },
-    { name: 'Fleet Shuttle 2', plateNumber: 'ABC-002', model: 'Ford Transit', make: 'Ford', year: 2021, status: VehicleStatus.AVAILABLE },
-    { name: 'Maintenance Van', plateNumber: 'MNT-001', model: 'Mercedes Sprinter', make: 'Mercedes', year: 2020, status: VehicleStatus.MAINTENANCE },
-    { name: 'Backup Coach', plateNumber: 'BCK-001', model: 'Toyota Coaster', make: 'Toyota', year: 2019, status: VehicleStatus.INACTIVE },
+    // 4-seat vehicles (most common)
+    { name: 'Compact Shuttle A1', plateNumber: 'CMP-001', model: 'Toyota Hiace Compact', make: 'Toyota', year: 2023, status: VehicleStatus.AVAILABLE },
+    { name: 'Compact Shuttle A2', plateNumber: 'CMP-002', model: 'Toyota Hiace Compact', make: 'Toyota', year: 2023, status: VehicleStatus.AVAILABLE },
+    { name: 'Compact Shuttle A3', plateNumber: 'CMP-003', model: 'Toyota Hiace Compact', make: 'Toyota', year: 2023, status: VehicleStatus.AVAILABLE },
+    { name: 'Compact Shuttle A4', plateNumber: 'CMP-004', model: 'Toyota Hiace Compact', make: 'Toyota', year: 2023, status: VehicleStatus.AVAILABLE },
+    { name: 'Compact Shuttle A5', plateNumber: 'CMP-005', model: 'Toyota Hiace Compact', make: 'Toyota', year: 2023, status: VehicleStatus.AVAILABLE },
+
+    // 6-seat vehicles (most common)
+    { name: 'Standard Shuttle B1', plateNumber: 'STD-001', model: 'Ford Transit Standard', make: 'Ford', year: 2022, status: VehicleStatus.AVAILABLE },
+    { name: 'Standard Shuttle B2', plateNumber: 'STD-002', model: 'Ford Transit Standard', make: 'Ford', year: 2022, status: VehicleStatus.AVAILABLE },
+    { name: 'Standard Shuttle B3', plateNumber: 'STD-003', model: 'Ford Transit Standard', make: 'Ford', year: 2022, status: VehicleStatus.AVAILABLE },
+    { name: 'Standard Shuttle B4', plateNumber: 'STD-004', model: 'Ford Transit Standard', make: 'Ford', year: 2022, status: VehicleStatus.AVAILABLE },
+    { name: 'Standard Shuttle B5', plateNumber: 'STD-005', model: 'Ford Transit Standard', make: 'Ford', year: 2022, status: VehicleStatus.AVAILABLE },
+
+    // 8-seat vehicles (some)
+    { name: 'Large Shuttle C1', plateNumber: 'LRG-001', model: 'Mercedes Sprinter Large', make: 'Mercedes', year: 2021, status: VehicleStatus.AVAILABLE },
+    { name: 'Large Shuttle C2', plateNumber: 'LRG-002', model: 'Mercedes Sprinter Large', make: 'Mercedes', year: 2021, status: VehicleStatus.AVAILABLE },
+    { name: 'Large Shuttle C3', plateNumber: 'LRG-003', model: 'Mercedes Sprinter Large', make: 'Mercedes', year: 2021, status: VehicleStatus.AVAILABLE },
+
+    // 12-seat vehicles (some)
+    { name: 'Mini Coach D1', plateNumber: 'MNC-001', model: 'Toyota Coaster Mini', make: 'Toyota', year: 2020, status: VehicleStatus.AVAILABLE },
+    { name: 'Mini Coach D2', plateNumber: 'MNC-002', model: 'Toyota Coaster Mini', make: 'Toyota', year: 2020, status: VehicleStatus.AVAILABLE },
+
+    // Maintenance and inactive vehicles
+    { name: 'Maintenance Shuttle', plateNumber: 'MNT-001', model: 'Ford Transit', make: 'Ford', year: 2019, status: VehicleStatus.MAINTENANCE },
+    { name: 'Backup Shuttle', plateNumber: 'BCK-001', model: 'Toyota Hiace', make: 'Toyota', year: 2018, status: VehicleStatus.INACTIVE },
   ]
 
   const createdVehicles: any[] = []
   for (const template of vehicleTemplates) {
-    const category = getRandomElement(categories)
+    // Map template to appropriate category based on capacity
+    let category;
+    if (template.name.includes('Compact')) {
+      category = categories.find(c => c.capacity === 4);
+    } else if (template.name.includes('Standard')) {
+      category = categories.find(c => c.capacity === 6);
+    } else if (template.name.includes('Large')) {
+      category = categories.find(c => c.capacity === 8);
+    } else if (template.name.includes('Mini Coach')) {
+      category = categories.find(c => c.capacity === 12);
+    } else {
+      // For maintenance/backup vehicles, assign randomly
+      category = getRandomElement(categories);
+    }
+
     const driver = template.status === VehicleStatus.AVAILABLE && drivers.length > 0 ? 
       getRandomElement(drivers) : null
 
@@ -325,24 +650,27 @@ async function createVehiclesForOrg(org: any, categories: any[], drivers: any[])
 async function createRoutesAndStops(org: any, vehicles: any[], shifts: any[]) {
   console.log(`   🗺️  Creating routes and stops for ${org.name}...`)
 
-  // Realistic route data for different organization types
+  // Load location data from CSV for consistent coordinates
+  const locationData = loadLocationData()
+
+  // Realistic route data for different organization types using Addis Ababa coordinates
   const routeTemplates = [
     {
       name: 'Downtown Express',
       description: 'Main downtown business route',
       stops: [
-        { name: 'Central Station', address: 'Downtown Central, Main St', lat: 40.7589, lng: -73.9851 },
-        { name: 'Business District', address: 'Business Hub, Commerce Ave', lat: 40.7614, lng: -73.9776 },
-        { name: 'Shopping Center', address: 'City Mall, Retail Blvd', lat: 40.7505, lng: -73.9934 },
+        { name: 'Central Station', address: 'Downtown Central, Main St, Addis Ababa', lat: locationData[0]?.latitude || 9.0300, lng: locationData[0]?.longitude || 38.7400 },
+        { name: 'Business District', address: 'Business Hub, Commerce Ave, Addis Ababa', lat: locationData[1]?.latitude || 9.0320, lng: locationData[1]?.longitude || 38.7420 },
+        { name: 'Shopping Center', address: 'City Mall, Retail Blvd, Addis Ababa', lat: locationData[2]?.latitude || 9.0340, lng: locationData[2]?.longitude || 38.7440 },
       ]
     },
     {
       name: 'Airport Shuttle',
       description: 'Direct airport connection service',
       stops: [
-        { name: 'Airport Terminal', address: 'International Airport, Terminal 1', lat: 40.6892, lng: -74.1745 },
-        { name: 'Hotel District', address: 'Grand Plaza Hotel Area', lat: 40.7549, lng: -73.9840 },
-        { name: 'Convention Center', address: 'Metro Convention Center', lat: 40.7505, lng: -73.9934 },
+        { name: 'Airport Terminal', address: 'International Airport, Terminal 1, Addis Ababa', lat: locationData[3]?.latitude || 8.9800, lng: locationData[3]?.longitude || 38.8000 },
+        { name: 'Hotel District', address: 'Grand Plaza Hotel Area, Addis Ababa', lat: locationData[4]?.latitude || 9.0360, lng: locationData[4]?.longitude || 38.7460 },
+        { name: 'Convention Center', address: 'Metro Convention Center, Addis Ababa', lat: locationData[5]?.latitude || 9.0380, lng: locationData[5]?.longitude || 38.7480 },
       ]
     }
   ]
@@ -672,10 +1000,14 @@ async function seedOrganization(org: any) {
   })
 
   // Create organizational structure
+  const hqLocation = await createOrganizationLocations(org)
+  const allLocations = await prisma.location.findMany({
+    where: { organizationId: org.id }
+  })
   const { departments, shifts } = await createDepartmentsAndShifts(org)
   
   // Create employee records
-  await createEmployeesFromMembers(org, departments, shifts, usersByRole)
+  await createEmployeesFromMembers(org, departments, shifts, usersByRole, allLocations)
   
   // Create drivers
   const drivers = await createDriversFromMembers(org, usersByRole)
@@ -694,6 +1026,9 @@ async function seedOrganization(org: any) {
   await createVehicleRequests(org, categories, usersByRole)
   await createNotifications(org, usersByRole)
   await createPayrollReports(org, usersByRole)
+  
+  // Create additional employees from employee-data.ts
+  await createAdditionalEmployees(org.id, prisma, auth)
   
   console.log(`   ✅ Completed seeding for ${org.name}`)
 }

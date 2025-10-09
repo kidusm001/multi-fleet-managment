@@ -13,7 +13,10 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
   EllipsisHorizontalIcon,
+  EyeIcon,
 } from "@heroicons/react/24/outline";
+import Map from "@/components/Common/Map/MapComponent";
+import { MAP_CONFIG } from "@/data/constants";
 import { Input } from "@/components/Common/UI/Input";
 import { Button } from "@/components/Common/UI/Button";
 import {
@@ -38,6 +41,7 @@ function DataSection({
   const [error, setError] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
+  const [previewEmployee, setPreviewEmployee] = useState(null);
 
   // Search and filter states
   const [searchQuery, setSearchQuery] = useState("");
@@ -59,7 +63,15 @@ function DataSection({
   }, [availableEmployees]);
 
   const locations = useMemo(() => {
-    const locSet = new Set(availableEmployees.map((emp) => emp.location));
+    const locSet = new Set(
+      availableEmployees
+        .map((emp) => {
+          const workLocation = emp.workLocation?.address;
+          const stopAddress = emp.stop?.address;
+          return [workLocation, stopAddress].filter(loc => loc && loc.trim() !== "");
+        })
+        .flat()
+    );
     return Array.from(locSet);
   }, [availableEmployees]);
 
@@ -67,8 +79,7 @@ function DataSection({
   const filteredEmployees = useMemo(() => {
     return availableEmployees.filter((employee) => {
       const matchesSearch = searchQuery
-        ? employee.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          employee.id.toString().includes(searchQuery.toLowerCase())
+        ? employee.name.toLowerCase().includes(searchQuery.toLowerCase())
         : true;
 
       const matchesDepartment =
@@ -78,10 +89,12 @@ function DataSection({
           ? employee.department.name === selectedDepartment
           : employee.department === selectedDepartment;
 
+      const employeeWorkLocation = employee.workLocation?.address;
+      const employeeStopAddress = employee.stop?.address;
       const matchesLocation =
         selectedLocation === "all"
           ? true
-          : employee.location === selectedLocation;
+          : employeeWorkLocation === selectedLocation || employeeStopAddress === selectedLocation;
 
       return matchesSearch && matchesDepartment && matchesLocation;
     });
@@ -287,13 +300,13 @@ function DataSection({
           Available Employees
         </h3>
 
-        <div className="grid grid-cols-4 gap-4 mb-6">
+  <div className="grid grid-cols-4 gap-4 mb-6">
           <div className="col-span-2">
             <div className="relative">
               <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-muted-foreground" />
               <Input
                 type="text"
-                placeholder="Search by name or ID..."
+                placeholder="Search by name..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9 border-gray-200/50 dark:border-border/50 focus:border-indigo-500 focus:ring-indigo-500 dark:focus:border-primary dark:focus:ring-primary"
@@ -320,7 +333,7 @@ function DataSection({
             <SelectTrigger className="border-gray-200/50 dark:border-border/50">
               <SelectValue placeholder="Filter by Location" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="max-h-60 overflow-y-auto">
               <SelectItem value="all">All Locations</SelectItem>
               {locations.map((loc) => (
                 <SelectItem key={loc} value={loc}>
@@ -330,6 +343,36 @@ function DataSection({
             </SelectContent>
           </Select>
         </div>
+        {/* Management-style preview map: shows selected previewEmployee if any */}
+        {previewEmployee && (
+          <div className="mt-4 mb-6 h-64 rounded-md overflow-hidden border border-gray-200/50 dark:border-border/50">
+            <Map
+              center={MAP_CONFIG.HQ_LOCATION.coords}
+              zoom={11}
+              showDirections={false}
+              isLoading={false}
+              newStop={
+                previewEmployee.stop
+                  ? {
+                      latitude: previewEmployee.stop.latitude,
+                      longitude: previewEmployee.stop.longitude,
+                      name: previewEmployee.name,
+                      isNew: true,
+                      icon: "plus",
+                    }
+                  : previewEmployee.workLocation
+                  ? {
+                      latitude: previewEmployee.workLocation.latitude,
+                      longitude: previewEmployee.workLocation.longitude,
+                      name: `${previewEmployee.name} (Work Location)`,
+                      isNew: true,
+                      icon: "user",
+                    }
+                  : null
+              }
+            />
+          </div>
+        )}
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-gray-200/50 dark:border-border/50">
@@ -338,13 +381,13 @@ function DataSection({
             <thead className="bg-indigo-50/50 dark:bg-card">
               <tr>
                 <th className="text-left py-4 px-6 text-xs font-semibold text-indigo-600 dark:text-muted-foreground uppercase tracking-wider border-b border-gray-200/50 dark:border-border/50">
-                  ID
-                </th>
-                <th className="text-left py-4 px-6 text-xs font-semibold text-indigo-600 dark:text-muted-foreground uppercase tracking-wider border-b border-gray-200/50 dark:border-border/50">
                   Name
                 </th>
                 <th className="text-left py-4 px-6 text-xs font-semibold text-indigo-600 dark:text-muted-foreground uppercase tracking-wider border-b border-gray-200/50 dark:border-border/50">
-                  Location
+                  Work Location
+                </th>
+                <th className="text-left py-4 px-6 text-xs font-semibold text-indigo-600 dark:text-muted-foreground uppercase tracking-wider border-b border-gray-200/50 dark:border-border/50">
+                  Address
                 </th>
                 <th className="text-left py-4 px-6 text-xs font-semibold text-indigo-600 dark:text-muted-foreground uppercase tracking-wider border-b border-gray-200/50 dark:border-border/50">
                   Department
@@ -370,9 +413,6 @@ function DataSection({
                     key={employee.id}
                     className="hover:bg-indigo-50/50 dark:hover:bg-primary/5 transition-colors"
                   >
-                    <td className="py-4 px-6 text-sm text-gray-500 dark:text-muted-foreground">
-                      {employee.id}
-                    </td>
                     <td className="py-4 px-6">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-indigo-100/50 dark:bg-primary/10 flex items-center justify-center text-indigo-600 dark:text-primary font-medium text-sm">
@@ -387,7 +427,10 @@ function DataSection({
                       </div>
                     </td>
                     <td className="py-4 px-6 text-sm text-gray-500 dark:text-muted-foreground">
-                      {employee.location}
+                      {employee.workLocation?.address || "No Work Location"}
+                    </td>
+                    <td className="py-4 px-6 text-sm text-gray-500 dark:text-muted-foreground">
+                      {employee.stop?.address || employee.workLocation?.address || "No Address"}
                     </td>
                     <td className="py-4 px-6">
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100/50 dark:bg-primary/10 text-indigo-600 dark:text-primary">
@@ -396,7 +439,17 @@ function DataSection({
                           "No Department"}
                       </span>
                     </td>
-                    <td className="py-4 px-6">
+                    <td className="py-4 px-6 flex items-center gap-2">
+                      <Button
+                        onClick={() => setPreviewEmployee(prev => prev?.id === employee.id ? null : employee)}
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 px-2 text-xs font-medium bg-transparent text-gray-600 dark:text-muted-foreground hover:text-indigo-600 dark:hover:text-primary flex items-center gap-1.5 rounded-md transition-colors"
+                        aria-label={previewEmployee?.id === employee.id ? 'Close preview' : 'Preview on map'}
+                      >
+                        <EyeIcon className="w-4 h-4" />
+                      </Button>
+
                       <Button
                         onClick={() => handleAssignClick(employee)}
                         variant="ghost"

@@ -27,7 +27,7 @@ export default function EmployeeTable({ data }) {
           {data?.map((employee) => (
             <TableRow key={employee.id} className={styles.staticRow}>
               <TableCell>{employee.name}</TableCell>
-              <TableCell>{employee.location || 'N/A'}</TableCell>
+              <TableCell>{(employee.stop?.address || employee.workLocation?.address || 'N/A').replace(', Ethiopia', '')}</TableCell>
               <TableCell>{employee.department.name}</TableCell>
               <TableCell>
                 <Badge 
