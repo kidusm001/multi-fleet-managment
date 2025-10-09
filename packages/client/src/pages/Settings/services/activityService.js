@@ -1,4 +1,4 @@
-import { api } from './apiService';
+import api from '@/services/api';
 
 /**
  * Activity Service for Settings Dashboard
@@ -45,9 +45,26 @@ class ActivityService {
       
       return response.data;
     } catch (error) {
-      console.error('Error fetching recent activities:', error);
-      // Return empty array when endpoint not present or on error to avoid UI breakage
-      return [];
+      // Handle 404 errors gracefully by returning empty array
+      const status = error?.response?.status || error?.status;
+      const is404 = status === 404 || 
+                   error?.code === 'ERR_BAD_REQUEST' && error?.message?.includes('404') || 
+                   error?.message?.includes('Not Found') ||
+                   (error?.response?.data?.error === 'Not Found');
+      
+      if (is404) {
+        // Silently return empty array for missing endpoint (no log spam)
+        return [];
+      }
+      
+      // For other errors in development, return mock data as fallback
+      if (import.meta.env?.DEV) {
+        console.warn('Using fallback mock activity data due to API error');
+        return this.getMockActivities(limit);
+      }
+      
+      // Re-throw other errors in production
+      throw error;
     }
   }
   
@@ -81,7 +98,22 @@ class ActivityService {
       
       return response.data;
     } catch (error) {
-      console.error(`Error fetching activities for ${entityType} ${entityId}:`, error);
+      // Handle 404 errors gracefully by returning empty array
+      const status = error?.response?.status || error?.status;
+      const is404 = status === 404 || 
+                   error?.code === 'ERR_BAD_REQUEST' && error?.message?.includes('404') || 
+                   error?.message?.includes('Not Found') ||
+                   (error?.response?.data?.error === 'Not Found');
+      
+      if (is404) {
+        // Silently return empty array for missing endpoint (no log spam)
+        return [];
+      }
+      
+      // For other errors, log only in production
+      if (!import.meta.env.DEV) {
+        console.error(`Error fetching activities for ${entityType} ${entityId}:`, error);
+      }
       return [];
     }
   }

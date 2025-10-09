@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { authClient } from '@/lib/auth-client';
 
-const ORIGIN = import.meta.env.VITE_API_BASE || import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const ORIGIN = import.meta.env.VITE_API_BASE || import.meta.env.VITE_API_URL || 'http://localhost:3000';
 const baseURL = import.meta.env.DEV ? '/api' : `${ORIGIN.replace(/\/$/, '')}/api`;
 
 // Create axios instance (cookie-based auth; no per-request session fetch)

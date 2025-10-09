@@ -1,4 +1,5 @@
-import { api } from './apiService';
+import api from '@/services/api';
+import type { AxiosError } from 'axios';
 
 export interface UserData {
   id: string;
@@ -50,10 +51,8 @@ export const adminService = {
           .filter(([_, value]) => value !== undefined)
       ) : { limit: 100 };
       
-      console.log('Making API call with query:', cleanQuery);
       const { data } = await api.get('/users', { params: cleanQuery });
       if (data?.users && Array.isArray(data.users)) {
-        console.log(`Found ${data.users.length} users in response.data.users`);
         return (data.users as ServerUser[]).map((u) => ({
           ...u,
           isActive: !u.banned,
@@ -61,10 +60,19 @@ export const adminService = {
           banExpiresAt: u.banExpires,
         }));
       }
-      console.warn('No users found in response');
       return [];
     } catch (error) {
-      console.error('Failed to list users:', error);
+      // Handle 404 errors gracefully by returning empty array
+      const err = error as AxiosError;
+      if (err?.response?.status === 404) {
+        // Silently return empty array for missing endpoint (no log spam)
+        return [];
+      }
+      
+      // For other errors, log only in production
+      if (!import.meta.env.DEV) {
+        console.error('Failed to list users:', error);
+      }
       return [];
     }
   },

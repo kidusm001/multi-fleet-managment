@@ -1,19 +1,10 @@
 import axios from 'axios';
 
-// Safe env resolver to work in Vite (browser) and Jest (no import.meta.env)
-function resolveEnv() {
-  const g = globalThis;
-  // Support test shims (__IMETA.env or importMetaEnv) first
-  if (g.__IMETA && g.__IMETA.env) return g.__IMETA.env;
-  if (g.importMetaEnv) return g.importMetaEnv;
-  
-  // Fallback to empty object if no env is available
-  return {};
-}
-const env = resolveEnv();
-
-// Build API base: Always use configured backend origin + /api (no proxy)
-const API_BASE = `${(env.VITE_API_URL || 'http://localhost:3000').replace(/\/$/, '')}/api`;
+// Use import.meta.env directly for Vite (it's statically replaced at build time)
+// Build API base: Use proxy in dev mode, full URL in production
+const API_BASE = import.meta.env.DEV 
+  ? '/api'  // Use Vite's proxy in development
+  : `${(import.meta.env.VITE_API_URL || 'http://localhost:3000').replace(/\/$/, '')}/api`;
 
 export const api = axios.create({
   baseURL: API_BASE,
@@ -28,19 +19,39 @@ export const api = axios.create({
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    console.error('API Error:', error);
     if (error.code === 'ERR_NETWORK') {
+      console.error('API Network Error:', error);
       throw new Error('Network error: Please check if the backend server is running');
     }
-    // Log the full error details
+    
     if (error.response) {
-      console.error('Error Response:', error.response.data);
-      console.error('Error Details:', {
-        status: error.response.status,
-        statusText: error.response.statusText,
-        data: error.response.data,
-        headers: error.response.headers
-      });
+      // Check if this is an HTML 404 response and convert it to a proper 404 error
+      if (error.response.status === 404 && 
+          typeof error.response.data === 'string' && 
+          error.response.data.includes('<html')) {
+        const jsonError = {
+          ...error,
+          response: {
+            ...error.response,
+            data: { error: 'Not Found', message: 'Endpoint not found' },
+            status: 404,
+            statusText: 'Not Found'
+          }
+        };
+        throw jsonError;
+      }
+
+      // Only log non-404 errors (404s are expected for missing endpoints)
+      if (error.response.status !== 404) {
+        console.error('API Error:', error);
+        console.error('Error Response:', error.response.data);
+        console.error('Error Details:', {
+          status: error.response.status,
+          statusText: error.response.statusText,
+          data: error.response.data,
+          headers: error.response.headers
+        });
+      }
 
   // Global auth handling: redirect to login on 401 from API calls
       if (error.response.status === 401 && typeof window !== 'undefined') {

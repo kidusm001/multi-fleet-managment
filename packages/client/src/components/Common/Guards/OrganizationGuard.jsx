@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { authClient } from '@/lib/auth-client';
 import { Loader2, Building2 } from 'lucide-react';
@@ -21,11 +21,22 @@ export default function OrganizationGuard({ children }) {
   const [isChecking, setIsChecking] = useState(true);
   const [needsOrganization, setNeedsOrganization] = useState(false);
 
+  // Debounce ref to prevent rapid organization checks
+  const debounceRef = useRef(null);
+  
+  // Cache ref to track if we've already validated organizations for this session
+  const hasValidatedRef = useRef(false);
+
   // Auth hooks
   const { useSession, useListOrganizations, useActiveOrganization } = authClient;
   const { data: session, isLoading: sessionLoading } = useSession();
   const { data: organizations, isLoading: orgsLoading } = useListOrganizations();
   const { data: activeOrganization } = useActiveOrganization();
+
+  // Reset validation cache when session changes
+  useEffect(() => {
+    hasValidatedRef.current = false;
+  }, [session?.user?.id]);
 
   // Skip organization checks for certain routes
   const skipRoutes = [
@@ -33,7 +44,17 @@ export default function OrganizationGuard({ children }) {
     '/auth/signup', 
     '/organizations',
     '/unauthorized',
-    '/profile'
+    '/profile',
+    // Protected routes that should not trigger organization checks
+    '/notifications',
+    '/vehicles', 
+    '/shuttles',
+    '/routes',
+    '/employees',
+    '/dashboard',
+    '/settings',
+    '/payroll',
+    '/organization-management'
   ];
 
   const shouldSkipCheck = skipRoutes.some(route => 
@@ -41,60 +62,86 @@ export default function OrganizationGuard({ children }) {
   );
 
   useEffect(() => {
+    // Clear any existing debounce timeout
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+
     // Don't check if we're not authenticated or on excluded routes
     if (!session || shouldSkipCheck || sessionLoading) {
       setIsChecking(false);
       return;
     }
 
-    // If still loading organizations, wait
+    // If we've already validated organizations for this session and user has active org, skip
+    if (hasValidatedRef.current && activeOrganization && organizations?.length > 0) {
+      setIsChecking(false);
+      return;
+    }
+
+    // If still loading organizations, wait and don't redirect
     if (orgsLoading) {
       setIsChecking(true);
       return;
     }
 
-    const checkOrganizationAccess = async () => {
-      try {
-        // If user has no organizations, they need to create one
-        if (!organizations || organizations.length === 0) {
-          console.log('User has no organizations, redirecting to create one');
-          setNeedsOrganization(true);
-          navigate('/organizations', { replace: true });
-          return;
-        }
-
-        // If user has organizations but no active one, set the first one as active
-        if (!activeOrganization && organizations.length > 0) {
-          console.log('User has organizations but none active, setting first as active');
-          try {
-            await authClient.organization.setActive({
-              organizationId: organizations[0].id
-            });
-            // Don't reload immediately, let the hook update naturally
-            console.log('Set active organization to:', organizations[0].name);
-          } catch (error) {
-            console.error('Failed to set active organization:', error);
-            // If setting active fails, redirect to organization selection
-            navigate('/organizations', { replace: true });
+    // Debounce the organization check to prevent rapid re-checks
+    debounceRef.current = setTimeout(() => {
+      const checkOrganizationAccess = async () => {
+        try {
+          // If user has organizations but no active one, set the first one as active
+          if (!activeOrganization && organizations?.length > 0) {
+            console.log('User has organizations but none active, setting first as active');
+            try {
+              await authClient.organization.setActive({
+                organizationId: organizations[0].id
+              });
+              console.log('Set active organization to:', organizations[0].name);
+              hasValidatedRef.current = true; // Mark as validated
+              // Don't navigate away - stay on current route
+              return;
+            } catch (error) {
+              console.error('Failed to set active organization:', error);
+              // If setting active fails, redirect to organization selection
+              navigate('/organizations', { replace: true });
+              return;
+            }
           }
-          return;
-        }
 
-        console.log('Organization check passed:', {
-          organizations: organizations?.length,
-          activeOrganization: activeOrganization?.name
-        });
-      } catch (error) {
-        console.error('Error checking organization access:', error);
-        // On error, redirect to organization selection to be safe
-        navigate('/organizations', { replace: true });
-      } finally {
-        setIsChecking(false);
+          // Only redirect if user has no organizations at all
+          if (!organizations || organizations.length === 0) {
+            console.log('User has no organizations, redirecting to create one');
+            setNeedsOrganization(true);
+            navigate('/organizations', { replace: true });
+            return;
+          }
+
+          // If we get here, validation passed
+          hasValidatedRef.current = true;
+          console.log('Organization check passed:', {
+            organizations: organizations?.length,
+            activeOrganization: activeOrganization?.name
+          });
+        } catch (error) {
+          console.error('Error checking organization access:', error);
+          // On error, redirect to organization selection to be safe
+          navigate('/organizations', { replace: true });
+        } finally {
+          setIsChecking(false);
+        }
+      };
+
+      // Only run organization check when we have definitive data
+      checkOrganizationAccess();
+    }, 200); // 200ms debounce
+
+    // Cleanup function to clear timeout on unmount or dependency change
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
       }
     };
-
-    checkOrganizationAccess();
-  }, [session, organizations, activeOrganization, sessionLoading, orgsLoading, navigate, location.pathname, shouldSkipCheck]);
+  }, [session, organizations, activeOrganization, sessionLoading, orgsLoading, navigate, shouldSkipCheck]);
 
   // Show loading screen while checking
   if (isChecking || sessionLoading || (session && orgsLoading)) {

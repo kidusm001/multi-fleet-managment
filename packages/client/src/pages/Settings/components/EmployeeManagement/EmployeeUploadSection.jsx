@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { utils, write } from 'xlsx';
 import api from "@/services/api";
-import { employeeService } from "@/services/employeeService";
+import { employeeService } from "../../services/employeeService";
 import { departmentService } from "@/services/departmentService";
 import { shiftService } from "@/services/shiftService";
 import { locationService } from "@/services/locationService";

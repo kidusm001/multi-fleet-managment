@@ -1,4 +1,4 @@
-export { authClient, api } from './apiService';
+export { authClient } from './apiService';
 export { adminService } from './adminService';
 export { driverService } from './driverService';
 export { departmentService } from './departmentService';

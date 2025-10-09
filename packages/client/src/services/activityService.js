@@ -22,12 +22,25 @@ class ActivityService {
       const response = await api.get('/activities', { params });
       return response.data;
     } catch (error) {
-      console.error('Error fetching recent activities:', error);
-      // Fall back to mock data in development or when endpoint is missing (404)
-      if (process.env.NODE_ENV === 'development' || error?.response?.status === 404) {
-        console.warn('Using fallback mock activity data');
+      // Handle 404 errors gracefully by returning empty array
+      const status = error?.response?.status || error?.status;
+      const is404 = status === 404 || 
+                   error?.code === 'ERR_BAD_REQUEST' && error?.message?.includes('404') || 
+                   error?.message?.includes('Not Found') ||
+                   (error?.response?.data?.error === 'Not Found');
+      
+      if (is404) {
+        // Silently return empty array for missing endpoint (no log spam)
+        return [];
+      }
+      
+      // For other errors in development, return mock data as fallback
+      if (import.meta.env?.DEV) {
+        console.warn('Using fallback mock activity data due to API error');
         return this.getMockActivities(limit);
       }
+      
+      // Re-throw other errors in production
       throw error;
     }
   }

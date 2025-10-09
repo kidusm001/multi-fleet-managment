@@ -49,16 +49,16 @@ const employeeService = {
   getEmployeeStats: async () => {
     // Preferred: backend aggregated stats endpoint
     try {
-      const response = await api.get('/employees/stats');
+      const response = await api.get('/employees/stats/summary');
       const data = response.data || {};
       // Basic shape guard with graceful fallback pieces
-      const total = typeof data.total === 'number' ? data.total : 0;
-      const assigned = typeof data.assigned === 'number' ? data.assigned : 0;
-      const departments = typeof data.departments === 'number' ? data.departments : 0;
-      const recentlyAdded = typeof data.recentlyAdded === 'number' ? data.recentlyAdded : 0;
+      const total = typeof data.totalEmployees === 'number' ? data.totalEmployees : 0;
+      const assigned = typeof data.assignedEmployees === 'number' ? data.assignedEmployees : 0;
+      const departments = typeof data.employeesByDepartment === 'object' ? Object.keys(data.employeesByDepartment).length : 0;
+      const recentlyAdded = typeof data.activeEmployees === 'number' ? data.activeEmployees : 0;
       return { total, assigned, departments, recentlyAdded };
     } catch (primaryError) {
-      console.warn('[employeeService.getEmployeeStats] /employees/stats failed, falling back to client derivation:', primaryError?.message);
+      console.warn('[employeeService.getEmployeeStats] /employees/stats/summary failed, falling back to client derivation:', primaryError?.message);
       // Fallback: derive from management listing
       try {
         const response = await api.get('/employees/management');
