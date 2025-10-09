@@ -4,8 +4,10 @@ import pinoHttp from 'pino-http';
 import pino from 'pino';
 import dotenv from 'dotenv';
 import { toNodeHandler } from 'better-auth/node';
+import crypto from 'crypto';
 
 import { auth } from './lib/auth';
+import { getRedisClient } from './lib/redis';
 import apiRouter from './routes';
 import axios from 'axios';
 
@@ -13,6 +15,13 @@ dotenv.config();
 
 export function createApp() {
     const app = express();
+
+    // Initialize Redis client if enabled
+    if (process.env.REDIS_ENABLED === 'true') {
+        getRedisClient().catch(err => {
+            console.error('⚠️  Failed to initialize Redis, running without cache:', err);
+        });
+    }
 
     const FASTAPI_URL = process.env.FASTAPI_URL || 'http://localhost:8000';
 
@@ -208,6 +217,41 @@ export function createApp() {
 
         console.log(`Forwarding request to FastAPI: ${targetUrl}`);
 
+        // Check if this is a clustering request that can be cached
+        const isClusteringRequest = targetPath === '/clustering' && req.method === 'POST';
+        let cacheKey = '';
+        
+        if (isClusteringRequest && process.env.REDIS_ENABLED === 'true') {
+            // Generate cache key from request body
+            const requestData = {
+                path: targetPath,
+                body: req.body
+            };
+            const hash = crypto
+                .createHash('sha256')
+                .update(JSON.stringify(requestData))
+                .digest('hex')
+                .substring(0, 16);
+            cacheKey = `fastapi:clustering:${hash}`;
+
+            // Try to get from cache
+            try {
+                const redisClient = await getRedisClient();
+                if (redisClient) {
+                    const cachedResult = await redisClient.get(cacheKey);
+                    if (cachedResult) {
+                        console.log(`🎯 Cache HIT for FastAPI clustering: ${cacheKey}`);
+                        const parsedResult = JSON.parse(cachedResult);
+                        return res.status(200).json({ ...parsedResult, cached: true });
+                    }
+                    console.log(`❌ Cache MISS for FastAPI clustering: ${cacheKey}`);
+                }
+            } catch (cacheError) {
+                console.error('Cache read error:', cacheError);
+                // Continue without cache on error
+            }
+        }
+
         try {
             const filteredHeaders = Object.fromEntries(
                 Object.entries(req.headers).filter(([key]) =>
@@ -232,8 +276,28 @@ export function createApp() {
             const headerContentType = response.headers['content-type'];
             const contentType = Array.isArray(headerContentType) ? headerContentType[0] : headerContentType;
 
+            // Cache successful clustering responses
+            if (isClusteringRequest && response.status === 200 && process.env.REDIS_ENABLED === 'true') {
+                try {
+                    const redisClient = await getRedisClient();
+                    if (redisClient) {
+                        const cacheTTL = parseInt(process.env.CLUSTERING_CACHE_TTL || '3600', 10);
+                        await redisClient.setEx(cacheKey, cacheTTL, JSON.stringify(response.data));
+                        console.log(`💾 Cached FastAPI clustering result: ${cacheKey} (TTL: ${cacheTTL}s)`);
+                    }
+                } catch (cacheError) {
+                    console.error('Cache write error:', cacheError);
+                    // Continue without caching on error
+                }
+            }
+
             if (contentType && contentType.includes('application/json')) {
-                res.json(response.data);
+                // Add cached flag to response if it's a clustering request
+                if (isClusteringRequest && typeof response.data === 'object' && response.data !== null) {
+                    res.json({ ...response.data, cached: false });
+                } else {
+                    res.json(response.data);
+                }
             } else {
                 res.send(response.data);
             }
