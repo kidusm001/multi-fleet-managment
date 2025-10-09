@@ -1,0 +1,662 @@
+{
+  "info": {
+    "name": "Payroll System Tests",
+    "description": "Complete test collection for Attendance + Payroll System",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{authToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000/api",
+      "type": "string"
+    },
+    {
+      "key": "authToken",
+      "value": "your-session-token",
+      "type": "string"
+    },
+    {
+      "key": "organizationId",
+      "value": "your-org-id",
+      "type": "string"
+    },
+    {
+      "key": "driverId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "vehicleId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "serviceProviderId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "payrollPeriodId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "attendanceId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Setup - Create Test Data",
+      "item": [
+        {
+          "name": "Create Driver (John Doe)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    pm.collectionVariables.set('driverId', pm.response.json().id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"John Doe\",\n  \"email\": \"john@example.com\",\n  \"licenseNumber\": \"DL123456\",\n  \"phoneNumber\": \"+1234567890\",\n  \"baseSalary\": 5000,\n  \"hourlyRate\": 30,\n  \"overtimeRate\": 1.5,\n  \"bankAccountNumber\": \"1234567890\",\n  \"bankName\": \"Test Bank\",\n  \"organizationId\": \"{{organizationId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/drivers/superadmin",
+              "host": ["{{baseUrl}}"],
+              "path": ["drivers", "superadmin"]
+            }
+          }
+        },
+        {
+          "name": "Create In-House Vehicle",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    pm.collectionVariables.set('vehicleId', pm.response.json().id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"plateNumber\": \"AA-12345\",\n  \"model\": \"Toyota Hiace\",\n  \"make\": \"Toyota\",\n  \"type\": \"IN_HOUSE\",\n  \"capacity\": 14,\n  \"year\": 2023,\n  \"status\": \"AVAILABLE\",\n  \"dailyRate\": 300,\n  \"organizationId\": \"{{organizationId}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/shuttles/superadmin",
+              "host": ["{{baseUrl}}"],
+              "path": ["shuttles", "superadmin"]
+            }
+          }
+        },
+        {
+          "name": "Create Service Provider",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    pm.collectionVariables.set('serviceProviderId', pm.response.json().id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"companyName\": \"ABC Transport\",\n  \"contactPerson\": \"Jane Smith\",\n  \"email\": \"abc@transport.com\",\n  \"phoneNumber\": \"+0987654321\",\n  \"monthlyRate\": 10000,\n  \"perTripRate\": 5,\n  \"perKmRate\": 2.5,\n  \"gstNumber\": \"29AABCT1234F1Z5\",\n  \"bankAccountNumber\": \"9876543210\",\n  \"bankName\": \"Service Bank\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/service-providers",
+              "host": ["{{baseUrl}}"],
+              "path": ["service-providers"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Attendance - Basic Operations",
+      "item": [
+        {
+          "name": "Create Attendance (In-House Driver)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Returns attendance ID', () => pm.expect(pm.response.json().id).to.exist);",
+                  "if (pm.response.code === 201) {",
+                  "    pm.collectionVariables.set('attendanceId', pm.response.json().id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehicleId\": \"{{vehicleId}}\",\n  \"driverId\": \"{{driverId}}\",\n  \"date\": \"2024-01-15\",\n  \"hoursWorked\": 9.5,\n  \"tripsCompleted\": 65,\n  \"kmsCovered\": 1900\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/attendance",
+              "host": ["{{baseUrl}}"],
+              "path": ["attendance"]
+            }
+          }
+        },
+        {
+          "name": "Get All Attendance",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Returns array', () => pm.expect(pm.response.json().records).to.be.an('array'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/attendance?page=1&limit=20",
+              "host": ["{{baseUrl}}"],
+              "path": ["attendance"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Driver Summary",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Has summary', () => pm.expect(pm.response.json().summary).to.exist);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/attendance/summary/driver/{{driverId}}?startDate=2024-01-01&endDate=2024-01-31",
+              "host": ["{{baseUrl}}"],
+              "path": ["attendance", "summary", "driver", "{{driverId}}"],
+              "query": [
+                {
+                  "key": "startDate",
+                  "value": "2024-01-01"
+                },
+                {
+                  "key": "endDate",
+                  "value": "2024-01-31"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Bulk Create Attendance (Month)",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"records\": [\n    {\n      \"vehicleId\": \"{{vehicleId}}\",\n      \"driverId\": \"{{driverId}}\",\n      \"date\": \"2024-01-01\",\n      \"hoursWorked\": 8,\n      \"tripsCompleted\": 12,\n      \"kmsCovered\": 150\n    },\n    {\n      \"vehicleId\": \"{{vehicleId}}\",\n      \"driverId\": \"{{driverId}}\",\n      \"date\": \"2024-01-02\",\n      \"hoursWorked\": 9,\n      \"tripsCompleted\": 15,\n      \"kmsCovered\": 180\n    },\n    {\n      \"vehicleId\": \"{{vehicleId}}\",\n      \"driverId\": \"{{driverId}}\",\n      \"date\": \"2024-01-03\",\n      \"hoursWorked\": 8.5,\n      \"tripsCompleted\": 13,\n      \"kmsCovered\": 160\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/attendance/bulk",
+              "host": ["{{baseUrl}}"],
+              "path": ["attendance", "bulk"]
+            }
+          }
+        },
+        {
+          "name": "Update Attendance",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"hoursWorked\": 10,\n  \"tripsCompleted\": 70,\n  \"kmsCovered\": 2000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/attendance/{{attendanceId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["attendance", "{{attendanceId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Payroll Period - Create & Generate",
+      "item": [
+        {
+          "name": "Create Payroll Period",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "if (pm.response.code === 201) {",
+                  "    pm.collectionVariables.set('payrollPeriodId', pm.response.json().id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"January 2024\",\n  \"startDate\": \"2024-01-01\",\n  \"endDate\": \"2024-01-31\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/payroll-periods",
+              "host": ["{{baseUrl}}"],
+              "path": ["payroll-periods"]
+            }
+          }
+        },
+        {
+          "name": "Generate Payroll Entries (TRIGGER)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Returns entries', () => {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.entries).to.be.an('array');",
+                  "    pm.expect(json.message).to.include('Generated');",
+                  "});",
+                  "",
+                  "// Verify calculations",
+                  "const entries = pm.response.json().entries;",
+                  "if (entries.length > 0) {",
+                  "    const employeeEntry = entries.find(e => e.payrollType === 'SALARY');",
+                  "    if (employeeEntry) {",
+                  "        pm.test('Employee has base amount', () => pm.expect(employeeEntry.amount).to.be.above(0));",
+                  "        pm.test('Employee netPay calculated', () => pm.expect(employeeEntry.netPay).to.exist);",
+                  "    }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/payroll-periods/{{payrollPeriodId}}/generate-entries",
+              "host": ["{{baseUrl}}"],
+              "path": ["payroll-periods", "{{payrollPeriodId}}", "generate-entries"]
+            }
+          }
+        },
+        {
+          "name": "Get Payroll Period Details",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Has entries', () => pm.expect(pm.response.json().entries).to.be.an('array'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/payroll-periods/{{payrollPeriodId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["payroll-periods", "{{payrollPeriodId}}"]
+            }
+          }
+        },
+        {
+          "name": "Get All Payroll Periods",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/payroll-periods?page=1&limit=10",
+              "host": ["{{baseUrl}}"],
+              "path": ["payroll-periods"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "10"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Payroll - Adjustments & Status",
+      "item": [
+        {
+          "name": "Add Bonus to Entry",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bonuses\": 1000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/payroll-periods/{{payrollPeriodId}}/entries/:entryId",
+              "host": ["{{baseUrl}}"],
+              "path": ["payroll-periods", "{{payrollPeriodId}}", "entries", ":entryId"],
+              "variable": [
+                {
+                  "key": "entryId",
+                  "value": "replace-with-entry-id"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Add Deduction to Entry",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"deductions\": 200\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/payroll-periods/{{payrollPeriodId}}/entries/:entryId",
+              "host": ["{{baseUrl}}"],
+              "path": ["payroll-periods", "{{payrollPeriodId}}", "entries", ":entryId"],
+              "variable": [
+                {
+                  "key": "entryId",
+                  "value": "replace-with-entry-id"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update Status to PROCESSED",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"PROCESSED\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/payroll-periods/{{payrollPeriodId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["payroll-periods", "{{payrollPeriodId}}", "status"]
+            }
+          }
+        },
+        {
+          "name": "Update Status to PAID",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"PAID\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/payroll-periods/{{payrollPeriodId}}/status",
+              "host": ["{{baseUrl}}"],
+              "path": ["payroll-periods", "{{payrollPeriodId}}", "status"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Verification Tests",
+      "item": [
+        {
+          "name": "Test: Reject Duplicate Attendance",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 409 Conflict', () => pm.response.to.have.status(409));",
+                  "pm.test('Error message mentions duplicate', () => {",
+                  "    pm.expect(pm.response.json().message).to.include('already exists');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"vehicleId\": \"{{vehicleId}}\",\n  \"driverId\": \"{{driverId}}\",\n  \"date\": \"2024-01-15\",\n  \"hoursWorked\": 8,\n  \"tripsCompleted\": 10,\n  \"kmsCovered\": 100\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/attendance",
+              "host": ["{{baseUrl}}"],
+              "path": ["attendance"]
+            }
+          }
+        },
+        {
+          "name": "Test: Reject Overlapping Periods",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 409 Conflict', () => pm.response.to.have.status(409));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Overlapping Period\",\n  \"startDate\": \"2024-01-15\",\n  \"endDate\": \"2024-02-15\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/payroll-periods",
+              "host": ["{{baseUrl}}"],
+              "path": ["payroll-periods"]
+            }
+          }
+        },
+        {
+          "name": "Test: Cannot Delete Paid Period",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 400 Bad Request', () => pm.response.to.have.status(400));",
+                  "pm.test('Error message mentions cannot delete', () => {",
+                  "    pm.expect(pm.response.json().message).to.include('Cannot delete');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/payroll-periods/{{payrollPeriodId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["payroll-periods", "{{payrollPeriodId}}"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
