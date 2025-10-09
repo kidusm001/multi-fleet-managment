@@ -423,24 +423,23 @@ function CreateRoute() {
                 }}
               />
 
-              {/* Location Selection - only show when shift is selected */}
+              {/* Location Selection and Create Button Row - only show when shift is selected */}
               {selectedShift && (
-                <div className={styles.locationSelectionWrapper}>
-                  <LocationSelection
-                    selectedLocation={selectedLocation}
-                    onLocationChange={handleLocationChange}
-                    locations={locations}
-                  />
+                <div className={styles.locationAndCreateRow}>
+                  <div className={styles.locationSelectionWrapper}>
+                    <LocationSelection
+                      selectedLocation={selectedLocation}
+                      onLocationChange={handleLocationChange}
+                      locations={locations}
+                    />
+                  </div>
+                  <div className={styles.createButtonWrapper}>
+                    <CustomButton onClick={handleCreateRoute} disabled={!selectedLocation}>
+                      Create Route
+                    </CustomButton>
+                  </div>
                 </div>
               )}
-
-               {selectedShift && (
-                 <div className={styles.createButtonWrapper}>
-                   <CustomButton onClick={handleCreateRoute} disabled={!selectedLocation}>
-                     Create Route
-                   </CustomButton>
-                 </div>
-               )}
             </div>
 
             {/* Main Content Grid - Always show */}

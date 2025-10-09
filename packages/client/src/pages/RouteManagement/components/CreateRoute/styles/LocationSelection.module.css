@@ -1,7 +1,8 @@
 /* LocationSelection.module.css */
 
 .container {
-  width: 100%;
+  width: 85%;
+  max-width: 600px;
 }
 
 .content {
@@ -50,6 +51,30 @@
 .trigger:disabled {
   background-color: #f3f4f6;
   cursor: not-allowed;
+}
+
+.trigger.unselectedGlow {
+  position: relative;
+  border: 2px solid transparent;
+  background-image: 
+    linear-gradient(white, white),
+    conic-gradient(from var(--angle, 0deg), 
+      transparent 0deg,
+      transparent 270deg,
+      rgba(59, 130, 246, 0.9) 300deg,
+      rgba(59, 130, 246, 0.6) 330deg,
+      transparent 360deg
+    );
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+  animation: rotateBorder 2.5s linear infinite;
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.3);
+}
+
+@property --angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
 }
 
 .selectedLocationInfo {
@@ -130,7 +155,22 @@
   background-color: hsl(var(--muted));
 }
 
-:global(.dark) .selectedLocationInfo {
+:global(.dark) .trigger.unselectedGlow {
+  border: 2px solid transparent;
+  background-image: 
+    linear-gradient(hsl(var(--background)), hsl(var(--background))),
+    conic-gradient(from var(--angle, 0deg), 
+      transparent 0deg,
+      transparent 270deg,
+      rgba(30, 58, 138, 1) 300deg,
+      rgba(30, 58, 138, 0.9) 330deg,
+      transparent 360deg
+    );
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+  box-shadow: 0 0 0 1px rgba(30, 58, 138, 0.7);
+  z-index: 10;
+}:global(.dark) .selectedLocationInfo {
   background-color: hsl(var(--primary) / 0.1);
   border-color: hsl(var(--primary) / 0.2);
 }
@@ -154,6 +194,16 @@
 
 :global(.dark) .errorText {
   color: hsl(var(--destructive));
+}
+
+/* Keyframes for smooth rotating border animation */
+@keyframes rotateBorder {
+  0% {
+    --angle: 0deg;
+  }
+  100% {
+    --angle: 360deg;
+  }
 }
 
 /* Responsive design */

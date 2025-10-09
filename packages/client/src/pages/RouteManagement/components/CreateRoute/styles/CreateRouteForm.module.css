@@ -316,6 +316,21 @@
   background: color-mix(in srgb, var(--primary) 15%, transparent);
 }
 
+.shuttleCard.unselectedGlow {
+  position: relative;
+  box-shadow: 0 0 20px rgba(var(--primary-rgb), 0.3);
+  animation: pulseGlow 2s ease-in-out infinite alternate;
+}
+
+@keyframes pulseGlow {
+  0% {
+    box-shadow: 0 0 20px rgba(var(--primary-rgb), 0.3);
+  }
+  100% {
+    box-shadow: 0 0 30px rgba(var(--primary-rgb), 0.5);
+  }
+}
+
 .shuttleCard.recommended {
   position: relative;
 }

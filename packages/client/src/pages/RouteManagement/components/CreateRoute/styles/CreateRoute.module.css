@@ -113,12 +113,25 @@
   margin: 0.5rem 0 1rem;
 }
 
+.locationAndCreateRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 1.5rem;
+  justify-content: space-between;
+  padding: 0 2rem;
+}
+
 .locationSelectionWrapper {
-  width: 100%;
+  flex: 0 0 50%;
+  max-width: 50%;
 }
 
 .createButtonWrapper {
-  padding-top: 0.5rem;
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-start;
+  padding-top: 1.5rem; /* Align with the location selection title */
+  margin-left: auto;
 }
 
 /* Ensure consistent button appearance in both modes */
@@ -234,9 +247,22 @@
     gap: 1rem;
   }
 
+  .locationAndCreateRow {
+    flex-direction: column;
+    gap: 1rem;
+    justify-content: flex-start;
+    padding: 0;
+  }
+
+  .locationSelectionWrapper {
+    flex: 1;
+    max-width: 100%;
+  }
+
   .createButtonWrapper {
     width: 100%;
     padding-top: 0;
+    margin-left: 0;
   }
 }
 

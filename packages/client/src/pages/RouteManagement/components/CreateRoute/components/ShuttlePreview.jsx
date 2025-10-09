@@ -144,10 +144,13 @@ const ShuttlePreview = ({ routeData, onClose, onAccept, show }) => {
         
         if (distance > furthestDistance) {
           furthestDistance = distance;
-          // Use stop address and extract first part (Main District part)
-          const fullAddress = (employee.stop?.address || employee.location || '').replace(', Ethiopia', '');
-          const addressParts = fullAddress.split(',');
-          furthestArea = addressParts.length > 1 ? addressParts[0].trim() : fullAddress;
+          // Use stop address and extract first two parts (excluding Addis Ababa and Ethiopia)
+          let fullAddress = (employee.stop?.address || employee.location || '');
+          // Remove Ethiopia and Addis Ababa
+          fullAddress = fullAddress.replace(/, Ethiopia/g, '').replace(/, Addis Ababa/g, '');
+          const addressParts = fullAddress.split(',').map(part => part.trim()).filter(part => part);
+          // Take first two parts and join them
+          furthestArea = addressParts.slice(0, 2).join(' ');
         }
       }
     });

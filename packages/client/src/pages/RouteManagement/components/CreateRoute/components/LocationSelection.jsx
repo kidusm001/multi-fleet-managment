@@ -85,7 +85,7 @@ export default function LocationSelection({
             value={selectedLocation ? String(selectedLocation) : ""}
             disabled={disabled}
           >
-            <SelectTrigger className={styles.trigger}>
+            <SelectTrigger className={`${styles.trigger} ${!selectedLocation ? styles.unselectedGlow : ''}`}>
               <MapPin className="w-4 h-4 mr-2 text-primary" />
               <SelectValue placeholder="Select a location">
                 {selectedLocationData ? (

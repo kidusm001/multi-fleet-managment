@@ -362,10 +362,13 @@ export default function CreateRouteForm({
         
         if (distance > furthestDistance) {
           furthestDistance = distance;
-          // Use stop location and extract first part (Main District part)
-          const fullAddress = (employee.stop?.address || employee.location || '').replace(', Ethiopia', '');
-          const addressParts = fullAddress.split(',');
-          furthestArea = addressParts.length > 1 ? addressParts[0].trim() : fullAddress;
+          // Use stop location and extract first two parts (excluding Addis Ababa and Ethiopia)
+          let fullAddress = (employee.stop?.address || employee.location || '');
+          // Remove Ethiopia and Addis Ababa
+          fullAddress = fullAddress.replace(/, Ethiopia/g, '').replace(/, Addis Ababa/g, '');
+          const addressParts = fullAddress.split(',').map(part => part.trim()).filter(part => part);
+          // Take first two parts and join them
+          furthestArea = addressParts.slice(0, 2).join(' ');
         }
       }
     });
@@ -665,7 +668,7 @@ export default function CreateRouteForm({
                     <button
                       type="button"
                       key={shuttle.id}
-                      className={`${styles.shuttleCard} ${isSelected ? styles.selected : ''} ${isRecommended ? styles.recommended : ''}`}
+                      className={`${styles.shuttleCard} ${isSelected ? styles.selected : ''} ${isRecommended ? styles.recommended : ''} ${!selectedShuttle ? styles.unselectedGlow : ''}`}
                       onClick={() => handleShuttleSelect(shuttle)}
                     >
                       <div className={styles.shuttleInfo}>
