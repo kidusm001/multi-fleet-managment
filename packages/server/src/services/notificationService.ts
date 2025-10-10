@@ -8,6 +8,8 @@ interface NotificationQuery {
   status?: NotificationStatus;
   type?: NotificationType;
   importance?: ImportanceLevel;
+  fromDate?: Date;
+  toDate?: Date;
   page?: number;
   limit?: number;
 }
@@ -49,7 +51,7 @@ export const notificationService = {
   },
 
   async getNotifications(opts: NotificationQuery) {
-    const { userId, organizationId, role, status, type, importance, page = 1, limit = 10 } = opts;
+    const { userId, organizationId, role, status, type, importance, fromDate, toDate, page = 1, limit = 10 } = opts;
 
     const where: any = {};
     if (organizationId) where.organizationId = organizationId;
@@ -62,6 +64,11 @@ export const notificationService = {
     if (role) where.toRoles = { has: role };
     if (type) where.type = type;
     if (importance) where.importance = importance;
+    if (fromDate || toDate) {
+      where.createdAt = {};
+      if (fromDate) where.createdAt.gte = fromDate;
+      if (toDate) where.createdAt.lte = toDate;
+    }
 
     const [items, total] = await Promise.all([
       prisma.notification.findMany({
@@ -95,7 +102,7 @@ export const notificationService = {
   },
 
   async getUnreadNotifications(opts: NotificationQuery) {
-    const { userId, organizationId, role, page = 1, limit = 10 } = opts;
+    const { userId, organizationId, role, type, importance, fromDate, toDate, page = 1, limit = 10 } = opts;
 
     const where: any = {};
     if (organizationId) where.organizationId = organizationId;
@@ -106,6 +113,13 @@ export const notificationService = {
       ];
     }
     if (role) where.toRoles = { has: role };
+    if (type) where.type = type;
+    if (importance) where.importance = importance;
+    if (fromDate || toDate) {
+      where.createdAt = {};
+      if (fromDate) where.createdAt.gte = fromDate;
+      if (toDate) where.createdAt.lte = toDate;
+    }
 
     const [items, total] = await Promise.all([
       prisma.notification.findMany({
@@ -157,7 +171,7 @@ export const notificationService = {
   },
 
   async getReadNotifications(opts: NotificationQuery) {
-    const { userId, organizationId, role, page = 1, limit = 10 } = opts;
+    const { userId, organizationId, role, type, importance, fromDate, toDate, page = 1, limit = 10 } = opts;
 
     if (!userId) {
       return { items: [], page, total: 0, pages: 0 };
@@ -166,6 +180,13 @@ export const notificationService = {
     const where: any = {};
     if (organizationId) where.organizationId = organizationId;
     if (role) where.toRoles = { has: role };
+    if (type) where.type = type;
+    if (importance) where.importance = importance;
+    if (fromDate || toDate) {
+      where.createdAt = {};
+      if (fromDate) where.createdAt.gte = fromDate;
+      if (toDate) where.createdAt.lte = toDate;
+    }
 
     const [items, total] = await Promise.all([
       prisma.notification.findMany({
@@ -461,7 +482,7 @@ export const notificationService = {
   },
 
   async getNotificationsSortedByImportance(opts: NotificationQuery) {
-    const { userId, organizationId, role, status, type, page = 1, limit = 10 } = opts;
+    const { userId, organizationId, role, status, type, importance, fromDate, toDate, page = 1, limit = 10 } = opts;
 
     const where: any = {};
     if (organizationId) where.organizationId = organizationId;
@@ -473,6 +494,12 @@ export const notificationService = {
     }
     if (role) where.toRoles = { has: role };
     if (type) where.type = type;
+    if (importance) where.importance = importance;
+    if (fromDate || toDate) {
+      where.createdAt = {};
+      if (fromDate) where.createdAt.gte = fromDate;
+      if (toDate) where.createdAt.lte = toDate;
+    }
 
     const importanceOrder = { CRITICAL: 1, HIGH: 2, MEDIUM: 3, LOW: 4 };
 

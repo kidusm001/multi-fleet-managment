@@ -25,6 +25,8 @@ import {
     AddStopToRouteInput,
     UpdateRouteStopsInput
 } from '../schema/routeSchemas';
+import { routeNotifications, employeeNotifications } from '../lib/notificationHelpers';
+import { broadcastNotification } from '../lib/notificationBroadcaster';
 
 const router = express.Router();
 
@@ -863,6 +865,10 @@ router.post('/', requireAuth, validateSchema(CreateRouteSchema, 'body'), async (
                 },
             });
 
+            // Send notifications
+            const notification = routeNotifications.created(activeOrgId, newRoute);
+            await broadcastNotification(notification);
+
             res.status(201).json(newRoute);
         });
 
@@ -980,6 +986,10 @@ router.put('/:id', requireAuth, validateMultiple([{ schema: RouteIdParamSchema, 
             });
         }
 
+        // Send notification
+        const notification = routeNotifications.updated(activeOrgId, updatedRoute);
+        await broadcastNotification(notification);
+
         res.json(updatedRoute);
     } catch (error) {
         console.error(error);
@@ -1058,6 +1068,10 @@ router.delete('/:id', requireAuth, validateSchema(RouteIdParamSchema, 'params'),
                 where: { id },
                 data: { deleted: true, deletedAt: new Date(), isActive: false, status: RouteStatus.INACTIVE }
             });
+
+            // Send notifications
+            const notification = routeNotifications.deleted(activeOrgId, route);
+            await broadcastNotification(notification);
 
             return { success: true };
         });
@@ -1273,6 +1287,19 @@ router.patch('/:routeId/employees/:employeeId/add-stop', requireAuth, validateSc
             }
         });
 
+        // Send notifications
+        const routeWithDetails = await prisma.route.findUnique({
+            where: { id: routeId },
+            include: { vehicle: true, shift: true }
+        });
+        
+        if (routeWithDetails) {
+            const notifications = employeeNotifications.assignedToRoute(activeOrgId, employee, routeWithDetails, new Date().toISOString());
+            for (const notif of notifications) {
+                await broadcastNotification(notif);
+            }
+        }
+
         res.status(200).json({ message: 'Stop added to route successfully' });
     } catch (error) {
         console.error('Error adding stop to route:', error);
@@ -1342,6 +1369,19 @@ router.patch('/:routeId/employees/:employeeId/remove-stop', requireAuth, validat
             });
         });
 
+        // Send notifications
+        const routeWithDetails = await prisma.route.findUnique({
+            where: { id: routeId },
+            include: { vehicle: true, shift: true }
+        });
+        
+        if (routeWithDetails) {
+            const notifications = employeeNotifications.removedFromRoute(activeOrgId, employee, routeWithDetails);
+            for (const notif of notifications) {
+                await broadcastNotification(notif);
+            }
+        }
+
         res.status(200).json({
             message: 'Stop removed and route metrics updated successfully',
             totalDistance,
@@ -1369,9 +1409,45 @@ router.patch('/:id/status', requireAuth, validateMultiple([{ schema: RouteIdPara
             body: { permissions: { route: ["update"] } }
         });
         if (!hasPermission.success) return res.status(403).json({ message: 'Unauthorized' });
-        const route = await prisma.route.findFirst({ where: { id, organizationId: activeOrgId } });
+        const route = await prisma.route.findFirst({ 
+            where: { id, organizationId: activeOrgId },
+            include: { 
+                vehicle: true, 
+                shift: true,
+                stops: { include: { employee: true } }
+            }
+        });
         if (!route) return res.status(404).json({ message: 'Route not found' });
+        
         await prisma.route.update({ where: { id }, data: { status } });
+
+        // Send status change notifications
+        if (status === 'ACTIVE') {
+            const notifications = routeNotifications.activated(activeOrgId, route);
+            for (const notif of notifications) {
+                await broadcastNotification(notif);
+            }
+        } else if (status === 'INACTIVE') {
+            const notifications = routeNotifications.deactivated(activeOrgId, route);
+            for (const notif of notifications) {
+                await broadcastNotification(notif);
+            }
+        } else if (status === 'CANCELLED') {
+            const employeeIds = route.stops
+                .filter((stop: any) => stop.employee)
+                .map((stop: any) => stop.employee.id);
+            
+            const notifications = routeNotifications.cancelled(
+                activeOrgId, 
+                route, 
+                route.date?.toISOString() || new Date().toISOString(),
+                employeeIds.length > 0 ? employeeIds : undefined
+            );
+            for (const notif of notifications) {
+                await broadcastNotification(notif);
+            }
+        }
+        
         res.json({ message: `Route status updated to ${status}` });
     } catch (error) {
         console.error(error);

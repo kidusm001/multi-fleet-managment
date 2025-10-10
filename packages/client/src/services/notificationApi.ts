@@ -4,9 +4,9 @@ export interface NotificationQuery {
   page?: number;
   limit?: number;
   type?: string;
-  importance?: 'Low' | 'Medium' | 'High';
-  fromDate?: Date;
-  toDate?: Date;
+  importance?: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
+  fromDate?: Date | string;
+  toDate?: Date | string;
   status?: string;
 }
 
@@ -46,13 +46,15 @@ export const notificationApi = {
     const data = response.data || {};
     const notifications = data.notifications || data.items || [];
     const total =
-      typeof data.total === 'number'
+      typeof data.pagination?.total === 'number'
+        ? data.pagination.total
+        : typeof data.total === 'number'
         ? data.total
         : Array.isArray(notifications)
         ? notifications.length
         : 0;
-    const perPage = (query && query.limit) || data.perPage || 10;
-    const pages = data.pages || (perPage ? Math.ceil(total / perPage) : 0);
+    const perPage = (query && query.limit) || data.pagination?.perPage || data.perPage || 10;
+    const pages = data.pagination?.pages || data.pages || (perPage ? Math.ceil(total / perPage) : 0);
     return {
       notifications,
       pagination: {
@@ -67,9 +69,9 @@ export const notificationApi = {
     const response = await api.get('/notifications/sorted-by-importance', { params: query });
     const data = response.data || {};
     const notifications = data.notifications || data.items || [];
-    const total = typeof data.total === 'number' ? data.total : notifications.length || 0;
-    const perPage = (query && query.limit) || data.perPage || 10;
-    const pages = data.pages || (perPage ? Math.ceil(total / perPage) : 0);
+    const total = typeof data.pagination?.total === 'number' ? data.pagination.total : typeof data.total === 'number' ? data.total : notifications.length || 0;
+    const perPage = (query && query.limit) || data.pagination?.perPage || data.perPage || 10;
+    const pages = data.pagination?.pages || data.pages || (perPage ? Math.ceil(total / perPage) : 0);
     return {
       notifications,
       pagination: {
@@ -80,34 +82,36 @@ export const notificationApi = {
     };
   },
 
-  getUnread: async (page = 1, limit = 10): Promise<ApiNotificationResponse> => {
-    const response = await api.get('/notifications/unread', { params: { page, limit } });
+  getUnread: async (query: NotificationQuery = {}): Promise<ApiNotificationResponse> => {
+    const response = await api.get('/notifications/unread', { params: query });
     const data = response.data || {};
     const notifications = data.notifications || data.items || [];
-    const total = typeof data.total === 'number' ? data.total : notifications.length || 0;
-    const pages = data.pages || (limit ? Math.ceil(total / limit) : 0);
+    const total = typeof data.pagination?.total === 'number' ? data.pagination.total : typeof data.total === 'number' ? data.total : notifications.length || 0;
+    const perPage = query.limit || data.pagination?.perPage || data.perPage || 10;
+    const pages = data.pagination?.pages || data.pages || (perPage ? Math.ceil(total / perPage) : 0);
     return {
       notifications,
       pagination: {
         total,
         pages,
-        perPage: limit,
+        perPage,
       },
     };
   },
 
-  getRead: async (page = 1, limit = 10): Promise<ApiNotificationResponse> => {
-    const response = await api.get('/notifications/read', { params: { page, limit } });
+  getRead: async (query: NotificationQuery = {}): Promise<ApiNotificationResponse> => {
+    const response = await api.get('/notifications/read', { params: query });
     const data = response.data || {};
     const notifications = data.notifications || data.items || [];
-    const total = typeof data.total === 'number' ? data.total : notifications.length || 0;
-    const pages = data.pages || (limit ? Math.ceil(total / limit) : 0);
+    const total = typeof data.pagination?.total === 'number' ? data.pagination.total : typeof data.total === 'number' ? data.total : notifications.length || 0;
+    const perPage = query.limit || data.pagination?.perPage || data.perPage || 10;
+    const pages = data.pagination?.pages || data.pages || (perPage ? Math.ceil(total / perPage) : 0);
     return {
       notifications,
       pagination: {
         total,
         pages,
-        perPage: limit,
+        perPage,
       },
     };
   },
@@ -116,8 +120,8 @@ export const notificationApi = {
     const response = await api.get(`/notifications/type/${type}`, { params: { page, limit } });
     const data = response.data || {};
     const notifications = data.notifications || data.items || [];
-    const total = typeof data.total === 'number' ? data.total : notifications.length || 0;
-    const pages = data.pages || (limit ? Math.ceil(total / limit) : 0);
+    const total = typeof data.pagination?.total === 'number' ? data.pagination.total : typeof data.total === 'number' ? data.total : notifications.length || 0;
+    const pages = data.pagination?.pages || data.pages || (limit ? Math.ceil(total / limit) : 0);
     return {
       notifications,
       pagination: {

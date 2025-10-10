@@ -96,12 +96,16 @@ router.get('/unread', requireAuth, validateSchema(NotificationQuerySchema, 'quer
 
         const userId = req.user?.id;
         const userRole = await getUserOrganizationRole(userId, activeOrgId);
-        const { page, limit } = req.query;
+        const { page, limit, type, importance, fromDate, toDate } = req.query;
         
         const result = await notificationService.getUnreadNotifications({
             userId,
             organizationId: activeOrgId,
             role: userRole,
+            type: type as NotificationType,
+            importance: importance as ImportanceLevel,
+            fromDate: fromDate ? new Date(fromDate as string) : undefined,
+            toDate: toDate ? new Date(toDate as string) : undefined,
             page: page ? parseInt(page as string) : 1,
             limit: limit ? parseInt(limit as string) : 10,
         });
@@ -142,12 +146,16 @@ router.get('/read', requireAuth, validateSchema(NotificationQuerySchema, 'query'
 
         const userId = req.user?.id;
         const userRole = await getUserOrganizationRole(userId, activeOrgId);
-        const { page, limit } = req.query;
+        const { page, limit, type, importance, fromDate, toDate } = req.query;
         
         const result = await notificationService.getReadNotifications({
             userId,
             organizationId: activeOrgId,
             role: userRole,
+            type: type as NotificationType,
+            importance: importance as ImportanceLevel,
+            fromDate: fromDate ? new Date(fromDate as string) : undefined,
+            toDate: toDate ? new Date(toDate as string) : undefined,
             page: page ? parseInt(page as string) : 1,
             limit: limit ? parseInt(limit as string) : 10,
         });
@@ -276,7 +284,7 @@ router.get('/sorted-by-importance', requireAuth, validateSchema(NotificationQuer
 
         const userId = req.user?.id;
         const userRole = await getUserOrganizationRole(userId, activeOrgId);
-        const { page, limit, status, type } = req.query;
+        const { page, limit, status, type, importance, fromDate, toDate } = req.query;
         
         const result = await notificationService.getNotificationsSortedByImportance({
             userId,
@@ -284,6 +292,9 @@ router.get('/sorted-by-importance', requireAuth, validateSchema(NotificationQuer
             role: userRole,
             status: status as NotificationStatus,
             type: type as NotificationType,
+            importance: importance as ImportanceLevel,
+            fromDate: fromDate ? new Date(fromDate as string) : undefined,
+            toDate: toDate ? new Date(toDate as string) : undefined,
             page: page ? parseInt(page as string) : 1,
             limit: limit ? parseInt(limit as string) : 10,
         });

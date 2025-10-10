@@ -5,13 +5,7 @@ import { Badge } from "./ui/badge";
 import { Checkbox } from "./ui/checkbox";
 import { Card } from "./ui/card";
 import { NotificationItem as INotificationItem } from "../types/notifications";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "./ui/tooltip";
-import { Route, Bus, ChevronUp, ChevronDown, Bell } from "lucide-react";
+import { ChevronUp, ChevronDown } from "lucide-react";
 import { useState } from "react";
 
 export interface NotificationItemProps extends INotificationItem {
@@ -19,16 +13,45 @@ export interface NotificationItemProps extends INotificationItem {
   onSelect?: (id: string) => void;
 }
 
-// Define the type icons mapping with a fallback icon
-const typeIcons = {
-  route: Route,
-  shuttle: Bus,
+// Severity-based styling helpers with proper background colors
+const getSeverityColor = (importance: string): string => {
+  const level = importance.toLowerCase();
+  if (level.includes('critical') || level === 'urgent') return 'bg-red-100 dark:bg-red-950/30 border-l-4 border-red-600';
+  if (level.includes('high')) return 'bg-orange-100 dark:bg-orange-950/30 border-l-4 border-orange-600';
+  if (level.includes('medium')) return 'bg-yellow-100 dark:bg-yellow-950/30 border-l-4 border-yellow-600';
+  if (level.includes('low')) return 'bg-blue-100 dark:bg-blue-950/30 border-l-4 border-blue-600';
+  return 'bg-gray-100 dark:bg-gray-950/30 border-l-4 border-gray-600';
 };
 
-const TypeIcon = ({ type }: { type: string }) => {
-  // Use a fallback icon if the type doesn't match any in our mapping
-  const IconComponent = typeIcons[type as keyof typeof typeIcons] || Bell;
-  return <IconComponent className="h-5 w-5" />;
+const getSeverityBadge = (importance: string) => {
+  const level = importance.toLowerCase();
+  if (level.includes('critical') || level === 'urgent') {
+    return <span className="px-2 py-1 text-xs font-bold text-white bg-red-600 rounded">CRITICAL</span>;
+  }
+  if (level.includes('high')) {
+    return <span className="px-2 py-1 text-xs font-bold text-white bg-orange-600 rounded">HIGH</span>;
+  }
+  if (level.includes('medium')) {
+    return <span className="px-2 py-1 text-xs font-semibold text-white bg-yellow-600 rounded">MEDIUM</span>;
+  }
+  if (level.includes('low')) {
+    return <span className="px-2 py-1 text-xs text-white bg-blue-600 rounded">LOW</span>;
+  }
+  return null;
+};
+
+const getTypeIcon = (type: string): string => {
+  if (!type) return '🔔';
+  const typeStr = type.toUpperCase();
+  if (typeStr.startsWith('VEHICLE_')) return '🚗';
+  if (typeStr.startsWith('ROUTE_')) return '🛣️';
+  if (typeStr.startsWith('EMPLOYEE_')) return '👥';
+  if (typeStr.startsWith('DRIVER_')) return '🚙';
+  if (typeStr.startsWith('DEPARTMENT_')) return '🏛️';
+  if (typeStr.startsWith('SHIFT_')) return '⏱️';
+  if (typeStr.startsWith('SYSTEM_')) return '⚙️';
+  if (typeStr.startsWith('SECURITY_')) return '🔐';
+  return '🔔';
 };
 
 export function NotificationItem({
@@ -56,48 +79,17 @@ export function NotificationItem({
   // Add this function to check content length
   const hasExpandableContent = description?.length > 120;
 
-  const config = {
-    1: {
-      gradient: isDark 
-        ? "linear-gradient(135deg, rgba(71, 85, 105, 0.03), rgba(51, 65, 85, 0.05))"
-        : "linear-gradient(135deg, rgba(241, 245, 249, 0.3), rgba(248, 250, 252, 0.4))",
-    },
-    2: {
-      gradient: isDark
-        ? "linear-gradient(135deg, rgba(59, 130, 246, 0.03), rgba(37, 99, 235, 0.05))"
-        : "linear-gradient(135deg, rgba(219, 234, 254, 0.3), rgba(239, 246, 255, 0.4))",
-    },
-    3: {
-      gradient: isDark
-        ? "linear-gradient(135deg, rgba(234, 179, 8, 0.03), rgba(202, 138, 4, 0.05))"
-        : "linear-gradient(135deg, rgba(254, 249, 195, 0.3), rgba(254, 240, 138, 0.4))",
-    },
-    4: {
-      gradient: isDark
-        ? "linear-gradient(135deg, rgba(249, 115, 22, 0.03), rgba(234, 88, 12, 0.05))"
-        : "linear-gradient(135deg, rgba(255, 237, 213, 0.3), rgba(254, 215, 170, 0.4))",
-    },
-    5: {
-      gradient: isDark
-        ? "linear-gradient(135deg, rgba(239, 68, 68, 0.03), rgba(220, 38, 38, 0.05))"
-        : "linear-gradient(135deg, rgba(254, 226, 226, 0.3), rgba(254, 202, 202, 0.4))",
-    },
-  };
-
   return (
     <Card
       data-read={isRead}
       className={cn(
-        "group relative overflow-hidden notification-glow notification-glass",
+        "group relative overflow-hidden notification-glow",
         `importance-${importance.level}`,
         "p-4 transition-all duration-500 ease-out rounded-2xl",
-        "backdrop-blur-[8px]",
+        getSeverityColor(importance.label), // Apply severity-based background and border
         "h-[88px]", // Fixed height for collapsed state
         isExpanded && hasExpandableContent && "h-auto" // Expand height when needed
       )}
-      style={{
-        background: config[importance.level as keyof typeof config].gradient,
-      }}
       onClick={() => hasExpandableContent && setIsExpanded(!isExpanded)}
     >
       <div className="flex items-start gap-4">
@@ -134,14 +126,7 @@ export function NotificationItem({
         <div className="flex-1 min-w-0"> {/* Add min-w-0 to prevent flex item from overflowing */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 min-w-0"> {/* Add min-w-0 here too */}
-              <div className={cn(
-                "p-1.5 rounded-md transition-colors duration-200",
-                isDark ? "bg-gray-800/50" : "bg-gray-100/80",
-                "group-hover:bg-primary/10",
-                isRead && "opacity-70"
-              )}>
-                <TypeIcon type={type} />
-              </div>
+              <span className="text-2xl">{getTypeIcon(type)}</span>
               <h4
                 className={cn(
                   "font-semibold transition-colors duration-200 truncate", // Add truncate
@@ -153,28 +138,7 @@ export function NotificationItem({
               >
                 {title}
               </h4>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger>
-                    <Badge
-                      variant="outline"
-                      className={cn(
-                        "px-2 py-0.5 transition-all duration-200",
-                        isDark ? "bg-gray-900/50" : "bg-white/50",
-                        "backdrop-blur-sm",
-                        importance.color,
-                        "group-hover:border-primary/50 group-hover:text-primary",
-                        isRead && "opacity-70"
-                      )}
-                    >
-                      {importance.label}
-                    </Badge>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>{importance.description}</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+              {getSeverityBadge(importance.label)}
             </div>
             <div className="flex items-center gap-2 shrink-0"> {/* Add shrink-0 */}
               <Badge

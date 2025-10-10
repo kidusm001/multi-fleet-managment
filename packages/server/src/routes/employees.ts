@@ -6,6 +6,8 @@ import { requireAuth, requireRole } from '../middleware/auth';
 import { validateMultiple, validateSchema } from '../middleware/zodValidation';
 import { CreateEmployeeSchema, CreateEmployee, EmployeeIdParam, UpdateEmployeeSchema, DepartmentIdParam, OrganizationIdParam, ShiftIdParam, SuperAdminCreateEmployeeSchema, SuperAdminUpdateEmployeeSchema, WorkLocationIdParam } from '../schema/employeeSchema';
 import prisma from '../db';
+import { employeeNotifications } from '../lib/notificationHelpers';
+import { broadcastNotification } from '../lib/notificationBroadcaster';
 const router = express.Router();
 
 type EmployeeList = Employee[];
@@ -1086,6 +1088,10 @@ router.post('/', requireAuth, validateSchema(CreateEmployeeSchema, 'body'), asyn
             }
         });
 
+        // Send notification
+        const notification = employeeNotifications.created(activeOrgId, employee);
+        await broadcastNotification(notification);
+
         res.json(employee);
 
     } catch (err) {
@@ -1236,9 +1242,48 @@ router.put('/:id',
                     locationId: locationId
                 },
                 include: {
-                    organization: true
+                    organization: true,
+                    department: true,
+                    shift: true,
+                    stop: true
                 }
             });
+
+            // Send notifications for specific changes
+            if (existingEmployee.departmentId !== departmentId) {
+                const oldDept = await prisma.department.findUnique({ where: { id: existingEmployee.departmentId || '' }});
+                const newDept = await prisma.department.findUnique({ where: { id: departmentId }});
+                if (oldDept && newDept) {
+                    const notifications = employeeNotifications.departmentChanged(activeOrgId, employee, oldDept, newDept);
+                    for (const notif of notifications) {
+                        await broadcastNotification(notif);
+                    }
+                }
+            }
+
+            if (existingEmployee.shiftId !== shiftId) {
+                const oldShift = await prisma.shift.findUnique({ where: { id: existingEmployee.shiftId || '' }});
+                const newShift = await prisma.shift.findUnique({ where: { id: shiftId }});
+                if (oldShift && newShift) {
+                    const notifications = employeeNotifications.shiftChanged(activeOrgId, employee, oldShift, newShift);
+                    for (const notif of notifications) {
+                        await broadcastNotification(notif);
+                    }
+                }
+            }
+
+            if (existingEmployee.stopId !== stopId) {
+                const oldStop = existingEmployee.stopId ? await prisma.stop.findUnique({ where: { id: existingEmployee.stopId }}) : null;
+                const newStop = stopId ? await prisma.stop.findUnique({ where: { id: stopId }}) : null;
+                if (oldStop || newStop) {
+                    const notification = employeeNotifications.stopChanged(activeOrgId, employee, oldStop, newStop);
+                    await broadcastNotification(notification);
+                }
+            }
+
+            // General update notification
+            const notification = employeeNotifications.updated(activeOrgId, employee);
+            await broadcastNotification(notification);
 
             res.json(employee);
         } catch (err) {
@@ -1298,6 +1343,10 @@ router.delete('/:id', requireAuth, validateSchema(EmployeeIdParam, 'params'), as
                 stopId: null
             }
         })
+
+        // Send notification
+        const notification = employeeNotifications.deleted(activeOrgId, existingEmployee);
+        await broadcastNotification(notification);
 
         res.status(204).send();
 

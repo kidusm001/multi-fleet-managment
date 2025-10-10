@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Button } from "@components/Common/UI/Button";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/Common/UI/popover";
 import { ScrollArea } from "@components/Common/UI/scroll-area";
@@ -58,25 +58,17 @@ function NotificationDropdown() {
   const { 
     notifications, 
     unreadCount, 
-    markAsSeen, 
+    markAsRead,
     markAllAsSeen, 
     isConnected 
   } = useNotifications();
-  
-  // Local state to track notifications that have been marked as read in the current session
-  const [localReadState, setLocalReadState] = useState({});
 
   const handleMarkAllAsRead = (e) => {
     e?.preventDefault();
     e?.stopPropagation();
     markAllAsSeen();
     
-    // Update local state to mark all notifications as read
-    const updatedState = {};
-    notifications.forEach(notification => {
-      updatedState[notification.id] = true;
-    });
-    setLocalReadState(updatedState);
+    // Event is already emitted by markAllAsSeen in context
   };
 
   const hardNavigateToNotifications = (idParam) => {
@@ -93,8 +85,10 @@ function NotificationDropdown() {
   const handleNotificationClick = (id, e) => {
     e?.preventDefault();
     e?.stopPropagation();
-    markAsSeen(id);
-    setLocalReadState(prev => ({ ...prev, [id]: true }));
+    markAsRead(id);
+    
+    // Event is already emitted by markAsRead in context
+    
     hardNavigateToNotifications(id);
   };
 
@@ -224,9 +218,9 @@ function NotificationDropdown() {
             {notifications.length > 0 ? (
               notifications.map((notification, index) => {
 
-                // Check both the original seenBy state and our local read state
-                const isRead = (notification.seenBy && notification.seenBy.length > 0) || 
-                               localReadState[notification.id] === true;
+                // Check the notification's actual read status
+                const isRead = notification.status === 'Read' || 
+                               (notification.seenBy && notification.seenBy.some(seen => seen.readAt !== null));
                 const notificationType = mapImportanceToType(notification.importance);
                 const iconType = mapTypeToIcon(notification.notificationType);
                 const iconBgClass = isRead

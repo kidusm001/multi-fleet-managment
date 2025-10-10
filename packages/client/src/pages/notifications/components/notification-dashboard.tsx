@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Bell, ChevronLeft, ChevronRight, Route, Bus } from "lucide-react";
-import { UserRole, NotificationSource, NotificationType } from "../types/notifications";
+import { NotificationSource, NotificationType } from "../types/notifications";
 import { DateRange } from "react-day-picker";
 import { DateRangePicker } from "./ui/date-range-picker";
 import { Button } from "./ui/button";
@@ -23,43 +23,44 @@ import "../styles/notifications.css";
 import { cn } from "@/lib/utils";
 import { notificationApi, ApiNotificationItem, ApiNotificationResponse } from "@/services/notificationApi";
 import { useAuth } from "@/contexts/AuthContext";
+import { useNotifications } from "@/contexts/NotificationContext";
 
 type SortOption = "time" | "importance";
 
-interface NotificationDashboardProps {
-  userRole?: UserRole;
-}
-
-export function NotificationDashboard({ userRole: _userRole = "admin" }: NotificationDashboardProps) {
+export function NotificationDashboard() {
   const { user } = useAuth();
-  const [readFilter, setReadFilter] = useState("all");
-  const [sortBy, setSortBy] = useState<SortOption>("time");
+  const { stats, refreshStats } = useNotifications();
+  const [notifications, setNotifications] = useState<ApiNotificationItem[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [notifications, setNotifications] = useState<ApiNotificationItem[]>([] as ApiNotificationItem[]);
-  const [dateRange, setDateRange] = useState<DateRange | undefined>();
-  const [typeFilter, setTypeFilter] = useState<string>("all");
-  const [selectedTab, setSelectedTab] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [pagination, setPagination] = useState({
-    total: 0,
-    pages: 0,
-    perPage: 10,
-  });
   const [currentPage, setCurrentPage] = useState(1);
-  const [stats, setStats] = useState({
-    total: 0,
-    read: 0,
-    unread: 0,
-  });
+  const [pagination, setPagination] = useState({ total: 0, perPage: 10, currentPage: 1, totalPages: 1 });
+  const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [severityFilter, setSeverityFilter] = useState<string>("all");
+  const [readFilter, setReadFilter] = useState<"all" | "read" | "unread">("all");
+  const [dateRange, setDateRange] = useState<DateRange | undefined>();
+  const [sortBy, setSortBy] = useState("time");
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [selectedTab, setSelectedTab] = useState(0);
+
+  // Handle date range change with logging
+  const handleDateRangeChange = (newDateRange: DateRange | undefined) => {
+    console.log('[NotificationDashboard] Date range changed:', newDateRange);
+    setDateRange(newDateRange);
+    setCurrentPage(1); // Reset to first page when date filter changes
+    setRefreshTrigger(prev => prev + 1); // Force refresh
+  };
 
   const _isNotificationSeen = (notification: ApiNotificationItem): boolean => {
-    if (!user?.id) return false;
-    return notification.seenBy?.some(seen => seen.userId === user.id) ?? false;
+    const userId = user && 'id' in user ? (user as unknown as { id: string }).id : undefined;
+    if (!userId) return false;
+    return notification.seenBy?.some(seen => seen.userId === userId) ?? false;
   };
 
   const isNotificationRead = (notification: ApiNotificationItem): boolean => {
-    if (!user?.id) return false;
-    return notification.seenBy?.some(seen => seen.userId === user.id && seen.readAt !== null) ?? false;
+    const userId = user && 'id' in user ? (user as unknown as { id: string }).id : undefined;
+    if (!userId) return false;
+    return notification.seenBy?.some(seen => seen.userId === userId && seen.readAt !== null) ?? false;
   };
 
   // Fetch notifications based on filters and pagination
@@ -72,19 +73,18 @@ export function NotificationDashboard({ userRole: _userRole = "admin" }: Notific
           page: currentPage,
           limit: pagination.perPage,
           type: typeFilter !== "all" ? typeFilter : undefined,
-          fromDate: dateRange?.from,
-          toDate: dateRange?.to,
+          importance: (severityFilter !== "all" ? severityFilter : undefined) as "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" | undefined,
+          fromDate: dateRange?.from ? dateRange.from.toISOString() : undefined,
+          toDate: dateRange?.to ? dateRange.to.toISOString() : undefined,
         };
 
         if (sortBy === "importance") {
           // Use sorted-by-importance endpoint when the sort option is set to "importance"
           response = await notificationApi.getSortedByImportance(query);
         } else if (readFilter === "unread") {
-          response = await notificationApi.getUnread(currentPage, pagination.perPage);
+          response = await notificationApi.getUnread(query);
         } else if (readFilter === "read") {
-          response = await notificationApi.getRead(currentPage, pagination.perPage);
-        } else if (typeFilter !== "all") {
-          response = await notificationApi.getByType(typeFilter, currentPage, pagination.perPage);
+          response = await notificationApi.getRead(query);
         } else {
           response = await notificationApi.getAll(query);
         }
@@ -92,8 +92,9 @@ export function NotificationDashboard({ userRole: _userRole = "admin" }: Notific
         setNotifications(response.notifications);
         setPagination({
           total: response.pagination.total,
-          pages: response.pagination.pages,
+          totalPages: response.pagination.pages,
           perPage: response.pagination.perPage,
+          currentPage: currentPage,
         });
       } catch (error) {
         console.error("Failed to fetch notifications:", error);
@@ -103,43 +104,36 @@ export function NotificationDashboard({ userRole: _userRole = "admin" }: Notific
     };
 
     fetchNotifications();
-  }, [currentPage, pagination.perPage, typeFilter, dateRange, readFilter, sortBy]);
+  }, [currentPage, pagination.perPage, typeFilter, severityFilter, dateRange, readFilter, sortBy, refreshTrigger]);
 
-  // Define a reusable function for fetching stats to update counts
-  const fetchStats = async () => {
-    try {
-      const allQuery = { page: 1, limit: 1 };
-      const allResponse = await notificationApi.getAll(allQuery);
-      const unreadResponse = await notificationApi.getUnread(1, 1);
-      const total = allResponse.pagination.total;
-      const unread = unreadResponse.pagination.total;
-      setStats({
-        total,
-        unread,
-        read: total - unread,
-      });
-    } catch (error) {
-      console.error("Failed to fetch notification stats:", error);
-    }
-  };
-
-  // Fetch stats (overall counts) when typeFilter or dateRange change
+  // Fetch stats when filters change
   useEffect(() => {
-    fetchStats();
-  }, [typeFilter, dateRange]);
+    refreshStats();
+  }, [typeFilter, severityFilter, dateRange, refreshStats]);
 
-  // Mount/unmount debug only (reload hack removed after routing refactor)
+  // Listen for external notification updates (from nav dropdown)
   useEffect(() => {
-    return () => {};
-  }, []);
+    const handleNotificationUpdate = () => {
+      console.log('[NotificationDashboard] External update detected, refreshing...');
+      setRefreshTrigger(prev => prev + 1);
+      refreshStats();
+    };
 
-  // Map importance string to a numeric level
+    window.addEventListener('notification-updated', handleNotificationUpdate);
+    return () => {
+      window.removeEventListener('notification-updated', handleNotificationUpdate);
+    };
+  }, [refreshStats]);
+
+  // Map importance string to a numeric level (handles both backend ENUM and frontend labels)
   const mapImportance = (importanceStr: string) => {
-    switch (importanceStr) {
-      case "Urgent": return 5;
-      case "High": return 4;
-      case "Medium": return 3;
-      case "Low": return 2;
+    const importance = importanceStr.toUpperCase();
+    switch (importance) {
+      case "CRITICAL":
+      case "URGENT": return 5;
+      case "HIGH": return 4;
+      case "MEDIUM": return 3;
+      case "LOW": return 2;
       default: return 1;
     }
   };
@@ -174,7 +168,9 @@ export function NotificationDashboard({ userRole: _userRole = "admin" }: Notific
       const response: ApiNotificationResponse = await notificationApi.getAll(query);
       setNotifications(response.notifications);
       setSelectedIds([]);
-      await fetchStats();
+      await refreshStats();
+      // Emit event to update nav dropdown
+      window.dispatchEvent(new CustomEvent('notification-updated'));
     } catch (error) {
       console.error("Failed to mark notifications as read:", error);
     }
@@ -198,33 +194,34 @@ export function NotificationDashboard({ userRole: _userRole = "admin" }: Notific
       setNotifications(response.notifications);
       setSelectedIds([]);
       // Refresh stats to update read/unread counts
-      await fetchStats();
+      await refreshStats();
+      // Emit event to update nav dropdown
+      window.dispatchEvent(new CustomEvent('notification-updated'));
     } catch (error) {
       console.error("Failed to mark notifications as unread:", error);
     }
   };
 
   const handleSelectAllToggle = async () => {
-    if (selectedIds.length === stats.total && stats.total > 0) {
+    if (selectedIds.length === pagination.total && pagination.total > 0) {
       setSelectedIds([]);
     } else {
       try {
         let response: ApiNotificationResponse;
+        const query = {
+          page: 1,
+          limit: pagination.total,
+          type: typeFilter !== "all" ? typeFilter : undefined,
+          importance: (severityFilter !== "all" ? severityFilter : undefined) as "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" | undefined,
+          fromDate: dateRange?.from ? dateRange.from.toISOString() : undefined,
+          toDate: dateRange?.to ? dateRange.to.toISOString() : undefined,
+        };
+        
         if (readFilter === "read") {
-          response = await notificationApi.getRead(1, stats.total);
+          response = await notificationApi.getRead(query);
         } else if (readFilter === "unread") {
-          response = await notificationApi.getUnread(1, stats.total);
-        } else if (typeFilter !== "all") {
-          response = await notificationApi.getByType(typeFilter, 1, stats.total);
+          response = await notificationApi.getUnread(query);
         } else {
-          const query = {
-            page: 1,
-            limit: stats.total,
-            type: typeFilter !== "all" ? typeFilter : undefined,
-            importance: undefined,
-            fromDate: dateRange?.from,
-            toDate: dateRange?.to,
-          };
           response = await notificationApi.getAll(query);
         }
         const allIds = response.notifications.map(n => n.id);
@@ -240,7 +237,7 @@ export function NotificationDashboard({ userRole: _userRole = "admin" }: Notific
   };
 
   const handleReadFilterChange = (newFilter: string) => {
-    setReadFilter(newFilter);
+    setReadFilter(newFilter as "all" | "read" | "unread");
     setCurrentPage(1); // Reset current page to 1 when changing the filter
   };
 
@@ -248,23 +245,23 @@ export function NotificationDashboard({ userRole: _userRole = "admin" }: Notific
     { title: "All Notifications", icon: Bell },
     { title: "Routes", icon: Route },
     { type: "separator" as const },
-    { title: "Shuttles", icon: Bus },
+    { title: "Vehicles", icon: Bus },
   ];
 
   const handleTabChange = (index: number | null) => {
     setSelectedTab(index ?? 0);
     const tabTypes: Record<number, string> = {
       0: "all",
-      1: "route",
-      3: "shuttle",
+      1: "ROUTE",
+      3: "VEHICLE",
     };
     setTypeFilter(tabTypes[index ?? 0] || "all");
-    setPagination(prev => ({ ...prev, currentPage: 1 }));
+    setCurrentPage(1);
   };
 
   const handlePageChange = (newPage: number) => {
     console.log(`Navigating to page ${newPage}`);
-    if (newPage >= 1 && newPage <= pagination.pages) {
+    if (newPage >= 1 && newPage <= pagination.totalPages) {
       setCurrentPage(newPage);
     }
   };
@@ -286,7 +283,7 @@ export function NotificationDashboard({ userRole: _userRole = "admin" }: Notific
                 initialTab={selectedTab}
               />
               <Select value={sortBy} onValueChange={(value: SortOption) => setSortBy(value)}>
-                <SelectTrigger className="w-[140px]">
+                <SelectTrigger className="w-[140px] text-foreground">
                   <SelectValue placeholder="Sort by" />
                 </SelectTrigger>
                 <SelectContent>
@@ -294,18 +291,32 @@ export function NotificationDashboard({ userRole: _userRole = "admin" }: Notific
                   <SelectItem value="importance">Sort by Importance</SelectItem>
                 </SelectContent>
               </Select>
+              <Select value={severityFilter} onValueChange={setSeverityFilter}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Filter by Severity" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Severities</SelectItem>
+                  <SelectItem value="CRITICAL">🔴 Critical</SelectItem>
+                  <SelectItem value="HIGH">🟠 High</SelectItem>
+                  <SelectItem value="MEDIUM">🟡 Medium</SelectItem>
+                  <SelectItem value="LOW">🔵 Low</SelectItem>
+                </SelectContent>
+              </Select>
               <TooltipProvider>
-                <DateRangePicker date={dateRange} onDateChange={setDateRange} className="w-[300px]" />
+                <DateRangePicker date={dateRange} onDateChange={handleDateRangeChange} className="w-[300px]" />
               </TooltipProvider>
             </div>
           </div>
           <div className="list-container rounded-lg overflow-hidden border">
             <NotificationFilters
-              {...stats}
+              total={readFilter === "all" ? stats.total : pagination.total}
+              read={readFilter === "read" ? pagination.total : stats.read}
+              unread={readFilter === "unread" ? pagination.total : stats.unread}
               currentFilter={readFilter}
               onFilterChange={handleReadFilterChange}
               onMarkRead={handleMarkRead}
-              onMarkUnread={handleMarkUnread} // now calling the updated function
+              onMarkUnread={handleMarkUnread}
               onSelectAll={handleSelectAllToggle}
               onClearSelection={handleClearSelection}
               selectedCount={selectedIds.length}
@@ -345,8 +356,8 @@ export function NotificationDashboard({ userRole: _userRole = "admin" }: Notific
                 <ChevronLeft className="h-4 w-4" />
               </Button>
               
-              {pagination.pages <= 7 ? (
-                Array.from({ length: pagination.pages }, (_, i) => i + 1).map(page => (
+              {pagination.totalPages <= 7 ? (
+                Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map(page => (
                   <Button
                     key={page}
                     variant={currentPage === page ? "default" : "outline"}
@@ -378,12 +389,12 @@ export function NotificationDashboard({ userRole: _userRole = "admin" }: Notific
       
                   {currentPage > 3 && <span className="px-2">...</span>}
       
-                  {Array.from({ length: pagination.pages }, (_, i) => i + 1)
+                  {Array.from({ length: pagination.totalPages }, (_, i) => i + 1)
                     .filter(page => {
                       if (currentPage <= 3) {
                         return page > 1 && page < 5;
-                      } else if (currentPage >= pagination.pages - 2) {
-                        return page > pagination.pages - 4 && page < pagination.pages;
+                      } else if (currentPage >= pagination.totalPages - 2) {
+                        return page > pagination.totalPages - 4 && page < pagination.totalPages;
                       } else {
                         return Math.abs(page - currentPage) <= 1;
                       }
@@ -405,20 +416,20 @@ export function NotificationDashboard({ userRole: _userRole = "admin" }: Notific
                     ))
                   }
       
-                  {currentPage < pagination.pages - 2 && <span className="px-2">...</span>}
+                  {currentPage < pagination.totalPages - 2 && <span className="px-2">...</span>}
       
-                  {pagination.pages > 1 && (
+                  {pagination.totalPages > 1 && (
                     <Button
-                      variant={currentPage === pagination.pages ? "default" : "outline"}
+                      variant={currentPage === pagination.totalPages ? "default" : "outline"}
                       size="sm"
-                      onClick={() => handlePageChange(pagination.pages)}
+                      onClick={() => handlePageChange(pagination.totalPages)}
                       className={
-                        currentPage === pagination.pages
+                        currentPage === pagination.totalPages
                           ? "bg-[#3b82f6] text-white hover:bg-[#2563eb] border-2 border-blue-700"
                           : "hover:bg-[#3b82f6]/10 hover:text-[#3b82f6]"
                       }
                     >
-                      {pagination.pages}
+                      {pagination.totalPages}
                     </Button>
                   )}
                 </>
@@ -428,7 +439,7 @@ export function NotificationDashboard({ userRole: _userRole = "admin" }: Notific
                 variant="outline"
                 size="icon"
                 onClick={() => handlePageChange(currentPage + 1)}
-                disabled={currentPage === pagination.pages || pagination.pages === 0}
+                disabled={currentPage === pagination.totalPages || pagination.totalPages === 0}
                 className="nav-button hover:bg-[#3b82f6]/10 hover:text-[#3b82f6]"
               >
                 <ChevronRight className="h-4 w-4" />

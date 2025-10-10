@@ -15,6 +15,8 @@ interface NotificationContextType {
   notifications: ShuttleNotification[];
   unreadCount: number;
   isConnected: boolean;
+  stats: { total: number; unread: number; read: number };
+  refreshStats: () => Promise<void>;
   markAsSeen: (notificationId: string) => void;
   markAsRead: (notificationId: string) => void;
   markAllAsSeen: () => void;
@@ -26,6 +28,8 @@ const NotificationContext = createContext<NotificationContextType>({
   notifications: [],
   unreadCount: 0,
   isConnected: false,
+  stats: { total: 0, unread: 0, read: 0 },
+  refreshStats: async () => {},
   markAsSeen: () => {},
   markAsRead: () => {},
   markAllAsSeen: () => {},
@@ -40,9 +44,39 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     return stored ? JSON.parse(stored) : [];
   });
   const [unreadCount, setUnreadCount] = useState(0);
+  const [stats, setStats] = useState({ total: 0, unread: 0, read: 0 });
   const [isConnected, setIsConnected] = useState(false);
   const { role } = useRole();
   const { isAuthenticated } = useAuth();
+
+  // Shared function to refresh stats (used by both nav and dashboard)
+  const refreshStats = useCallback(async () => {
+    if (!isAuthenticated) {
+      log('Not authenticated, skipping stats refresh');
+      return;
+    }
+    
+    try {
+      log('Refreshing stats...');
+      const [allResponse, unreadResponse, readResponse] = await Promise.all([
+        notificationApi.getAll({ page: 1, limit: 1 }),
+        notificationApi.getUnread({ page: 1, limit: 1 }),
+        notificationApi.getRead({ page: 1, limit: 1 }),
+      ]);
+      
+      const newStats = {
+        total: allResponse.pagination.total,
+        unread: unreadResponse.pagination.total,
+        read: readResponse.pagination.total,
+      };
+      
+      setStats(newStats);
+      setUnreadCount(newStats.unread);
+      log('Stats refreshed:', newStats);
+    } catch (error) {
+      console.error('Failed to refresh stats:', error);
+    }
+  }, [isAuthenticated]);
 
   // Load initial notifications and unread count
   const loadInitialData = useCallback(async () => {
@@ -52,23 +86,35 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     }
     
     try {
-      log('Loading initial notifications and unread count');
-      const [notificationsData, unseenCount] = await Promise.all([
+      log('Loading initial notifications and stats');
+      const [notificationsData] = await Promise.all([
         notificationApi.getAll(),
-        notificationApi.getUnseenCount()
+        refreshStats(), // Use shared stats refresh
       ]);
       
       setNotifications(notificationsData.notifications as unknown as ShuttleNotification[] || []);
-      setUnreadCount(unseenCount);
-      log('Loaded notifications:', notificationsData.notifications?.length, 'Unread count:', unseenCount);
+      log('Loaded notifications:', notificationsData.notifications?.length);
     } catch (error) {
       console.error('Failed to load notifications:', error);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, refreshStats]);
 
   // Load initial data when authenticated
   useEffect(() => {
     loadInitialData();
+  }, [loadInitialData]);
+
+  // Listen for external notification updates (from dashboard)
+  useEffect(() => {
+    const handleNotificationUpdate = async () => {
+      log('External update detected, refreshing context...');
+      await loadInitialData();
+    };
+
+    window.addEventListener('notification-updated', handleNotificationUpdate);
+    return () => {
+      window.removeEventListener('notification-updated', handleNotificationUpdate);
+    };
   }, [loadInitialData]);
 
   // Persist notifications to local storage
@@ -195,28 +241,75 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const markAsRead = useCallback(async (notificationId: string) => {
     try {
       await notificationApi.markAsRead(notificationId);
-      setUnreadCount(prev => Math.max(0, prev - 1));
+      
+      // Get current user ID if available
+      const userId = (window as unknown as { __userId?: string }).__userId || 'current-user';
+      
       setNotifications(prev => 
-        prev.map(n => n.id === notificationId ? { ...n, status: 'Read' as const } : n)
+        prev.map(n => {
+          if (n.id === notificationId) {
+            // Update both status and seenBy array
+            const updatedSeenBy = n.seenBy?.length 
+              ? n.seenBy.map(seen => 
+                  seen.userId === userId 
+                    ? { ...seen, readAt: new Date().toISOString() }
+                    : seen
+                )
+              : [{ id: userId, userId, name: 'You', seenAt: new Date().toISOString(), readAt: new Date().toISOString() }];
+            
+            return { 
+              ...n, 
+              status: 'Read' as const,
+              seenBy: updatedSeenBy
+            };
+          }
+          return n;
+        })
       );
+      // Refresh stats to sync counts
+      await refreshStats();
+      // Emit event to update dashboard
+      window.dispatchEvent(new CustomEvent('notification-updated'));
     } catch (error) {
       console.error('Failed to mark notification as read:', error);
     }
-  }, []);
+  }, [refreshStats]);
 
   const markAllAsSeen = useCallback(async () => {
     try {
       log('Marking all notifications as seen/read');
       await notificationApi.markAllAsRead(); // This marks as both seen AND read
-      setUnreadCount(0);
+      
+      // Get current user ID if available
+      const userId = (window as unknown as { __userId?: string }).__userId || 'current-user';
+      
       setNotifications(prev => 
-        prev.map(n => ({ ...n, status: 'Read' as const }))
+        prev.map(n => {
+          // Update both status and seenBy array for all notifications
+          const updatedSeenBy = n.seenBy?.length 
+            ? n.seenBy.map(seen => 
+                seen.userId === userId 
+                  ? { ...seen, readAt: new Date().toISOString() }
+                  : seen
+              )
+            : [{ id: userId, userId, name: 'You', seenAt: new Date().toISOString(), readAt: new Date().toISOString() }];
+          
+          return { 
+            ...n, 
+            status: 'Read' as const,
+            seenBy: updatedSeenBy
+          };
+        })
       );
+      // Refresh stats to sync counts
+      await refreshStats();
+      // Emit event to update dashboard
+      window.dispatchEvent(new CustomEvent('notification-updated'));
       log('Successfully marked all as seen/read');
     } catch (error) {
       console.error('Failed to mark all notifications as seen:', error);
     }
-  }, []);
+  }, [refreshStats]);
 
   const clearAll = useCallback(() => {
     setNotifications([]);
@@ -231,6 +324,8 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     notifications,
     unreadCount,
     isConnected,
+    stats,
+    refreshStats,
     markAsSeen,
     markAsRead,
     markAllAsSeen,

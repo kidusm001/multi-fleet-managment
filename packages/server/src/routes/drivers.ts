@@ -6,6 +6,8 @@ import { validateSchema, validateMultiple } from '../middleware/zodValidation';
 import { fromNodeHeaders } from 'better-auth/node';
 import { auth } from '../lib/auth';
 import prisma from '../db';
+import { driverNotifications } from '../lib/notificationHelpers';
+import { broadcastNotification } from '../lib/notificationBroadcaster';
 
 const router = express.Router();
 
@@ -619,6 +621,10 @@ router.post('/', requireAuth, validateSchema(CreateDriverSchema, 'body'), async 
             }
         });
 
+        // Send notification
+        const notification = driverNotifications.created(activeOrgId, driver);
+        await broadcastNotification(notification);
+
         res.json(driver);
 
     } catch (err) {
@@ -719,6 +725,18 @@ router.put('/:id',
                 }
             });
 
+            // Send status change notification if status changed
+            if (status !== undefined && status !== existingDriver.status) {
+                const notifications = driverNotifications.statusChanged(activeOrgId, driver, status);
+                for (const notif of notifications) {
+                    await broadcastNotification(notif);
+                }
+            } else {
+                // General update notification
+                const notification = driverNotifications.updated(activeOrgId, driver);
+                await broadcastNotification(notification);
+            }
+
             res.json(driver);
         } catch (err) {
             console.error(err);
@@ -776,6 +794,11 @@ router.delete('/:id', requireAuth, validateSchema(DriverIdParam, 'params'), asyn
                 status: 'INACTIVE'
             }
         })
+
+        // Send notification
+        const notification = driverNotifications.deleted(activeOrgId, existingDriver);
+        await broadcastNotification(notification);
+
         res.status(204).send();
 
     } catch (err) {

@@ -18,6 +18,7 @@ import {
     UpdateVehicleStatusInput
 } from '../schema/vehicleSchemas';
 import { broadcastNotification } from '../lib/notificationBroadcaster';
+import { vehicleNotifications } from '../lib/notificationHelpers';
 import prisma from '../db';
 
 const router = express.Router();
@@ -953,16 +954,8 @@ router.post('/', requireAuth, validateSchema(CreateVehicleSchema, 'body'), async
             }
         });
 
-        await broadcastNotification({
-            title: 'New Vehicle Added',
-            message: `Vehicle ${vehicle.plateNumber} (${vehicle.name}) has been added to the fleet`,
-            type: 'INFO',
-            importance: 'MEDIUM',
-            toRoles: ['owner', 'admin'],
-            organizationId: activeOrgId,
-            actionUrl: `/vehicles/${vehicle.id}`,
-            metadata: { vehicleId: vehicle.id, plateNumber: vehicle.plateNumber }
-        });
+        const notification = vehicleNotifications.created(activeOrgId, vehicle);
+        await broadcastNotification(notification);
 
         res.status(201).json(vehicle);
     } catch (error) {
@@ -1086,20 +1079,8 @@ router.delete('/:id', requireAuth, validateSchema(VehicleIdParamSchema, 'params'
             }
         });
 
-        await broadcastNotification({
-            title: 'Vehicle Deleted',
-            message: `Vehicle ${existingVehicle.plateNumber} (${existingVehicle.name}) has been removed from the fleet`,
-            type: 'WARNING',
-            importance: 'MEDIUM',
-            toRoles: ['owner', 'admin'],
-            organizationId: activeOrgId,
-            actionUrl: `/vehicles`,
-            metadata: { 
-                vehicleId: existingVehicle.id, 
-                plateNumber: existingVehicle.plateNumber,
-                vehicleName: existingVehicle.name
-            }
-        });
+        const notification = vehicleNotifications.deleted(activeOrgId, existingVehicle);
+        await broadcastNotification(notification);
 
         res.status(204).send();
     } catch (error) {
@@ -1155,20 +1136,8 @@ router.patch('/:id/restore', requireAuth, validateSchema(VehicleIdParamSchema, '
             }
         });
 
-        await broadcastNotification({
-            title: 'Vehicle Restored',
-            message: `Vehicle ${vehicle.plateNumber} (${vehicle.name}) has been restored and is now available`,
-            type: 'INFO',
-            importance: 'MEDIUM',
-            toRoles: ['owner', 'admin'],
-            organizationId: activeOrgId,
-            actionUrl: `/vehicles/${vehicle.id}`,
-            metadata: { 
-                vehicleId: vehicle.id, 
-                plateNumber: vehicle.plateNumber,
-                vehicleName: vehicle.name
-            }
-        });
+        const notification = vehicleNotifications.statusChanged(activeOrgId, vehicle, 'Restored and Available');
+        await broadcastNotification(notification);
 
         res.json({ message: 'Vehicle restored successfully', vehicle });
     } catch (error) {
@@ -1200,12 +1169,16 @@ router.patch('/:id/assign-driver', requireAuth, validateMultiple([{ schema: Vehi
         }
 
         const existingVehicle = await prisma.vehicle.findFirst({
-            where: { id, organizationId: activeOrgId }
+            where: { id, organizationId: activeOrgId },
+            include: { driver: true }  // Include driver to track previous assignment
         });
 
         if (!existingVehicle) {
             return res.status(404).json({ message: 'Vehicle not found' });
         }
+
+        // Store previous driver for unassignment notification
+        const previousDriver = existingVehicle.driver;
 
         if (driverId) {
             const driver = await prisma.driver.findFirst({
@@ -1228,36 +1201,19 @@ router.patch('/:id/assign-driver', requireAuth, validateMultiple([{ schema: Vehi
             }
         });
 
+        // Send notifications
         if (driverId && vehicle.driver) {
-            await broadcastNotification({
-                title: 'Driver Assigned to Vehicle',
-                message: `Driver ${vehicle.driver.name} has been assigned to vehicle ${vehicle.plateNumber} (${vehicle.name})`,
-                type: 'INFO',
-                importance: 'MEDIUM',
-                toRoles: ['owner', 'admin'],
-                organizationId: activeOrgId,
-                actionUrl: `/vehicles/${vehicle.id}`,
-                metadata: { 
-                    vehicleId: vehicle.id, 
-                    plateNumber: vehicle.plateNumber,
-                    driverId: vehicle.driver.id,
-                    driverName: vehicle.driver.name
-                }
-            });
-        } else {
-            await broadcastNotification({
-                title: 'Driver Unassigned from Vehicle',
-                message: `Driver has been unassigned from vehicle ${vehicle.plateNumber} (${vehicle.name})`,
-                type: 'INFO',
-                importance: 'LOW',
-                toRoles: ['owner', 'admin'],
-                organizationId: activeOrgId,
-                actionUrl: `/vehicles/${vehicle.id}`,
-                metadata: { 
-                    vehicleId: vehicle.id, 
-                    plateNumber: vehicle.plateNumber
-                }
-            });
+            // Driver assigned
+            const notifications = vehicleNotifications.assignedToDriver(activeOrgId, vehicle, vehicle.driver);
+            for (const notif of notifications) {
+                await broadcastNotification(notif);
+            }
+        } else if (!driverId && previousDriver) {
+            // Driver unassigned
+            const notifications = vehicleNotifications.unassignedFromDriver(activeOrgId, vehicle, previousDriver);
+            for (const notif of notifications) {
+                await broadcastNotification(notif);
+            }
         }
 
         res.json({
@@ -1325,30 +1281,18 @@ router.patch('/:id/status', requireAuth, validateMultiple([{ schema: VehicleIdPa
             }
         });
 
-        const statusChangeNotifications: Record<VehicleStatus, { importance: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL', type: 'INFO' | 'WARNING' | 'ALERT' }> = {
-            AVAILABLE: { importance: 'LOW', type: 'INFO' },
-            IN_USE: { importance: 'LOW', type: 'INFO' },
-            MAINTENANCE: { importance: 'HIGH', type: 'WARNING' },
-            OUT_OF_SERVICE: { importance: 'CRITICAL', type: 'ALERT' },
-            INACTIVE: { importance: 'MEDIUM', type: 'WARNING' }
-        };
-
-        const notificationConfig = statusChangeNotifications[status];
-        await broadcastNotification({
-            title: 'Vehicle Status Updated',
-            message: `Vehicle ${vehicle.plateNumber} (${vehicle.name}) status changed to ${status}`,
-            type: notificationConfig.type,
-            importance: notificationConfig.importance,
-            toRoles: ['owner', 'admin'],
-            organizationId: activeOrgId,
-            actionUrl: `/vehicles/${vehicle.id}`,
-            metadata: { 
-                vehicleId: vehicle.id, 
-                plateNumber: vehicle.plateNumber,
-                oldStatus: existingVehicle.status,
-                newStatus: status
+        // Send notifications based on status
+        if (status === VehicleStatus.MAINTENANCE) {
+            // Use maintenance-specific notification
+            const notifications = vehicleNotifications.maintenanceStatusChanged(activeOrgId, vehicle, true);
+            for (const notif of notifications) {
+                await broadcastNotification(notif);
             }
-        });
+        } else {
+            // Use general status change notification
+            const notification = vehicleNotifications.statusChanged(activeOrgId, vehicle, status);
+            await broadcastNotification(notification);
+        }
 
         res.json({ message: 'Vehicle status updated successfully', vehicle });
     } catch (error) {
@@ -1507,36 +1451,17 @@ router.patch('/:id/maintenance-status', requireAuth, validateSchema(VehicleIdPar
             }
         });
 
+        // Send maintenance notifications
         if (status === VehicleStatus.MAINTENANCE) {
-            await broadcastNotification({
-                title: 'Vehicle Scheduled for Maintenance',
-                message: `Vehicle ${vehicle.plateNumber} (${vehicle.name}) is now under maintenance. Next service scheduled for ${vehicle.nextMaintenance?.toLocaleDateString()}`,
-                type: 'WARNING',
-                importance: 'HIGH',
-                toRoles: ['owner', 'admin'],
-                organizationId: activeOrgId,
-                actionUrl: `/vehicles/${vehicle.id}`,
-                metadata: { 
-                    vehicleId: vehicle.id, 
-                    plateNumber: vehicle.plateNumber,
-                    lastMaintenance: vehicle.lastMaintenance,
-                    nextMaintenance: vehicle.nextMaintenance
-                }
-            });
+            const notifications = vehicleNotifications.maintenanceStatusChanged(activeOrgId, vehicle, true);
+            for (const notif of notifications) {
+                await broadcastNotification(notif);
+            }
         } else if (oldVehicle.status === VehicleStatus.MAINTENANCE && status === VehicleStatus.AVAILABLE) {
-            await broadcastNotification({
-                title: 'Vehicle Maintenance Completed',
-                message: `Vehicle ${vehicle.plateNumber} (${vehicle.name}) maintenance completed and is now available`,
-                type: 'INFO',
-                importance: 'MEDIUM',
-                toRoles: ['owner', 'admin'],
-                organizationId: activeOrgId,
-                actionUrl: `/vehicles/${vehicle.id}`,
-                metadata: { 
-                    vehicleId: vehicle.id, 
-                    plateNumber: vehicle.plateNumber
-                }
-            });
+            const notifications = vehicleNotifications.maintenanceStatusChanged(activeOrgId, vehicle, false);
+            for (const notif of notifications) {
+                await broadcastNotification(notif);
+            }
         }
 
         res.json({
