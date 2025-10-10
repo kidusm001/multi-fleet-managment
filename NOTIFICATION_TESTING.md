@@ -1,5 +1,29 @@
 # Notification System - Testing Guide
 
+## Quick Test (15 minutes)
+
+### Test Coverage:
+- [x] Backend integration (all routes integrated)
+- [x] Frontend UI (severity styling complete)
+- [ ] Manual testing (checklist provided)
+- [ ] Real-time delivery (needs user testing)
+
+### How to Test:
+```bash
+# 1. Start servers
+pnpm dev
+
+# 2. Open browser
+# - Create a vehicle → Check admin notification
+# - Assign driver → Check multi-recipient
+# - Set maintenance → Check CRITICAL severity
+
+# 3. Check UI
+# - Verify red border for CRITICAL
+# - Verify orange border for HIGH
+# - Test severity filter dropdown
+```
+
 ## Quick Start Testing
 
 ### 1. Start the Application
