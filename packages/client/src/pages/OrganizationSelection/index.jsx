@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authClient } from '@/lib/auth-client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/Common/UI/Card';
@@ -43,16 +43,36 @@ export default function OrganizationSelection() {
   const { data: organizations, isLoading: orgsLoading, error: orgsError, refetch: refetchOrganizations } = useListOrganizations();
   const { data: activeOrganization, isLoading: activeOrgLoading, refetch: refetchActiveOrg } = useActiveOrganization();
 
+  // Track session stability to prevent premature API calls
+  const [sessionStable, setSessionStable] = useState(false);
+  const sessionStableRef = useRef(false);
+
+  // Ensure session is stable before attempting organization fetches
+  useEffect(() => {
+    if (session) {
+      // Give session a moment to stabilize
+      const timer = setTimeout(() => {
+        setSessionStable(true);
+        sessionStableRef.current = true;
+      }, 500);
+      return () => clearTimeout(timer);
+    } else {
+      setSessionStable(false);
+      sessionStableRef.current = false;
+    }
+  }, [session]);
+
   // Debug logging for troubleshooting (can be removed in production)
   useEffect(() => {
     if (organizations || activeOrganization) {
       console.log('OrganizationSelection - Active org status:', {
         organizationsCount: organizations?.length || 0,
         activeOrganization: activeOrganization?.name || 'None',
-        activeOrgId: activeOrganization?.id || 'None'
+        activeOrgId: activeOrganization?.id || 'None',
+        sessionStable
       });
     }
-  }, [organizations, activeOrganization]);
+  }, [organizations, activeOrganization, sessionStable]);
 
   // Check if this is the user's first organization
   const isFirstOrganization = !orgsLoading && (!organizations || organizations.length === 0);
@@ -63,30 +83,39 @@ export default function OrganizationSelection() {
   // Auto-retry loading if no organizations are loaded after initial load
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (!orgsLoading && !organizations && !orgsError && session) {
+      if (!orgsLoading && !organizations && !orgsError && session && sessionStable && refetchOrganizations) {
         console.log('Auto-retrying organization fetch...');
-        refetchOrganizations?.();
+        refetchOrganizations();
       }
     }, 1500);
 
     return () => clearTimeout(timer);
-  }, [orgsLoading, organizations, orgsError, session, refetchOrganizations]);
+  }, [orgsLoading, organizations, orgsError, session, sessionStable, refetchOrganizations]);
 
   // Force initial fetch if needed
   useEffect(() => {
-    if (session && !orgsLoading && !organizations && !orgsError && refetchOrganizations) {
+    if (session && sessionStable && !orgsLoading && !organizations && !orgsError && refetchOrganizations) {
       console.log('Force initial organization fetch...');
       refetchOrganizations();
     }
-  }, [session, organizations, orgsError, orgsLoading, refetchOrganizations]);
+  }, [session, sessionStable, organizations, orgsError, orgsLoading, refetchOrganizations]);
 
-  // Refetch active organization when organizations are loaded
+  // Aggressive retry when session becomes stable
   useEffect(() => {
-    if (organizations && organizations.length > 0 && !activeOrgLoading && !activeOrganization && refetchActiveOrg) {
-      console.log('Refetching active organization...');
-      refetchActiveOrg();
+    if (session && sessionStable && !organizations && !orgsLoading && !orgsError) {
+      console.log('Session stable, attempting immediate organization fetch...');
+      // Try multiple times with increasing delays
+      const attempts = [0, 1000, 2000, 3000];
+      attempts.forEach((delay, index) => {
+        setTimeout(() => {
+          if (!organizations && !orgsLoading && refetchOrganizations) {
+            console.log(`Organization fetch attempt ${index + 1}...`);
+            refetchOrganizations();
+          }
+        }, delay);
+      });
     }
-  }, [organizations, activeOrgLoading, activeOrganization, refetchActiveOrg]);
+  }, [session, sessionStable, organizations, orgsLoading, orgsError, refetchOrganizations]);
 
   // Manual refresh handler
   const handleRefresh = async () => {
@@ -224,6 +253,25 @@ export default function OrganizationSelection() {
               <Button onClick={() => navigate('/auth/login')}>
                 Go to Login
               </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Show loading while session stabilizes
+  if (!sessionStable) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardContent className="p-6">
+            <div className="text-center">
+              <Loader2 className="w-12 h-12 mx-auto text-primary mb-4 animate-spin" />
+              <h2 className="text-xl font-semibold mb-2">Preparing Organizations</h2>
+              <p className="text-muted-foreground">
+                Setting up your session...
+              </p>
             </div>
           </CardContent>
         </Card>

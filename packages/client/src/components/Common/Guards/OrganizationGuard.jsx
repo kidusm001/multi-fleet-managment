@@ -89,6 +89,13 @@ export default function OrganizationGuard({ children }) {
     debounceRef.current = setTimeout(() => {
       const checkOrganizationAccess = async () => {
         try {
+          console.log('OrganizationGuard - Checking organization access:', {
+            session: !!session,
+            organizations: organizations?.length || 0,
+            activeOrganization: activeOrganization?.name || 'none',
+            orgsLoading
+          });
+
           // If user has organizations but no active one, set the first one as active
           if (!activeOrganization && organizations?.length > 0) {
             console.log('User has organizations but none active, setting first as active');
@@ -141,7 +148,7 @@ export default function OrganizationGuard({ children }) {
         clearTimeout(debounceRef.current);
       }
     };
-  }, [session, organizations, activeOrganization, sessionLoading, orgsLoading, navigate, shouldSkipCheck]);
+  }, [session, organizations, activeOrganization, sessionLoading, orgsLoading, navigate, shouldSkipCheck, location.pathname]);
 
   // Show loading screen while checking
   if (isChecking || sessionLoading || (session && orgsLoading)) {

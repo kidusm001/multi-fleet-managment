@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, ReactNode } from 'react';
 import { authClient, useSession } from '@/lib/auth-client';
 
 // Type definitions
@@ -160,11 +160,24 @@ interface OrganizationProviderProps {
 }
 
 export function OrganizationProvider({ children }: OrganizationProviderProps) {
-  const { data: _session } = useSession();
+  const { data: session } = useSession();
   
-  // Use better-auth organization hooks
+  // Always call the hooks - better-auth handles authentication internally
   const { data: organizations, isPending: isLoadingOrganizations, refetch: refetchOrganizations } = authClient.useListOrganizations();
   const { data: activeOrganization, isPending: isLoadingActiveOrg } = authClient.useActiveOrganization();
+  
+  // Only use the data when user is authenticated
+  const shouldFetchOrganizations = !!session?.user;
+  const effectiveOrganizations = shouldFetchOrganizations ? (organizations || []) : [];
+  const effectiveActiveOrganization = shouldFetchOrganizations ? activeOrganization : null;
+  const effectiveIsLoadingOrganizations = shouldFetchOrganizations ? isLoadingOrganizations : false;
+  const effectiveIsLoadingActiveOrg = shouldFetchOrganizations ? isLoadingActiveOrg : false;
+  const effectiveRefetchOrganizations = useCallback(() => {
+    if (shouldFetchOrganizations && refetchOrganizations) {
+      return refetchOrganizations();
+    }
+    return Promise.resolve();
+  }, [shouldFetchOrganizations, refetchOrganizations]);
   
   // Local state for additional data
   const [members, setMembers] = useState<Member[]>([]);
@@ -173,7 +186,7 @@ export function OrganizationProvider({ children }: OrganizationProviderProps) {
   const [roles, setRoles] = useState<Role[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState({
-    loadingOrganizations: isLoadingOrganizations,
+    loadingOrganizations: effectiveIsLoadingOrganizations,
     loadingMembers: false,
     loadingInvitations: false,
     loadingTeams: false,
@@ -183,12 +196,23 @@ export function OrganizationProvider({ children }: OrganizationProviderProps) {
     error: null as string | null,
   });
   
-  const isLoading = isLoadingOrganizations || isLoadingActiveOrg;
+  const isLoading = shouldFetchOrganizations && (effectiveIsLoadingOrganizations || effectiveIsLoadingActiveOrg);
 
-  // Update loading status
+  // Update loading status - only when authenticated
   useEffect(() => {
-    setStatus(prev => ({ ...prev, loadingOrganizations: isLoadingOrganizations }));
-  }, [isLoadingOrganizations]);
+    if (shouldFetchOrganizations) {
+      setStatus(prev => ({ ...prev, loadingOrganizations: effectiveIsLoadingOrganizations }));
+    } else {
+      setStatus(prev => ({ ...prev, loadingOrganizations: false }));
+    }
+  }, [effectiveIsLoadingOrganizations, shouldFetchOrganizations]);
+
+  // Refetch organizations when user logs in
+  useEffect(() => {
+    if (shouldFetchOrganizations && effectiveRefetchOrganizations) {
+      effectiveRefetchOrganizations();
+    }
+  }, [shouldFetchOrganizations, effectiveRefetchOrganizations]);
 
   // Organization actions
   const createOrganization = async (data: { name: string; slug?: string }) => {
@@ -203,7 +227,7 @@ export function OrganizationProvider({ children }: OrganizationProviderProps) {
         throw new Error(result.error.message);
       }
       
-      await refetchOrganizations();
+      await effectiveRefetchOrganizations();
       return result.data;
     } catch (error: unknown) {
       const errorMsg = error instanceof Error ? error.message : 'Failed to create organization';
@@ -246,7 +270,7 @@ export function OrganizationProvider({ children }: OrganizationProviderProps) {
         throw new Error(result.error.message);
       }
       
-      await refetchOrganizations();
+      await effectiveRefetchOrganizations();
       return result.data;
     } catch (error: unknown) {
       throw new Error(error instanceof Error ? error.message : 'Failed to update organization');
@@ -263,7 +287,7 @@ export function OrganizationProvider({ children }: OrganizationProviderProps) {
         throw new Error(result.error.message);
       }
       
-      await refetchOrganizations();
+      await effectiveRefetchOrganizations();
     } catch (error: unknown) {
       throw new Error(error instanceof Error ? error.message : 'Failed to delete organization');
     }
@@ -273,7 +297,7 @@ export function OrganizationProvider({ children }: OrganizationProviderProps) {
     setError(null);
     setStatus(prev => ({ ...prev, error: null }));
     try {
-      await refetchOrganizations();
+      await effectiveRefetchOrganizations();
     } catch (error: unknown) {
       const errorMsg = error instanceof Error ? error.message : 'Failed to refresh organizations';
       setError(errorMsg);
@@ -335,7 +359,7 @@ export function OrganizationProvider({ children }: OrganizationProviderProps) {
     try {
       const result = await authClient.organization.removeMember({
         memberIdOrEmail,
-        organizationId: organizationId || activeOrganization?.id || '',
+        organizationId: organizationId || effectiveActiveOrganization?.id || '',
       });
       
       if (result.error) {
@@ -378,7 +402,7 @@ export function OrganizationProvider({ children }: OrganizationProviderProps) {
         body: JSON.stringify({
           userId: data.userId,
           role: data.role,
-          organizationId: data.organizationId || activeOrganization?.id,
+          organizationId: data.organizationId || effectiveActiveOrganization?.id,
           teamId: data.teamId
         }),
       });
@@ -515,8 +539,8 @@ export function OrganizationProvider({ children }: OrganizationProviderProps) {
 
   const value: OrganizationContextType = {
     // Data
-    organizations: organizations || [],
-    activeOrganization,
+    organizations: effectiveOrganizations || [],
+    activeOrganization: effectiveActiveOrganization,
     members,
     invitations,
     teams,
@@ -524,8 +548,8 @@ export function OrganizationProvider({ children }: OrganizationProviderProps) {
     
     // Loading states
     isLoading,
-    isLoadingOrganizations,
-    isLoadingActiveOrg,
+    isLoadingOrganizations: effectiveIsLoadingOrganizations,
+    isLoadingActiveOrg: effectiveIsLoadingActiveOrg,
     
     // Error states
     error,
