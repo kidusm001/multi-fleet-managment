@@ -6,7 +6,7 @@ import { useAuth } from '@contexts/AuthContext';
 
 const STORAGE_KEY = 'shuttle_notifications';
 const MAX_STORED_NOTIFICATIONS = 50;
-const DEBUG = false;
+const DEBUG = true; // Enable debug logging
 const log = (...args: unknown[]) => {
   if (DEBUG) console.log('[NotificationContext]:', ...args);
 };
@@ -44,25 +44,32 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const { role } = useRole();
   const { isAuthenticated } = useAuth();
 
-  // Load initial notifications only when authenticated
-  useEffect(() => {
+  // Load initial notifications and unread count
+  const loadInitialData = useCallback(async () => {
     if (!isAuthenticated) {
       log('Not authenticated, skipping initial notifications fetch');
       return;
     }
-    const loadNotifications = async () => {
-      try {
-        const { notifications: initialNotifications } = await notificationApi.getAll();
-        const unseenCount = await notificationApi.getUnseenCount();
-        setNotifications(initialNotifications);
-        setUnreadCount(unseenCount);
-      } catch (error) {
-        console.error('Failed to load notifications:', error);
-      }
-    };
-
-    loadNotifications();
+    
+    try {
+      log('Loading initial notifications and unread count');
+      const [notificationsData, unseenCount] = await Promise.all([
+        notificationApi.getAll(),
+        notificationApi.getUnseenCount()
+      ]);
+      
+      setNotifications(notificationsData.notifications as unknown as ShuttleNotification[] || []);
+      setUnreadCount(unseenCount);
+      log('Loaded notifications:', notificationsData.notifications?.length, 'Unread count:', unseenCount);
+    } catch (error) {
+      console.error('Failed to load notifications:', error);
+    }
   }, [isAuthenticated]);
+
+  // Load initial data when authenticated
+  useEffect(() => {
+    loadInitialData();
+  }, [loadInitialData]);
 
   // Persist notifications to local storage
   useEffect(() => {
@@ -93,11 +100,16 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     socketClient.subscribeToRole(role);
     log('Subscribed to role channel:', role);
 
-    const unsubNew = socketClient.onNewNotification((notification) => {
+    const unsubNew = socketClient.onNewNotification(async (notification) => {
       log('Received new notification:', notification);
+      
       // Play notification sound if enabled
-      const audio = new Audio('/assets/sounds/notification.mp3');
-      audio.play().catch(e => log('Sound play error:', e));
+      try {
+        const audio = new Audio('/assets/sounds/notification.mp3');
+        await audio.play().catch(e => log('Sound play error:', e));
+      } catch (err) {
+        log('Audio error:', err);
+      }
       
       setNotifications(prev => {
         const exists = prev.some(n => n.id === notification.id);
@@ -106,13 +118,25 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
           return prev;
         }
         log('Adding new notification to state');
-        // Add at beginning of array and limit size
         return [notification, ...prev].slice(0, MAX_STORED_NOTIFICATIONS);
       });
       
-      if (notification.status === 'Pending') {
-        log('Incrementing unread count');
-        setUnreadCount(prev => prev + 1);
+      // Re-fetch unread count to ensure accuracy
+      try {
+        const unseenCount = await notificationApi.getUnseenCount();
+        log('Updated unread count from API:', unseenCount);
+        setUnreadCount(unseenCount);
+      } catch (error) {
+        log('Failed to refresh unseen count:', error);
+        // Fallback: check if notification is unread and increment
+        const isUnread = notification.status === 'UNREAD' || 
+                        notification.status === 'Pending' ||
+                        !notification.seenBy || 
+                        notification.seenBy.length === 0;
+        if (isUnread) {
+          log('Fallback: Incrementing unread count');
+          setUnreadCount(prev => prev + 1);
+        }
       }
     });
 
@@ -173,7 +197,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       await notificationApi.markAsRead(notificationId);
       setUnreadCount(prev => Math.max(0, prev - 1));
       setNotifications(prev => 
-        prev.map(n => n.id === notificationId ? { ...n, status: 'Read' } : n)
+        prev.map(n => n.id === notificationId ? { ...n, status: 'Read' as const } : n)
       );
     } catch (error) {
       console.error('Failed to mark notification as read:', error);
@@ -182,11 +206,13 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
   const markAllAsSeen = useCallback(async () => {
     try {
-      await notificationApi.markAllAsSeen();
+      log('Marking all notifications as seen/read');
+      await notificationApi.markAllAsRead(); // This marks as both seen AND read
       setUnreadCount(0);
       setNotifications(prev => 
-        prev.map(n => ({ ...n, status: 'Read' }))
+        prev.map(n => ({ ...n, status: 'Read' as const }))
       );
+      log('Successfully marked all as seen/read');
     } catch (error) {
       console.error('Failed to mark all notifications as seen:', error);
     }

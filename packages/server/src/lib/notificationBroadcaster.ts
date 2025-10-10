@@ -36,17 +36,31 @@ export async function broadcastNotification(options: BroadcastNotificationOption
     metadata: options.metadata
   });
 
+  // Format notification for frontend
+  const formattedNotification = {
+    ...notification,
+    subject: notification.title,
+    notificationType: notification.type,
+    localTime: new Date(notification.createdAt).toLocaleString(),
+  };
+
+  // Emit to specific user if specified
   if (options.toUserId) {
-    io.to(`user:${options.toUserId}`).emit('notification:new', notification);
+    console.log(`[NotificationBroadcaster] Emitting to user:${options.toUserId}`);
+    io.to(`user:${options.toUserId}`).emit('notification:new', formattedNotification);
   }
 
+  // Emit to specific roles
   if (options.toRoles && options.toRoles.length > 0) {
     options.toRoles.forEach(role => {
-      io!.to(`role:${role}`).emit('notification:new', notification);
+      console.log(`[NotificationBroadcaster] Emitting to role:${role}`);
+      io!.to(`role:${role}`).emit('notification:new', formattedNotification);
     });
   }
 
-  io.to(`org:${options.organizationId}`).emit('notification:new', notification);
+  // Emit to entire organization
+  console.log(`[NotificationBroadcaster] Emitting to org:${options.organizationId}`);
+  io.to(`org:${options.organizationId}`).emit('notification:new', formattedNotification);
 
   return notification;
 }
@@ -56,7 +70,16 @@ export async function broadcastToOrganization(organizationId: string, notificati
     throw new Error('Notification broadcaster not initialized');
   }
 
-  io.to(`org:${organizationId}`).emit('notification:new', notification);
+  // Format notification for frontend
+  const formattedNotification = {
+    ...notification,
+    subject: notification.title || notification.subject,
+    notificationType: notification.type || notification.notificationType,
+    localTime: new Date(notification.createdAt).toLocaleString(),
+  };
+
+  console.log(`[NotificationBroadcaster] Broadcasting to org:${organizationId}`);
+  io.to(`org:${organizationId}`).emit('notification:new', formattedNotification);
 }
 
 export async function broadcastToRole(role: string, notification: any) {
@@ -64,7 +87,16 @@ export async function broadcastToRole(role: string, notification: any) {
     throw new Error('Notification broadcaster not initialized');
   }
 
-  io.to(`role:${role}`).emit('notification:new', notification);
+  // Format notification for frontend
+  const formattedNotification = {
+    ...notification,
+    subject: notification.title || notification.subject,
+    notificationType: notification.type || notification.notificationType,
+    localTime: new Date(notification.createdAt).toLocaleString(),
+  };
+
+  console.log(`[NotificationBroadcaster] Broadcasting to role:${role}`);
+  io.to(`role:${role}`).emit('notification:new', formattedNotification);
 }
 
 export async function broadcastToUser(userId: string, notification: any) {
@@ -72,5 +104,14 @@ export async function broadcastToUser(userId: string, notification: any) {
     throw new Error('Notification broadcaster not initialized');
   }
 
-  io.to(`user:${userId}`).emit('notification:new', notification);
+  // Format notification for frontend
+  const formattedNotification = {
+    ...notification,
+    subject: notification.title || notification.subject,
+    notificationType: notification.type || notification.notificationType,
+    localTime: new Date(notification.createdAt).toLocaleString(),
+  };
+
+  console.log(`[NotificationBroadcaster] Broadcasting to user:${userId}`);
+  io.to(`user:${userId}`).emit('notification:new', formattedNotification);
 }

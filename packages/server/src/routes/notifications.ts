@@ -52,8 +52,16 @@ router.get('/', requireAuth, validateSchema(NotificationQuerySchema, 'query'), a
             limit: limit ? parseInt(limit as string) : 10,
         });
 
+        // Format notifications for frontend
+        const formattedNotifications = result.items.map(notification => ({
+            ...notification,
+            subject: notification.title,
+            notificationType: notification.type,
+            localTime: new Date(notification.createdAt).toLocaleString(),
+        }));
+
         res.json({
-            notifications: result.items,
+            notifications: formattedNotifications,
             pagination: {
                 page: result.page,
                 total: result.total,
@@ -62,7 +70,7 @@ router.get('/', requireAuth, validateSchema(NotificationQuerySchema, 'query'), a
             },
         });
     } catch (error) {
-        console.error(error);
+        console.error('[Notifications API] Error:', error);
         res.status(500).json({ message: 'Internal Server Error' });
     }
 });

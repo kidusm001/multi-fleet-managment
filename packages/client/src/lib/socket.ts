@@ -6,19 +6,23 @@ const log = (...args: unknown[]) => DEBUG && console.log('[SocketClient]:', ...a
 // Update notification types to match Prisma model
 export interface ShuttleNotification {
   id: string;
+  title?: string;
   toRoles: string[];
-  fromRole: string;
-  notificationType: string;
-  subject: string;
+  fromRole?: string;
+  notificationType?: string;
+  subject?: string;
   message: string;
-  importance: 'Low' | 'Medium' | 'High' | 'Critical';
+  importance: 'Low' | 'Medium' | 'High' | 'Critical' | 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
   createdAt: string;
-  localTime: string;
+  localTime?: string;
   relatedEntityId?: string;
-  status: 'Pending' | 'Delivered' | 'Read';
-  seenBy: Array<{
-    id: string;
-    name: string;
+  status: 'Pending' | 'Delivered' | 'Read' | 'UNREAD' | 'READ';
+  seenBy?: Array<{
+    id?: string;
+    userId?: string;
+    name?: string;
+    seenAt?: string;
+    readAt?: string | null;
   }>;
 }
 
