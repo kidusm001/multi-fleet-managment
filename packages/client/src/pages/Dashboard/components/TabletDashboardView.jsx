@@ -4,22 +4,27 @@ import { AnimatePresence } from "framer-motion";
 import { useTheme } from "@contexts/ThemeContext";
 import { ErrorBoundary } from "@components/Common/ErrorBoundary";
 import { routeService } from "@services/routeService";
-import { useViewport } from "@hooks/useViewport";
 
-import SearchAndFilter from "./components/SearchAndFilter";
-import RouteList from "./components/RouteList";
-import StatsCards from "./components/StatsCards";
-import RouteDetails from "./components/RouteDetails";
-import MobileDashboardView from "./components/MobileDashboardView";
-import TabletDashboardView from "./components/TabletDashboardView";
-import "./styles.css";
+import SearchAndFilter from "./SearchAndFilter";
+import RouteList from "./RouteList";
+import StatsCards from "./StatsCards";
+import RouteDetails from "./RouteDetails";
+import "../styles.css";
 
 // Lazy load the map component
 const MapComponent = React.lazy(() =>
   import("@components/Common/Map/MapComponent")
 );
 
-function DashboardDesktop() {
+/**
+ * Tablet Dashboard View
+ * Combines best of desktop and mobile:
+ * - Full map view like desktop
+ * - Compact sidebar for routes (left side)
+ * - Stats overlay on map
+ * - Collapsible route details (right side, can expand)
+ */
+function TabletDashboardView() {
   const [routes, setRoutes] = useState([]);
   const [selectedRoute, setSelectedRoute] = useState(null);
   const [isDetailsExpanded, setIsDetailsExpanded] = useState(false);
@@ -38,7 +43,7 @@ function DashboardDesktop() {
         const routesData = await routeService.getAllRoutes();
         setRoutes(routesData);
         if (routesData.length > 0) {
-          setSelectedRoute(routesData[0]); // Set first route as selected
+          setSelectedRoute(routesData[0]);
         }
       } catch (err) {
         console.error("Error fetching routes:", err);
@@ -51,11 +56,10 @@ function DashboardDesktop() {
     fetchRoutes();
   }, []);
 
-  // Transform route for map component using the same approach as RouteManagementView
+  // Transform route for map component
   const transformRouteForMap = useCallback((route) => {
     if (!route || !route.stops || route.stops.length === 0) return null;
 
-    // Transform route data to match what the MapComponent expects
     return {
       id: route.id,
       coordinates: route.stops
@@ -63,7 +67,7 @@ function DashboardDesktop() {
           stop.longitude || stop.stop?.longitude,
           stop.latitude || stop.stop?.latitude,
         ])
-        .filter((coord) => coord[0] && coord[1]), // Filter out invalid coordinates
+        .filter((coord) => coord[0] && coord[1]),
       areas: route.stops.map((stop) => {
         const employee = stop.employee;
         if (!employee) return "Unassigned Stop";
@@ -79,7 +83,6 @@ function DashboardDesktop() {
 
   // Handle map refresh when style or selectedRoute changes
   useEffect(() => {
-    // Increment counter to force map component re-render
     mapRefreshCounter.current += 1;
   }, [theme, selectedRoute]);
 
@@ -98,7 +101,6 @@ function DashboardDesktop() {
     try {
       const routesData = await routeService.getAllRoutes();
       setRoutes(routesData);
-      // Update selected route with fresh data
       if (selectedRoute) {
         const updatedRoute = routesData.find(r => r.id === selectedRoute.id);
         if (updatedRoute) {
@@ -142,7 +144,7 @@ function DashboardDesktop() {
     setSearchQuery(e.target.value);
   }, []);
 
-  // Dynamically select mapStyle based on theme
+  // Map style based on theme
   const mapStyle = theme === "dark" 
     ? "mapbox://styles/skywalkertew/cm3gy93ro005g01se5hube11j"
     : "mapbox://styles/skywalkertew/cm3oo0bb3007e01qw3rd7gdcl";
@@ -175,17 +177,14 @@ function DashboardDesktop() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-60px)]">
-      {/* Stats Cards - Outside on mobile, top of desktop */}
-      <div className="md:absolute md:top-6 md:left-1/2 md:transform md:-translate-x-1/2 md:z-10 md:pointer-events-none w-full md:w-auto">
-        <div className="block md:hidden p-4">
-          <StatsCards stats={stats} />
-        </div>
-        <div className="hidden md:block md:pointer-events-auto">
+      {/* Stats Cards - Overlay on map, optimized for tablet */}
+      <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-10 pointer-events-none w-full max-w-4xl px-4">
+        <div className="pointer-events-auto">
           <StatsCards stats={stats} />
         </div>
       </div>
 
-      {/* Main Content - Map + Sidebar */}
+      {/* Main Content - Map + Sidebars */}
       <div className="flex-1 relative">
         {/* Main Map Container */}
         <ErrorBoundary fallback={<div>Error loading map</div>}>
@@ -206,9 +205,9 @@ function DashboardDesktop() {
           </Suspense>
         </ErrorBoundary>
 
-        {/* Left Sidebar - Desktop only */}
-        <div className="hidden md:block absolute left-6 top-20 bottom-6 w-80 z-10 pointer-events-auto">
-          <div className="h-full space-y-4">
+        {/* Left Sidebar - Compact for tablet */}
+        <div className="absolute left-4 top-20 bottom-4 w-72 z-10 pointer-events-auto">
+          <div className="h-full space-y-3">
             <SearchAndFilter
               searchQuery={searchQuery}
               onSearchChange={handleSearch}
@@ -227,40 +226,15 @@ function DashboardDesktop() {
           </div>
         </div>
 
-        {/* Mobile Route Selector - Bottom sheet style */}
-        <div className="md:hidden absolute bottom-0 left-0 right-0 z-10 pointer-events-auto">
-          <div className="bg-white/95 dark:bg-[#0c1222]/95 backdrop-blur-md border-t border-gray-200 dark:border-gray-700 rounded-t-xl">
-            <div className="p-4 space-y-3">
-              <SearchAndFilter
-                searchQuery={searchQuery}
-                onSearchChange={handleSearch}
-                statusFilter={statusFilter}
-                setStatusFilter={setStatusFilter}
-              />
-              <div className="max-h-32 overflow-y-auto">
-                <RouteList
-                  filteredRoutes={filteredRoutes}
-                  selectedRoute={selectedRoute}
-                  handleRouteSelect={handleRouteSelect}
-                  searchQuery={searchQuery}
-                  loading={loading}
-                />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Route Details Panel - Desktop only, hidden on mobile */}
+        {/* Route Details Panel - Right side, tablet optimized */}
         <AnimatePresence>
           {selectedRoute && (
-            <div className="hidden md:block">
-              <RouteDetails
-                selectedRoute={selectedRoute}
-                isDetailsExpanded={isDetailsExpanded}
-                toggleRouteDetails={toggleRouteDetails}
-                onRouteUpdate={handleRouteUpdate}
-              />
-            </div>
+            <RouteDetails
+              selectedRoute={selectedRoute}
+              isDetailsExpanded={isDetailsExpanded}
+              toggleRouteDetails={toggleRouteDetails}
+              onRouteUpdate={handleRouteUpdate}
+            />
           )}
         </AnimatePresence>
       </div>
@@ -268,24 +242,4 @@ function DashboardDesktop() {
   );
 }
 
-// Main Dashboard Component with Responsive Logic
-function Dashboard() {
-  const viewport = useViewport();
-  const isMobile = viewport === 'mobile';
-  const isTablet = viewport === 'tablet';
-
-  // Mobile view: Show mobile-optimized dashboard
-  if (isMobile) {
-    return <MobileDashboardView />;
-  }
-
-  // Tablet view: Show tablet-optimized dashboard (compact sidebar + route details)
-  if (isTablet) {
-    return <TabletDashboardView />;
-  }
-
-  // Desktop view: Show full map-based dashboard
-  return <DashboardDesktop />;
-}
-
-export default React.memo(Dashboard);
+export default React.memo(TabletDashboardView);

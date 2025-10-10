@@ -23,11 +23,7 @@ const RouteList = ({
             {filteredRoutes.length} routes
           </span>
         </h3>
-        <div
-          className="space-y-2 overflow-y-auto custom-scrollbar pr-2"
-          style={{ height: "320px" }}
-        >
-          {filteredRoutes.length > 0 ? (
+        <div className="space-y-2 overflow-y-auto custom-scrollbar pr-2" style={{ maxHeight: '500px' }}>{filteredRoutes.length > 0 ? (
             filteredRoutes
               .sort((a, b) => {
                 const timeA = a.nextDeparture ? new Date(a.nextDeparture) : new Date('9999-12-31');

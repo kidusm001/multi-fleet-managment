@@ -24,6 +24,7 @@ const Login = lazy(() => import('@pages/Auth/Login'));
 const Signup = lazy(() => import('@pages/Auth/Signup'));
 const OrganizationSelection = lazy(() => import('@pages/OrganizationSelection'));
 const NotificationDashboard = lazy(() => import('@pages/notifications/components/notification-dashboard').then(m => ({ default: m.NotificationDashboard })));
+const DriverPortal = lazy(() => import('@pages/DriverPortal'));
 
 import { RoleProvider } from "@contexts/RoleContext";
 import { OrganizationProvider } from "@contexts/OrganizationContext";
@@ -179,6 +180,11 @@ function AppContent() {
           <Route
             path="settings"
             element={<Suspense fallback={<div />}> <Settings /> </Suspense>}
+          />
+          {/* Driver Portal - Mobile optimized */}
+          <Route
+            path="driver/*"
+            element={<Suspense fallback={<div />}> <DriverPortal /> </Suspense>}
           />
         </Route>
       </Routes>
