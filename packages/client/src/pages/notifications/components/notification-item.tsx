@@ -5,7 +5,7 @@ import { Badge } from "./ui/badge";
 import { Checkbox } from "./ui/checkbox";
 import { Card } from "./ui/card";
 import { NotificationItem as INotificationItem } from "../types/notifications";
-import { ChevronUp, ChevronDown } from "lucide-react";
+import { ChevronUp, ChevronDown, Car, Route, Users, UserCog, Building, Clock, Settings, Shield, Bell } from "lucide-react";
 import { useState } from "react";
 
 export interface NotificationItemProps extends INotificationItem {
@@ -16,11 +16,13 @@ export interface NotificationItemProps extends INotificationItem {
 // Severity-based styling helpers with proper background colors
 const getSeverityColor = (importance: string): string => {
   const level = importance.toLowerCase();
-  if (level.includes('critical') || level === 'urgent') return 'bg-red-100 dark:bg-red-950/30 border-l-4 border-red-600';
-  if (level.includes('high')) return 'bg-orange-100 dark:bg-orange-950/30 border-l-4 border-orange-600';
-  if (level.includes('medium')) return 'bg-yellow-100 dark:bg-yellow-950/30 border-l-4 border-yellow-600';
-  if (level.includes('low')) return 'bg-blue-100 dark:bg-blue-950/30 border-l-4 border-blue-600';
-  return 'bg-gray-100 dark:bg-gray-950/30 border-l-4 border-gray-600';
+  // Light mode: use opaque, non-transparent background colors for each severity level
+  // Dark mode classes are preserved exactly (do not modify dark mode per request)
+  if (level.includes('critical') || level === 'urgent') return 'bg-red-100 border-l-8 border-red-600 shadow-lg dark:bg-red-950/30 dark:border-red-600';
+  if (level.includes('high')) return 'bg-orange-100 border-l-8 border-orange-600 shadow-lg dark:bg-orange-950/30 dark:border-orange-600';
+  if (level.includes('medium')) return 'bg-yellow-100 border-l-8 border-yellow-600 shadow-lg dark:bg-yellow-950/30 dark:border-yellow-600';
+  if (level.includes('low')) return 'bg-blue-100 border-l-8 border-blue-600 shadow-lg dark:bg-blue-950/30 dark:border-blue-600';
+  return 'bg-gray-100 border-l-8 border-gray-600 shadow-lg dark:bg-gray-950/30 dark:border-gray-600';
 };
 
 const getSeverityBadge = (importance: string) => {
@@ -40,18 +42,18 @@ const getSeverityBadge = (importance: string) => {
   return null;
 };
 
-const getTypeIcon = (type: string): string => {
-  if (!type) return '🔔';
+const getTypeIcon = (type: string) => {
+  if (!type) return <Bell className="h-6 w-6" />;
   const typeStr = type.toUpperCase();
-  if (typeStr.startsWith('VEHICLE_')) return '🚗';
-  if (typeStr.startsWith('ROUTE_')) return '🛣️';
-  if (typeStr.startsWith('EMPLOYEE_')) return '👥';
-  if (typeStr.startsWith('DRIVER_')) return '🚙';
-  if (typeStr.startsWith('DEPARTMENT_')) return '🏛️';
-  if (typeStr.startsWith('SHIFT_')) return '⏱️';
-  if (typeStr.startsWith('SYSTEM_')) return '⚙️';
-  if (typeStr.startsWith('SECURITY_')) return '🔐';
-  return '🔔';
+  if (typeStr.startsWith('VEHICLE_')) return <Car className="h-6 w-6" />;
+  if (typeStr.startsWith('ROUTE_')) return <Route className="h-6 w-6" />;
+  if (typeStr.startsWith('EMPLOYEE_')) return <Users className="h-6 w-6" />;
+  if (typeStr.startsWith('DRIVER_')) return <UserCog className="h-6 w-6" />;
+  if (typeStr.startsWith('DEPARTMENT_')) return <Building className="h-6 w-6" />;
+  if (typeStr.startsWith('SHIFT_')) return <Clock className="h-6 w-6" />;
+  if (typeStr.startsWith('SYSTEM_')) return <Settings className="h-6 w-6" />;
+  if (typeStr.startsWith('SECURITY_')) return <Shield className="h-6 w-6" />;
+  return <Bell className="h-6 w-6" />;
 };
 
 export function NotificationItem({
@@ -126,7 +128,7 @@ export function NotificationItem({
         <div className="flex-1 min-w-0"> {/* Add min-w-0 to prevent flex item from overflowing */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 min-w-0"> {/* Add min-w-0 here too */}
-              <span className="text-2xl">{getTypeIcon(type)}</span>
+              {getTypeIcon(type)}
               <h4
                 className={cn(
                   "font-semibold transition-colors duration-200 truncate", // Add truncate

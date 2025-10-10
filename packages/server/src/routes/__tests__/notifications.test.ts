@@ -79,9 +79,7 @@ vi.mock('../../services/notificationService', () => {
   };
 });
 
-vi.mock('../../lib/notificationBroadcaster', () => ({
-  broadcastNotification: vi.fn(),
-}));
+vi.mock('../../lib/notificationBroadcaster');
 
 vi.mock('../../middleware/zodValidation', () => ({
   validateSchema: vi.fn(() => (_req: Request, _res: Response, next: NextFunction) => next()),
@@ -150,6 +148,10 @@ const baseNotification = {
   updatedAt: new Date().toISOString(),
   organization: baseOrganization,
   seenBy: [],
+  // Additional fields added by API formatting
+  subject: 'Test Notification',
+  notificationType: 'INFO',
+  localTime: new Date(new Date().toISOString()).toLocaleString(),
 };
 
 const baseServiceResult = {

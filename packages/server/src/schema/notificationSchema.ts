@@ -16,9 +16,12 @@ export const OrganizationIdParam = z.object({
 export const NotificationQuerySchema = z.object({
     page: z.string().regex(/^\d+$/).transform(Number).optional(),
     limit: z.string().regex(/^\d+$/).transform(Number).optional(),
-    type: z.nativeEnum(NotificationType).optional(),
+    // Allow either full enum values (e.g. ROUTE_CREATED) or category prefixes (e.g. ROUTE)
+    type: z.string().optional(),
     status: z.nativeEnum(NotificationStatus).optional(),
     importance: z.nativeEnum(ImportanceLevel).optional(),
+    fromDate: z.string().optional(),
+    toDate: z.string().optional(),
 });
 
 export const CreateNotificationSchema = z.object({
@@ -31,7 +34,7 @@ export const CreateNotificationSchema = z.object({
     toUserId: z.string().optional(),
     relatedEntityId: z.string().optional(),
     actionUrl: z.string().url().optional(),
-    metadata: z.record(z.any()).optional(),
+    metadata: z.record(z.string(), z.any()).optional(),
 });
 
 export const SuperAdminCreateNotificationSchema = CreateNotificationSchema.extend({
@@ -46,7 +49,7 @@ export const UpdateNotificationSchema = z.object({
     importance: z.nativeEnum(ImportanceLevel).optional(),
     status: z.nativeEnum(NotificationStatus).optional(),
     actionUrl: z.string().url().optional(),
-    metadata: z.record(z.any()).optional(),
+    metadata: z.record(z.string(), z.any()).optional(),
 });
 
 export type CreateNotification = z.infer<typeof CreateNotificationSchema>;

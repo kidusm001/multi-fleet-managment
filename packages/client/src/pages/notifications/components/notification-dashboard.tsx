@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Bell, ChevronLeft, ChevronRight, Route, Bus } from "lucide-react";
-import { NotificationSource, NotificationType } from "../types/notifications";
+import { Bell, ChevronLeft, ChevronRight, Route, Bus, Users, UserCog, AlertTriangle, FileText } from "lucide-react";
+import { NotificationType } from "../types/notifications";
 import { DateRange } from "react-day-picker";
 import { DateRangePicker } from "./ui/date-range-picker";
 import { Button } from "./ui/button";
@@ -45,10 +45,30 @@ export function NotificationDashboard() {
 
   // Handle date range change with logging
   const handleDateRangeChange = (newDateRange: DateRange | undefined) => {
-    console.log('[NotificationDashboard] Date range changed:', newDateRange);
+    console.log('Date range changed:', newDateRange);
     setDateRange(newDateRange);
     setCurrentPage(1); // Reset to first page when date filter changes
     setRefreshTrigger(prev => prev + 1); // Force refresh
+  };
+
+  // Map frontend type filter to backend notification type pattern
+  const getBackendType = (frontendType: string): string => {
+    switch (frontendType) {
+      case "ROUTE":
+        return "ROUTE";
+      case "VEHICLE":
+        return "VEHICLE";
+      case "EMPLOYEE":
+        return "EMPLOYEE";
+      case "DRIVER":
+        return "DRIVER";
+      case "REQUEST":
+        return "REQUEST";
+      case "SYSTEM":
+        return "SYSTEM";
+      default:
+        return frontendType;
+    }
   };
 
   const _isNotificationSeen = (notification: ApiNotificationItem): boolean => {
@@ -72,11 +92,13 @@ export function NotificationDashboard() {
         const query = {
           page: currentPage,
           limit: pagination.perPage,
-          type: typeFilter !== "all" ? typeFilter : undefined,
+          type: typeFilter !== "all" ? getBackendType(typeFilter) : undefined,
           importance: (severityFilter !== "all" ? severityFilter : undefined) as "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" | undefined,
           fromDate: dateRange?.from ? dateRange.from.toISOString() : undefined,
-          toDate: dateRange?.to ? dateRange.to.toISOString() : undefined,
+          toDate: dateRange?.to ? new Date(dateRange.to.getTime() + 24 * 60 * 60 * 1000 - 1).toISOString() : undefined, // End of selected day
         };
+
+        console.log('Fetching notifications with query:', query);
 
         if (sortBy === "importance") {
           // Use sorted-by-importance endpoint when the sort option is set to "importance"
@@ -108,22 +130,31 @@ export function NotificationDashboard() {
 
   // Fetch stats when filters change
   useEffect(() => {
-    refreshStats();
+    refreshStats({
+      type: typeFilter !== "all" ? getBackendType(typeFilter) : undefined,
+      importance: severityFilter !== "all" ? severityFilter : undefined,
+      fromDate: dateRange?.from ? dateRange.from.toISOString() : undefined,
+      toDate: dateRange?.to ? new Date(dateRange.to.getTime() + 24 * 60 * 60 * 1000 - 1).toISOString() : undefined, // End of selected day
+    });
   }, [typeFilter, severityFilter, dateRange, refreshStats]);
 
   // Listen for external notification updates (from nav dropdown)
   useEffect(() => {
     const handleNotificationUpdate = () => {
-      console.log('[NotificationDashboard] External update detected, refreshing...');
       setRefreshTrigger(prev => prev + 1);
-      refreshStats();
+      refreshStats({
+        type: typeFilter !== "all" ? getBackendType(typeFilter) : undefined,
+        importance: severityFilter !== "all" ? severityFilter : undefined,
+        fromDate: dateRange?.from ? dateRange.from.toISOString() : undefined,
+        toDate: dateRange?.to ? new Date(dateRange.to.getTime() + 24 * 60 * 60 * 1000 - 1).toISOString() : undefined, // End of selected day
+      });
     };
 
     window.addEventListener('notification-updated', handleNotificationUpdate);
     return () => {
       window.removeEventListener('notification-updated', handleNotificationUpdate);
     };
-  }, [refreshStats]);
+  }, [refreshStats, typeFilter, severityFilter, dateRange]);
 
   // Map importance string to a numeric level (handles both backend ENUM and frontend labels)
   const mapImportance = (importanceStr: string) => {
@@ -138,6 +169,22 @@ export function NotificationDashboard() {
     }
   };
 
+  // Map fromRole to user-friendly source label
+  const getSourceLabel = (fromRole: string): string => {
+    switch (fromRole?.toLowerCase()) {
+      case "admin":
+      case "administrator":
+        return "Admin";
+      case "manager":
+      case "shuttle_manager":
+      case "fleetmanager":
+        return "Fleet Manager";
+      case "system":
+      default:
+        return "System";
+    }
+  };
+
   // Transform API notifications for UI consumption
   const transformedNotifications = notifications.map(notification => ({
     id: notification.id,
@@ -146,7 +193,7 @@ export function NotificationDashboard() {
     description: notification.message,
     timestamp: new Date(notification.createdAt),
     importance: getImportanceLevel(mapImportance(notification.importance)),
-    source: notification.fromRole as NotificationSource,
+    source: getSourceLabel(notification.fromRole),
     isRead: isNotificationRead(notification),
     metadata: {
       relatedEntityId: notification.relatedEntityId,
@@ -186,9 +233,9 @@ export function NotificationDashboard() {
       const query = {
         page: currentPage,
         limit: pagination.perPage,
-        type: typeFilter !== "all" ? typeFilter : undefined,
-        fromDate: dateRange?.from,
-        toDate: dateRange?.to,
+        type: typeFilter !== "all" ? getBackendType(typeFilter) : undefined,
+        fromDate: dateRange?.from ? dateRange.from.toISOString() : undefined,
+        toDate: dateRange?.to ? new Date(dateRange.to.getTime() + 24 * 60 * 60 * 1000 - 1).toISOString() : undefined, // End of selected day
       };
       const response: ApiNotificationResponse = await notificationApi.getAll(query);
       setNotifications(response.notifications);
@@ -211,10 +258,10 @@ export function NotificationDashboard() {
         const query = {
           page: 1,
           limit: pagination.total,
-          type: typeFilter !== "all" ? typeFilter : undefined,
+          type: typeFilter !== "all" ? getBackendType(typeFilter) : undefined,
           importance: (severityFilter !== "all" ? severityFilter : undefined) as "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" | undefined,
           fromDate: dateRange?.from ? dateRange.from.toISOString() : undefined,
-          toDate: dateRange?.to ? dateRange.to.toISOString() : undefined,
+          toDate: dateRange?.to ? new Date(dateRange.to.getTime() + 24 * 60 * 60 * 1000 - 1).toISOString() : undefined, // End of selected day
         };
         
         if (readFilter === "read") {
@@ -244,8 +291,12 @@ export function NotificationDashboard() {
   const tabs = [
     { title: "All Notifications", icon: Bell },
     { title: "Routes", icon: Route },
-    { type: "separator" as const },
     { title: "Vehicles", icon: Bus },
+    { title: "Employees", icon: Users },
+    { type: "separator" as const },
+    { title: "Drivers", icon: UserCog },
+    { title: "Requests", icon: FileText },
+    { title: "System", icon: AlertTriangle },
   ];
 
   const handleTabChange = (index: number | null) => {
@@ -253,9 +304,14 @@ export function NotificationDashboard() {
     const tabTypes: Record<number, string> = {
       0: "all",
       1: "ROUTE",
-      3: "VEHICLE",
+      2: "VEHICLE",
+      3: "EMPLOYEE",
+      5: "DRIVER",
+      6: "REQUEST",
+      7: "SYSTEM",
     };
-    setTypeFilter(tabTypes[index ?? 0] || "all");
+    const selectedType = tabTypes[index ?? 0] || "all";
+    setTypeFilter(selectedType);
     setCurrentPage(1);
   };
 

@@ -178,7 +178,7 @@ describe('NotificationService', () => {
         expect.objectContaining({
           where: expect.objectContaining({
             organizationId: 'org_123',
-            type: NotificationType.ALERT,
+            type: { in: ['SYSTEM_PERFORMANCE_ALERT', 'SYSTEM_SECURITY_ALERT', 'ALERT'] },
             importance: ImportanceLevel.HIGH,
           }),
         })
@@ -240,7 +240,7 @@ describe('NotificationService', () => {
         },
       });
 
-      expect(result.seenBy).toHaveLength(1);
+      expect(result!.seenBy).toHaveLength(1);
     });
 
     it('should throw error if notification not found', async () => {

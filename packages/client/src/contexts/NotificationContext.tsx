@@ -16,7 +16,7 @@ interface NotificationContextType {
   unreadCount: number;
   isConnected: boolean;
   stats: { total: number; unread: number; read: number };
-  refreshStats: () => Promise<void>;
+  refreshStats: (filters?: { type?: string; importance?: string; fromDate?: string; toDate?: string }) => Promise<void>;
   markAsSeen: (notificationId: string) => void;
   markAsRead: (notificationId: string) => void;
   markAllAsSeen: () => void;
@@ -50,19 +50,32 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const { isAuthenticated } = useAuth();
 
   // Shared function to refresh stats (used by both nav and dashboard)
-  const refreshStats = useCallback(async () => {
+  const refreshStats = useCallback(async (filters?: { type?: string; importance?: string; fromDate?: string; toDate?: string }) => {
     if (!isAuthenticated) {
       log('Not authenticated, skipping stats refresh');
       return;
     }
     
     try {
-      log('Refreshing stats...');
+      log('Refreshing stats with filters:', filters);
+      const baseQuery = {
+        page: 1,
+        limit: 1,
+        type: filters?.type && filters.type !== "all" ? filters.type : undefined,
+        importance: filters?.importance && filters.importance !== "all" ? filters.importance as "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" : undefined,
+        fromDate: filters?.fromDate,
+        toDate: filters?.toDate,
+      };
+      
+      log('API query being sent:', baseQuery);
+      
       const [allResponse, unreadResponse, readResponse] = await Promise.all([
-        notificationApi.getAll({ page: 1, limit: 1 }),
-        notificationApi.getUnread({ page: 1, limit: 1 }),
-        notificationApi.getRead({ page: 1, limit: 1 }),
+        notificationApi.getAll(baseQuery),
+        notificationApi.getUnread(baseQuery),
+        notificationApi.getRead(baseQuery),
       ]);
+      
+      log('API responses received - all:', allResponse.pagination.total, 'unread:', unreadResponse.pagination.total, 'read:', readResponse.pagination.total);
       
       const newStats = {
         total: allResponse.pagination.total,

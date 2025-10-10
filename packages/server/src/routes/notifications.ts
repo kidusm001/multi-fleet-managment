@@ -39,7 +39,9 @@ router.get('/', requireAuth, validateSchema(NotificationQuerySchema, 'query'), a
 
         const userId = req.user?.id;
         const userRole = await getUserOrganizationRole(userId, activeOrgId);
-        const { page, limit, type, status, importance } = req.query;
+        const { page, limit, type, status, importance, fromDate, toDate } = req.query;
+        
+        console.log('[Notifications API] / query params:', { page, limit, type, status, importance, fromDate, toDate });
         
         const result = await notificationService.getNotifications({
             userId,
@@ -48,9 +50,13 @@ router.get('/', requireAuth, validateSchema(NotificationQuerySchema, 'query'), a
             type: type as NotificationType,
             status: status as NotificationStatus,
             importance: importance as ImportanceLevel,
+            fromDate: fromDate ? new Date(fromDate as string) : undefined,
+            toDate: toDate ? new Date(toDate as string) : undefined,
             page: page ? parseInt(page as string) : 1,
             limit: limit ? parseInt(limit as string) : 10,
         });
+        
+        console.log('[Notifications API] / result:', { total: result.total, pages: result.pages });
 
         // Format notifications for frontend
         const formattedNotifications = result.items.map(notification => ({
@@ -98,6 +104,8 @@ router.get('/unread', requireAuth, validateSchema(NotificationQuerySchema, 'quer
         const userRole = await getUserOrganizationRole(userId, activeOrgId);
         const { page, limit, type, importance, fromDate, toDate } = req.query;
         
+        console.log('[Notifications API] /unread query params:', { page, limit, type, importance, fromDate, toDate });
+        
         const result = await notificationService.getUnreadNotifications({
             userId,
             organizationId: activeOrgId,
@@ -109,6 +117,8 @@ router.get('/unread', requireAuth, validateSchema(NotificationQuerySchema, 'quer
             page: page ? parseInt(page as string) : 1,
             limit: limit ? parseInt(limit as string) : 10,
         });
+        
+        console.log('[Notifications API] /unread result:', { total: result.total, pages: result.pages });
 
         res.json({
             notifications: result.items,
@@ -148,6 +158,8 @@ router.get('/read', requireAuth, validateSchema(NotificationQuerySchema, 'query'
         const userRole = await getUserOrganizationRole(userId, activeOrgId);
         const { page, limit, type, importance, fromDate, toDate } = req.query;
         
+        console.log('[Notifications API] /read query params:', { page, limit, type, importance, fromDate, toDate });
+        
         const result = await notificationService.getReadNotifications({
             userId,
             organizationId: activeOrgId,
@@ -159,6 +171,8 @@ router.get('/read', requireAuth, validateSchema(NotificationQuerySchema, 'query'
             page: page ? parseInt(page as string) : 1,
             limit: limit ? parseInt(limit as string) : 10,
         });
+        
+        console.log('[Notifications API] /read result:', { total: result.total, pages: result.pages });
 
         res.json({
             notifications: result.items,

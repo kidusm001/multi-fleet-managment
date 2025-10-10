@@ -2,7 +2,7 @@ export type NotificationType = "route" | "shuttle";
 
 export type UserRole = "admin" | "shuttle_manager" | "driver" | "administrator" | "fleetManager";
 
-export type NotificationSource = "system" | "admin" | "manager";
+export type NotificationSource = "system" | "admin" | "manager" | string;
 
 export type ImportanceLevel = {
   level: 1 | 2 | 3 | 4 | 5;

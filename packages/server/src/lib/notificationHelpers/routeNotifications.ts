@@ -3,45 +3,48 @@ import { NotificationPayload } from './types';
 
 export const routeNotifications = {
   /**
-   * Route Created - Notify admins/managers
+   * Route Created - Notify admins
    */
   created: (organizationId: string, route: any): NotificationPayload => ({
     organizationId,
     title: 'New Route Created',
-    message: `Route "${route.name}" has been created for ${route.shift?.name || 'shift'}`,
+    message: `Route "${route.name}" has been created`,
     type: NotificationType.ROUTE_CREATED,
     importance: ImportanceLevel.MEDIUM,
     toRoles: ['owner', 'admin', 'manager'],
-    relatedEntityId: route.id,
-    actionUrl: `/routes/${route.id}`,
-    metadata: { routeId: route.id, routeName: route.name, shiftId: route.shiftId },
-  }),
-
-  /**
-   * Route Updated - Notify admins/managers
-   */
-  updated: (organizationId: string, route: any): NotificationPayload => ({
-    organizationId,
-    title: 'Route Updated',
-    message: `Route "${route.name}" details have been updated`,
-    type: NotificationType.ROUTE_UPDATED,
-    importance: ImportanceLevel.LOW,
-    toRoles: ['owner', 'admin', 'manager'],
+    fromRole: 'manager',
     relatedEntityId: route.id,
     actionUrl: `/routes/${route.id}`,
     metadata: { routeId: route.id, routeName: route.name },
   }),
 
   /**
-   * Route Deleted - Notify admins/managers
+   * Route Updated - Notify admins
+   */
+  updated: (organizationId: string, route: any): NotificationPayload => ({
+    organizationId,
+    title: 'Route Updated',
+    message: `Route "${route.name}" has been updated`,
+    type: NotificationType.ROUTE_UPDATED,
+    importance: ImportanceLevel.LOW,
+    toRoles: ['owner', 'admin', 'manager'],
+    fromRole: 'manager',
+    relatedEntityId: route.id,
+    actionUrl: `/routes/${route.id}`,
+    metadata: { routeId: route.id, routeName: route.name },
+  }),
+
+  /**
+   * Route Deleted - Notify admins
    */
   deleted: (organizationId: string, route: any): NotificationPayload => ({
     organizationId,
     title: 'Route Deleted',
     message: `Route "${route.name}" has been deleted`,
     type: NotificationType.ROUTE_DELETED,
-    importance: ImportanceLevel.HIGH,
+    importance: ImportanceLevel.MEDIUM,
     toRoles: ['owner', 'admin', 'manager'],
+    fromRole: 'manager',
     relatedEntityId: route.id,
     metadata: { routeId: route.id, routeName: route.name },
   }),
@@ -58,6 +61,7 @@ export const routeNotifications = {
         type: NotificationType.ROUTE_ACTIVATED,
         importance: ImportanceLevel.MEDIUM,
         toRoles: ['owner', 'admin', 'manager'],
+        fromRole: 'manager',
         relatedEntityId: route.id,
         actionUrl: `/routes/${route.id}`,
         metadata: { routeId: route.id, routeName: route.name },
@@ -73,6 +77,7 @@ export const routeNotifications = {
         importance: ImportanceLevel.HIGH,
         toRoles: ['driver'],
         toUserId: route.driverId,
+        fromRole: 'manager',
         relatedEntityId: route.id,
         actionUrl: `/routes/${route.id}`,
         metadata: { routeId: route.id, routeName: route.name },
@@ -94,6 +99,7 @@ export const routeNotifications = {
         type: NotificationType.ROUTE_DEACTIVATED,
         importance: ImportanceLevel.MEDIUM,
         toRoles: ['owner', 'admin', 'manager'],
+        fromRole: 'manager',
         relatedEntityId: route.id,
         actionUrl: `/routes/${route.id}`,
         metadata: { routeId: route.id, routeName: route.name },
@@ -109,6 +115,7 @@ export const routeNotifications = {
         importance: ImportanceLevel.HIGH,
         toRoles: ['driver'],
         toUserId: route.driverId,
+        fromRole: 'manager',
         relatedEntityId: route.id,
         metadata: { routeId: route.id, routeName: route.name },
       });
@@ -130,6 +137,7 @@ export const routeNotifications = {
       importance: ImportanceLevel.HIGH,
       toRoles: ['driver'],
       toUserId: driver.id,
+      fromRole: 'manager',
       relatedEntityId: route.id,
       actionUrl: `/routes/${route.id}`,
       metadata: { routeId: route.id, routeName: route.name, driverId: driver.id, driverName: driver.name },
@@ -142,6 +150,7 @@ export const routeNotifications = {
       type: NotificationType.ROUTE_ASSIGNED,
       importance: ImportanceLevel.MEDIUM,
       toRoles: ['owner', 'admin', 'manager'],
+      fromRole: 'manager',
       relatedEntityId: route.id,
       actionUrl: `/routes/${route.id}`,
       metadata: { routeId: route.id, routeName: route.name, driverId: driver.id, driverName: driver.name },
@@ -160,6 +169,7 @@ export const routeNotifications = {
       importance: ImportanceLevel.HIGH,
       toRoles: ['driver'],
       toUserId: driver.id,
+      fromRole: 'manager',
       relatedEntityId: route.id,
       metadata: { routeId: route.id, routeName: route.name },
     },
@@ -170,6 +180,7 @@ export const routeNotifications = {
       type: NotificationType.ROUTE_UNASSIGNED,
       importance: ImportanceLevel.MEDIUM,
       toRoles: ['owner', 'admin', 'manager'],
+      fromRole: 'manager',
       relatedEntityId: route.id,
       actionUrl: `/routes/${route.id}`,
       metadata: { routeId: route.id, routeName: route.name, driverId: driver.id, driverName: driver.name },
@@ -192,6 +203,7 @@ export const routeNotifications = {
         importance: ImportanceLevel.HIGH,
         toRoles: ['driver'],
         toUserId: route.driverId,
+        fromRole: 'manager',
         relatedEntityId: route.id,
         actionUrl: `/routes/${route.id}`,
         metadata: { routeId: route.id, routeName: route.name },
@@ -209,6 +221,7 @@ export const routeNotifications = {
           importance: ImportanceLevel.HIGH,
           toRoles: ['employee'],
           toUserId: employeeId,
+          fromRole: 'manager',
           relatedEntityId: route.id,
           metadata: { routeId: route.id, routeName: route.name },
         });
@@ -234,6 +247,7 @@ export const routeNotifications = {
         importance: ImportanceLevel.CRITICAL,
         toRoles: ['driver'],
         toUserId: route.driverId,
+        fromRole: 'manager',
         relatedEntityId: route.id,
         metadata: { routeId: route.id, routeName: route.name, date },
       });
@@ -250,6 +264,7 @@ export const routeNotifications = {
           importance: ImportanceLevel.CRITICAL,
           toRoles: ['employee'],
           toUserId: employeeId,
+          fromRole: 'manager',
           relatedEntityId: route.id,
           metadata: { routeId: route.id, routeName: route.name, date },
         });
@@ -264,6 +279,7 @@ export const routeNotifications = {
       type: NotificationType.ROUTE_CANCELLED,
       importance: ImportanceLevel.HIGH,
       toRoles: ['owner', 'admin', 'manager'],
+      fromRole: 'manager',
       relatedEntityId: route.id,
       actionUrl: `/routes/${route.id}`,
       metadata: { routeId: route.id, routeName: route.name, date, employeeCount: employeeIds?.length || 0 },
@@ -288,6 +304,7 @@ export const routeNotifications = {
           importance: ImportanceLevel.HIGH,
           toRoles: ['employee'],
           toUserId: employeeId,
+          fromRole: 'manager',
           relatedEntityId: route.id,
           metadata: { routeId: route.id, routeName: route.name, delayMinutes },
         });
@@ -307,6 +324,7 @@ export const routeNotifications = {
     type: NotificationType.ROUTE_STARTED,
     importance: ImportanceLevel.MEDIUM,
     toRoles: ['owner', 'admin', 'manager'],
+    fromRole: 'manager',
     relatedEntityId: route.id,
     actionUrl: `/routes/${route.id}`,
     metadata: { routeId: route.id, routeName: route.name, driverId: driver.id, driverName: driver.name },
@@ -322,6 +340,7 @@ export const routeNotifications = {
     type: NotificationType.ROUTE_COMPLETED,
     importance: ImportanceLevel.LOW,
     toRoles: ['owner', 'admin', 'manager'],
+    fromRole: 'manager',
     relatedEntityId: route.id,
     actionUrl: `/routes/${route.id}`,
     metadata: { routeId: route.id, routeName: route.name, driverId: driver.id, driverName: driver.name },
@@ -339,6 +358,7 @@ export const routeNotifications = {
         type: NotificationType.ROUTE_OPTIMIZED,
         importance: ImportanceLevel.LOW,
         toRoles: ['owner', 'admin', 'manager'],
+        fromRole: 'manager',
         relatedEntityId: route.id,
         actionUrl: `/routes/${route.id}`,
         metadata: { routeId: route.id, routeName: route.name },
@@ -354,6 +374,7 @@ export const routeNotifications = {
         importance: ImportanceLevel.MEDIUM,
         toRoles: ['driver'],
         toUserId: route.driverId,
+        fromRole: 'manager',
         relatedEntityId: route.id,
         actionUrl: `/routes/${route.id}`,
         metadata: { routeId: route.id, routeName: route.name },

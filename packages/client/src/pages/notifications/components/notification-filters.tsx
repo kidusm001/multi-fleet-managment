@@ -178,10 +178,14 @@ export function NotificationFilters({
                   : isDark
                   ? "#94a3b8"
                   : "#cbd5e1",
-              backgroundColor: "transparent",
+              backgroundColor: selectedCount > 0
+                ? isDark
+                  ? "rgba(59, 130, 246, 0.1)"
+                  : "rgba(59, 130, 246, 0.05)"
+                : "transparent",
               transition: "all 0.2s ease",
             }}
-            className="text-sm font-medium transition-all duration-200"
+            className="text-sm font-medium transition-all duration-200 hover:bg-blue-500/10"
           >
             Mark as read
           </Button>
@@ -199,10 +203,14 @@ export function NotificationFilters({
                   : isDark
                   ? "#94a3b8"
                   : "#cbd5e1",
-              backgroundColor: "transparent",
+              backgroundColor: selectedCount > 0
+                ? isDark
+                  ? "rgba(59, 130, 246, 0.1)"
+                  : "rgba(59, 130, 246, 0.05)"
+                : "transparent",
               transition: "all 0.2s ease",
             }}
-            className="text-sm font-medium transition-all duration-200"
+            className="text-sm font-medium transition-all duration-200 hover:bg-blue-500/10"
           >
             Mark as unread
           </Button>
