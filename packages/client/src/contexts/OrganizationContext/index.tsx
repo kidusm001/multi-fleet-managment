@@ -240,6 +240,7 @@ export function OrganizationProvider({ children }: OrganizationProviderProps) {
   };
 
   const setActiveOrganization = async (organizationId: string) => {
+    console.log('🔄 Setting active organization:', organizationId);
     setStatus(prev => ({ ...prev, switching: true, error: null }));
     try {
       const result = await authClient.organization.setActive({
@@ -247,10 +248,33 @@ export function OrganizationProvider({ children }: OrganizationProviderProps) {
       });
       
       if (result.error) {
+        console.error('❌ Failed to set active organization:', result.error);
         throw new Error(result.error.message);
       }
+      
+      console.log('✅ Active organization set successfully:', result.data);
+      
+      // CRITICAL: Force session refresh to update activeOrganizationId in client
+      // This is required for getActiveMember() to work correctly
+      console.log('🔄 Refreshing session to sync activeOrganizationId...');
+      try {
+        const sessionResponse = await authClient.getSession({
+          query: { disableCookieCache: true }
+        });
+        console.log('✅ Session refresh response received');
+        console.log('✅ Session refresh full response:', JSON.stringify(sessionResponse, null, 2));
+      } catch (sessionError) {
+        console.error('❌ Session refresh failed:', sessionError);
+        throw new Error('Session refresh failed after setting active organization');
+      }
+      
+      // Small delay for React Query cache to update
+      await new Promise(resolve => setTimeout(resolve, 150));
+      console.log('✅ Session refreshed successfully');
+      
     } catch (error: unknown) {
       const errorMsg = error instanceof Error ? error.message : 'Failed to set active organization';
+      console.error('❌ Error setting active organization:', errorMsg);
       setError(errorMsg);
       setStatus(prev => ({ ...prev, error: errorMsg }));
       throw new Error(errorMsg);

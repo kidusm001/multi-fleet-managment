@@ -92,6 +92,13 @@ function NotificationDropdown() {
     hardNavigateToNotifications(id);
   };
 
+  const handleViewAllClick = (e) => {
+    e?.preventDefault();
+    e?.stopPropagation();
+    // Use client-side navigation instead of hard reload
+    navigate('/notifications');
+  };
+
 
   return (
     <Popover>
@@ -198,10 +205,7 @@ function NotificationDropdown() {
                 "text-xs h-7 px-2 hover:text-foreground",
                 isDarkMode ? "text-gray-400 hover:text-gray-200 hover:bg-gray-800" : "text-muted-foreground"
               )}
-              onClick={(e) => {
-                e.preventDefault();
-                hardNavigateToNotifications();
-              }}
+              onClick={handleViewAllClick}
             >
               View All
             </Button>

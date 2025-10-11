@@ -42,7 +42,12 @@ function DashboardDesktop() {
         }
       } catch (err) {
         console.error("Error fetching routes:", err);
-        setError("Failed to fetch routes data");
+        // If error is due to no active organization, treat as unassigned (empty routes)
+        if (err.message?.includes('Active organization not found') || err.message?.includes('organization')) {
+          setRoutes([]);
+        } else {
+          setError("Failed to fetch routes data");
+        }
       } finally {
         setLoading(false);
       }

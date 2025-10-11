@@ -12,7 +12,8 @@ import {
   Settings,
   MapPin,
   UserPlus,
-  Plus 
+  Plus,
+  Building2
 } from "lucide-react";
 
 // Icon mapping for navigation items
@@ -26,7 +27,9 @@ const getNavIcon = (label) => {
     "Settings": Settings,
     "Management": MapPin,
     "Assignment": UserPlus,
-    "Create Route": Plus
+    "Create Route": Plus,
+    "Organizations": Building2,
+    "Org Management": Building2
   };
   return iconMap[label] || LayoutDashboard;
 };

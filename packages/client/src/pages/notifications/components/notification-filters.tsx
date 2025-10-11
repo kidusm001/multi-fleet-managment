@@ -1,5 +1,5 @@
 import { useTheme } from "@contexts/ThemeContext";
-// import { cn } from "@/lib/utils";
+import { useViewport } from "@hooks/useViewport";
 import AnimatedBackground from "./ui/animated-tabs";
 import { Button } from "./ui/button";
 
@@ -12,7 +12,7 @@ interface NotificationFiltersProps {
   onMarkRead?: () => void;
   onMarkUnread?: () => void;
   onSelectAll?: () => void;
-  onClearSelection?: () => void; // Add this prop
+  onClearSelection?: () => void;
   selectedCount: number;
 }
 
@@ -25,7 +25,7 @@ export function NotificationFilters({
   onMarkRead,
   onMarkUnread,
   onSelectAll,
-  onClearSelection, // Add this prop
+  onClearSelection,
   selectedCount,
 }: NotificationFiltersProps) {
   const TABS = [
@@ -37,9 +37,10 @@ export function NotificationFilters({
   const isAllSelected = selectedCount === total && total > 0;
   const hasSelection = selectedCount > 0;
 
-  // Use the theme from your context
   const { theme } = useTheme();
   const isDark = theme === "dark";
+  const viewport = useViewport();
+  const isMobile = viewport === 'mobile';
 
   return (
     <div
@@ -56,8 +57,10 @@ export function NotificationFilters({
           : "0 1px 3px -1px rgb(0 0 0 / 0.05)",
       }}
     >
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex-1 max-w-md">
+      {/* Mobile: Stack vertically */}
+      <div className={isMobile ? "flex flex-col gap-3" : "flex items-center justify-between gap-4"}>
+        {/* Tab Filters */}
+        <div className={isMobile ? "w-full" : "flex-1 max-w-md"}>
           <div
             className="relative grid w-full grid-cols-3 overflow-hidden rounded-xl p-1 transition-all duration-300 ease-in-out border"
             style={{
@@ -77,8 +80,6 @@ export function NotificationFilters({
               onValueChange={(value) => onFilterChange(value || "all")}
               className="absolute inset-0 rounded-lg"
               style={{
-                // Keeping the animated background constant;
-                // adjust these values if you also want dark/light variations.
                 background: "linear-gradient(to right, #3b82f6, #2563eb)",
                 boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
               }}
@@ -96,7 +97,7 @@ export function NotificationFilters({
                   style={{
                     color: tab.id === currentFilter ? "#ffffff" : "#475569",
                   }}
-                  className="relative z-10 flex items-center justify-center w-full px-3 py-1.5 text-sm font-medium transition-all duration-200 hover:text-white"
+                  className={`relative z-10 flex items-center justify-center w-full px-2 py-1.5 ${isMobile ? 'text-xs' : 'text-sm'} font-medium transition-all duration-200 hover:text-white`}
                 >
                   {tab.label}
                 </button>
@@ -105,8 +106,10 @@ export function NotificationFilters({
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-2">
+        {/* Action Buttons */}
+        <div className={isMobile ? "flex flex-wrap items-center gap-1.5" : "flex items-center gap-2"}>
+          {/* Selection Buttons */}
+          <div className="flex items-center gap-1.5 flex-wrap">
             {!hasSelection && (
               <Button
                 variant="default"
@@ -118,9 +121,9 @@ export function NotificationFilters({
                   boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
                   transition: "all 0.2s ease",
                 }}
-                className="text-sm font-medium hover:opacity-90"
+                className={`${isMobile ? 'text-xs px-2 py-1 h-7' : 'text-sm'} font-medium hover:opacity-90`}
               >
-                Select all ({total})
+                {isMobile ? `All (${total})` : `Select all (${total})`}
               </Button>
             )}
             {hasSelection && !isAllSelected && (
@@ -134,86 +137,93 @@ export function NotificationFilters({
                   boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
                   transition: "all 0.2s ease",
                 }}
-                className="text-sm font-medium hover:opacity-90"
+                className={`${isMobile ? 'text-xs px-2 py-1 h-7' : 'text-sm'} font-medium hover:opacity-90`}
               >
-                Select all ({total - selectedCount})
+                {isMobile ? `+${total - selectedCount}` : `Select all (${total - selectedCount})`}
               </Button>
             )}
             {hasSelection && (
               <Button
                 variant="destructive"
                 size="sm"
-                onClick={onClearSelection} // Use the new clear selection handler
+                onClick={onClearSelection}
                 style={{
                   background: "#ef4444",
                   color: "white",
                   boxShadow: "0 1px 3px rgba(0, 0, 0, 0.1)",
                   transition: "all 0.2s ease",
                 }}
-                className="text-sm font-medium hover:opacity-90"
+                className={`${isMobile ? 'text-xs px-2 py-1 h-7' : 'text-sm'} font-medium hover:opacity-90`}
               >
-                Clear selection ({selectedCount})
+                {isMobile ? `Clear (${selectedCount})` : `Clear selection (${selectedCount})`}
               </Button>
             )}
           </div>
-          <div
-            className="h-4 w-[1px]"
-            style={{
-              backgroundColor: isDark
-                ? "rgba(107, 114, 128, 0.6)"
-                : "rgba(203, 213, 225, 0.6)",
-            }}
-          />
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onMarkRead}
-            disabled={selectedCount === 0}
-            style={{
-              color:
-                selectedCount > 0
+          
+          {!isMobile && (
+            <div
+              className="h-4 w-[1px]"
+              style={{
+                backgroundColor: isDark
+                  ? "rgba(107, 114, 128, 0.6)"
+                  : "rgba(203, 213, 225, 0.6)",
+              }}
+            />
+          )}
+          
+          {/* Mark Read/Unread Buttons */}
+          <div className="flex items-center gap-1.5">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onMarkRead}
+              disabled={selectedCount === 0}
+              style={{
+                color:
+                  selectedCount > 0
+                    ? isDark
+                      ? "#f1f5f9"
+                      : "#1e293b"
+                    : isDark
+                    ? "#94a3b8"
+                    : "#cbd5e1",
+                backgroundColor: selectedCount > 0
                   ? isDark
-                    ? "#f1f5f9"
-                    : "#1e293b"
-                  : isDark
-                  ? "#94a3b8"
-                  : "#cbd5e1",
-              backgroundColor: selectedCount > 0
-                ? isDark
-                  ? "rgba(59, 130, 246, 0.1)"
-                  : "rgba(59, 130, 246, 0.05)"
-                : "transparent",
-              transition: "all 0.2s ease",
-            }}
-            className="text-sm font-medium transition-all duration-200 hover:bg-blue-500/10"
-          >
-            Mark as read
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onMarkUnread}
-            disabled={selectedCount === 0}
-            style={{
-              color:
-                selectedCount > 0
+                    ? "rgba(59, 130, 246, 0.1)"
+                    : "rgba(59, 130, 246, 0.05)"
+                  : "transparent",
+                transition: "all 0.2s ease",
+              }}
+              className={`${isMobile ? 'text-xs px-2 py-1 h-7' : 'text-sm'} font-medium transition-all duration-200 hover:bg-blue-500/10`}
+            >
+              {isMobile ? 'Read' : 'Mark as read'}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onMarkUnread}
+              disabled={selectedCount === 0}
+              style={{
+                color:
+                  selectedCount > 0
+                    ? isDark
+                      ? "#ffffff"
+                      : "#1e293b"
+                    : isDark
+                    ? "#94a3b8"
+                    : "#cbd5e1",
+                backgroundColor: selectedCount > 0
                   ? isDark
-                    ? "#ffffff"
-                    : "#1e293b"
-                  : isDark
-                  ? "#94a3b8"
-                  : "#cbd5e1",
-              backgroundColor: selectedCount > 0
-                ? isDark
-                  ? "rgba(59, 130, 246, 0.1)"
-                  : "rgba(59, 130, 246, 0.05)"
-                : "transparent",
-              transition: "all 0.2s ease",
-            }}
-            className="text-sm font-medium transition-all duration-200 hover:bg-blue-500/10"
-          >
-            Mark as unread
-          </Button>
+                    ? "rgba(59, 130, 246, 0.1)"
+                    : "rgba(59, 130, 246, 0.05)"
+                  : "transparent",
+                transition: "all 0.2s ease",
+              }}
+              className={`${isMobile ? 'text-xs px-2 py-1 h-7' : 'text-sm'} font-medium transition-all duration-200 hover:bg-blue-500/10`}
+            >
+              {isMobile ? 'Unread' : 'Mark as unread'}
+            </Button>
+          </div>
         </div>
       </div>
     </div>

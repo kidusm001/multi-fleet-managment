@@ -344,8 +344,8 @@ importers:
         specifier: ^17.2.1
         version: 17.2.1
       express:
-        specifier: ^5.1.0
-        version: 5.1.0
+        specifier: ^4.21.2
+        version: 4.21.2
       express-async-handler:
         specifier: ^1.2.0
         version: 1.2.0

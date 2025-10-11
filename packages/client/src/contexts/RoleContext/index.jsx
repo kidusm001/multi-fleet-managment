@@ -103,6 +103,7 @@ export function RoleProvider({ children }) {
     };
   }, [
     isPending,
+    session?.user,
     session?.user?.id,
     session?.user?.role,
     session?.session?.activeOrganizationId,

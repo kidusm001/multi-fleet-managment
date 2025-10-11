@@ -94,9 +94,18 @@ const RouteList = ({
           ) : (
             <div className="flex flex-col items-center justify-center h-[400px] text-center">
               <Search className="w-12 h-12 text-gray-400 dark:text-gray-500 mb-3" />
-              <p className="text-gray-500 dark:text-gray-400">
-                No routes found matching &quot;{searchQuery}&quot;
-              </p>
+              {searchQuery.trim() ? (
+                <p className="text-gray-500 dark:text-gray-400">
+                  No routes found matching &quot;{searchQuery}&quot;
+                </p>
+              ) : (
+                <>
+                  <p className="text-gray-600 dark:text-gray-300 font-medium">Unassigned route</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                    You do not have a route yet. Once dispatch assigns one, it will appear here automatically.
+                  </p>
+                </>
+              )}
             </div>
           )}
         </div>

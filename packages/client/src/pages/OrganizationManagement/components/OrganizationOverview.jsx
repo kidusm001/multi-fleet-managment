@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { authClient } from '@/lib/auth-client';
-import { Building2, Users, Calendar, Crown, Edit3 } from 'lucide-react';
+import { Building2, Users, Calendar, Crown } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@components/Common/UI/Card';
 import { Button } from '@components/Common/UI/Button';
 import { Badge } from '@components/Common/UI/Badge';
@@ -142,10 +142,6 @@ export default function OrganizationOverview() {
             )}
           </div>
         </div>
-        <Button variant="outline" size="sm">
-          <Edit3 className="w-4 h-4 mr-2" />
-          Edit Organization
-        </Button>
       </div>
 
       {/* Quick Stats */}

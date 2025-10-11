@@ -12,7 +12,6 @@ import OrganizationGuard from "@components/Common/Guards/OrganizationGuard";
 import { Suspense, lazy } from 'react';
 const Dashboard = lazy(() => import('@pages/Dashboard'));
 const RouteManagement = lazy(() => import('@pages/RouteManagement'));
-const ShuttleManagement = lazy(() => import('@pages/ShuttleManagement'));
 const VehicleManagement = lazy(() => import('@pages/ShuttleManagement'));
 const EmployeeManagement = lazy(() => import('@pages/EmployeeManagement'));
 const Payroll = lazy(() => import('@pages/Payroll'));
@@ -89,7 +88,6 @@ function AppContent() {
   const isOwner = role === ROLES.OWNER;
   const isAdmin = role === ROLES.ADMIN || isOwner || isSuperAdmin;
   const isManager = role === ROLES.MANAGER;
-  const hasManagerAccess = isManager || isAdmin;
   const viewport = useViewport();
   const isMobile = viewport === 'mobile';
 
@@ -147,10 +145,15 @@ function AppContent() {
           }
         />
 
-        {/* Root redirect for drivers */}
+        {/* Root redirect based on roles */}
         {isDriver && <Route index element={<Navigate to={ROUTES.DRIVER_PORTAL} replace />} />}
+        {isSuperAdmin && <Route index element={<Navigate to={ROUTES.ORGANIZATIONS} replace />} />}
+        {isOwner && <Route index element={<Navigate to={ROUTES.ORGANIZATIONS} replace />} />}
+        {isAdmin && <Route index element={<Navigate to={ROUTES.ORGANIZATION_MANAGEMENT} replace />} />}
+        {isManager && <Route index element={<Navigate to={ROUTES.DASHBOARD} replace />} />}
+        {isEmployee && <Route index element={<Navigate to={ROUTES.DASHBOARD} replace />} />}
 
-        {/* Protected Routes Layout - Driver or Standard */}
+        {/* Protected Routes Layout - Role-based */}
         <Route
           element={
             <AuthRoute>
@@ -211,62 +214,86 @@ function AppContent() {
               />
               <Route path="*" element={<Navigate to={ROUTES.DASHBOARD} replace />} />
             </>
-          ) : (
+          ) : isManager ? (
             <>
-              {/* Admin/Manager routes */}
               <Route index element={<Navigate to={ROUTES.DASHBOARD} replace />} />
               <Route
                 path="dashboard"
                 element={<Suspense fallback={<div className="p-6">Loading dashboard…</div>}> <Dashboard /> </Suspense>}
               />
-              {hasManagerAccess && (
-                <Route
-                  path="routes"
-                  element={
-                    <ProtectedRoute allowedRoles={[ROLES.MANAGER, ROLES.ADMIN]}>
-                      <Suspense fallback={<div />}> <RouteManagement /> </Suspense>
-                    </ProtectedRoute>
-                  }
-                />
-              )}
               <Route
-                path="shuttles"
-                element={<Suspense fallback={<div />}> <ShuttleManagement /> </Suspense>}
+                path="routes"
+                element={
+                  <ProtectedRoute allowedRoles={[ROLES.MANAGER]}>
+                    <Suspense fallback={<div />}> <RouteManagement /> </Suspense>
+                  </ProtectedRoute>
+                }
               />
               <Route
                 path="vehicles"
                 element={<Suspense fallback={<div />}> <VehicleManagement /> </Suspense>}
               />
-              {hasManagerAccess && (
-                <Route
-                  path="employees"
-                  element={
-                    <ProtectedRoute allowedRoles={[ROLES.MANAGER, ROLES.ADMIN]}>
-                      <Suspense fallback={<div />}> <EmployeeManagement /> </Suspense>
-                    </ProtectedRoute>
-                  }
-                />
-              )}
-              {isAdmin && (
-                <Route
-                  path="payroll"
-                  element={
-                    <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
-                      <Suspense fallback={<div />}> <Payroll /> </Suspense>
-                    </ProtectedRoute>
-                  }
-                />
-              )}
-              {isAdmin && (
-                <Route
-                  path="organization-management"
-                  element={
-                    <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
-                      <Suspense fallback={<div />}> <OrganizationManagement /> </Suspense>
-                    </ProtectedRoute>
-                  }
-                />
-              )}
+              <Route
+                path="employees"
+                element={
+                  <ProtectedRoute allowedRoles={[ROLES.MANAGER]}>
+                    <Suspense fallback={<div />}> <EmployeeManagement /> </Suspense>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="notifications"
+                element={
+                  <Suspense fallback={<div />}> 
+                    {isMobile ? <MobileNotificationWrapper /> : <NotificationDashboard />} 
+                  </Suspense>
+                }
+              />
+              <Route path="*" element={<Navigate to={ROUTES.DASHBOARD} replace />} />
+            </>
+          ) : isAdmin ? (
+            <>
+              <Route index element={<Navigate to={ROUTES.ORGANIZATION_MANAGEMENT} replace />} />
+              <Route
+                path="dashboard"
+                element={<Suspense fallback={<div className="p-6">Loading dashboard…</div>}> <Dashboard /> </Suspense>}
+              />
+              <Route
+                path="routes"
+                element={
+                  <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
+                    <Suspense fallback={<div />}> <RouteManagement /> </Suspense>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="vehicles"
+                element={<Suspense fallback={<div />}> <VehicleManagement /> </Suspense>}
+              />
+              <Route
+                path="employees"
+                element={
+                  <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
+                    <Suspense fallback={<div />}> <EmployeeManagement /> </Suspense>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="payroll"
+                element={
+                  <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
+                    <Suspense fallback={<div />}> <Payroll /> </Suspense>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="organization-management"
+                element={
+                  <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
+                    <Suspense fallback={<div />}> <OrganizationManagement /> </Suspense>
+                  </ProtectedRoute>
+                }
+              />
               <Route
                 path="notifications"
                 element={
@@ -278,6 +305,81 @@ function AppContent() {
               <Route
                 path="settings"
                 element={<Suspense fallback={<div />}> <Settings /> </Suspense>}
+              />
+              <Route path="*" element={<Navigate to={ROUTES.ORGANIZATION_MANAGEMENT} replace />} />
+            </>
+          ) : (isSuperAdmin || isOwner) ? (
+            <>
+              <Route index element={<Navigate to={ROUTES.ORGANIZATIONS} replace />} />
+              <Route
+                path="dashboard"
+                element={<Suspense fallback={<div className="p-6">Loading dashboard…</div>}> <Dashboard /> </Suspense>}
+              />
+              <Route
+                path="routes"
+                element={
+                  <ProtectedRoute allowedRoles={[ROLES.SUPERADMIN, ROLES.OWNER]}>
+                    <Suspense fallback={<div />}> <RouteManagement /> </Suspense>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="vehicles"
+                element={<Suspense fallback={<div />}> <VehicleManagement /> </Suspense>}
+              />
+              <Route
+                path="employees"
+                element={
+                  <ProtectedRoute allowedRoles={[ROLES.SUPERADMIN, ROLES.OWNER]}>
+                    <Suspense fallback={<div />}> <EmployeeManagement /> </Suspense>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="payroll"
+                element={
+                  <ProtectedRoute allowedRoles={[ROLES.SUPERADMIN, ROLES.OWNER]}>
+                    <Suspense fallback={<div />}> <Payroll /> </Suspense>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="organizations"
+                element={
+                  <ProtectedRoute allowedRoles={[ROLES.SUPERADMIN, ROLES.OWNER]}>
+                    <Suspense fallback={<div />}> <OrganizationSelection /> </Suspense>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="organization-management"
+                element={
+                  <ProtectedRoute allowedRoles={[ROLES.SUPERADMIN, ROLES.OWNER]}>
+                    <Suspense fallback={<div />}> <OrganizationManagement /> </Suspense>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="notifications"
+                element={
+                  <Suspense fallback={<div />}> 
+                    {isMobile ? <MobileNotificationWrapper /> : <NotificationDashboard />} 
+                  </Suspense>
+                }
+              />
+              <Route
+                path="settings"
+                element={<Suspense fallback={<div />}> <Settings /> </Suspense>}
+              />
+              <Route path="*" element={<Navigate to={ROUTES.ORGANIZATIONS} replace />} />
+            </>
+          ) : (
+            <>
+              {/* Fallback for unknown roles */}
+              <Route index element={<Navigate to={ROUTES.DASHBOARD} replace />} />
+              <Route
+                path="dashboard"
+                element={<Suspense fallback={<div className="p-6">Loading dashboard…</div>}> <Dashboard /> </Suspense>}
               />
               <Route path="*" element={<Navigate to={ROUTES.DASHBOARD} replace />} />
             </>

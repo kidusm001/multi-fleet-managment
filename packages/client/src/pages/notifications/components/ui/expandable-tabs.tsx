@@ -68,14 +68,19 @@ export function ExpandableTabs({
   const outsideClickRef = React.useRef<HTMLDivElement | null>(null);
 
   useOnClickOutside(outsideClickRef, () => {
-    setSelected(null);
-    onChange?.(null);
+    // Collapse the visual treatment without mutating the parent filter
+    setSelected((current) => (current === null ? current : null));
   });
 
-  // Call onChange with initial tab on mount
+  // Keep internal selection in sync and notify the parent only on first mount
+  const hasMountedRef = React.useRef(false);
   React.useEffect(() => {
-    onChange?.(initialTab);
-  }, [onChange, initialTab]);
+    setSelected(initialTab);
+    if (!hasMountedRef.current) {
+      hasMountedRef.current = true;
+      onChange?.(initialTab);
+    }
+  }, [initialTab, onChange]);
 
   const handleSelect = (index: number) => {
     setSelected(index);

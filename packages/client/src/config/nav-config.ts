@@ -15,6 +15,40 @@ export type NavItem = {
 type RoleKey = string;
 
 export const NAV_CONFIG: Record<RoleKey, NavItem[]> = {
+  [ROLES.SUPERADMIN]: [
+    { label: "Dashboard", path: ROUTES.DASHBOARD },
+    {
+      label: "Routes",
+      path: ROUTES.ROUTES,
+      subpaths: [
+        { label: "Management", path: ROUTES.ROUTES },
+        { label: "Assignment", path: `${ROUTES.ROUTES}?tab=assignment` },
+        { label: "Create Route", path: `${ROUTES.ROUTES}?modal=create` },
+      ],
+    },
+    { label: "Vehicles", path: ROUTES.VEHICLES },
+    { label: "Employees", path: ROUTES.EMPLOYEES },
+    { label: "Payroll", path: ROUTES.PAYROLL },
+    { label: "Org Management", path: ROUTES.ORGANIZATION_MANAGEMENT },
+    { label: "Settings", path: ROUTES.SETTINGS },
+  ],
+  [ROLES.OWNER]: [
+    { label: "Dashboard", path: ROUTES.DASHBOARD },
+    {
+      label: "Routes",
+      path: ROUTES.ROUTES,
+      subpaths: [
+        { label: "Management", path: ROUTES.ROUTES },
+        { label: "Assignment", path: `${ROUTES.ROUTES}?tab=assignment` },
+        { label: "Create Route", path: `${ROUTES.ROUTES}?modal=create` },
+      ],
+    },
+    { label: "Vehicles", path: ROUTES.VEHICLES },
+    { label: "Employees", path: ROUTES.EMPLOYEES },
+    { label: "Payroll", path: ROUTES.PAYROLL },
+    { label: "Org Management", path: ROUTES.ORGANIZATION_MANAGEMENT },
+    { label: "Settings", path: ROUTES.SETTINGS },
+  ],
   [ROLES.ADMIN]: [
     { label: "Dashboard", path: ROUTES.DASHBOARD },
     {
@@ -29,8 +63,7 @@ export const NAV_CONFIG: Record<RoleKey, NavItem[]> = {
     { label: "Vehicles", path: ROUTES.VEHICLES },
     { label: "Employees", path: ROUTES.EMPLOYEES },
     { label: "Payroll", path: ROUTES.PAYROLL },
-    { label: "Notifications", path: ROUTES.NOTIFICATIONS },
-    { label: "Organizations", path: ROUTES.ORGANIZATION_MANAGEMENT },
+    { label: "Org Management", path: ROUTES.ORGANIZATION_MANAGEMENT },
     { label: "Settings", path: ROUTES.SETTINGS },
   ],
   [ROLES.MANAGER]: [
@@ -41,14 +74,14 @@ export const NAV_CONFIG: Record<RoleKey, NavItem[]> = {
       subpaths: [
         { label: "Management", path: ROUTES.ROUTES },
         { label: "Assignment", path: `${ROUTES.ROUTES}?tab=assignment` },
-        { label: "Create Route", path: `${ROUTES.ROUTES}?modal=create` },
       ],
     },
     { label: "Vehicles", path: ROUTES.VEHICLES },
     { label: "Employees", path: ROUTES.EMPLOYEES },
-    { label: "Notifications", path: ROUTES.NOTIFICATIONS },
-    { label: "Organizations", path: ROUTES.ORGANIZATION_MANAGEMENT },
-    { label: "Settings", path: ROUTES.SETTINGS },
+  ],
+  [ROLES.DRIVER]: [],
+  [ROLES.EMPLOYEE]: [
+    { label: "Dashboard", path: ROUTES.DASHBOARD },
   ],
   // Fallback for unauth/unknown role
   default: [

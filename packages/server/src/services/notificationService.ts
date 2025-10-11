@@ -74,6 +74,37 @@ try {
     if (notificationTypeMap["VEHICLE"]) {
       notificationTypeMap["SHUTTLE"] = notificationTypeMap["VEHICLE"];
     }
+
+const expandNotificationType = (type: NotificationType): { mode: 'in'; values: string[] } | { mode: 'equals'; value: string } | null => {
+  const t = String(type);
+  const prefix = t.split('_')[0];
+  const expanded = notificationTypeMap[prefix];
+
+  if (expanded && expanded.length > 0) {
+    const deduped: string[] = [];
+    for (const member of expanded) {
+      if (member !== t && !deduped.includes(member)) {
+        deduped.push(member);
+      }
+    }
+
+    if ((expanded.includes(t) || allNotificationMembersSet.has(t)) && !deduped.includes(t)) {
+      deduped.push(t);
+    }
+
+    if (deduped.length === 1) {
+      return { mode: 'equals', value: deduped[0] };
+    }
+
+    return { mode: 'in', values: deduped };
+  }
+
+  if (allNotificationMembersSet.has(t)) {
+    return { mode: 'equals', value: t };
+  }
+
+  return null;
+};
 interface NotificationQuery {
   userId?: string;
   organizationId?: string;
@@ -136,20 +167,13 @@ export const notificationService = {
     }
     if (role) where.toRoles = { has: role };
     if (type) {
-      // Determine whether `type` is a category prefix (e.g. ROUTE)
-      // or a full enum member (e.g. ROUTE_CREATED). If it's a prefix,
-      // expand into concrete enum members and use `in`. If it's a known
-      // enum member, use exact match. Otherwise skip the filter to avoid
-      // passing invalid values to Prisma which will throw.
-      const t = String(type);
-      const prefix = t.split('_')[0];
-      const expanded = notificationTypeMap[prefix];
-      if (expanded && expanded.length > 0) {
-        where.type = { in: expanded };
-      } else if (allNotificationMembersSet.has(t)) {
-        where.type = t;
+      const expansion = expandNotificationType(type);
+      if (expansion?.mode === 'in') {
+        where.type = { in: expansion.values };
+      } else if (expansion?.mode === 'equals') {
+        where.type = expansion.value;
       } else {
-        console.warn('[NotificationService] Unknown notification type filter, ignoring:', t);
+        console.warn('[NotificationService] Unknown notification type filter, ignoring:', String(type));
       }
     }
     if (importance) where.importance = importance;
@@ -203,15 +227,13 @@ export const notificationService = {
     }
     if (role) where.toRoles = { has: role };
     if (type) {
-      const t = String(type);
-      const prefix = t.split('_')[0];
-      const expanded = notificationTypeMap[prefix];
-      if (expanded && expanded.length > 0) {
-        where.type = { in: expanded };
-      } else if (allNotificationMembersSet.has(t)) {
-        where.type = t;
+      const expansion = expandNotificationType(type);
+      if (expansion?.mode === 'in') {
+        where.type = { in: expansion.values };
+      } else if (expansion?.mode === 'equals') {
+        where.type = expansion.value;
       } else {
-        console.warn('[NotificationService] Unknown notification type filter, ignoring:', t);
+        console.warn('[NotificationService] Unknown notification type filter, ignoring:', String(type));
       }
     }
     if (importance) where.importance = importance;
@@ -296,15 +318,13 @@ export const notificationService = {
     if (organizationId) where.organizationId = organizationId;
     if (role) where.toRoles = { has: role };
     if (type) {
-      const t = String(type);
-      const prefix = t.split('_')[0];
-      const expanded = notificationTypeMap[prefix];
-      if (expanded && expanded.length > 0) {
-        where.type = { in: expanded };
-      } else if (allNotificationMembersSet.has(t)) {
-        where.type = t;
+      const expansion = expandNotificationType(type);
+      if (expansion?.mode === 'in') {
+        where.type = { in: expansion.values };
+      } else if (expansion?.mode === 'equals') {
+        where.type = expansion.value;
       } else {
-        console.warn('[NotificationService] Unknown notification type filter, ignoring:', t);
+        console.warn('[NotificationService] Unknown notification type filter, ignoring:', String(type));
       }
     }
     if (importance) where.importance = importance;

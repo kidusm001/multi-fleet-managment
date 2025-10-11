@@ -117,9 +117,9 @@ export default function OrganizationGuard({ children }) {
 
           // Only redirect if user has no organizations at all
           if (!organizations || organizations.length === 0) {
-            console.log('User has no organizations, redirecting to create one');
+            console.log('User has no organizations, redirecting to dashboard');
             setNeedsOrganization(true);
-            navigate('/organizations', { replace: true });
+            navigate('/', { replace: true });
             return;
           }
 

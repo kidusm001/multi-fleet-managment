@@ -9,7 +9,8 @@ import {
   Shield, 
   User, 
   Loader2,
-  AlertCircle
+  AlertCircle,
+  Filter
 } from 'lucide-react';
 import AddMemberModal from './AddMemberModal';
 import { Card, CardContent, CardHeader, CardTitle } from '@components/Common/UI/Card';
@@ -64,6 +65,7 @@ export default function NewMembersPanel() {
   const [members, setMembers] = useState([]);
   const [filteredMembers, setFilteredMembers] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [roleFilter, setRoleFilter] = useState('all');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const [showInviteModal, setShowInviteModal] = useState(false);
@@ -143,27 +145,33 @@ export default function NewMembersPanel() {
     }
   }, [activeOrganization?.id, loadMembers, lastLoadedOrgId, isLoading]);
 
-  // Filter members based on search with debounce
+  // Filter members based on search and role filter with debounce
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-      if (!searchTerm.trim()) {
-        setFilteredMembers(members);
-      } else {
+      let filtered = members;
+
+      // Apply search filter
+      if (searchTerm.trim()) {
         const term = searchTerm.toLowerCase();
-        const filtered = members.filter(member => {
-          // Simple string matching to avoid performance issues
+        filtered = filtered.filter(member => {
           return (
             member.name?.toLowerCase().includes(term) ||
             member.email?.toLowerCase().includes(term) ||
             member.role?.toLowerCase().includes(term)
           );
         });
-        setFilteredMembers(filtered);
       }
+
+      // Apply role filter
+      if (roleFilter !== 'all') {
+        filtered = filtered.filter(member => member.role === roleFilter);
+      }
+
+      setFilteredMembers(filtered);
     }, 300); // 300ms debounce
 
     return () => clearTimeout(timeoutId);
-  }, [searchTerm, members]);
+  }, [searchTerm, roleFilter, members]);
 
   const handleRoleChange = async (memberId, newRole) => {
     try {
@@ -179,17 +187,11 @@ export default function NewMembersPanel() {
         throw new Error(error.message || 'Failed to update member role');
       }
       
-      // Update local state
+      // Update local state - the useEffect will handle filtering
       const updatedMembers = members.map(member =>
         member.id === memberId ? { ...member, role: newRole } : member
       );
       setMembers(updatedMembers);
-      setFilteredMembers(updatedMembers.filter(member =>
-        !searchTerm.trim() || 
-        member.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        member.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        member.role?.toLowerCase().includes(searchTerm.toLowerCase())
-      ));
       
       toast.success('Member role updated successfully');
     } catch (error) {
@@ -216,15 +218,9 @@ export default function NewMembersPanel() {
         throw new Error(error.message || 'Failed to remove member');
       }
       
-      // Update local state
+      // Update local state - the useEffect will handle filtering
       const updatedMembers = members.filter(member => member.id !== memberId);
       setMembers(updatedMembers);
-      setFilteredMembers(updatedMembers.filter(member =>
-        !searchTerm.trim() || 
-        member.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        member.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        member.role?.toLowerCase().includes(searchTerm.toLowerCase())
-      ));
       
       toast.success('Member removed successfully');
     } catch (error) {
@@ -315,17 +311,37 @@ export default function NewMembersPanel() {
         </div>
       </div>
 
-      {/* Search and Stats */}
+      {/* Search and Filters */}
       <div className="flex items-center justify-between gap-4">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Search members..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
-          />
+        <div className="flex items-center gap-4 flex-1">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Search members..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          
+          {/* Role Filter */}
+          <div className="flex items-center gap-2">
+            <Filter className="w-4 h-4 text-muted-foreground" />
+            <select
+              value={roleFilter}
+              onChange={(e) => setRoleFilter(e.target.value)}
+              className="px-3 py-2 border border-input rounded-md bg-background text-sm min-w-[120px]"
+            >
+              <option value="all">All Roles</option>
+              <option value="owner">Owner</option>
+              <option value="admin">Admin</option>
+              <option value="manager">Manager</option>
+              <option value="driver">Driver</option>
+              <option value="employee">Employee</option>
+            </select>
+          </div>
         </div>
+        
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Users className="w-4 h-4" />
           <span>{filteredMembers.length} of {members.length} members</span>

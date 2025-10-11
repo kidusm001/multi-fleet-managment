@@ -43,6 +43,8 @@ export function NotificationDashboard() {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [selectedTab, setSelectedTab] = useState(0);
 
+  console.log(`[PAGINATION] Component render - currentPage: ${currentPage}, refreshTrigger: ${refreshTrigger}`);
+
   // Handle date range change with logging
   const handleDateRangeChange = (newDateRange: DateRange | undefined) => {
     console.log('Date range changed:', newDateRange);
@@ -86,6 +88,7 @@ export function NotificationDashboard() {
   // Fetch notifications based on filters and pagination
   useEffect(() => {
     const fetchNotifications = async () => {
+      console.log(`[PAGINATION] fetchNotifications useEffect START - currentPage: ${currentPage}`);
       try {
         setLoading(true);
         let response: ApiNotificationResponse;
@@ -98,7 +101,7 @@ export function NotificationDashboard() {
           toDate: dateRange?.to ? new Date(dateRange.to.getTime() + 24 * 60 * 60 * 1000 - 1).toISOString() : undefined, // End of selected day
         };
 
-        console.log('Fetching notifications with query:', query);
+        console.log('[PAGINATION] Fetching notifications with query:', query);
 
         if (sortBy === "importance") {
           // Use sorted-by-importance endpoint when the sort option is set to "importance"
@@ -111,6 +114,12 @@ export function NotificationDashboard() {
           response = await notificationApi.getAll(query);
         }
 
+        console.log('API Response:', {
+          notificationsCount: response.notifications.length,
+          pagination: response.pagination,
+          requestedPage: query.page
+        });
+
         setNotifications(response.notifications);
         setPagination({
           total: response.pagination.total,
@@ -118,6 +127,7 @@ export function NotificationDashboard() {
           perPage: response.pagination.perPage,
           currentPage: currentPage,
         });
+        console.log(`[PAGINATION] After setPagination - currentPage: ${currentPage}, pagination.currentPage: ${currentPage}`);
       } catch (error) {
         console.error("Failed to fetch notifications:", error);
       } finally {
@@ -141,6 +151,7 @@ export function NotificationDashboard() {
   // Listen for external notification updates (from nav dropdown)
   useEffect(() => {
     const handleNotificationUpdate = () => {
+      console.log(`[PAGINATION] External notification update event received - NOT resetting currentPage`);
       setRefreshTrigger(prev => prev + 1);
       refreshStats({
         type: typeFilter !== "all" ? getBackendType(typeFilter) : undefined,
@@ -214,9 +225,16 @@ export function NotificationDashboard() {
       const query = { page: currentPage, limit: pagination.perPage };
       const response: ApiNotificationResponse = await notificationApi.getAll(query);
       setNotifications(response.notifications);
+      setPagination({
+        total: response.pagination.total,
+        totalPages: response.pagination.pages,
+        perPage: response.pagination.perPage,
+        currentPage: currentPage,
+      });
       setSelectedIds([]);
       await refreshStats();
       // Emit event to update nav dropdown
+      console.log(`[PAGINATION] Emitting notification-updated event from handleMarkRead`);
       window.dispatchEvent(new CustomEvent('notification-updated'));
     } catch (error) {
       console.error("Failed to mark notifications as read:", error);
@@ -239,10 +257,17 @@ export function NotificationDashboard() {
       };
       const response: ApiNotificationResponse = await notificationApi.getAll(query);
       setNotifications(response.notifications);
+      setPagination({
+        total: response.pagination.total,
+        totalPages: response.pagination.pages,
+        perPage: response.pagination.perPage,
+        currentPage: currentPage,
+      });
       setSelectedIds([]);
       // Refresh stats to update read/unread counts
       await refreshStats();
       // Emit event to update nav dropdown
+      console.log(`[PAGINATION] Emitting notification-updated event from handleMarkUnread`);
       window.dispatchEvent(new CustomEvent('notification-updated'));
     } catch (error) {
       console.error("Failed to mark notifications as unread:", error);
@@ -315,10 +340,121 @@ export function NotificationDashboard() {
     setCurrentPage(1);
   };
 
-  const handlePageChange = (newPage: number) => {
-    console.log(`Navigating to page ${newPage}`);
-    if (newPage >= 1 && newPage <= pagination.totalPages) {
-      setCurrentPage(newPage);
+  const handlePageChange = (page: number) => {
+    console.log(`[PAGINATION] handlePageChange called with page: ${page}, currentPage before: ${currentPage}`);
+    setCurrentPage(page);
+    console.log(`[PAGINATION] setCurrentPage(${page}) called - React will re-render`);
+  };
+
+  const renderPaginationButtons = () => {
+    if (pagination.totalPages <= 7) {
+      return (
+        <>
+          {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map(page => {
+            console.log(`[PAGINATION] Rendering page button ${page}, currentPage: ${currentPage}, isActive: ${currentPage === page}`);
+            return (
+              <Button
+                key={page}
+                variant={currentPage === page ? "default" : "outline"}
+                size="sm"
+                onClick={() => {
+                  console.log(`[PAGINATION] Page button ${page} clicked`);
+                  handlePageChange(page);
+                }}
+                className={cn(
+                  "h-8 min-w-[32px] sm:h-9 sm:min-w-[36px] px-2 sm:px-3 cursor-pointer",
+                  currentPage === page
+                    ? "bg-[#3b82f6] text-black dark:text-white hover:bg-[#2563eb] border-2 border-black dark:border-white"
+                    : "hover:bg-[#3b82f6]/10 hover:text-[#3b82f6]"
+                )}
+                style={{ pointerEvents: 'auto', zIndex: 10 }}
+              >
+                {page}
+              </Button>
+            );
+          })}
+        </>
+      );
+    } else {
+      return (
+        <>
+          <Button
+            variant={currentPage === 1 ? "default" : "outline"}
+            size="sm"
+            onClick={() => {
+              console.log('[PAGINATION] Page 1 clicked');
+              handlePageChange(1);
+            }}
+            className={cn(
+              "h-8 min-w-[32px] sm:h-9 sm:min-w-[36px] px-2 sm:px-3 cursor-pointer",
+              currentPage === 1
+                ? "bg-[#3b82f6] text-white hover:bg-[#2563eb] border-2 border-blue-700"
+                : "hover:bg-[#3b82f6]/10 hover:text-[#3b82f6]"
+            )}
+            style={{ pointerEvents: 'auto', zIndex: 10 }}
+          >
+            1
+          </Button>
+
+          {currentPage > 3 && <span className="px-1 sm:px-2 text-xs sm:text-sm">...</span>}
+
+          {Array.from({ length: pagination.totalPages }, (_, i) => i + 1)
+            .filter(page => {
+              if (currentPage <= 3) {
+                return page > 1 && page < 5;
+              } else if (currentPage >= pagination.totalPages - 2) {
+                return page > pagination.totalPages - 4 && page < pagination.totalPages;
+              } else {
+                return Math.abs(page - currentPage) <= 1;
+              }
+            })
+            .map(page => {
+              console.log(`[PAGINATION] Rendering complex page button ${page}, currentPage: ${currentPage}, isActive: ${currentPage === page}`);
+              return (
+                <Button
+                  key={page}
+                  variant={currentPage === page ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => {
+                    console.log(`[PAGINATION] Complex page button ${page} clicked`);
+                    handlePageChange(page);
+                  }}
+                  className={cn(
+                    "h-8 min-w-[32px] sm:h-9 sm:min-w-[36px] px-2 sm:px-3 cursor-pointer",
+                    currentPage === page
+                      ? "bg-[#3b82f6] text-black dark:text-white hover:bg-[#2563eb] border-2 border-black dark:border-white"
+                      : "hover:bg-[#3b82f6]/10 hover:text-[#3b82f6]"
+                  )}
+                  style={{ pointerEvents: 'auto', zIndex: 10 }}
+                >
+                  {page}
+                </Button>
+              );
+            })}
+
+          {currentPage < pagination.totalPages - 2 && <span className="px-1 sm:px-2 text-xs sm:text-sm">...</span>}
+
+          {pagination.totalPages > 1 && (
+            <Button
+              variant={currentPage === pagination.totalPages ? "default" : "outline"}
+              size="sm"
+              onClick={() => {
+                console.log('[PAGINATION] Last page clicked');
+                handlePageChange(pagination.totalPages);
+              }}
+              className={cn(
+                "h-8 min-w-[32px] sm:h-9 sm:min-w-[36px] px-2 sm:px-3 cursor-pointer",
+                currentPage === pagination.totalPages
+                  ? "bg-[#3b82f6] text-black dark:text-white hover:bg-[#2563eb] border-2 border-black dark:border-white"
+                  : "hover:bg-[#3b82f6]/10 hover:text-[#3b82f6]"
+              )}
+              style={{ pointerEvents: 'auto', zIndex: 10 }}
+            >
+              {pagination.totalPages}
+            </Button>
+          )}
+        </>
+      );
     }
   };
 
@@ -414,102 +550,29 @@ export function NotificationDashboard() {
               <Button
                 variant="outline"
                 size="icon"
-                onClick={() => handlePageChange(currentPage - 1)}
+                onClick={() => {
+                  console.log('[PAGINATION] Left arrow clicked');
+                  handlePageChange(currentPage - 1);
+                }}
                 disabled={currentPage === 1}
-                className="nav-button hover:bg-[#3b82f6]/10 hover:text-[#3b82f6] h-8 w-8 sm:h-9 sm:w-9"
+                className="nav-button hover:bg-[#3b82f6]/10 hover:text-[#3b82f6] h-8 w-8 sm:h-9 sm:w-9 cursor-pointer"
+                style={{ pointerEvents: 'auto', zIndex: 10 }}
               >
                 <ChevronLeft className="h-3 w-3 sm:h-4 sm:w-4" />
               </Button>
               
-              {pagination.totalPages <= 7 ? (
-                Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map(page => (
-                  <Button
-                    key={page}
-                    variant={currentPage === page ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => handlePageChange(page)}
-                    className={cn(
-                      "h-8 min-w-[32px] sm:h-9 sm:min-w-[36px] px-2 sm:px-3",
-                      currentPage === page
-                        ? "bg-[#3b82f6] text-black dark:text-white hover:bg-[#2563eb] border-2 border-black dark:border-white"
-                        : "hover:bg-[#3b82f6]/10 hover:text-[#3b82f6]"
-                    )}
-                  >
-                    {page}
-                  </Button>
-                ))
-              ) : (
-                <>
-                  <Button
-                    variant={currentPage === 1 ? "default" : "outline"}
-                    size="sm"
-                    onClick={() => handlePageChange(1)}
-                    className={cn(
-                      "h-8 min-w-[32px] sm:h-9 sm:min-w-[36px] px-2 sm:px-3",
-                      currentPage === 1
-                        ? "bg-[#3b82f6] text-white hover:bg-[#2563eb] border-2 border-blue-700"
-                        : "hover:bg-[#3b82f6]/10 hover:text-[#3b82f6]"
-                    )}
-                  >
-                    1
-                  </Button>
-      
-                  {currentPage > 3 && <span className="px-1 sm:px-2 text-xs sm:text-sm">...</span>}
-      
-                  {Array.from({ length: pagination.totalPages }, (_, i) => i + 1)
-                    .filter(page => {
-                      if (currentPage <= 3) {
-                        return page > 1 && page < 5;
-                      } else if (currentPage >= pagination.totalPages - 2) {
-                        return page > pagination.totalPages - 4 && page < pagination.totalPages;
-                      } else {
-                        return Math.abs(page - currentPage) <= 1;
-                      }
-                    })
-                    .map(page => (
-                      <Button
-                        key={page}
-                        variant={currentPage === page ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => handlePageChange(page)}
-                        className={cn(
-                          "h-8 min-w-[32px] sm:h-9 sm:min-w-[36px] px-2 sm:px-3",
-                          currentPage === page
-                            ? "bg-[#3b82f6] text-black dark:text-white hover:bg-[#2563eb] border-2 border-black dark:border-white"
-                            : "hover:bg-[#3b82f6]/10 hover:text-[#3b82f6]"
-                        )}
-                      >
-                        {page}
-                      </Button>
-                    ))
-                  }
-      
-                  {currentPage < pagination.totalPages - 2 && <span className="px-1 sm:px-2 text-xs sm:text-sm">...</span>}
-      
-                  {pagination.totalPages > 1 && (
-                    <Button
-                      variant={currentPage === pagination.totalPages ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => handlePageChange(pagination.totalPages)}
-                      className={cn(
-                        "h-8 min-w-[32px] sm:h-9 sm:min-w-[36px] px-2 sm:px-3",
-                        currentPage === pagination.totalPages
-                          ? "bg-[#3b82f6] text-white hover:bg-[#2563eb] border-2 border-blue-700"
-                          : "hover:bg-[#3b82f6]/10 hover:text-[#3b82f6]"
-                      )}
-                    >
-                      {pagination.totalPages}
-                    </Button>
-                  )}
-                </>
-              )}
+              {renderPaginationButtons()}
               
               <Button
                 variant="outline"
                 size="icon"
-                onClick={() => handlePageChange(currentPage + 1)}
+                onClick={() => {
+                  console.log('[PAGINATION] Right arrow clicked');
+                  handlePageChange(currentPage + 1);
+                }}
                 disabled={currentPage === pagination.totalPages || pagination.totalPages === 0}
-                className="nav-button hover:bg-[#3b82f6]/10 hover:text-[#3b82f6] h-8 w-8 sm:h-9 sm:w-9"
+                className="nav-button hover:bg-[#3b82f6]/10 hover:text-[#3b82f6] h-8 w-8 sm:h-9 sm:w-9 cursor-pointer"
+                style={{ pointerEvents: 'auto', zIndex: 10 }}
               >
                 <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
               </Button>

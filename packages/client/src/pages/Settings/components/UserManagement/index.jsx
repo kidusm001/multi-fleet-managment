@@ -1,10 +1,13 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useSession } from "@/lib/auth-client";
 import { useTheme } from "@/contexts/ThemeContext";
 import { adminService } from "../../services/adminService";
 import { Plus, Search, Filter, Users, X, RefreshCw } from "lucide-react";
 import Button from "@/components/Common/UI/Button";
 import { Input } from "@/components/Common/UI/Input";
+import { useOrganizations } from "@/contexts/OrganizationContext";
+import { useRole } from "@/contexts/RoleContext";
+import { ROLES } from "@data/constants";
 import {
   Select,
   SelectContent,
@@ -27,14 +30,17 @@ export default function UserManagement() {
   const { data: session } = useSession();
   const { theme } = useTheme();
   const isDark = theme === "dark";
+  const { role: effectiveRole } = useRole();
+  const { members, loadMembers } = useOrganizations();
   
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
-  const [totalUsers, setTotalUsers] = useState(0);
   const [_availableRoles, setAvailableRoles] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
   
   // Dialog states
   const [showAddModal, setShowAddModal] = useState(false);
@@ -82,6 +88,16 @@ export default function UserManagement() {
     }
   }, [session, /* eslint-disable-line react-hooks/exhaustive-deps */]);
 
+  useEffect(() => {
+    if (!session?.user?.id) {
+      return;
+    }
+    if (effectiveRole && effectiveRole !== ROLES.SUPERADMIN) {
+      loadMembers();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.user?.id, effectiveRole]);
+
   // Load users with optional query
   const loadUsers = useCallback(async (query = {}) => {
     try {
@@ -101,10 +117,7 @@ export default function UserManagement() {
           filterValue: roleFilter !== "all" ? roleFilter : undefined
         }
       });
-      setUsers(usersList);
-      
-      // Set total count (in a real app you'd get this from an API response)
-      setTotalUsers(usersList.length); 
+    setUsers(usersList);
       
       // Extract unique roles from users
       const roles = [...new Set(usersList.map(user => user.role))];
@@ -243,6 +256,7 @@ export default function UserManagement() {
   const resetFilters = () => {
     setSearchQuery("");
     setRoleFilter("all");
+    setCurrentPage(1);
     loadUsers({ searchValue: "", filterField: undefined });
   };
 
@@ -319,25 +333,79 @@ export default function UserManagement() {
   // Filter functionality - client-side filtering
   const handleSearch = (value) => {
     setSearchQuery(value);
+    setCurrentPage(1);
   };
 
   // Role filtering functionality
   const handleRoleFilter = (role) => {
     setRoleFilter(role);
+    setCurrentPage(1);
   };
 
-  // Get filtered users based on search query and role filter
-  const getFilteredUsers = () => {
-    return users.filter(user => {
-      const matchesSearch = !searchQuery || 
-        user.name?.toLowerCase().includes(searchQuery.toLowerCase()) || 
-        user.email?.toLowerCase().includes(searchQuery.toLowerCase());
-      
+  const accessibleUserIds = useMemo(() => {
+    if (!effectiveRole || effectiveRole === ROLES.SUPERADMIN) {
+      return null;
+    }
+    const ids = new Set();
+    members?.forEach((member) => {
+      if (member?.userId) {
+        ids.add(member.userId);
+      }
+      if (member?.user?.id) {
+        ids.add(member.user.id);
+      }
+    });
+    if (session?.user?.id) {
+      ids.add(session.user.id);
+    }
+    return ids;
+  }, [effectiveRole, members, session?.user?.id]);
+
+  const accessibleUsers = useMemo(() => {
+    if (!accessibleUserIds) {
+      return users;
+    }
+    return users.filter((user) => accessibleUserIds.has(user.id));
+  }, [users, accessibleUserIds]);
+
+  const filteredUsers = useMemo(() => {
+    const lowerQuery = searchQuery.trim().toLowerCase();
+    return accessibleUsers.filter((user) => {
+      const matchesSearch = !lowerQuery ||
+        user.name?.toLowerCase().includes(lowerQuery) ||
+        user.email?.toLowerCase().includes(lowerQuery);
+
       const matchesRole = roleFilter === "all" || user.role === roleFilter;
-      
+
       return matchesSearch && matchesRole;
     });
+  }, [accessibleUsers, searchQuery, roleFilter]);
+
+  const totalPages = useMemo(() => {
+    return Math.max(1, Math.ceil(filteredUsers.length / rowsPerPage));
+  }, [filteredUsers.length, rowsPerPage]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+  const paginatedUsers = useMemo(() => {
+    const startIndex = (currentPage - 1) * rowsPerPage;
+    const endIndex = startIndex + rowsPerPage;
+    return filteredUsers.slice(startIndex, endIndex);
+  }, [filteredUsers, currentPage, rowsPerPage]);
+
+  const handleRowsPerPageChange = (value) => {
+    const next = Number(value);
+    setRowsPerPage(next);
+    setCurrentPage(1);
   };
+
+  const paginationVisibleCount = filteredUsers.length;
+  const paginationStart = paginationVisibleCount === 0 ? 0 : (currentPage - 1) * rowsPerPage + 1;
+  const paginationEnd = paginationVisibleCount === 0 ? 0 : Math.min(currentPage * rowsPerPage, paginationVisibleCount);
 
   return (
     <div className="space-y-6">
@@ -362,7 +430,7 @@ export default function UserManagement() {
         } transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md`}>
           <span className="text-[var(--text-secondary)] text-sm font-medium">Total Users</span>
           <div className="flex items-end gap-2 mt-1">
-            <span className="text-2xl font-bold text-[var(--text-primary)]">{totalUsers}</span>
+            <span className="text-2xl font-bold text-[var(--text-primary)]">{accessibleUsers.length}</span>
             <Users className="w-4 h-4 text-[var(--primary)] mb-1" />
           </div>
         </div>
@@ -375,7 +443,7 @@ export default function UserManagement() {
           <span className="text-[var(--text-secondary)] text-sm font-medium">Admin Users</span>
           <div className="flex items-end gap-2 mt-1">
             <span className="text-2xl font-bold text-[var(--text-primary)]">
-              {users.filter(u => u.role === 'admin').length}
+              {accessibleUsers.filter(u => u.role === 'admin').length}
             </span>
             <div className="h-4 w-4 rounded-full bg-rose-500 mb-1 animate-pulse"></div>
           </div>
@@ -389,7 +457,7 @@ export default function UserManagement() {
           <span className="text-[var(--text-secondary)] text-sm font-medium">Active Users</span>
           <div className="flex items-end gap-2 mt-1">
             <span className="text-2xl font-bold text-[var(--text-primary)]">
-              {users.filter(u => !u.banned).length}
+              {accessibleUsers.filter(u => !u.banned).length}
             </span>
             <div className="h-4 w-4 rounded-full bg-green-500 mb-1 animate-pulse"></div>
           </div>
@@ -403,7 +471,7 @@ export default function UserManagement() {
           <span className="text-[var(--text-secondary)] text-sm font-medium">Banned Users</span>
           <div className="flex items-end gap-2 mt-1">
             <span className="text-2xl font-bold text-[var(--text-primary)]">
-              {users.filter(u => u.banned).length}
+              {accessibleUsers.filter(u => u.banned).length}
             </span>
             <div className="h-4 w-4 rounded-full bg-red-500 mb-1 animate-pulse"></div>
           </div>
@@ -543,7 +611,7 @@ export default function UserManagement() {
 
       {/* Users Table */}
       <UsersTable
-        users={getFilteredUsers()}
+        users={paginatedUsers}
         loading={loading}
         error={error}
         session={session}
@@ -555,6 +623,50 @@ export default function UserManagement() {
         }}
         onAction={handleDropdownAction}
       />
+
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="text-sm text-[var(--text-secondary)]">
+          Showing {paginationStart} – {paginationEnd} of {paginationVisibleCount} users
+        </div>
+        <div className="flex flex-col sm:flex-row items-center gap-3">
+          <div className="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
+            <span>Rows per page</span>
+            <Select value={String(rowsPerPage)} onValueChange={handleRowsPerPageChange}>
+              <SelectTrigger className="w-[80px] h-9">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {[10, 25, 50].map((option) => (
+                  <SelectItem key={option} value={String(option)}>
+                    {option}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+              disabled={currentPage === 1}
+            >
+              ‹
+            </Button>
+            <span className="text-sm text-[var(--text-secondary)]">
+              Page {currentPage} of {totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+              disabled={currentPage === totalPages}
+            >
+              ›
+            </Button>
+          </div>
+        </div>
+      </div>
       
       {/* User Details Dialog */}
       <UserDetailsDialog
