@@ -74,6 +74,7 @@ export const NAV_CONFIG: Record<RoleKey, NavItem[]> = {
       subpaths: [
         { label: "Management", path: ROUTES.ROUTES },
         { label: "Assignment", path: `${ROUTES.ROUTES}?tab=assignment` },
+        { label: "Create Route", path: `${ROUTES.ROUTES}?modal=create` },
       ],
     },
     { label: "Vehicles", path: ROUTES.VEHICLES },

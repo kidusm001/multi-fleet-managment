@@ -12,8 +12,8 @@ import {
   Car,
   FileText,
   User,
-  LayoutGrid,
   Menu,
+  LayoutGrid,
 } from "lucide-react";
 import { ROLES, ROLE_LABELS } from "@data/constants";
 import { cn } from "@lib/utils";
@@ -25,6 +25,7 @@ import { searchService } from "../../../../services/searchService";
 import MobileNavMenu from "./MobileNavMenu";
 import MainNav from "./MainNav";
 import OrganizationSwitcher from "@components/Common/Organizations/OrganizationSwitcher";
+import { useViewport } from "@hooks/useViewport";
 
 const { useSession } = createAuthClient();
 
@@ -55,6 +56,8 @@ function TopBar({ driverMode = false }) {
   const { role } = useRole();
   const navigate = useNavigate();
   const isDark = theme === "dark";
+  const viewport = useViewport();
+  const isMobile = viewport === 'mobile';
   const logoSrc = isDark
     ? "/assets/images/logo-light.png"
     : "/assets/images/logo-dark.PNG";
@@ -164,32 +167,35 @@ function TopBar({ driverMode = false }) {
         )}
       >
         <div className="flex items-center justify-between h-full max-w-[2000px] mx-auto">
-          {/* Left section: Mobile menu + Logo */}
-          <div className="flex items-center gap-4">
-            {/* Mobile menu button */}
+        {/* Left section: Logo */}
+        <div className={cn(
+          "flex items-center gap-8",
+          isMobile ? "mr-2" : "mr-8"
+        )}>
+          {/* Mobile menu button - leftmost on mobile */}
+          {isMobile && (
             <button
               onClick={() => setIsMobileMenuOpen(true)}
               className={cn(
-                "md:hidden p-2 rounded-lg transition-colors",
+                "p-3 rounded-lg transition-colors",
                 isDark
                   ? "hover:bg-white/10 text-white"
-                  : "hover:bg-gray-100 text-gray-900"
+                  : "hover:bg-black/10 text-black"
               )}
-              aria-label="Open navigation"
-              aria-expanded={isMobileMenuOpen}
+              aria-label="Open menu"
             >
-              <Menu className="w-5 h-5" />
+              <Menu className="w-6 h-6" />
             </button>
-
-            {/* Logo */}
-            <Link to="/" className="flex items-center gap-2">
-              <img
-                src={logoSrc}
-                alt="Routegna"
-                className="h-8 w-auto"
-              />
-            </Link>
-          </div>
+          )}
+          {/* Logo - shown on both mobile and desktop */}
+          <Link to="/" className="flex items-center gap-2">
+            <img
+              src={logoSrc}
+              alt="Routegna"
+              className="h-8 w-auto"
+            />
+          </Link>
+        </div>
 
           {/* Center section: MainNav and SearchBar (desktop only) */}
           <div className="hidden md:flex flex-1 items-center justify-between">

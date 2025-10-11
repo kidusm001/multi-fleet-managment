@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@utils/cn";
 // UI Components
-import { Card, CardContent } from "@components/Common/UI/Card";
+import { Card, CardHeader, CardContent } from "@components/Common/UI/Card";
 import { toast } from "sonner";
 import { ScrollArea } from "@components/Common/UI/scroll-area";
 import LoadingAnimation from "@/components/Common/LoadingAnimation";
@@ -401,6 +401,9 @@ function CreateRoute() {
         "dark:select-border-transparent"
       )}
     >
+      <CardHeader className="px-6 pt-6 pb-4">
+        <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Create Route</h2>
+      </CardHeader>
       <CardContent className={styles.cardContent}>
         {loading ? (
           <div className={styles.loadingContainer}>

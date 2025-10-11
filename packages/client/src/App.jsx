@@ -24,6 +24,7 @@ const NotificationDashboard = lazy(() => import('@pages/notifications/components
 const MobileNotificationWrapper = lazy(() => import('@pages/notifications/components/MobileNotificationWrapper').then(m => ({ default: m.MobileNotificationWrapper })));
 const DriverPortal = lazy(() => import('@pages/DriverPortal'));
 const Home = lazy(() => import('@pages/Home'));
+const Profile = lazy(() => import('@pages/Profile'));
 
 import { RoleProvider, useRole } from "@contexts/RoleContext";
 import { OrganizationProvider } from "@contexts/OrganizationContext";
@@ -201,6 +202,10 @@ function AppContent() {
                 path="settings"
                 element={<Suspense fallback={<div />}> <Settings /> </Suspense>}
               />
+              <Route
+                path="profile"
+                element={<Suspense fallback={<div />}> <Profile /> </Suspense>}
+              />
               {/* Redirect all other routes to driver portal */}
               <Route path="*" element={<Navigate to={ROUTES.DRIVER_PORTAL} replace />} />
             </>
@@ -222,6 +227,10 @@ function AppContent() {
               <Route
                 path="settings"
                 element={<Suspense fallback={<div />}> <Settings /> </Suspense>}
+              />
+              <Route
+                path="profile"
+                element={<Suspense fallback={<div />}> <Profile /> </Suspense>}
               />
               <Route path="*" element={<Navigate to={ROUTES.DASHBOARD} replace />} />
             </>
@@ -259,6 +268,10 @@ function AppContent() {
                     {isMobile ? <MobileNotificationWrapper /> : <NotificationDashboard />} 
                   </Suspense>
                 }
+              />
+              <Route
+                path="profile"
+                element={<Suspense fallback={<div />}> <Profile /> </Suspense>}
               />
               <Route path="*" element={<Navigate to={ROUTES.DASHBOARD} replace />} />
             </>
@@ -316,6 +329,10 @@ function AppContent() {
               <Route
                 path="settings"
                 element={<Suspense fallback={<div />}> <Settings /> </Suspense>}
+              />
+              <Route
+                path="profile"
+                element={<Suspense fallback={<div />}> <Profile /> </Suspense>}
               />
               <Route path="*" element={<Navigate to={ROUTES.ORGANIZATION_MANAGEMENT} replace />} />
             </>
@@ -382,6 +399,10 @@ function AppContent() {
                 path="settings"
                 element={<Suspense fallback={<div />}> <Settings /> </Suspense>}
               />
+              <Route
+                path="profile"
+                element={<Suspense fallback={<div />}> <Profile /> </Suspense>}
+              />
               <Route path="*" element={<Navigate to={ROUTES.ORGANIZATIONS} replace />} />
             </>
           ) : (
@@ -391,6 +412,10 @@ function AppContent() {
               <Route
                 path="dashboard"
                 element={<Suspense fallback={<div className="p-6">Loading dashboard…</div>}> <Dashboard /> </Suspense>}
+              />
+              <Route
+                path="profile"
+                element={<Suspense fallback={<div />}> <Profile /> </Suspense>}
               />
               <Route path="*" element={<Navigate to={ROUTES.DASHBOARD} replace />} />
             </>

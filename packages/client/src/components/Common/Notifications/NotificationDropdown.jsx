@@ -106,7 +106,7 @@ function NotificationDropdown() {
         <button 
           className={cn(
             "button relative flex items-center justify-center",
-            "w-9 h-9 rounded-full cursor-pointer transition-all duration-300",
+            "w-12 md:w-9 h-9 rounded-full cursor-pointer transition-all duration-300",
             isDarkMode 
               ? "bg-gray-800 hover:bg-gray-700 shadow-md border border-gray-700" 
               : "bg-white hover:bg-gray-50 shadow-sm border border-border",

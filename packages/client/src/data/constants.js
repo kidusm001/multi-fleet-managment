@@ -43,7 +43,8 @@ export const ROUTES = {
   ORGANIZATION_MANAGEMENT: '/organization-management',
   NOTIFICATIONS: '/notifications',
   SETTINGS: '/settings',
-  DRIVER_PORTAL: '/driver'
+  DRIVER_PORTAL: '/driver',
+  PROFILE: '/profile'
 };
 
 export const SHUTTLE_ROUTES = [

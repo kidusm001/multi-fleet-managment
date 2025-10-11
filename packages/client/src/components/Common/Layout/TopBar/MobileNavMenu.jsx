@@ -138,18 +138,12 @@ const MobileNavMenu = ({ isOpen, onClose, isDark }) => {
           >
             {/* Header */}
             <div className="flex items-center justify-between p-6 border-b border-current/10">
-              <div className="flex items-center gap-3">
+              <div className="flex-1 flex justify-center">
                 <img
                   src="/assets/images/logo-light.png"
                   alt="Routegna"
-                  className="h-8 w-auto"
+                  className="h-10 w-auto"
                 />
-                <span className={cn(
-                  "font-semibold text-lg",
-                  isDark ? "text-white" : "text-gray-900"
-                )}>
-                  Routegna
-                </span>
               </div>
               <button
                 onClick={onClose}
@@ -161,7 +155,7 @@ const MobileNavMenu = ({ isOpen, onClose, isDark }) => {
                 )}
                 aria-label="Close navigation menu"
               >
-                <X className="w-5 h-5" />
+                <X className="w-6 h-6" />
               </button>
             </div>
 
@@ -199,7 +193,7 @@ const MobileNavMenu = ({ isOpen, onClose, isDark }) => {
                   >
                     <Icon 
                       className={cn(
-                        "w-5 h-5 transition-colors",
+                        "w-6 h-6 transition-colors",
                         isActive ? "text-current" : "text-current/70 group-hover:text-current"
                       )} 
                     />

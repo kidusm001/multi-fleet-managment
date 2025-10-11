@@ -83,19 +83,9 @@ export default function MainNav({ isDark, onKeyDown }) {
   const navigate = useNavigate();
   const navItems = NAV_CONFIG[role] || NAV_CONFIG.default;
   const [showRoutesPanel, setShowRoutesPanel] = useState(false);
-  const [routesButtonPosition, setRoutesButtonPosition] = useState(0);
   const [hoveredItem, setHoveredItem] = useState(null);
   const panelRef = useRef(null);
   const routesBtnRef = useRef(null);
-
-  // Calculate Routes button position for subnav alignment
-  useEffect(() => {
-    if (routesBtnRef.current && showRoutesPanel) {
-      const buttonRect = routesBtnRef.current.getBoundingClientRect();
-      const buttonCenter = buttonRect.left + buttonRect.width / 2;
-      setRoutesButtonPosition(buttonCenter);
-    }
-  }, [showRoutesPanel]);
 
   // Helper to check for active tab/subtab
   function isActiveTab(item) {
@@ -175,7 +165,13 @@ export default function MainNav({ isDark, onKeyDown }) {
                 className={linkClass}
                 aria-current={isActive ? "page" : undefined}
                 onClick={() => {
-                  setShowRoutesPanel((v) => !v);
+                  // If panel is already open, clicking again should navigate to Management tab
+                  if (showRoutesPanel) {
+                    navigate('/routes', { state: { activeTab: "management", refresh: true } });
+                    setShowRoutesPanel(false);
+                  } else {
+                    setShowRoutesPanel(true);
+                  }
                 }}
                 onMouseEnter={() => setHoveredItem(item.label)}
                 onMouseLeave={() => setHoveredItem(null)}
@@ -208,61 +204,77 @@ export default function MainNav({ isDark, onKeyDown }) {
                 {/* SVG-based highlight when active */}
                 {isActive && <NavHighlight isDark={isDark} />}
               </button>
-              {/* Full-width sliding panel for subnav */}
+              {/* Modern dropdown panel right below Routes button */}
               {showRoutesPanel && (
                 <div
                   ref={panelRef}
                   className={cn(
-                    "fixed left-0 right-0 top-[52px] w-full border-b border-gray-200 dark:border-[#4272FF]/10 shadow-lg z-50 transition-all duration-300 py-2",
-                    isDark ? "bg-[#0c1222]/95 backdrop-blur-xl" : "bg-white/95 backdrop-blur-xl",
-                    showRoutesPanel ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-full"
+                    "absolute top-full mt-2 left-1/2 -translate-x-1/2 min-w-[240px] rounded-lg border shadow-lg z-50 transition-all duration-200",
+                    isDark 
+                      ? "bg-[#0c1222]/95 backdrop-blur-xl border-[#4272FF]/20" 
+                      : "bg-white/95 backdrop-blur-xl border-gray-200",
+                    showRoutesPanel ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-2 pointer-events-none"
                   )}
                   role="menu"
                 >
-                  <div className="max-w-[2000px] mx-auto px-6 flex justify-start items-center">
-                    {/* Position subnav options centered below Routes button and arrow */}
-                    <div 
-                      className="flex items-center gap-2" 
-                      style={{ 
-                        marginLeft: routesButtonPosition > 0 ? `${routesButtonPosition - 100}px` : "80px"
-                      }}
-                    >
-                      {item.subpaths.map((sub) => (
-                        <button
-                          key={sub.label}
-                          onClick={() => {
-                            if (location.pathname === '/notifications') {
-                              const target = sub.path.startsWith('/') ? sub.path.split('?')[0] : '/routes';
-                              window.location.href = target;
-                              return;
-                            }
-                            handleSubNav(sub);
-                          }}
-                          className={cn(
-                            "px-4 py-1.5 text-sm font-medium transition-colors duration-150 border-b-2 outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
-                            isActiveSubTab(sub)
-                              ? (isDark 
-                                  ? "text-orange-400 border-orange-400 bg-orange-500/10" 
-                                  : "text-orange-600 border-orange-600 bg-orange-500/10")
-                              : (isDark 
-                                  ? "text-gray-300 border-transparent hover:text-white hover:border-gray-300" 
-                                  : "text-gray-600 border-transparent hover:text-gray-900 hover:border-gray-300"),
-                          )}
-                          aria-current={isActiveSubTab(sub) ? "page" : undefined}
-                        >
-                          <div className="flex items-center gap-2">
-                            {/* Icon with reduced weight */}
-                            {React.createElement(getNavIcon(sub.label), { 
-                              size: 16,
-                              strokeWidth: 1.5,
-                              className: "flex-shrink-0"
-                            })}
-                            {/* Always show text for tabs */}
-                            <span>{sub.label}</span>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
+                  {/* Triangle pointer */}
+                  <div 
+                    className={cn(
+                      "absolute -top-2 left-1/2 -translate-x-1/2 w-4 h-4 rotate-45 border-l border-t",
+                      isDark ? "bg-[#0c1222]/95 border-[#4272FF]/20" : "bg-white/95 border-gray-200"
+                    )}
+                  />
+                  
+                  <div className="relative py-2 px-1">
+                    {item.subpaths.map((sub) => (
+                      <button
+                        key={sub.label}
+                        onClick={() => {
+                          if (location.pathname === '/notifications') {
+                            const target = sub.path.startsWith('/') ? sub.path.split('?')[0] : '/routes';
+                            window.location.href = target;
+                            return;
+                          }
+                          handleSubNav(sub);
+                          setShowRoutesPanel(false);
+                        }}
+                        className={cn(
+                          "w-full px-3 py-2 text-sm font-medium transition-all duration-150 rounded-md outline-none focus-visible:ring-2 flex items-center gap-3",
+                          isActiveSubTab(sub)
+                            ? (isDark 
+                                ? "text-orange-400 bg-orange-500/20 shadow-sm" 
+                                : "text-orange-600 bg-orange-500/10 shadow-sm")
+                            : (isDark 
+                                ? "text-gray-300 hover:text-white hover:bg-white/10" 
+                                : "text-gray-600 hover:text-gray-900 hover:bg-gray-100"),
+                          isDark ? "focus-visible:ring-orange-400/50" : "focus-visible:ring-orange-600/50"
+                        )}
+                        aria-current={isActiveSubTab(sub) ? "page" : undefined}
+                      >
+                        {/* Icon with modern styling */}
+                        <div className={cn(
+                          "p-1.5 rounded-md transition-colors",
+                          isActiveSubTab(sub)
+                            ? (isDark ? "bg-orange-500/30" : "bg-orange-500/20")
+                            : (isDark ? "bg-white/5" : "bg-gray-200/50")
+                        )}>
+                          {React.createElement(getNavIcon(sub.label), { 
+                            size: 16,
+                            strokeWidth: 2,
+                            className: "flex-shrink-0"
+                          })}
+                        </div>
+                        {/* Tab label */}
+                        <span className="flex-1 text-left">{sub.label}</span>
+                        {/* Active indicator */}
+                        {isActiveSubTab(sub) && (
+                          <div className={cn(
+                            "w-1.5 h-1.5 rounded-full",
+                            isDark ? "bg-orange-400" : "bg-orange-600"
+                          )} />
+                        )}
+                      </button>
+                    ))}
                   </div>
                 </div>
               )}

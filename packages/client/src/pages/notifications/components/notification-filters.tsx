@@ -196,7 +196,7 @@ export function NotificationFilters({
               }}
               className={`${isMobile ? 'text-xs px-2 py-1 h-7' : 'text-sm'} font-medium transition-all duration-200 hover:bg-blue-500/10`}
             >
-              {isMobile ? 'Read' : 'Mark as read'}
+              {isMobile ? 'Mark Read' : 'Mark as read'}
             </Button>
             <Button
               variant="ghost"
@@ -221,7 +221,7 @@ export function NotificationFilters({
               }}
               className={`${isMobile ? 'text-xs px-2 py-1 h-7' : 'text-sm'} font-medium transition-all duration-200 hover:bg-blue-500/10`}
             >
-              {isMobile ? 'Unread' : 'Mark as unread'}
+              {isMobile ? 'Mark Unread' : 'Mark as unread'}
             </Button>
           </div>
         </div>
