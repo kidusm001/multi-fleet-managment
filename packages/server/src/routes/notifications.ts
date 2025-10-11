@@ -18,6 +18,24 @@ import prisma from '../db';
 
 const router = express.Router();
 
+const shouldBypassPermission = (role?: string | null) => role === 'driver' || role === 'employee';
+
+async function checkNotificationPermission(req: Request, action: 'read' | 'create' | 'update' | 'delete', role?: string | null) {
+    if (shouldBypassPermission(role)) {
+        console.log(`[Notifications API] Bypassing ${action} permission for role:`, role);
+        return { success: true };
+    }
+
+    return auth.api.hasPermission({
+        headers: await fromNodeHeaders(req.headers),
+        body: {
+            permissions: {
+                notification: [action]
+            }
+        }
+    });
+}
+
 router.get('/', requireAuth, validateSchema(NotificationQuerySchema, 'query'), async (req: Request, res: Response) => {
     try {
         const activeOrgId: string | null | undefined = req.session?.session?.activeOrganizationId;
@@ -30,22 +48,9 @@ router.get('/', requireAuth, validateSchema(NotificationQuerySchema, 'query'), a
         
         console.log('[Notifications API] GET / - User role check:', { userId, userRole, activeOrgId });
         
-        // Allow drivers and employees to access their own notifications without permission check
-        if (userRole !== 'driver' && userRole !== 'employee') {
-            console.log('[Notifications API] GET / - Checking permissions for role:', userRole);
-            const hasPermission = await auth.api.hasPermission({
-                headers: await fromNodeHeaders(req.headers),
-                body: {
-                    permissions: {
-                        notification: ["read"]
-                    }
-                }
-            });
-            if (!hasPermission.success) {
-                return res.status(403).json({ message: 'Forbidden: Insufficient permissions' });
-            }
-        } else {
-            console.log('[Notifications API] GET / - Bypassing permission check for driver/employee:', userRole);
+        const hasPermission = await checkNotificationPermission(req, 'read', userRole);
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Forbidden: Insufficient permissions' });
         }
 
         const { page, limit, type, status, importance, fromDate, toDate } = req.query;
@@ -100,19 +105,9 @@ router.get('/unread', requireAuth, validateSchema(NotificationQuerySchema, 'quer
         const userId = req.user?.id;
         const userRole = await getUserOrganizationRole(userId, activeOrgId);
         
-        // Allow drivers and employees to access their own notifications without permission check
-        if (userRole !== 'driver' && userRole !== 'employee') {
-            const hasPermission = await auth.api.hasPermission({
-                headers: await fromNodeHeaders(req.headers),
-                body: {
-                    permissions: {
-                        notification: ["read"]
-                    }
-                }
-            });
-            if (!hasPermission.success) {
-                return res.status(403).json({ message: 'Forbidden: Insufficient permissions' });
-            }
+        const hasPermission = await checkNotificationPermission(req, 'read', userRole);
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Forbidden: Insufficient permissions' });
         }
         const { page, limit, type, importance, fromDate, toDate } = req.query;
         
@@ -157,19 +152,9 @@ router.get('/read', requireAuth, validateSchema(NotificationQuerySchema, 'query'
         const userId = req.user?.id;
         const userRole = await getUserOrganizationRole(userId, activeOrgId);
         
-        // Allow drivers and employees to access their own notifications without permission check
-        if (userRole !== 'driver' && userRole !== 'employee') {
-            const hasPermission = await auth.api.hasPermission({
-                headers: await fromNodeHeaders(req.headers),
-                body: {
-                    permissions: {
-                        notification: ["read"]
-                    }
-                }
-            });
-            if (!hasPermission.success) {
-                return res.status(403).json({ message: 'Forbidden: Insufficient permissions' });
-            }
+        const hasPermission = await checkNotificationPermission(req, 'read', userRole);
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Forbidden: Insufficient permissions' });
         }
 
         const { page, limit, type, importance, fromDate, toDate } = req.query;
@@ -212,24 +197,16 @@ router.get('/unseen-count', requireAuth, async (req: Request, res: Response) => 
             return res.status(400).json({ message: 'No active organization found in session' });
         }
 
-        const hasPermission = await auth.api.hasPermission({
-            headers: await fromNodeHeaders(req.headers),
-            body: {
-                permissions: {
-                    notification: ["read"]
-                }
-            }
-        });
-        if (!hasPermission.success) {
-            return res.status(403).json({ message: 'Forbidden: Insufficient permissions' });
-        }
-
         const userId = req.user?.id;
         if (!userId) {
             return res.status(401).json({ message: 'User not authenticated' });
         }
 
         const userRole = await getUserOrganizationRole(userId, activeOrgId);
+        const hasPermission = await checkNotificationPermission(req, 'read', userRole);
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Forbidden: Insufficient permissions' });
+        }
         const count = await notificationService.getUnseenCount(
             userId,
             activeOrgId,
@@ -250,20 +227,12 @@ router.get('/type/:type', requireAuth, validateMultiple([{ schema: NotificationT
             return res.status(400).json({ message: 'No active organization found in session' });
         }
 
-        const hasPermission = await auth.api.hasPermission({
-            headers: await fromNodeHeaders(req.headers),
-            body: {
-                permissions: {
-                    notification: ["read"]
-                }
-            }
-        });
+        const userId = req.user?.id;
+        const userRole = await getUserOrganizationRole(userId, activeOrgId);
+        const hasPermission = await checkNotificationPermission(req, 'read', userRole);
         if (!hasPermission.success) {
             return res.status(403).json({ message: 'Forbidden: Insufficient permissions' });
         }
-
-        const userId = req.user?.id;
-        const userRole = await getUserOrganizationRole(userId, activeOrgId);
         const { type } = req.params;
         const { page, limit } = req.query;
         
@@ -300,20 +269,12 @@ router.get('/sorted-by-importance', requireAuth, validateSchema(NotificationQuer
             return res.status(400).json({ message: 'No active organization found in session' });
         }
 
-        const hasPermission = await auth.api.hasPermission({
-            headers: await fromNodeHeaders(req.headers),
-            body: {
-                permissions: {
-                    notification: ["read"]
-                }
-            }
-        });
+        const userId = req.user?.id;
+        const userRole = await getUserOrganizationRole(userId, activeOrgId);
+        const hasPermission = await checkNotificationPermission(req, 'read', userRole);
         if (!hasPermission.success) {
             return res.status(403).json({ message: 'Forbidden: Insufficient permissions' });
         }
-
-        const userId = req.user?.id;
-        const userRole = await getUserOrganizationRole(userId, activeOrgId);
         const { page, limit, status, type, importance, fromDate, toDate } = req.query;
         
         const result = await notificationService.getNotificationsSortedByImportance({
@@ -351,21 +312,15 @@ router.patch('/:id/mark-seen', requireAuth, validateSchema(NotificationIdParam, 
             return res.status(400).json({ message: 'No active organization found in session' });
         }
 
-        const hasPermission = await auth.api.hasPermission({
-            headers: await fromNodeHeaders(req.headers),
-            body: {
-                permissions: {
-                    notification: ["update"]
-                }
-            }
-        });
-        if (!hasPermission.success) {
-            return res.status(403).json({ message: 'Forbidden: Insufficient permissions' });
-        }
-
         const userId = req.user?.id;
         if (!userId) {
             return res.status(401).json({ message: 'User not authenticated' });
+        }
+
+        const userRole = await getUserOrganizationRole(userId, activeOrgId);
+        const hasPermission = await checkNotificationPermission(req, 'update', userRole);
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Forbidden: Insufficient permissions' });
         }
 
         const { id } = req.params;
@@ -401,21 +356,15 @@ router.patch('/:id/mark-read', requireAuth, validateSchema(NotificationIdParam, 
             return res.status(400).json({ message: 'No active organization found in session' });
         }
 
-        const hasPermission = await auth.api.hasPermission({
-            headers: await fromNodeHeaders(req.headers),
-            body: {
-                permissions: {
-                    notification: ["update"]
-                }
-            }
-        });
-        if (!hasPermission.success) {
-            return res.status(403).json({ message: 'Forbidden: Insufficient permissions' });
-        }
-
         const userId = req.user?.id;
         if (!userId) {
             return res.status(401).json({ message: 'User not authenticated' });
+        }
+
+        const userRole = await getUserOrganizationRole(userId, activeOrgId);
+        const hasPermission = await checkNotificationPermission(req, 'update', userRole);
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Forbidden: Insufficient permissions' });
         }
 
         const { id } = req.params;
@@ -451,21 +400,15 @@ router.patch('/:id/mark-unread', requireAuth, validateSchema(NotificationIdParam
             return res.status(400).json({ message: 'No active organization found in session' });
         }
 
-        const hasPermission = await auth.api.hasPermission({
-            headers: await fromNodeHeaders(req.headers),
-            body: {
-                permissions: {
-                    notification: ["update"]
-                }
-            }
-        });
-        if (!hasPermission.success) {
-            return res.status(403).json({ message: 'Forbidden: Insufficient permissions' });
-        }
-
         const userId = req.user?.id;
         if (!userId) {
             return res.status(401).json({ message: 'User not authenticated' });
+        }
+
+        const userRole = await getUserOrganizationRole(userId, activeOrgId);
+        const hasPermission = await checkNotificationPermission(req, 'update', userRole);
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Forbidden: Insufficient permissions' });
         }
 
         const { id } = req.params;
@@ -501,24 +444,16 @@ router.post('/mark-all-seen', requireAuth, async (req: Request, res: Response) =
             return res.status(400).json({ message: 'No active organization found in session' });
         }
 
-        const hasPermission = await auth.api.hasPermission({
-            headers: await fromNodeHeaders(req.headers),
-            body: {
-                permissions: {
-                    notification: ["update"]
-                }
-            }
-        });
-        if (!hasPermission.success) {
-            return res.status(403).json({ message: 'Forbidden: Insufficient permissions' });
-        }
-
         const userId = req.user?.id;
         if (!userId) {
             return res.status(401).json({ message: 'User not authenticated' });
         }
 
         const userRole = await getUserOrganizationRole(userId, activeOrgId);
+        const hasPermission = await checkNotificationPermission(req, 'update', userRole);
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Forbidden: Insufficient permissions' });
+        }
 
         const result = await notificationService.markAllAsSeen(
             userId,
@@ -540,24 +475,16 @@ router.post('/mark-all-read', requireAuth, async (req: Request, res: Response) =
             return res.status(400).json({ message: 'No active organization found in session' });
         }
 
-        const hasPermission = await auth.api.hasPermission({
-            headers: await fromNodeHeaders(req.headers),
-            body: {
-                permissions: {
-                    notification: ["update"]
-                }
-            }
-        });
-        if (!hasPermission.success) {
-            return res.status(403).json({ message: 'Forbidden: Insufficient permissions' });
-        }
-
         const userId = req.user?.id;
         if (!userId) {
             return res.status(401).json({ message: 'User not authenticated' });
         }
 
         const userRole = await getUserOrganizationRole(userId, activeOrgId);
+        const hasPermission = await checkNotificationPermission(req, 'update', userRole);
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Forbidden: Insufficient permissions' });
+        }
 
         const result = await notificationService.markAllAsRead(
             userId,

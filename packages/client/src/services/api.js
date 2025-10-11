@@ -1,10 +1,10 @@
 import axios from 'axios';
+import { isDev, getApiUrl } from '../utils/env';
 
-// Use import.meta.env directly for Vite (it's statically replaced at build time)
 // Build API base: Use proxy in dev mode, full URL in production
-const API_BASE = import.meta.env.DEV 
+const API_BASE = isDev()
   ? '/api'  // Use Vite's proxy in development
-  : `${(import.meta.env.VITE_API_URL || 'http://localhost:3000').replace(/\/$/, '')}/api`;
+  : `${getApiUrl().replace(/\/$/, '')}/api`;
 
 export const api = axios.create({
   baseURL: API_BASE,

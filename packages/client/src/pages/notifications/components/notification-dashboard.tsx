@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import type { ReactNode } from "react";
 import { Bell, ChevronLeft, ChevronRight, Route, Bus, Users, UserCog, AlertTriangle, FileText } from "lucide-react";
 import { NotificationType } from "../types/notifications";
 import { DateRange } from "react-day-picker";
@@ -24,11 +25,32 @@ import { cn } from "@/lib/utils";
 import { notificationApi, ApiNotificationItem, ApiNotificationResponse } from "@/services/notificationApi";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNotifications } from "@/contexts/NotificationContext";
+import { useRole } from "@/contexts/RoleContext";
 
 type SortOption = "time" | "importance";
 
+const mapFrontendTypeToBackend = (frontendType: string): string => {
+  switch (frontendType) {
+    case "ROUTE":
+      return "ROUTE";
+    case "VEHICLE":
+      return "VEHICLE";
+    case "EMPLOYEE":
+      return "EMPLOYEE";
+    case "DRIVER":
+      return "DRIVER";
+    case "REQUEST":
+      return "REQUEST";
+    case "SYSTEM":
+      return "SYSTEM";
+    default:
+      return frontendType;
+  }
+};
+
 export function NotificationDashboard() {
   const { user } = useAuth();
+  const { role: normalizedRole } = useRole();
   const { stats, refreshStats } = useNotifications();
   const [notifications, setNotifications] = useState<ApiNotificationItem[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -45,32 +67,63 @@ export function NotificationDashboard() {
 
   console.log(`[PAGINATION] Component render - currentPage: ${currentPage}, refreshTrigger: ${refreshTrigger}`);
 
+  // Fetch notifications based on filters and pagination
+  const fetchNotifications = useCallback(async () => {
+    console.log(`[PAGINATION] fetchNotifications useEffect START - currentPage: ${currentPage}`);
+    try {
+      setLoading(true);
+      let response: ApiNotificationResponse;
+      const query = {
+        page: currentPage,
+        limit: pagination.perPage,
+  type: typeFilter !== "all" ? mapFrontendTypeToBackend(typeFilter) : undefined,
+        importance: (severityFilter !== "all" ? severityFilter : undefined) as "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" | undefined,
+        fromDate: dateRange?.from ? dateRange.from.toISOString() : undefined,
+        toDate: dateRange?.to ? new Date(dateRange.to.getTime() + 24 * 60 * 60 * 1000 - 1).toISOString() : undefined, // End of selected day
+        userId: user && 'id' in user ? (user as unknown as { id: string }).id : undefined,
+        role: normalizedRole,
+      };
+
+      console.log('[PAGINATION] Fetching notifications with query:', query);
+
+      if (sortBy === "importance") {
+        // Use sorted-by-importance endpoint when the sort option is set to "importance"
+        response = await notificationApi.getSortedByImportance(query);
+      } else if (readFilter === "unread") {
+        response = await notificationApi.getUnread(query);
+      } else if (readFilter === "read") {
+        response = await notificationApi.getRead(query);
+      } else {
+        response = await notificationApi.getAll(query);
+      }
+
+      console.log('API Response:', {
+        notificationsCount: response.notifications.length,
+        pagination: response.pagination,
+        requestedPage: query.page
+      });
+
+      setNotifications(response.notifications);
+      setPagination({
+        total: response.pagination.total,
+        totalPages: response.pagination.pages,
+        perPage: response.pagination.perPage,
+        currentPage: currentPage,
+      });
+      console.log(`[PAGINATION] After setPagination - currentPage: ${currentPage}, pagination.currentPage: ${currentPage}`);
+    } catch (error) {
+      console.error("Failed to fetch notifications:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, [currentPage, pagination.perPage, typeFilter, severityFilter, dateRange, readFilter, sortBy, user, normalizedRole]);
+
   // Handle date range change with logging
   const handleDateRangeChange = (newDateRange: DateRange | undefined) => {
     console.log('Date range changed:', newDateRange);
     setDateRange(newDateRange);
     setCurrentPage(1); // Reset to first page when date filter changes
     setRefreshTrigger(prev => prev + 1); // Force refresh
-  };
-
-  // Map frontend type filter to backend notification type pattern
-  const getBackendType = (frontendType: string): string => {
-    switch (frontendType) {
-      case "ROUTE":
-        return "ROUTE";
-      case "VEHICLE":
-        return "VEHICLE";
-      case "EMPLOYEE":
-        return "EMPLOYEE";
-      case "DRIVER":
-        return "DRIVER";
-      case "REQUEST":
-        return "REQUEST";
-      case "SYSTEM":
-        return "SYSTEM";
-      default:
-        return frontendType;
-    }
   };
 
   const _isNotificationSeen = (notification: ApiNotificationItem): boolean => {
@@ -87,61 +140,13 @@ export function NotificationDashboard() {
 
   // Fetch notifications based on filters and pagination
   useEffect(() => {
-    const fetchNotifications = async () => {
-      console.log(`[PAGINATION] fetchNotifications useEffect START - currentPage: ${currentPage}`);
-      try {
-        setLoading(true);
-        let response: ApiNotificationResponse;
-        const query = {
-          page: currentPage,
-          limit: pagination.perPage,
-          type: typeFilter !== "all" ? getBackendType(typeFilter) : undefined,
-          importance: (severityFilter !== "all" ? severityFilter : undefined) as "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" | undefined,
-          fromDate: dateRange?.from ? dateRange.from.toISOString() : undefined,
-          toDate: dateRange?.to ? new Date(dateRange.to.getTime() + 24 * 60 * 60 * 1000 - 1).toISOString() : undefined, // End of selected day
-        };
-
-        console.log('[PAGINATION] Fetching notifications with query:', query);
-
-        if (sortBy === "importance") {
-          // Use sorted-by-importance endpoint when the sort option is set to "importance"
-          response = await notificationApi.getSortedByImportance(query);
-        } else if (readFilter === "unread") {
-          response = await notificationApi.getUnread(query);
-        } else if (readFilter === "read") {
-          response = await notificationApi.getRead(query);
-        } else {
-          response = await notificationApi.getAll(query);
-        }
-
-        console.log('API Response:', {
-          notificationsCount: response.notifications.length,
-          pagination: response.pagination,
-          requestedPage: query.page
-        });
-
-        setNotifications(response.notifications);
-        setPagination({
-          total: response.pagination.total,
-          totalPages: response.pagination.pages,
-          perPage: response.pagination.perPage,
-          currentPage: currentPage,
-        });
-        console.log(`[PAGINATION] After setPagination - currentPage: ${currentPage}, pagination.currentPage: ${currentPage}`);
-      } catch (error) {
-        console.error("Failed to fetch notifications:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     fetchNotifications();
-  }, [currentPage, pagination.perPage, typeFilter, severityFilter, dateRange, readFilter, sortBy, refreshTrigger]);
+  }, [fetchNotifications, refreshTrigger]);
 
   // Fetch stats when filters change
   useEffect(() => {
     refreshStats({
-      type: typeFilter !== "all" ? getBackendType(typeFilter) : undefined,
+      type: typeFilter !== "all" ? mapFrontendTypeToBackend(typeFilter) : undefined,
       importance: severityFilter !== "all" ? severityFilter : undefined,
       fromDate: dateRange?.from ? dateRange.from.toISOString() : undefined,
       toDate: dateRange?.to ? new Date(dateRange.to.getTime() + 24 * 60 * 60 * 1000 - 1).toISOString() : undefined, // End of selected day
@@ -154,7 +159,7 @@ export function NotificationDashboard() {
       console.log(`[PAGINATION] External notification update event received - NOT resetting currentPage`);
       setRefreshTrigger(prev => prev + 1);
       refreshStats({
-        type: typeFilter !== "all" ? getBackendType(typeFilter) : undefined,
+        type: typeFilter !== "all" ? mapFrontendTypeToBackend(typeFilter) : undefined,
         importance: severityFilter !== "all" ? severityFilter : undefined,
         fromDate: dateRange?.from ? dateRange.from.toISOString() : undefined,
         toDate: dateRange?.to ? new Date(dateRange.to.getTime() + 24 * 60 * 60 * 1000 - 1).toISOString() : undefined, // End of selected day
@@ -222,7 +227,12 @@ export function NotificationDashboard() {
       for (const id of selectedIds) {
         await notificationApi.markAsRead(id);
       }
-      const query = { page: currentPage, limit: pagination.perPage };
+      const query = { 
+        page: currentPage, 
+        limit: pagination.perPage,
+        userId: user && 'id' in user ? (user as unknown as { id: string }).id : undefined,
+        role: normalizedRole,
+      };
       const response: ApiNotificationResponse = await notificationApi.getAll(query);
       setNotifications(response.notifications);
       setPagination({
@@ -251,9 +261,11 @@ export function NotificationDashboard() {
       const query = {
         page: currentPage,
         limit: pagination.perPage,
-        type: typeFilter !== "all" ? getBackendType(typeFilter) : undefined,
+    type: typeFilter !== "all" ? mapFrontendTypeToBackend(typeFilter) : undefined,
         fromDate: dateRange?.from ? dateRange.from.toISOString() : undefined,
         toDate: dateRange?.to ? new Date(dateRange.to.getTime() + 24 * 60 * 60 * 1000 - 1).toISOString() : undefined, // End of selected day
+        userId: user && 'id' in user ? (user as unknown as { id: string }).id : undefined,
+        role: normalizedRole,
       };
       const response: ApiNotificationResponse = await notificationApi.getAll(query);
       setNotifications(response.notifications);
@@ -283,10 +295,12 @@ export function NotificationDashboard() {
         const query = {
           page: 1,
           limit: pagination.total,
-          type: typeFilter !== "all" ? getBackendType(typeFilter) : undefined,
+    type: typeFilter !== "all" ? mapFrontendTypeToBackend(typeFilter) : undefined,
           importance: (severityFilter !== "all" ? severityFilter : undefined) as "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" | undefined,
           fromDate: dateRange?.from ? dateRange.from.toISOString() : undefined,
           toDate: dateRange?.to ? new Date(dateRange.to.getTime() + 24 * 60 * 60 * 1000 - 1).toISOString() : undefined, // End of selected day
+          userId: user && 'id' in user ? (user as unknown as { id: string }).id : undefined,
+          role: normalizedRole,
         };
         
         if (readFilter === "read") {
@@ -348,114 +362,119 @@ export function NotificationDashboard() {
 
   const renderPaginationButtons = () => {
     if (pagination.totalPages <= 7) {
-      return (
-        <>
-          {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map(page => {
-            console.log(`[PAGINATION] Rendering page button ${page}, currentPage: ${currentPage}, isActive: ${currentPage === page}`);
-            return (
-              <Button
-                key={page}
-                variant={currentPage === page ? "default" : "outline"}
-                size="sm"
-                onClick={() => {
-                  console.log(`[PAGINATION] Page button ${page} clicked`);
-                  handlePageChange(page);
-                }}
-                className={cn(
-                  "h-8 min-w-[32px] sm:h-9 sm:min-w-[36px] px-2 sm:px-3 cursor-pointer",
-                  currentPage === page
-                    ? "bg-[#3b82f6] text-black dark:text-white hover:bg-[#2563eb] border-2 border-black dark:border-white"
-                    : "hover:bg-[#3b82f6]/10 hover:text-[#3b82f6]"
-                )}
-                style={{ pointerEvents: 'auto', zIndex: 10 }}
-              >
-                {page}
-              </Button>
-            );
-          })}
-        </>
-      );
-    } else {
-      return (
-        <>
+      return Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map(page => {
+        console.log(`[PAGINATION] Rendering page button ${page}, currentPage: ${currentPage}, isActive: ${currentPage === page}`);
+        return (
           <Button
-            variant={currentPage === 1 ? "default" : "outline"}
+            key={page}
+            variant={currentPage === page ? "default" : "outline"}
             size="sm"
             onClick={() => {
-              console.log('[PAGINATION] Page 1 clicked');
-              handlePageChange(1);
+              console.log(`[PAGINATION] Page button ${page} clicked`);
+              handlePageChange(page);
             }}
             className={cn(
               "h-8 min-w-[32px] sm:h-9 sm:min-w-[36px] px-2 sm:px-3 cursor-pointer",
-              currentPage === 1
-                ? "bg-[#3b82f6] text-white hover:bg-[#2563eb] border-2 border-blue-700"
+              currentPage === page
+                ? "bg-[#3b82f6] text-black dark:text-white hover:bg-[#2563eb] border-2 border-black dark:border-white"
                 : "hover:bg-[#3b82f6]/10 hover:text-[#3b82f6]"
             )}
             style={{ pointerEvents: 'auto', zIndex: 10 }}
           >
-            1
+            {page}
           </Button>
+        );
+      });
+    }
 
-          {currentPage > 3 && <span className="px-1 sm:px-2 text-xs sm:text-sm">...</span>}
+  const nodes = [] as ReactNode[];
 
-          {Array.from({ length: pagination.totalPages }, (_, i) => i + 1)
-            .filter(page => {
-              if (currentPage <= 3) {
-                return page > 1 && page < 5;
-              } else if (currentPage >= pagination.totalPages - 2) {
-                return page > pagination.totalPages - 4 && page < pagination.totalPages;
-              } else {
-                return Math.abs(page - currentPage) <= 1;
-              }
-            })
-            .map(page => {
-              console.log(`[PAGINATION] Rendering complex page button ${page}, currentPage: ${currentPage}, isActive: ${currentPage === page}`);
-              return (
-                <Button
-                  key={page}
-                  variant={currentPage === page ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => {
-                    console.log(`[PAGINATION] Complex page button ${page} clicked`);
-                    handlePageChange(page);
-                  }}
-                  className={cn(
-                    "h-8 min-w-[32px] sm:h-9 sm:min-w-[36px] px-2 sm:px-3 cursor-pointer",
-                    currentPage === page
-                      ? "bg-[#3b82f6] text-black dark:text-white hover:bg-[#2563eb] border-2 border-black dark:border-white"
-                      : "hover:bg-[#3b82f6]/10 hover:text-[#3b82f6]"
-                  )}
-                  style={{ pointerEvents: 'auto', zIndex: 10 }}
-                >
-                  {page}
-                </Button>
-              );
-            })}
+    nodes.push(
+      <Button
+        key="page-1"
+        variant={currentPage === 1 ? "default" : "outline"}
+        size="sm"
+        onClick={() => {
+          console.log('[PAGINATION] Page 1 clicked');
+          handlePageChange(1);
+        }}
+        className={cn(
+          "h-8 min-w-[32px] sm:h-9 sm:min-w-[36px] px-2 sm:px-3 cursor-pointer",
+          currentPage === 1
+            ? "bg-[#3b82f6] text-white hover:bg-[#2563eb] border-2 border-blue-700"
+            : "hover:bg-[#3b82f6]/10 hover:text-[#3b82f6]"
+        )}
+        style={{ pointerEvents: 'auto', zIndex: 10 }}
+      >
+        1
+      </Button>
+    );
 
-          {currentPage < pagination.totalPages - 2 && <span className="px-1 sm:px-2 text-xs sm:text-sm">...</span>}
+    if (currentPage > 3) {
+      nodes.push(<span key="ellipsis-start" className="px-1 sm:px-2 text-xs sm:text-sm">...</span>);
+    }
 
-          {pagination.totalPages > 1 && (
-            <Button
-              variant={currentPage === pagination.totalPages ? "default" : "outline"}
-              size="sm"
-              onClick={() => {
-                console.log('[PAGINATION] Last page clicked');
-                handlePageChange(pagination.totalPages);
-              }}
-              className={cn(
-                "h-8 min-w-[32px] sm:h-9 sm:min-w-[36px] px-2 sm:px-3 cursor-pointer",
-                currentPage === pagination.totalPages
-                  ? "bg-[#3b82f6] text-black dark:text-white hover:bg-[#2563eb] border-2 border-black dark:border-white"
-                  : "hover:bg-[#3b82f6]/10 hover:text-[#3b82f6]"
-              )}
-              style={{ pointerEvents: 'auto', zIndex: 10 }}
-            >
-              {pagination.totalPages}
-            </Button>
+    Array.from({ length: pagination.totalPages }, (_, i) => i + 1)
+      .filter(page => {
+        if (currentPage <= 3) {
+          return page > 1 && page < 5;
+        }
+        if (currentPage >= pagination.totalPages - 2) {
+          return page > pagination.totalPages - 4 && page < pagination.totalPages;
+        }
+        return Math.abs(page - currentPage) <= 1;
+      })
+      .forEach(page => {
+        nodes.push(
+          <Button
+            key={`page-${page}`}
+            variant={currentPage === page ? "default" : "outline"}
+            size="sm"
+            onClick={() => {
+              console.log(`[PAGINATION] Complex page button ${page} clicked`);
+              handlePageChange(page);
+            }}
+            className={cn(
+              "h-8 min-w-[32px] sm:h-9 sm:min-w-[36px] px-2 sm:px-3 cursor-pointer",
+              currentPage === page
+                ? "bg-[#3b82f6] text-black dark:text-white hover:bg-[#2563eb] border-2 border-black dark:border-white"
+                : "hover:bg-[#3b82f6]/10 hover:text-[#3b82f6]"
+            )}
+            style={{ pointerEvents: 'auto', zIndex: 10 }}
+          >
+            {page}
+          </Button>
+        );
+      });
+
+    if (currentPage < pagination.totalPages - 2) {
+      nodes.push(<span key="ellipsis-end" className="px-1 sm:px-2 text-xs sm:text-sm">...</span>);
+    }
+
+    if (pagination.totalPages > 1) {
+      nodes.push(
+        <Button
+          key={`page-${pagination.totalPages}`}
+          variant={currentPage === pagination.totalPages ? "default" : "outline"}
+          size="sm"
+          onClick={() => {
+            console.log('[PAGINATION] Last page clicked');
+            handlePageChange(pagination.totalPages);
+          }}
+          className={cn(
+            "h-8 min-w-[32px] sm:h-9 sm:min-w-[36px] px-2 sm:px-3 cursor-pointer",
+            currentPage === pagination.totalPages
+              ? "bg-[#3b82f6] text-black dark:text-white hover:bg-[#2563eb] border-2 border-black dark:border-white"
+              : "hover:bg-[#3b82f6]/10 hover:text-[#3b82f6]"
           )}
-        </>
+          style={{ pointerEvents: 'auto', zIndex: 10 }}
+        >
+          {pagination.totalPages}
+        </Button>
       );
     }
+
+    return nodes;
   };
 
   return (

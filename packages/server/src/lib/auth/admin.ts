@@ -232,3 +232,21 @@ export async function stopImpersonating(req: Request) {
     throw error;
   }
 }
+
+/**
+ * List all organizations with owners (superadmin only)
+ */
+export async function listAllOrganizations(req: Request) {
+  try {
+    // Use Better Auth listOrganizations API to get all organizations
+    const result = await auth.api.listOrganizations({
+      headers: fromNodeHeaders(req.headers),
+      query: {}
+    });
+
+    return result;
+  } catch (error) {
+    console.error('List all organizations error:', error);
+    throw error;
+  }
+}

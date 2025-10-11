@@ -154,6 +154,7 @@ interface OrganizationContextType {
 }
 
 const OrganizationContext = createContext<OrganizationContextType | undefined>(undefined);
+const ACTIVE_ORG_STORAGE_KEY = 'mf-active-organization';
 
 interface OrganizationProviderProps {
   children: ReactNode;
@@ -195,6 +196,15 @@ export function OrganizationProvider({ children }: OrganizationProviderProps) {
     creating: false,
     error: null as string | null,
   });
+  const [hasAutoSelectedOrg, setHasAutoSelectedOrg] = useState(false);
+
+  useEffect(() => {
+    setHasAutoSelectedOrg(false);
+  }, [session?.user?.id]);
+
+  const markAutoSelected = useCallback(() => {
+    setHasAutoSelectedOrg(true);
+  }, []);
   
   const isLoading = shouldFetchOrganizations && (effectiveIsLoadingOrganizations || effectiveIsLoadingActiveOrg);
 
@@ -271,6 +281,10 @@ export function OrganizationProvider({ children }: OrganizationProviderProps) {
       // Small delay for React Query cache to update
       await new Promise(resolve => setTimeout(resolve, 150));
       console.log('✅ Session refreshed successfully');
+
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(ACTIVE_ORG_STORAGE_KEY, organizationId);
+      }
       
     } catch (error: unknown) {
       const errorMsg = error instanceof Error ? error.message : 'Failed to set active organization';
@@ -561,6 +575,17 @@ export function OrganizationProvider({ children }: OrganizationProviderProps) {
     throw new Error('Dynamic roles are not yet implemented');
   };
 
+  useAutoSelectOrganization({
+    shouldFetch: shouldFetchOrganizations,
+    organizations: effectiveOrganizations,
+    activeOrganization: effectiveActiveOrganization,
+    isLoadingOrganizations: effectiveIsLoadingOrganizations,
+    isLoadingActiveOrg: effectiveIsLoadingActiveOrg,
+    setActiveOrganization,
+    hasAutoSelected: hasAutoSelectedOrg,
+    markAutoSelected,
+  });
+
   const value: OrganizationContextType = {
     // Data
     organizations: effectiveOrganizations || [],
@@ -620,6 +645,93 @@ export function OrganizationProvider({ children }: OrganizationProviderProps) {
       {children}
     </OrganizationContext.Provider>
   );
+}
+
+// Automatically restore the last active organization for returning users.
+function useAutoSelectOrganization(
+  opts: {
+    shouldFetch: boolean;
+    organizations: Organization[];
+    activeOrganization: Organization | null;
+    isLoadingOrganizations: boolean;
+    isLoadingActiveOrg: boolean;
+    setActiveOrganization: (id: string) => Promise<void>;
+    hasAutoSelected: boolean;
+    markAutoSelected: () => void;
+  }
+) {
+  const {
+    shouldFetch,
+    organizations,
+    activeOrganization,
+    isLoadingOrganizations,
+    isLoadingActiveOrg,
+    setActiveOrganization,
+    hasAutoSelected,
+    markAutoSelected,
+  } = opts;
+
+  useEffect(() => {
+    if (!shouldFetch) {
+      return;
+    }
+
+    if (hasAutoSelected) {
+      return;
+    }
+
+    if (isLoadingOrganizations || isLoadingActiveOrg) {
+      return;
+    }
+
+    if (activeOrganization) {
+      markAutoSelected();
+      return;
+    }
+
+    if (!organizations.length) {
+      return;
+    }
+
+    let cancelled = false;
+
+    const pickOrganization = async () => {
+      try {
+        const storedId = typeof window !== 'undefined'
+          ? window.localStorage.getItem(ACTIVE_ORG_STORAGE_KEY)
+          : null;
+        const fallback = organizations[0]?.id;
+        const targetId = organizations.find(org => org.id === storedId)?.id || fallback;
+
+        if (!targetId) {
+          return;
+        }
+
+        await setActiveOrganization(targetId);
+      } catch (error) {
+        console.error('Auto-select organization failed', error);
+      } finally {
+        if (!cancelled) {
+          markAutoSelected();
+        }
+      }
+    };
+
+    void pickOrganization();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    shouldFetch,
+    hasAutoSelected,
+    organizations,
+    activeOrganization,
+    isLoadingOrganizations,
+    isLoadingActiveOrg,
+    setActiveOrganization,
+    markAutoSelected,
+  ]);
 }
 
 export function useOrganizations() {

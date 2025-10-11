@@ -1,9 +1,12 @@
-import React, { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import React, { useState, useEffect, useMemo } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@components/Common/UI/Button";
 import LoadingWrapper from "@components/Common/LoadingAnimation/LoadingWrapper";
 import { motion } from "framer-motion";
 import { useTheme } from "@contexts/ThemeContext";
+import { useRole } from "@contexts/RoleContext";
+import { useOrganization } from "@contexts/OrganizationContext";
+import { ROLES, ROUTES } from "@data/constants";
 import "./Home.css";
 
 const buttonStyles = {
@@ -15,11 +18,153 @@ export default function Home() {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
   const [isLoading, setIsLoading] = useState(true);
+  const { role } = useRole();
+  const { activeOrganization, isLoadingActiveOrg, isLoadingOrganizations } = useOrganization();
+  const navigate = useNavigate();
+
+  const autoTarget = useMemo(() => {
+    if (!role) {
+      return null;
+    }
+
+    // Superadmin always goes to organizations (to manage all orgs)
+    if (role === ROLES.SUPERADMIN) {
+      return ROUTES.ORGANIZATIONS;
+    }
+
+    // Owner always goes to organizations (to select/manage orgs)
+    if (role === ROLES.OWNER) {
+      return ROUTES.ORGANIZATIONS;
+    }
+
+    // Driver always goes to driver portal
+    if (role === ROLES.DRIVER) {
+      return ROUTES.DRIVER_PORTAL;
+    }
+
+    // Admin, Manager, Employee need active org to go to dashboard
+    if (role === ROLES.ADMIN || role === ROLES.MANAGER || role === ROLES.EMPLOYEE) {
+      return activeOrganization ? ROUTES.DASHBOARD : ROUTES.ORGANIZATIONS;
+    }
+
+    return ROUTES.DASHBOARD;
+  }, [role, activeOrganization]);
+
+  const manualTarget = useMemo(() => {
+    if (!role) {
+      return ROUTES.DASHBOARD;
+    }
+
+    // Superadmin always goes to organizations (to manage all orgs)
+    if (role === ROLES.SUPERADMIN) {
+      return ROUTES.ORGANIZATIONS;
+    }
+
+    // Owner always goes to organizations (to select/manage orgs)
+    if (role === ROLES.OWNER) {
+      return ROUTES.ORGANIZATIONS;
+    }
+
+    // Driver always goes to driver portal
+    if (role === ROLES.DRIVER) {
+      return ROUTES.DRIVER_PORTAL;
+    }
+
+    // Admin, Manager, Employee need active org for dashboard
+    if (role === ROLES.ADMIN || role === ROLES.MANAGER || role === ROLES.EMPLOYEE) {
+      return activeOrganization ? ROUTES.DASHBOARD : ROUTES.ORGANIZATIONS;
+    }
+
+    return ROUTES.DASHBOARD;
+  }, [role, activeOrganization]);
+
+  const manualLabel = useMemo(() => {
+    if (!role) {
+      return "Go to Dashboard";
+    }
+
+    // Superadmin always manages organizations
+    if (role === ROLES.SUPERADMIN) {
+      return "Manage Organizations";
+    }
+
+    // Owner always manages organizations
+    if (role === ROLES.OWNER) {
+      return "Manage Organizations";
+    }
+
+    // Driver goes to driver portal
+    if (role === ROLES.DRIVER) {
+      return "Open Driver Portal";
+    }
+
+    // Admin, Manager, Employee need active org
+    if (role === ROLES.ADMIN || role === ROLES.MANAGER || role === ROLES.EMPLOYEE) {
+      return activeOrganization ? "Go to Dashboard" : "Select an Organization";
+    }
+
+    return "Go to Dashboard";
+  }, [role, activeOrganization]);
 
   useEffect(() => {
     const timer = setTimeout(() => setIsLoading(false), 1500);
     return () => clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    if (isLoading) {
+      return;
+    }
+
+    if (!autoTarget) {
+      return;
+    }
+
+    // Superadmin doesn't need active org, always goes to organizations immediately
+    if (role === ROLES.SUPERADMIN) {
+      navigate(autoTarget, { replace: true });
+      return;
+    }
+
+    // Owner always goes to organizations immediately
+    if (role === ROLES.OWNER) {
+      navigate(autoTarget, { replace: true });
+      return;
+    }
+
+    // Driver doesn't need active org, always goes to driver portal
+    if (role === ROLES.DRIVER) {
+      navigate(autoTarget, { replace: true });
+      return;
+    }
+
+    // Admin, Manager, Employee need active org to proceed
+    const requiresActiveOrganization = role === ROLES.ADMIN || role === ROLES.MANAGER || role === ROLES.EMPLOYEE;
+
+    if (requiresActiveOrganization) {
+      if (isLoadingActiveOrg || isLoadingOrganizations) {
+        return;
+      }
+
+      if (!activeOrganization) {
+        // Redirect to organizations to select one
+        navigate(ROUTES.ORGANIZATIONS, { replace: true });
+        return;
+      }
+    }
+
+    // All other roles with active org (or doesn't require it) can proceed
+    navigate(autoTarget, { replace: true });
+  }, [activeOrganization, autoTarget, isLoading, isLoadingActiveOrg, isLoadingOrganizations, navigate, role]);
+
+  const handlePrimaryAction = () => {
+    navigate(manualTarget, { replace: manualTarget === autoTarget });
+  };
+
+  const needsOrganizationSelection = useMemo(() => {
+    const organizationRoles = [ROLES.SUPERADMIN, ROLES.OWNER, ROLES.ADMIN, ROLES.MANAGER, ROLES.EMPLOYEE];
+    return organizationRoles.includes(role) && !activeOrganization;
+  }, [role, activeOrganization]);
 
   return (
     <LoadingWrapper isLoading={isLoading}>
@@ -112,16 +257,25 @@ export default function Home() {
                 transition={{ delay: 0.2 }}
                 className="flex flex-wrap items-center justify-center gap-4"
               >
-                <Link to="/dashboard">
-                  <Button className={buttonStyles.primary}>
-                    <span className="relative z-10">Go to Dashboard</span>
-                    <div className="absolute inset-0 -z-10 bg-gradient-to-r from-[#f3684e]/0 via-white/10 to-[#f3684e]/0 group-hover:via-white/20 transition-all duration-500 translate-x-[-100%] group-hover:translate-x-[100%]" />
-                  </Button>
-                </Link>
+                <Button className={buttonStyles.primary} onClick={handlePrimaryAction}>
+                  <span className="relative z-10">{manualLabel}</span>
+                  <div className="absolute inset-0 -z-10 bg-gradient-to-r from-[#f3684e]/0 via-white/10 to-[#f3684e]/0 group-hover:via-white/20 transition-all duration-500 translate-x-[-100%] group-hover:translate-x-[100%]" />
+                </Button>
                 <Link to="/about">
                   <Button className={buttonStyles.secondary}>Learn More</Button>
                 </Link>
               </motion.div>
+
+              {needsOrganizationSelection && (
+                <motion.p
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}
+                  className={`mt-6 text-sm ${isDark ? "text-white/70" : "text-slate-700"}`}
+                >
+                  You&apos;ll need to choose an organization before accessing the dashboard.
+                </motion.p>
+              )}
             </div>
           </div>
         </motion.div>

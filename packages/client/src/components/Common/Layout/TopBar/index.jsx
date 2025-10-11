@@ -326,7 +326,8 @@ function TopBar({ driverMode = false }) {
             <UserDropdown
               username={username}
               email={session?.user?.email}
-              role={ROLE_LABELS[role]}
+              roleLabel={ROLE_LABELS[role]}
+              normalizedRole={role}
             />
           </div>
         </div>

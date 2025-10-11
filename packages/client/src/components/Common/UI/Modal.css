@@ -17,22 +17,59 @@
   background-color: var(--card-background);
   border-radius: 0.75rem;
   border: 1px solid var(--divider);
-  padding: 1.5rem;
-  width: 90%;
-  max-width: 500px;
+  padding: 0;
+  width: 95%;
+  max-width: 800px;
+  height: auto;
   max-height: 90vh;
-  overflow-y: auto;
+  overflow: hidden;
   position: relative;
   box-shadow: 0 8px 30px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box; /* ✅ ensures internal padding doesn’t affect width */
+}
+
+.modal-content {
+  color: var(--text-primary);
+  padding: 0;
+  overflow-y: auto;
+  overflow-x: hidden; /* ✅ Prevent horizontal overflow */
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: calc(90vh - 120px);
+  width: 100%; /* ✅ Full width of modal */
+  box-sizing: border-box; /* ✅ includes padding safely */
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* ✅ center form horizontally */
+}
+
+
+/* Mobile responsiveness */
+@media (max-width: 640px) {
+  .modal {
+    width: 98%;
+    max-width: 100%;
+    max-height: 95vh;
+    border-radius: 0.5rem;
+  }
+}
+
+@media (min-width: 641px) and (max-width: 1024px) {
+  .modal {
+    width: 90%;
+    max-width: 700px;
+  }
 }
 
 .modal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding-bottom: 1rem;
-  margin-bottom: 1rem;
+  padding: 1.5rem 1.5rem 1rem 1.5rem;
   border-bottom: 1px solid var(--divider);
+  flex-shrink: 0;
 }
 
 .modal-header h2 {
@@ -63,6 +100,35 @@
 
 .modal-content {
   color: var(--text-primary);
+  padding: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: calc(90vh - 120px);
+}
+
+/* Smooth scrolling */
+.modal-content {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
+}
+
+.modal-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.modal-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.modal-content::-webkit-scrollbar-thumb {
+  background-color: rgba(156, 163, 175, 0.5);
+  border-radius: 3px;
+}
+
+.modal-content::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(107, 114, 128, 0.7);
 }
 
 /* Animations */

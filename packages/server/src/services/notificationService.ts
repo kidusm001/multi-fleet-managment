@@ -118,6 +118,28 @@ interface NotificationQuery {
   limit?: number;
 }
 
+const shouldRestrictToPersonalNotifications = (role?: string | null): boolean => {
+  if (!role) return true;
+  const normalized = role.toString().trim().toLowerCase();
+  return normalized === 'employee' || normalized === 'user';
+};
+
+const applyRecipientFilter = (where: Record<string, any>, userId?: string, role?: string | null) => {
+  if (!userId) {
+    return;
+  }
+
+  if (shouldRestrictToPersonalNotifications(role)) {
+    where.userId = userId;
+    return;
+  }
+
+  where.OR = [
+    { userId },
+    { userId: null },
+  ];
+};
+
 export const notificationService = {
   async createNotification(payload: {
     organizationId: string;
@@ -159,12 +181,7 @@ export const notificationService = {
 
     const where: any = {};
     if (organizationId) where.organizationId = organizationId;
-    if (userId) {
-      where.OR = [
-        { userId },
-        { userId: null },
-      ];
-    }
+    applyRecipientFilter(where, userId, role);
     if (role) where.toRoles = { has: role };
     if (type) {
       const expansion = expandNotificationType(type);
@@ -219,13 +236,9 @@ export const notificationService = {
 
     const where: any = {};
     if (organizationId) where.organizationId = organizationId;
-    if (userId) {
-      where.OR = [
-        { userId },
-        { userId: null },
-      ];
-    }
-    if (role) where.toRoles = { has: role };
+    applyRecipientFilter(where, userId, role);
+  if (role) where.toRoles = { has: role };
+  applyRecipientFilter(where, userId, role);
     if (type) {
       const expansion = expandNotificationType(type);
       if (expansion?.mode === 'in') {

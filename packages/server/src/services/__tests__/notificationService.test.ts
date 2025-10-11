@@ -185,13 +185,33 @@ describe('NotificationService', () => {
       );
     });
 
-    it('should filter by userId with OR condition', async () => {
+    it('should restrict to userId when role is missing or limited', async () => {
       mockPrismaTyped.notification.findMany.mockResolvedValue([]);
       mockPrismaTyped.notification.count.mockResolvedValue(0);
 
       await notificationService.getNotifications({
         organizationId: 'org_123',
         userId: 'user_123',
+      });
+
+      expect(mockPrismaTyped.notification.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({
+            organizationId: 'org_123',
+            userId: 'user_123',
+          }),
+        })
+      );
+    });
+
+    it('should include shared notifications for elevated roles', async () => {
+      mockPrismaTyped.notification.findMany.mockResolvedValue([]);
+      mockPrismaTyped.notification.count.mockResolvedValue(0);
+
+      await notificationService.getNotifications({
+        organizationId: 'org_123',
+        userId: 'user_123',
+        role: 'admin',
       });
 
       expect(mockPrismaTyped.notification.findMany).toHaveBeenCalledWith(

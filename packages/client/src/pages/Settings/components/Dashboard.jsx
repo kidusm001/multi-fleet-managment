@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useRole } from "@/contexts/RoleContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/Common/UI/Card";
 import { Overview } from "./Overview";
 import { RecentActivity } from "./RecentActivity";
@@ -9,8 +10,9 @@ import { departmentService } from "../services/departmentService";
 import { shiftService } from "../services/shiftService";
 import { activityService } from "../services/activityService";
 import { Skeleton } from "@/components/Common/UI/skeleton";
-import { ArrowUp, ArrowDown, Minus } from "lucide-react";
+import { ArrowUp, ArrowDown, Minus, Building2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 
 /**
  * Settings Dashboard Component
@@ -21,6 +23,7 @@ import { useNavigate } from "react-router-dom";
 export default function Dashboard() {
   const _navigate = useNavigate();
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { role } = useRole();
   const [_isLoading, setIsLoading] = useState(true);
   const [showAdminContent, setShowAdminContent] = useState(false);
   const [stats, setStats] = useState({
@@ -32,6 +35,9 @@ export default function Dashboard() {
   const [error, setError] = useState(null);
   const [chartData, setChartData] = useState([]);
   const [activities, setActivities] = useState([]);
+  const [organizations, setOrganizations] = useState([]);
+
+  const isSuperadmin = role === 'superadmin';
 
   // Verify user is authenticated and has admin privileges
   const checkPermissions = useCallback(() => {
@@ -65,6 +71,16 @@ export default function Dashboard() {
       setError(null);
       
       try {
+        // For superadmin, fetch all organizations
+        if (isSuperadmin) {
+          const orgResponse = await axios.get('/api/organization/admin/organizations');
+          setOrganizations(orgResponse.data || []);
+          
+          // Superadmin doesn't need other stats
+          setIsLoading(false);
+          return;
+        }
+
         // Fetch all data in parallel for efficiency
         const [
           employeeStats, 
@@ -122,7 +138,7 @@ export default function Dashboard() {
     };
 
     fetchDashboardData();
-  }, [showAdminContent]);
+  }, [showAdminContent, isSuperadmin]);
 
   // Render trend indicator based on value
   const renderTrend = (value) => {
@@ -228,74 +244,142 @@ export default function Dashboard() {
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold text-[var(--text-primary)]">Dashboard</h2>
-        <p className="text-[var(--text-secondary)] mt-2">Overview of system settings and recent activity</p>
+        <p className="text-[var(--text-secondary)] mt-2">
+          {isSuperadmin 
+            ? "System overview and organization management" 
+            : "Overview of system settings and recent activity"
+          }
+        </p>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="bg-gradient-to-br from-sky-500 to-indigo-600 dark:from-sky-600 dark:to-indigo-700 transition-transform hover:scale-[1.02] duration-300 hover:shadow-lg">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-white">Total Employees</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-white">{stats.employees.total}</div>
-            <p className="text-xs text-white/80 flex items-center gap-1">
-              {renderTrend(stats.employees.trend)} from last month
-            </p>
-          </CardContent>
-        </Card>
-        <Card className="bg-gradient-to-br from-teal-500 to-green-600 dark:from-teal-600 dark:to-green-700 transition-transform hover:scale-[1.02] duration-300 hover:shadow-lg">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-white">Active Drivers</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-white">{stats.drivers.total}</div>
-            <p className="text-xs text-white/80 flex items-center gap-1">
-              {renderTrend(stats.drivers.trend)} from last month
-            </p>
-          </CardContent>
-        </Card>
-        <Card className="bg-gradient-to-br from-amber-500 to-red-600 dark:from-amber-600 dark:to-red-700 transition-transform hover:scale-[1.02] duration-300 hover:shadow-lg">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-white">Departments</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-white">{stats.departments.total}</div>
-            <p className="text-xs text-white/80 flex items-center gap-1">
-              {renderTrend(stats.departments.trend)}
-            </p>
-          </CardContent>
-        </Card>
-        <Card className="bg-gradient-to-br from-purple-500 to-pink-600 dark:from-purple-600 dark:to-pink-700 transition-transform hover:scale-[1.02] duration-300 hover:shadow-lg">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-white">Active Shifts</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-white">{stats.shifts.total}</div>
-            <p className="text-xs text-white/80 flex items-center gap-1">
-              {stats.shifts.trend > 0 ? `+${stats.shifts.trend} new this week` : 'No change'}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+      {/* Superadmin View: Organization List */}
+      {isSuperadmin ? (
+        <div className="space-y-4">
+          <Card className="bg-gradient-to-br from-purple-500 to-indigo-600 dark:from-purple-600 dark:to-indigo-700 transition-transform hover:scale-[1.01] duration-300 hover:shadow-lg">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium text-white flex items-center gap-2">
+                <Building2 className="h-5 w-5" />
+                Total Organizations
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-4xl font-bold text-white">{organizations.length}</div>
+              <p className="text-xs text-white/80 mt-1">
+                Organizations in system
+              </p>
+            </CardContent>
+          </Card>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">
-        <Card className="col-span-4 transition-all duration-300 hover:shadow-md">
-          <CardHeader>
-            <CardTitle>Employee & Driver Trends</CardTitle>
-          </CardHeader>
-          <CardContent className="pl-2">
-            <Overview data={chartData} />
-          </CardContent>
-        </Card>
-        <Card className="col-span-3 transition-all duration-300 hover:shadow-md">
-          <CardHeader>
-            <CardTitle>Recent Activity</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <RecentActivity activities={activities} />
-          </CardContent>
-        </Card>
-      </div>
+          <Card>
+            <CardHeader>
+              <CardTitle>All Organizations</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {organizations.length === 0 ? (
+                <p className="text-[var(--text-secondary)] text-center py-8">No organizations found</p>
+              ) : (
+                <div className="space-y-3">
+                  {organizations.map((org) => {
+                    const owner = org.members?.find(m => m.role?.includes('owner'));
+                    return (
+                      <div 
+                        key={org.id} 
+                        className="flex items-center justify-between p-4 rounded-lg border border-[var(--divider)] hover:bg-[var(--background-secondary)] transition-colors"
+                      >
+                        <div className="flex-1">
+                          <h3 className="font-medium text-[var(--text-primary)]">{org.name}</h3>
+                          <div className="flex items-center gap-4 mt-1">
+                            <p className="text-sm text-[var(--text-secondary)]">
+                              Slug: {org.slug}
+                            </p>
+                            {owner && (
+                              <p className="text-sm text-[var(--text-secondary)]">
+                                Owner: {owner.user?.email || 'Unknown'}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="text-sm text-[var(--text-secondary)]">
+                          {org.members?.length || 0} member{org.members?.length !== 1 ? 's' : ''}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      ) : (
+        <>
+          {/* Regular Admin View */}
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+            <Card className="bg-gradient-to-br from-sky-500 to-indigo-600 dark:from-sky-600 dark:to-indigo-700 transition-transform hover:scale-[1.02] duration-300 hover:shadow-lg">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-white">Total Employees</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-white">{stats.employees.total}</div>
+                <p className="text-xs text-white/80 flex items-center gap-1">
+                  {renderTrend(stats.employees.trend)} from last month
+                </p>
+              </CardContent>
+            </Card>
+            <Card className="bg-gradient-to-br from-teal-500 to-green-600 dark:from-teal-600 dark:to-green-700 transition-transform hover:scale-[1.02] duration-300 hover:shadow-lg">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-white">Active Drivers</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-white">{stats.drivers.total}</div>
+                <p className="text-xs text-white/80 flex items-center gap-1">
+                  {renderTrend(stats.drivers.trend)} from last month
+                </p>
+              </CardContent>
+            </Card>
+            <Card className="bg-gradient-to-br from-amber-500 to-red-600 dark:from-amber-600 dark:to-red-700 transition-transform hover:scale-[1.02] duration-300 hover:shadow-lg">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-white">Departments</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-white">{stats.departments.total}</div>
+                <p className="text-xs text-white/80 flex items-center gap-1">
+                  {renderTrend(stats.departments.trend)}
+                </p>
+              </CardContent>
+            </Card>
+            <Card className="bg-gradient-to-br from-purple-500 to-pink-600 dark:from-purple-600 dark:to-pink-700 transition-transform hover:scale-[1.02] duration-300 hover:shadow-lg">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-white">Active Shifts</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-white">{stats.shifts.total}</div>
+                <p className="text-xs text-white/80 flex items-center gap-1">
+                  {stats.shifts.trend > 0 ? `+${stats.shifts.trend} new this week` : 'No change'}
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">
+            <Card className="col-span-4 transition-all duration-300 hover:shadow-md">
+              <CardHeader>
+                <CardTitle>Employee & Driver Trends</CardTitle>
+              </CardHeader>
+              <CardContent className="pl-2">
+                <Overview data={chartData} />
+              </CardContent>
+            </Card>
+            <Card className="col-span-3 transition-all duration-300 hover:shadow-md">
+              <CardHeader>
+                <CardTitle>Recent Activity</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <RecentActivity activities={activities} />
+              </CardContent>
+            </Card>
+          </div>
+        </>
+      )}
     </div>
   );
 }

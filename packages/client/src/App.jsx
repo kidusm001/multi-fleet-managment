@@ -23,6 +23,7 @@ const OrganizationSelection = lazy(() => import('@pages/OrganizationSelection'))
 const NotificationDashboard = lazy(() => import('@pages/notifications/components/notification-dashboard').then(m => ({ default: m.NotificationDashboard })));
 const MobileNotificationWrapper = lazy(() => import('@pages/notifications/components/MobileNotificationWrapper').then(m => ({ default: m.MobileNotificationWrapper })));
 const DriverPortal = lazy(() => import('@pages/DriverPortal'));
+const Home = lazy(() => import('@pages/Home'));
 
 import { RoleProvider, useRole } from "@contexts/RoleContext";
 import { OrganizationProvider } from "@contexts/OrganizationContext";
@@ -40,6 +41,13 @@ import "@styles/App.css";
 
 // Layout for all authenticated/protected pages
 function ProtectedLayout({ isDark }) {
+  const location = useLocation();
+  const isHomeLanding = location.pathname === ROUTES.HOME;
+
+  if (isHomeLanding) {
+    return <Outlet />;
+  }
+
   return (
     <div className={`min-h-screen ${isDark ? "bg-slate-900" : "bg-gray-50"} transition-colors duration-300`}>
       <TopBar />
@@ -58,9 +66,14 @@ function ProtectedLayout({ isDark }) {
 function DriverLayout({ isDark }) {
   const location = useLocation();
   const isDriverPortal = location.pathname.startsWith('/driver');
+  const isHomeLanding = location.pathname === ROUTES.HOME;
   
   // Driver portal handles its own layout completely
   if (isDriverPortal) {
+    return <Outlet />;
+  }
+
+  if (isHomeLanding) {
     return <Outlet />;
   }
   
@@ -86,12 +99,17 @@ function AppContent() {
   const isEmployee = role === ROLES.EMPLOYEE;
   const isSuperAdmin = role === ROLES.SUPERADMIN;
   const isOwner = role === ROLES.OWNER;
-  const isAdmin = role === ROLES.ADMIN || isOwner || isSuperAdmin;
+  const isAdmin = role === ROLES.ADMIN;
   const isManager = role === ROLES.MANAGER;
   const viewport = useViewport();
   const isMobile = viewport === 'mobile';
 
   const location = useLocation();
+  const homeElement = (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+      <Home />
+    </Suspense>
+  );
 
   // Track previous path to detect leaving /notifications
   const prevPathRef = React.useRef(location.pathname);
@@ -146,13 +164,6 @@ function AppContent() {
         />
 
         {/* Root redirect based on roles */}
-        {isDriver && <Route index element={<Navigate to={ROUTES.DRIVER_PORTAL} replace />} />}
-        {isSuperAdmin && <Route index element={<Navigate to={ROUTES.ORGANIZATIONS} replace />} />}
-        {isOwner && <Route index element={<Navigate to={ROUTES.ORGANIZATIONS} replace />} />}
-        {isAdmin && <Route index element={<Navigate to={ROUTES.ORGANIZATION_MANAGEMENT} replace />} />}
-        {isManager && <Route index element={<Navigate to={ROUTES.DASHBOARD} replace />} />}
-        {isEmployee && <Route index element={<Navigate to={ROUTES.DASHBOARD} replace />} />}
-
         {/* Protected Routes Layout - Role-based */}
         <Route
           element={
@@ -173,7 +184,7 @@ function AppContent() {
           {/* Driver-only routes */}
           {isDriver ? (
             <>
-              <Route index element={<Navigate to={ROUTES.DRIVER_PORTAL} replace />} />
+              <Route index element={homeElement} />
               <Route
                 path="driver/*"
                 element={<Suspense fallback={<div />}> <DriverPortal /> </Suspense>}
@@ -195,7 +206,7 @@ function AppContent() {
             </>
           ) : isEmployee ? (
             <>
-              <Route index element={<Navigate to={ROUTES.DASHBOARD} replace />} />
+              <Route index element={homeElement} />
               <Route
                 path="dashboard"
                 element={<Suspense fallback={<div className="p-6">Loading dashboard…</div>}> <Dashboard /> </Suspense>}
@@ -216,7 +227,7 @@ function AppContent() {
             </>
           ) : isManager ? (
             <>
-              <Route index element={<Navigate to={ROUTES.DASHBOARD} replace />} />
+              <Route index element={homeElement} />
               <Route
                 path="dashboard"
                 element={<Suspense fallback={<div className="p-6">Loading dashboard…</div>}> <Dashboard /> </Suspense>}
@@ -253,7 +264,7 @@ function AppContent() {
             </>
           ) : isAdmin ? (
             <>
-              <Route index element={<Navigate to={ROUTES.ORGANIZATION_MANAGEMENT} replace />} />
+              <Route index element={homeElement} />
               <Route
                 path="dashboard"
                 element={<Suspense fallback={<div className="p-6">Loading dashboard…</div>}> <Dashboard /> </Suspense>}
@@ -310,7 +321,7 @@ function AppContent() {
             </>
           ) : (isSuperAdmin || isOwner) ? (
             <>
-              <Route index element={<Navigate to={ROUTES.ORGANIZATIONS} replace />} />
+              <Route index element={homeElement} />
               <Route
                 path="dashboard"
                 element={<Suspense fallback={<div className="p-6">Loading dashboard…</div>}> <Dashboard /> </Suspense>}
@@ -376,7 +387,7 @@ function AppContent() {
           ) : (
             <>
               {/* Fallback for unknown roles */}
-              <Route index element={<Navigate to={ROUTES.DASHBOARD} replace />} />
+              <Route index element={homeElement} />
               <Route
                 path="dashboard"
                 element={<Suspense fallback={<div className="p-6">Loading dashboard…</div>}> <Dashboard /> </Suspense>}

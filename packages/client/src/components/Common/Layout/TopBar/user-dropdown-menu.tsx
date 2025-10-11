@@ -4,6 +4,7 @@ import { cn } from "@lib/utils";
 import { User, Settings, LogOut, ChevronDown, Building2 } from "lucide-react";
 import { authClient } from "@lib/auth-client";
 import { useTheme } from "@contexts/ThemeContext";
+import { ROLES } from "@data/constants";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,7 +15,8 @@ import {
 interface UserDropdownProps {
   username: string;
   email: string;
-  role?: string;
+  roleLabel?: string;
+  normalizedRole?: string | null;
 }
 
 // User button styles as CSS variables in a style tag (no external dependency)
@@ -248,9 +250,9 @@ const UserButtonCss = ({ theme }: { theme: string }) => {
   return <style dangerouslySetInnerHTML={{ __html: styles }} />;
 };
 
-const UserButton = ({ username, email, role }: { username: string; email: string; role?: string }) => {
-  const roleLabel = React.useMemo(() => {
-    const raw = (role ?? '').toString();
+const UserButton = ({ username, email, roleLabel }: { username: string; email: string; roleLabel?: string }) => {
+  const computedRoleLabel = React.useMemo(() => {
+    const raw = (roleLabel ?? '').toString();
     if (!raw) return 'User';
     const upper = raw.toUpperCase();
     const map: Record<string, string> = {
@@ -268,7 +270,7 @@ const UserButton = ({ username, email, role }: { username: string; email: string
       .replace(/_/g, ' ')
       .toLowerCase()
       .replace(/\b\w/g, (c) => c.toUpperCase());
-  }, [role]);
+  }, [roleLabel]);
 
   return (
     <button className="button-user">
@@ -283,7 +285,7 @@ const UserButton = ({ username, email, role }: { username: string; email: string
       <div className="notice-content">
         <div className="username">{username}</div>
         <div className="label-role">
-          {roleLabel}<span className="role-badge">{roleLabel ? roleLabel.charAt(0) : 'U'}</span>
+          {computedRoleLabel}<span className="role-badge">{computedRoleLabel ? computedRoleLabel.charAt(0) : 'U'}</span>
         </div>
         <div className="user-id">{email}</div>
       </div>
@@ -292,11 +294,16 @@ const UserButton = ({ username, email, role }: { username: string; email: string
   );
 };
 
-export function UserDropdown({ username, email, role }: UserDropdownProps) {
+export function UserDropdown({ username, email, roleLabel, normalizedRole }: UserDropdownProps) {
   const navigate = useNavigate();
   const { theme } = useTheme();
   const isDarkMode = theme === 'dark';
   const [isOpen, setIsOpen] = useState(false);
+  const normalizedRoleValue = normalizedRole ?? null;
+  const isLimitedUser = !normalizedRoleValue || normalizedRoleValue === ROLES.EMPLOYEE;
+  const canManageOrganizations = normalizedRoleValue === ROLES.SUPERADMIN
+    || normalizedRoleValue === ROLES.OWNER
+    || normalizedRoleValue === ROLES.ADMIN;
 
   const handleLogout = async () => {
     try {
@@ -328,7 +335,7 @@ export function UserDropdown({ username, email, role }: UserDropdownProps) {
       <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
         <DropdownMenuTrigger asChild>
           <div>
-            <UserButton username={username} email={email} role={role} />
+            <UserButton username={username} email={email} roleLabel={roleLabel} />
           </div>
         </DropdownMenuTrigger>
 
@@ -345,50 +352,54 @@ export function UserDropdown({ username, email, role }: UserDropdownProps) {
           align="end"
           sideOffset={8} // Increased offset
         >
-          {/* Profile Item */}
-          <DropdownMenuItem
-            onClick={handleProfileClick}
-            className={cn(
-              "dropdown-item flex items-center gap-3 px-4 py-3 text-sm transition-all", // Increased padding and gap
-              "relative cursor-pointer",
-              isDarkMode 
-                ? "text-gray-300 hover:text-blue-300 focus:text-blue-300" 
-                : "text-gray-700 hover:text-blue-600 focus:text-blue-600",
-              "group hover:pl-5 active:scale-98" // Adjusted hover padding
-            )}
-          >
-            <div className={cn(
-              "absolute left-0 top-[10%] w-1 h-[80%] rounded-full bg-blue-500",
-              "opacity-0 transition-all duration-200 scale-50",
-              "group-hover:opacity-100 group-hover:scale-100"
-            )} />
-            <User className="w-4 h-4 transition-transform group-hover:scale-110" />
-            <span className="font-medium">Profile</span>
-          </DropdownMenuItem>
+          {!isLimitedUser && (
+            <>
+              {/* Profile Item */}
+              <DropdownMenuItem
+                onClick={handleProfileClick}
+                className={cn(
+                  "dropdown-item flex items-center gap-3 px-4 py-3 text-sm transition-all", // Increased padding and gap
+                  "relative cursor-pointer",
+                  isDarkMode 
+                    ? "text-gray-300 hover:text-blue-300 focus:text-blue-300" 
+                    : "text-gray-700 hover:text-blue-600 focus:text-blue-600",
+                  "group hover:pl-5 active:scale-98" // Adjusted hover padding
+                )}
+              >
+                <div className={cn(
+                  "absolute left-0 top-[10%] w-1 h-[80%] rounded-full bg-blue-500",
+                  "opacity-0 transition-all duration-200 scale-50",
+                  "group-hover:opacity-100 group-hover:scale-100"
+                )} />
+                <User className="w-4 h-4 transition-transform group-hover:scale-110" />
+                <span className="font-medium">Profile</span>
+              </DropdownMenuItem>
 
-          {/* Settings Item */}
-          <DropdownMenuItem
-            onClick={handleSettingsClick}
-            className={cn(
-              "dropdown-item flex items-center gap-3 px-4 py-3 text-sm transition-all", // Increased padding and gap
-              "relative cursor-pointer",
-              isDarkMode 
-                ? "text-gray-300 hover:text-blue-300 focus:text-blue-300" 
-                : "text-gray-700 hover:text-blue-600 focus:text-blue-600",
-              "group hover:pl-5 active:scale-98" // Adjusted hover padding
-            )}
-          >
-            <div className={cn(
-              "absolute left-0 top-[10%] w-1 h-[80%] rounded-full bg-blue-500",
-              "opacity-0 transition-all duration-200 scale-50",
-              "group-hover:opacity-100 group-hover:scale-100"
-            )} />
-            <Settings className="w-4 h-4 transition-transform group-hover:scale-110 group-hover:rotate-12" />
-            <span className="font-medium">Settings</span>
-          </DropdownMenuItem>
+              {/* Settings Item */}
+              <DropdownMenuItem
+                onClick={handleSettingsClick}
+                className={cn(
+                  "dropdown-item flex items-center gap-3 px-4 py-3 text-sm transition-all", // Increased padding and gap
+                  "relative cursor-pointer",
+                  isDarkMode 
+                    ? "text-gray-300 hover:text-blue-300 focus:text-blue-300" 
+                    : "text-gray-700 hover:text-blue-600 focus:text-blue-600",
+                  "group hover:pl-5 active:scale-98" // Adjusted hover padding
+                )}
+              >
+                <div className={cn(
+                  "absolute left-0 top-[10%] w-1 h-[80%] rounded-full bg-blue-500",
+                  "opacity-0 transition-all duration-200 scale-50",
+                  "group-hover:opacity-100 group-hover:scale-100"
+                )} />
+                <Settings className="w-4 h-4 transition-transform group-hover:scale-110 group-hover:rotate-12" />
+                <span className="font-medium">Settings</span>
+              </DropdownMenuItem>
+            </>
+          )}
 
           {/* Organizations Item - Only for SuperAdmin, Owner, Admin */}
-          {(role === 'Super Admin' || role === 'Owner' || role === 'Administrator') && (
+          {canManageOrganizations && (
             <DropdownMenuItem
               onClick={handleOrganizationsClick}
               className={cn(

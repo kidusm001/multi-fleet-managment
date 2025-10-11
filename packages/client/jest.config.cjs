@@ -1,13 +1,15 @@
 module.exports = {
   testEnvironment: 'jsdom',
   transform: {
-    '^.+\\.(ts|tsx|js|jsx)$': ['babel-jest', { presets: ['@babel/preset-env', ['@babel/preset-react', { runtime: 'automatic' }], '@babel/preset-typescript'] }]
+    '^.+\\.(ts|tsx|js|jsx)$': '<rootDir>/jest-transformer.cjs'
   },
   transformIgnorePatterns: [
     '/node_modules/(?!(nanostores|better-auth|@better-auth)/)'
   ],
   moduleNameMapper: {
     '^nanostores$': '<rootDir>/src/__mocks__/nanostores.ts',
+    '^@/utils/vite-env$': '<rootDir>/src/__mocks__/utils/vite-env.js',
+    '^\\.\\/vite-env$': '<rootDir>/src/__mocks__/utils/vite-env.js',
     '^@/(.*)$': '<rootDir>/src/$1',
     '^@components/(.*)$': '<rootDir>/src/components/$1',
     '^@contexts/(.*)$': '<rootDir>/src/contexts/$1',

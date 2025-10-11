@@ -872,8 +872,7 @@ router.get('/me/routes', requireAuth, async (req: Request, res: Response) => {
                         employee: {
                             select: {
                                 id: true,
-                                name: true,
-                                phone: true
+                                name: true
                             }
                         }
                     },
@@ -941,8 +940,7 @@ router.get('/me/routes/:routeId', requireAuth, async (req: Request, res: Respons
                         employee: {
                             select: {
                                 id: true,
-                                name: true,
-                                phone: true
+                                name: true
                             }
                         }
                     },
@@ -1027,8 +1025,7 @@ router.patch('/me/routes/:routeId/status', requireAuth, async (req: Request, res
                         employee: {
                             select: {
                                 id: true,
-                                name: true,
-                                phone: true
+                                name: true
                             }
                         }
                     },

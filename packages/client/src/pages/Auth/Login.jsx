@@ -1,11 +1,12 @@
-import { useMemo, useState } from "react";
-import { useLocation, useNavigate, Link } from "react-router-dom";
+import { useCallback, useState } from "react";
+import { Link } from "react-router-dom";
 import { authClient } from "@/lib/auth-client";
 import { Button } from "@components/Common/UI/Button";
 import { Input } from "@/components/Common/UI/Input";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
 import { useTheme } from "@/contexts/ThemeContext";
+import { ROUTES } from "@/data/constants";
 
 const inputStyles =
   "bg-white/10 border-2 border-white/20 text-white placeholder:text-white/50 h-12 px-4 rounded-xl transition-all duration-300 focus:bg-white/15 focus:border-[#f3684e]/50 focus:ring-2 focus:ring-[#f3684e]/20 hover:border-[#f3684e]/30 w-full shadow-lg shadow-black/5 text-base";
@@ -18,20 +19,6 @@ export default function Login() {
   const logoSrc = isDark
     ? "/assets/images/logo-light.png"
     : "/assets/images/logo-dark.PNG";
-  const navigate = useNavigate();
-  const location = useLocation();
-  const nextPath = useMemo(() => {
-    try {
-      const params = new URLSearchParams(location.search);
-      const n = params.get('next');
-      if (!n) return '/';
-      // Basic safety: prevent open redirects
-      if (n.startsWith('http://') || n.startsWith('https://')) return '/';
-      return n;
-    } catch {
-      return '/';
-    }
-  }, [location.search]);
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
     email: "",
@@ -39,6 +26,16 @@ export default function Login() {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  const performHardRefresh = useCallback((targetPath) => {
+    const safePath = targetPath || '/';
+    // Force a full reload so contexts rebuild with the new session.
+    if (safePath.startsWith('http://') || safePath.startsWith('https://')) {
+      window.location.replace(safePath);
+      return;
+    }
+    window.location.replace(safePath.startsWith('/') ? safePath : `/${safePath}`);
+  }, []);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -60,17 +57,19 @@ export default function Login() {
     setIsLoading(true);
 
     try {
-      await authClient.signIn.email({
+      const { error: signInError } = await authClient.signIn.email({
         email: formData.email.trim(),
         password: formData.password
-      }, {
-        onSuccess: () => {
-          navigate(nextPath);
-        },
-        onError: (ctx) => {
-          setError(ctx.error.message);
-        }
       });
+
+      if (signInError) {
+        setError(signInError.message);
+        return;
+      }
+
+      // Always redirect to home page after successful login
+      // Home page will handle role-based redirects
+      window.setTimeout(() => performHardRefresh(ROUTES.HOME), 150);
     } catch (error) {
       setError(error.message || 'An error occurred');
     } finally {
@@ -83,7 +82,7 @@ export default function Login() {
     try {
       await authClient.signIn.oauth2({
         providerId: 'fayda',
-        callbackURL: nextPath || '/'
+        callbackURL: ROUTES.HOME
       });
     } catch (error) {
       setError(error.message || 'Failed to sign in with Fayda');

@@ -3,12 +3,14 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { authClient } from '@/lib/auth-client';
 import { Loader2, Building2 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useRole } from '@/contexts/RoleContext';
 import { cn } from '@/lib/utils';
 
 /**
  * Organization Guard Component
  * 
  * Checks if authenticated users have access to organizations.
+ * Superadmin and Owner bypass organization requirements.
  * If they don't have any organizations, redirects them to create one.
  * If they have organizations but no active one, helps them select one.
  */
@@ -16,6 +18,7 @@ export default function OrganizationGuard({ children }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { theme } = useTheme();
+  const { role } = useRole();
   const isDark = theme === 'dark';
   
   const [isChecking, setIsChecking] = useState(true);
@@ -32,6 +35,9 @@ export default function OrganizationGuard({ children }) {
   const { data: session, isLoading: sessionLoading } = useSession();
   const { data: organizations, isLoading: orgsLoading } = useListOrganizations();
   const { data: activeOrganization } = useActiveOrganization();
+
+  const isSuperadmin = role === 'superadmin';
+  const isOwner = role === 'owner';
 
   // Reset validation cache when session changes
   useEffect(() => {
@@ -73,6 +79,12 @@ export default function OrganizationGuard({ children }) {
       return;
     }
 
+    // Superadmin and Owner bypass organization requirements
+    if (isSuperadmin || isOwner) {
+      setIsChecking(false);
+      return;
+    }
+
     // If we've already validated organizations for this session and user has active org, skip
     if (hasValidatedRef.current && activeOrganization && organizations?.length > 0) {
       setIsChecking(false);
@@ -93,7 +105,8 @@ export default function OrganizationGuard({ children }) {
             session: !!session,
             organizations: organizations?.length || 0,
             activeOrganization: activeOrganization?.name || 'none',
-            orgsLoading
+            orgsLoading,
+            role
           });
 
           // If user has organizations but no active one, set the first one as active
@@ -148,7 +161,7 @@ export default function OrganizationGuard({ children }) {
         clearTimeout(debounceRef.current);
       }
     };
-  }, [session, organizations, activeOrganization, sessionLoading, orgsLoading, navigate, shouldSkipCheck, location.pathname]);
+  }, [session, organizations, activeOrganization, sessionLoading, orgsLoading, navigate, shouldSkipCheck, location.pathname, isSuperadmin, isOwner, role]);
 
   // Show loading screen while checking
   if (isChecking || sessionLoading || (session && orgsLoading)) {

@@ -1,8 +1,9 @@
-import React, { createContext, useContext, useState, useCallback, useEffect } from "react";
+import React, { createContext, useContext, useState, useCallback, useEffect, useMemo } from "react";
 import { socketClient, ShuttleNotification } from "@lib/socket";
 import { useRole } from "@contexts/RoleContext";
 import { notificationApi } from '@services/notificationApi';
 import { useAuth } from '@contexts/AuthContext';
+import { useOrganization } from '@contexts/OrganizationContext';
 
 const STORAGE_KEY = 'shuttle_notifications';
 const MAX_STORED_NOTIFICATIONS = 50;
@@ -10,6 +11,8 @@ const DEBUG = true; // Enable debug logging
 const log = (...args: unknown[]) => {
   if (DEBUG) console.log('[NotificationContext]:', ...args);
 };
+
+const isReadStatus = (status?: ShuttleNotification['status']) => (status ?? '').toString().toUpperCase() === 'READ';
 
 interface NotificationContextType {
   notifications: ShuttleNotification[];
@@ -38,21 +41,85 @@ const NotificationContext = createContext<NotificationContextType>({
 });
 
 export function NotificationProvider({ children }: { children: React.ReactNode }) {
-  // Initialize state from local storage
-  const [notifications, setNotifications] = useState<ShuttleNotification[]>(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    return stored ? JSON.parse(stored) : [];
-  });
+  const { isAuthenticated, user } = useAuth();
+  const { role, isReady: isRoleReady } = useRole();
+  const { activeOrganization, isLoading: isOrganizationLoading } = useOrganization();
+  const storageKey = useMemo(() => {
+    // Ensure we access a typed user id so TypeScript does not infer `never`
+    const userId = (user as { id?: string } | null | undefined)?.id;
+    if (!userId) {
+      return null;
+    }
+    const orgSegment = activeOrganization?.id ? `:${activeOrganization.id}` : '';
+    return `${STORAGE_KEY}:${userId}${orgSegment}`;
+  }, [user, activeOrganization?.id]);
+
+  const [notifications, setNotifications] = useState<ShuttleNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [stats, setStats] = useState({ total: 0, unread: 0, read: 0 });
   const [isConnected, setIsConnected] = useState(false);
-  const { role } = useRole();
-  const { isAuthenticated } = useAuth();
+
+  useEffect(() => {
+    if (!storageKey) {
+      setNotifications([]);
+      setUnreadCount(0);
+      setStats({ total: 0, unread: 0, read: 0 });
+      return;
+    }
+
+    try {
+      const stored = localStorage.getItem(storageKey);
+      if (stored) {
+        const parsed = JSON.parse(stored) as ShuttleNotification[];
+        setNotifications(parsed);
+        const unreadTotal = parsed.filter(item => !isReadStatus(item.status)).length;
+        const derivedStats = {
+          total: parsed.length,
+          unread: unreadTotal,
+          read: parsed.length - unreadTotal,
+        };
+        setUnreadCount(unreadTotal);
+        setStats(derivedStats);
+      } else {
+        setNotifications([]);
+        setUnreadCount(0);
+        setStats({ total: 0, unread: 0, read: 0 });
+      }
+    } catch (error) {
+      console.warn('[NotificationContext]: Failed to parse cached notifications', error);
+      setNotifications([]);
+      setUnreadCount(0);
+      setStats({ total: 0, unread: 0, read: 0 });
+    }
+  }, [storageKey]);
+
+  const readyForRequests = useMemo(() => {
+    if (!isAuthenticated) {
+      return false;
+    }
+
+    if (!isRoleReady || !role) {
+      log('Role context not ready, deferring notification queries');
+      return false;
+    }
+
+    if (isOrganizationLoading) {
+      log('Organization context loading, deferring notification queries');
+      return false;
+    }
+
+    if (!activeOrganization?.id) {
+      log('No active organization, deferring notification queries');
+      return false;
+    }
+
+    return true;
+  }, [isAuthenticated, isRoleReady, role, isOrganizationLoading, activeOrganization?.id]);
 
   // Shared function to refresh stats (used by both nav and dashboard)
   const refreshStats = useCallback(async (filters?: { type?: string; importance?: string; fromDate?: string; toDate?: string }) => {
-    if (!isAuthenticated) {
-      log('Not authenticated, skipping stats refresh');
+    if (!readyForRequests) {
+      log('Notification context not yet ready, skipping stats refresh');
       return;
     }
     
@@ -89,12 +156,12 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     } catch (error) {
       console.error('Failed to refresh stats:', error);
     }
-  }, [isAuthenticated]);
+  }, [readyForRequests]);
 
   // Load initial notifications and unread count
   const loadInitialData = useCallback(async () => {
-    if (!isAuthenticated) {
-      log('Not authenticated, skipping initial notifications fetch');
+    if (!readyForRequests) {
+      log('Notification context not yet ready, skipping initial fetch');
       return;
     }
     
@@ -110,12 +177,16 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     } catch (error) {
       console.error('Failed to load notifications:', error);
     }
-  }, [isAuthenticated, refreshStats]);
+  }, [readyForRequests, refreshStats]);
 
   // Load initial data when authenticated
   useEffect(() => {
+    if (!readyForRequests) {
+      return;
+    }
+
     loadInitialData();
-  }, [loadInitialData]);
+  }, [loadInitialData, readyForRequests]);
 
   // Listen for external notification updates (from dashboard)
   useEffect(() => {
@@ -132,23 +203,27 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
   // Persist notifications to local storage
   useEffect(() => {
-    const limitedNotifications = notifications
-      .slice(0, MAX_STORED_NOTIFICATIONS);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(limitedNotifications));
-  }, [notifications]);
+    if (!storageKey) {
+      return;
+    }
+    const limitedNotifications = notifications.slice(0, MAX_STORED_NOTIFICATIONS);
+    localStorage.setItem(storageKey, JSON.stringify(limitedNotifications));
+  }, [notifications, storageKey]);
 
   // Initialize socket connection and listeners only when authenticated
   useEffect(() => {
-    if (!isAuthenticated) {
-      log('Not authenticated, skipping socket connection');
-      return;
-    }
-    if (!role) {
-      log('No role available, skipping socket connection');
+    if (!readyForRequests) {
+      log('Notification context not ready, skipping socket connection');
       return;
     }
 
-    log('Initializing socket connection for role:', role);
+    const roleChannel = role ?? '';
+    if (!roleChannel) {
+      log('Resolved role channel was empty, skipping socket setup');
+      return;
+    }
+
+    log('Initializing socket connection for role:', roleChannel);
     const socket = socketClient.connect();
     
     // Immediate connection check
@@ -156,8 +231,8 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     log('Initial connection status:', socket.connected);
 
     // Subscribe to role channel
-    socketClient.subscribeToRole(role);
-    log('Subscribed to role channel:', role);
+    socketClient.subscribeToRole(roleChannel);
+    log('Subscribed to role channel:', roleChannel);
 
     const unsubNew = socketClient.onNewNotification(async (notification) => {
       log('Received new notification:', notification);
@@ -188,9 +263,8 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       } catch (error) {
         log('Failed to refresh unseen count:', error);
         // Fallback: check if notification is unread and increment
-        const isUnread = notification.status === 'UNREAD' || 
-                        notification.status === 'Pending' ||
-                        !notification.seenBy || 
+        const isUnread = !isReadStatus(notification.status) ||
+                        !notification.seenBy ||
                         notification.seenBy.length === 0;
         if (isUnread) {
           log('Fallback: Incrementing unread count');
@@ -213,9 +287,9 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
     // Enhanced connection event handlers
     socket.on('connect', () => {
-      log('Socket connected, resubscribing to role:', role);
+      log('Socket connected, resubscribing to role:', roleChannel);
       setIsConnected(true);
-      socketClient.subscribeToRole(role); // Resubscribe on reconnection
+      socketClient.subscribeToRole(roleChannel); // Resubscribe on reconnection
     });
     
     socket.on('disconnect', (reason) => {
@@ -236,11 +310,11 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       unsubNew();
       unsubSeen();
       if (socket.connected) {
-        socketClient.unsubscribeFromRole(role);
+        socketClient.unsubscribeFromRole(roleChannel);
         socketClient.disconnect();
       }
     };
-  }, [role, isAuthenticated]);
+  }, [readyForRequests, role, isAuthenticated]);
 
   const markAsSeen = useCallback(async (notificationId: string) => {
     try {
@@ -327,7 +401,11 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const clearAll = useCallback(() => {
     setNotifications([]);
     setUnreadCount(0);
-  }, []);
+    setStats({ total: 0, unread: 0, read: 0 });
+    if (storageKey) {
+      localStorage.removeItem(storageKey);
+    }
+  }, [storageKey]);
 
   const removeNotification = useCallback((id: string) => {
     setNotifications(prev => prev.filter(n => n.id !== id));

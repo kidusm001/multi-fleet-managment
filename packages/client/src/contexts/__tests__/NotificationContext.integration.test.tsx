@@ -46,10 +46,13 @@ jest.mock('@services/notificationApi', () => ({
   },
 }));
 jest.mock('@contexts/RoleContext', () => ({
-  useRole: jest.fn(() => ({ role: 'admin' })),
+  useRole: jest.fn(() => ({ role: 'admin', isReady: true })),
 }));
 jest.mock('@contexts/AuthContext', () => ({
-  useAuth: jest.fn(() => ({ isAuthenticated: true })),
+  useAuth: jest.fn(() => ({ isAuthenticated: true, user: { id: 'user-123' } })),
+}));
+jest.mock('@contexts/OrganizationContext', () => ({
+  useOrganization: jest.fn(() => ({ activeOrganization: { id: 'org-123' }, isLoading: false })),
 }));
 
 const mockSocketClient = socketClient as jest.Mocked<typeof socketClient>;
@@ -518,7 +521,7 @@ describe('NotificationContext - Integration Tests', () => {
         },
       ];
 
-      localStorage.setItem('shuttle_notifications', JSON.stringify(storedNotifications));
+  localStorage.setItem('shuttle_notifications:user-123:org-123', JSON.stringify(storedNotifications));
 
       const wrapper = ({ children }: { children: React.ReactNode }) => (
         <NotificationProvider>{children}</NotificationProvider>
@@ -555,7 +558,7 @@ describe('NotificationContext - Integration Tests', () => {
       });
 
       await waitFor(() => {
-        const stored = localStorage.getItem('shuttle_notifications');
+  const stored = localStorage.getItem('shuttle_notifications:user-123:org-123');
         expect(stored).toBeTruthy();
         const parsed = JSON.parse(stored!);
         expect(parsed).toHaveLength(1);
