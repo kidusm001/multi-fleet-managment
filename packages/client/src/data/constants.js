@@ -13,13 +13,21 @@ export const MAP_CONFIG = {
 export const MAPBOX_ACCESS_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
 
 export const ROLES = {
-  ADMIN: 'user',
-  MANAGER: 'user'
+  SUPERADMIN: 'superadmin',
+  OWNER: 'owner',
+  ADMIN: 'admin',
+  MANAGER: 'manager',
+  DRIVER: 'driver',
+  EMPLOYEE: 'employee'
 };
 
 export const ROLE_LABELS = {
+  [ROLES.SUPERADMIN]: 'Super Admin',
+  [ROLES.OWNER]: 'Owner',
   [ROLES.ADMIN]: 'Administrator',
-  [ROLES.MANAGER]: 'Fleet Manager'
+  [ROLES.MANAGER]: 'Fleet Manager',
+  [ROLES.DRIVER]: 'Driver',
+  [ROLES.EMPLOYEE]: 'Employee'
 };
 
 export const ROUTES = {
@@ -34,7 +42,8 @@ export const ROUTES = {
   ORGANIZATIONS: '/organizations',
   ORGANIZATION_MANAGEMENT: '/organization-management',
   NOTIFICATIONS: '/notifications',
-  SETTINGS: '/settings'
+  SETTINGS: '/settings',
+  DRIVER_PORTAL: '/driver'
 };
 
 export const SHUTTLE_ROUTES = [

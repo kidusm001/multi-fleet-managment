@@ -449,11 +449,42 @@ router.get('/', requireAuth, async (req: Request, res: Response) => {
     try {
         const activeOrgId = req.session?.session?.activeOrganizationId;
         if (!activeOrgId) return res.status(400).json({ message: 'Active organization not found' });
+        const orgRole = req.organizationRole?.toLowerCase();
+        if (orgRole === 'driver') {
+            return res.status(403).json({ message: 'Drivers should use the driver portal routes endpoint' });
+        }
         const hasPermission = await auth.api.hasPermission({
             headers: await fromNodeHeaders(req.headers),
             body: { permissions: { route: ["read"] } }
         });
         if (!hasPermission.success) return res.status(403).json({ message: 'Unauthorized' });
+        if (orgRole === 'employee') {
+            const personalRoutes = await prisma.route.findMany({
+                where: {
+                    organizationId: activeOrgId,
+                    deleted: false,
+                    stops: {
+                        some: {
+                            employee: {
+                                userId: req.user?.id,
+                            }
+                        }
+                    }
+                },
+                include: {
+                    vehicle: true,
+                    shift: true,
+                    location: true,
+                    stops: {
+                        orderBy: { sequence: 'asc' },
+                        include: { employee: true }
+                    },
+                    vehicleAvailability: true
+                },
+                orderBy: { createdAt: 'desc' }
+            });
+            return res.json(personalRoutes);
+        }
         const routes = await prisma.route.findMany({
             where: { organizationId: activeOrgId, deleted: false },
             include: {
@@ -481,6 +512,9 @@ router.get('/unique-locations', requireAuth, async (req: Request, res: Response)
     try {
         const activeOrgId = req.session?.session?.activeOrganizationId;
         if (!activeOrgId) return res.status(400).json({ message: 'Active organization not found' });
+        if (req.organizationRole?.toLowerCase() === 'employee') {
+            return res.status(403).json({ message: 'Employees cannot access organization-wide route data' });
+        }
         const hasPermission = await auth.api.hasPermission({
             headers: await fromNodeHeaders(req.headers),
             body: { permissions: { route: ["read"] } }
@@ -525,6 +559,7 @@ router.get('/:id', requireAuth, validateSchema(RouteIdParamSchema, 'params'), as
             body: { permissions: { route: ["read"] } }
         });
         if (!hasPermission.success) return res.status(403).json({ message: 'Unauthorized' });
+        const orgRole = req.organizationRole?.toLowerCase();
         const route = await prisma.route.findFirst({
             where: { id, organizationId: activeOrgId, deleted: false },
             include: {
@@ -536,6 +571,12 @@ router.get('/:id', requireAuth, validateSchema(RouteIdParamSchema, 'params'), as
             }
         });
         if (!route) return res.status(404).json({ message: 'Route not found' });
+        if (orgRole === 'employee') {
+            const hasAccess = route.stops?.some(stop => stop.employee?.userId === req.user?.id);
+            if (!hasAccess) {
+                return res.status(403).json({ message: 'Employees can only access their assigned route' });
+            }
+        }
         res.json(route);
     } catch (error) {
         console.error(error);
@@ -553,6 +594,9 @@ router.get('/shift/:shiftId', requireAuth, validateSchema(RoutesByShiftParamSche
         const { shiftId } = req.params;
         const activeOrgId = req.session?.session?.activeOrganizationId;
         if (!activeOrgId) return res.status(400).json({ message: 'Active organization not found' });
+        if (req.organizationRole?.toLowerCase() === 'employee') {
+            return res.status(403).json({ message: 'Employees cannot access shift-level route listings' });
+        }
         const hasPermission = await auth.api.hasPermission({
             headers: await fromNodeHeaders(req.headers),
             body: { permissions: { route: ["read"] } }
@@ -585,6 +629,9 @@ router.get('/location/:locationId', requireAuth, validateSchema(RoutesByLocation
         const { locationId } = req.params;
         const activeOrgId = req.session?.session?.activeOrganizationId;
         if (!activeOrgId) return res.status(400).json({ message: 'Active organization not found' });
+        if (req.organizationRole?.toLowerCase() === 'employee') {
+            return res.status(403).json({ message: 'Employees cannot access location-level route listings' });
+        }
 
         const hasPermission = await auth.api.hasPermission({
             headers: await fromNodeHeaders(req.headers),
@@ -619,6 +666,9 @@ router.get('/:routeId/stops', requireAuth, validateSchema(RouteIdParamSchema, 'p
         const { routeId } = req.params;
         const activeOrgId = req.session?.session?.activeOrganizationId;
         if (!activeOrgId) return res.status(400).json({ message: 'Active organization not found' });
+        if (req.organizationRole?.toLowerCase() === 'employee') {
+            return res.status(403).json({ message: 'Employees cannot inspect full route stop listings' });
+        }
         const hasPermission = await auth.api.hasPermission({
             headers: await fromNodeHeaders(req.headers),
             body: { permissions: { stop: ["read"] } }

@@ -50,7 +50,7 @@ const TypeIcon = ({ type }) => {
   }
 };
 
-function TopBar() {
+function TopBar({ driverMode = false }) {
   const { theme } = useTheme();
   const { role } = useRole();
   const navigate = useNavigate();
@@ -193,13 +193,17 @@ function TopBar() {
 
           {/* Center section: MainNav and SearchBar (desktop only) */}
           <div className="hidden md:flex flex-1 items-center justify-between">
-            <MainNav isDark={isDark} />
-            <div className="flex items-center gap-6 flex-1 justify-center max-w-2xl">
-              {import.meta.env.VITE_ENABLE_ORGANIZATIONS === 'true' && (
+            {!driverMode && <MainNav isDark={isDark} />}
+            <div className={cn(
+              "flex items-center gap-6 flex-1 justify-center",
+              driverMode ? "max-w-md" : "max-w-2xl"
+            )}>
+              {import.meta.env.VITE_ENABLE_ORGANIZATIONS === 'true' && !driverMode && (
                 <OrganizationSwitcher isDark={isDark} />
               )}
-              <div className="flex-1 flex justify-center max-w-lg">
-              <div className="relative search-container w-full">
+              {!driverMode && (
+                <div className="flex-1 flex justify-center max-w-lg">
+                  <div className="relative search-container w-full">
                 <div
                   className={cn(
                     "flex items-center rounded-xl px-3 py-1.5 transition-all duration-200",
@@ -309,9 +313,10 @@ function TopBar() {
                   </div>
                 )}
               </div>
-              </div>
+                </div>
+              )}
             </div>
-            <div className="w-[200px]"></div> {/* Spacer retained to balance layout end */}
+            {!driverMode && <div className="w-[200px]"></div>} {/* Spacer retained to balance layout end */}
           </div>
 
           {/* Right section: User/Theme */}

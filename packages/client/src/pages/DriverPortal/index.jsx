@@ -9,6 +9,7 @@ import RouteDetailView from './views/RouteDetail';
 import NavigationView from './views/Navigation';
 import ScheduleView from './views/Schedule';
 import ProfileView from './views/Profile';
+import NotificationsView from './views/Notifications';
 
 /**
  * Driver Portal Root Component
@@ -34,6 +35,7 @@ function DriverPortal() {
         <Route path="route/:id" element={<RouteDetailView />} />
         <Route path="navigate/:routeId/:stopId" element={<NavigationView />} />
         <Route path="schedule" element={<ScheduleView />} />
+        <Route path="notifications" element={<NotificationsView />} />
         <Route path="profile" element={<ProfileView />} />
       </Route>
     </Routes>

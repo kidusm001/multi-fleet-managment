@@ -13,7 +13,38 @@ export function ProtectedRoute({ children, allowedRoles = [] }) {
       setIsChecking(true);
       return;
     }
-    const hasPermission = role ? allowedRoles.includes(role) : false;
+    if (!allowedRoles || allowedRoles.length === 0) {
+      setIsAuthorized(true);
+      setIsChecking(false);
+      return;
+    }
+
+    const normalizedAllowed = new Set(
+      (allowedRoles || [])
+        .filter(Boolean)
+        .map(allowed => allowed.toLowerCase())
+    );
+
+    // Owners inherit admin permissions, admins inherit manager permissions, superadmins inherit everything
+    if (normalizedAllowed.has('admin')) {
+      normalizedAllowed.add('owner');
+      normalizedAllowed.add('superadmin');
+    }
+    if (normalizedAllowed.has('manager')) {
+      normalizedAllowed.add('admin');
+      normalizedAllowed.add('owner');
+      normalizedAllowed.add('superadmin');
+    }
+    if (normalizedAllowed.has('driver')) {
+      normalizedAllowed.add('superadmin');
+    }
+    if (normalizedAllowed.has('employee')) {
+      normalizedAllowed.add('superadmin');
+    }
+
+    const normalizedRole = role?.toLowerCase?.();
+    const hasPermission = normalizedRole ? normalizedAllowed.has(normalizedRole) : false;
+
     setIsAuthorized(hasPermission);
     setIsChecking(false);
     if (!hasPermission) {

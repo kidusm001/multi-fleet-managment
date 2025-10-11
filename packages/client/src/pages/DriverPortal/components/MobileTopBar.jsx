@@ -4,6 +4,7 @@ import { Bell } from 'lucide-react';
 import { useTheme } from '@contexts/ThemeContext';
 import { useNotifications } from '@contexts/NotificationContext';
 import { cn } from '@lib/utils';
+import ThemeToggle from '@components/Common/UI/ThemeToggle';
 
 /**
  * Mobile Top Bar Component
@@ -47,23 +48,29 @@ function MobileTopBar({ tabletMode }) {
         </span>
       </Link>
 
-      {/* Notification Bell */}
-      <Link
-        to="/notifications"
-        className={cn(
-          "relative p-2 rounded-lg transition-colors",
-          isDark
-            ? "hover:bg-white/10 text-gray-300"
-            : "hover:bg-gray-100 text-gray-700"
-        )}
-      >
-        <Bell className={cn("w-5 h-5", tabletMode && "w-6 h-6")} />
-        {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 bg-[#f3684e] text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-            {unreadCount > 9 ? '9+' : unreadCount}
-          </span>
-        )}
-      </Link>
+      {/* Right side actions */}
+      <div className="flex items-center gap-2">
+        {/* Theme Toggle */}
+        <ThemeToggle />
+
+        {/* Notification Bell */}
+        <Link
+          to="/driver/notifications"
+          className={cn(
+            "relative p-2 rounded-lg transition-colors",
+            isDark
+              ? "hover:bg-white/10 text-gray-300"
+              : "hover:bg-gray-100 text-gray-700"
+          )}
+        >
+          <Bell className={cn("w-5 h-5", tabletMode && "w-6 h-6")} />
+          {unreadCount > 0 && (
+            <span className="absolute -top-1 -right-1 bg-[#f3684e] text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+              {unreadCount > 9 ? '9+' : unreadCount}
+            </span>
+          )}
+        </Link>
+      </div>
     </header>
   );
 }

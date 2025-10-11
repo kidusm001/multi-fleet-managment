@@ -1,6 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
-import { auth } from '../lib/auth';
+import type { Member } from '@prisma/client';
 import { fromNodeHeaders } from 'better-auth/node';
+import { auth } from '../lib/auth';
+import prisma from '../db';
 
 // Extend Express Request interface
 declare global {
@@ -10,6 +12,9 @@ declare global {
       session?: any;
       organizations?: any[];
       activeOrganization?: any;
+      activeOrganizationId?: string | null;
+      organizationRole?: string | null;
+      activeMember?: Member | null;
     }
   }
 }
@@ -30,6 +35,25 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     // Add user and session to request
     req.user = session.user;
     req.session = session;
+    const activeOrgId: string | null = session.session?.activeOrganizationId ?? null;
+    req.activeOrganizationId = activeOrgId;
+
+    let activeMember: Member | null = null;
+    if (activeOrgId) {
+      try {
+        activeMember = await prisma.member.findFirst({
+          where: {
+            organizationId: activeOrgId,
+            userId: session.user.id,
+          },
+        });
+      } catch (memberError) {
+        console.error('Failed to load active membership', memberError);
+      }
+    }
+
+    req.activeMember = activeMember;
+    req.organizationRole = activeMember?.role ?? null;
 
     next();
   } catch (error) {
@@ -49,9 +73,45 @@ export function requireRole(allowedRoles: string | string[]) {
       }
 
       const roles = Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles];
+      if (roles.length === 0) {
+        return next();
+      }
 
-      // Check if user has required role
-      if (!roles.includes(req.user.role)) {
+      const normalizedAllowed = new Set(
+        roles
+          .filter(Boolean)
+          .map(role => role.toLowerCase())
+      );
+
+      // Owners inherit admin permissions, admins inherit manager permissions, etc.
+      if (normalizedAllowed.has('admin')) {
+        normalizedAllowed.add('owner');
+        normalizedAllowed.add('superadmin');
+      }
+      if (normalizedAllowed.has('manager')) {
+        normalizedAllowed.add('admin');
+        normalizedAllowed.add('owner');
+        normalizedAllowed.add('superadmin');
+      }
+      if (normalizedAllowed.has('driver')) {
+        normalizedAllowed.add('superadmin');
+      }
+      if (normalizedAllowed.has('employee')) {
+        normalizedAllowed.add('superadmin');
+      }
+
+      const candidateRoles = [
+        req.user?.role?.toLowerCase?.(),
+        req.organizationRole?.toLowerCase?.(),
+      ].filter(Boolean) as string[];
+
+      const hasPermission = candidateRoles.some(role => normalizedAllowed.has(role));
+
+      if (!hasPermission) {
+        // superadmin is always allowed
+        if (req.user?.role?.toLowerCase?.() === 'superadmin') {
+          return next();
+        }
         return res.status(403).json({ error: 'Insufficient permissions' });
       }
 

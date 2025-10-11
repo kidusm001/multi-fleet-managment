@@ -807,5 +807,247 @@ router.delete('/:id', requireAuth, validateSchema(DriverIdParam, 'params'), asyn
     }
 });
 
+/**
+ * @route   GET /me/routes
+ * @desc    Get routes assigned to the current driver
+ * @access  Private (driver)
+ */
+router.get('/me/routes', requireAuth, async (req: Request, res: Response) => {
+    try {
+        const userId = req.user?.id;
+        
+        if (!userId) {
+            return res.status(401).json({ message: 'Unauthorized' });
+        }
+
+        // Get filters from query params
+        const { date, status } = req.query;
+        
+        // Build where clause - filter by vehicle's driverId since Route doesn't have driverId
+        const where: any = {
+            vehicle: {
+                driverId: userId
+            }
+        };
+
+        // Add date filter if provided
+        if (date && typeof date === 'string') {
+            const targetDate = new Date(date);
+            const startOfDay = new Date(targetDate.setHours(0, 0, 0, 0));
+            const endOfDay = new Date(targetDate.setHours(23, 59, 59, 999));
+            
+            where.date = {
+                gte: startOfDay,
+                lte: endOfDay
+            };
+        }
+
+        // Add status filter if provided
+        if (status && typeof status === 'string') {
+            where.status = status;
+        }
+
+        // Fetch routes with all necessary relations
+        const routes = await prisma.route.findMany({
+            where,
+            include: {
+                vehicle: {
+                    select: {
+                        id: true,
+                        plateNumber: true,
+                        make: true,
+                        model: true,
+                        capacity: true,
+                        driver: {
+                            select: {
+                                id: true,
+                                name: true,
+                                email: true
+                            }
+                        }
+                    }
+                },
+                stops: {
+                    include: {
+                        employee: {
+                            select: {
+                                id: true,
+                                name: true,
+                                phone: true
+                            }
+                        }
+                    },
+                    orderBy: {
+                        order: 'asc'
+                    }
+                }
+            },
+            orderBy: [
+                { date: 'asc' },
+                { startTime: 'asc' }
+            ]
+        });
+
+        res.json(routes);
+    } catch (error) {
+        console.error('Error fetching driver routes:', error);
+        res.status(500).json({ 
+            message: 'Failed to fetch routes',
+            error: process.env.NODE_ENV === 'development' ? (error as Error).message : undefined
+        });
+    }
+});
+
+/**
+ * @route   GET /me/routes/:routeId
+ * @desc    Get a specific route by ID (only if assigned to current driver)
+ * @access  Private (driver)
+ */
+router.get('/me/routes/:routeId', requireAuth, async (req: Request, res: Response) => {
+    try {
+        const userId = req.user?.id;
+        const { routeId } = req.params;
+        
+        if (!userId) {
+            return res.status(401).json({ message: 'Unauthorized' });
+        }
+
+        const route = await prisma.route.findFirst({
+            where: {
+                id: routeId,
+                vehicle: {
+                    driverId: userId
+                }
+            },
+            include: {
+                vehicle: {
+                    select: {
+                        id: true,
+                        plateNumber: true,
+                        make: true,
+                        model: true,
+                        capacity: true,
+                        driver: {
+                            select: {
+                                id: true,
+                                name: true,
+                                email: true
+                            }
+                        }
+                    }
+                },
+                stops: {
+                    include: {
+                        employee: {
+                            select: {
+                                id: true,
+                                name: true,
+                                phone: true
+                            }
+                        }
+                    },
+                    orderBy: {
+                        order: 'asc'
+                    }
+                }
+            }
+        });
+
+        if (!route) {
+            return res.status(404).json({ message: 'Route not found' });
+        }
+
+        res.json(route);
+    } catch (error) {
+        console.error('Error fetching route:', error);
+        res.status(500).json({ 
+            message: 'Failed to fetch route',
+            error: process.env.NODE_ENV === 'development' ? (error as Error).message : undefined
+        });
+    }
+});
+
+/**
+ * @route   PATCH /me/routes/:routeId/status
+ * @desc    Update route status (start, complete, etc.)
+ * @access  Private (driver)
+ */
+router.patch('/me/routes/:routeId/status', requireAuth, async (req: Request, res: Response) => {
+    try {
+        const userId = req.user?.id;
+        const { routeId } = req.params;
+        const { status } = req.body;
+        
+        if (!userId) {
+            return res.status(401).json({ message: 'Unauthorized' });
+        }
+
+        if (!status) {
+            return res.status(400).json({ message: 'Status is required' });
+        }
+
+        // Verify route belongs to driver
+        // Verify the route belongs to this driver
+        const route = await prisma.route.findFirst({
+            where: {
+                id: routeId,
+                vehicle: {
+                    driverId: userId
+                }
+            }
+        });
+
+        if (!route) {
+            return res.status(404).json({ message: 'Route not found' });
+        }
+
+        // Update the route status
+        const updatedRoute = await prisma.route.update({
+            where: { id: routeId },
+            data: { status },
+            include: {
+                driver: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true
+                    }
+                },
+                vehicle: {
+                    select: {
+                        id: true,
+                        licensePlate: true,
+                        make: true,
+                        model: true,
+                        capacity: true
+                    }
+                },
+                stops: {
+                    include: {
+                        employee: {
+                            select: {
+                                id: true,
+                                name: true,
+                                phone: true
+                            }
+                        }
+                    },
+                    orderBy: {
+                        order: 'asc'
+                    }
+                }
+            }
+        });
+
+        res.json(updatedRoute);
+    } catch (error) {
+        console.error('Error updating route status:', error);
+        res.status(500).json({ 
+            message: 'Failed to update route status',
+            error: process.env.NODE_ENV === 'development' ? (error as Error).message : undefined
+        });
+    }
+});
+
 export default router;
 

@@ -323,44 +323,52 @@ export function NotificationDashboard() {
   };
 
   return (
-    <div className="notifications-page p-6 min-h-screen flex justify-center">
-      <Card className={cn("dashboard-notification-card p-6 rounded-xl border", "!w-[85%]")} style={{ width: '75%' }}>
-        <div className="space-y-6">
-          <div className="flex justify-between items-center gap-4">
-            <h2 className="gradient-text-header text-2xl font-semibold">
+    <div className="notifications-page p-2 sm:p-6 min-h-screen flex justify-center">
+      <Card className={cn("dashboard-notification-card p-3 sm:p-6 rounded-xl border", "w-full sm:w-[90%] lg:w-[85%] xl:w-[75%]")}>
+        <div className="space-y-4 sm:space-y-6">
+          {/* Mobile: Stack header items vertically */}
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+            <h2 className="gradient-text-header text-xl sm:text-2xl font-semibold">
               Notifications
             </h2>
-            <div className="flex items-center gap-4">
-              <ExpandableTabs 
-                tabs={tabs} 
-                activeColor="text-white"
-                className="border-[#e2e8f0] dark:border-[#334155]"
-                onChange={handleTabChange}
-                initialTab={selectedTab}
-              />
-              <Select value={sortBy} onValueChange={(value: SortOption) => setSortBy(value)}>
-                <SelectTrigger className="w-[140px] text-foreground">
-                  <SelectValue placeholder="Sort by" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="time">Sort by Time</SelectItem>
-                  <SelectItem value="importance">Sort by Importance</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={severityFilter} onValueChange={setSeverityFilter}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Filter by Severity" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Severities</SelectItem>
-                  <SelectItem value="CRITICAL">🔴 Critical</SelectItem>
-                  <SelectItem value="HIGH">🟠 High</SelectItem>
-                  <SelectItem value="MEDIUM">🟡 Medium</SelectItem>
-                  <SelectItem value="LOW">🔵 Low</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-4">
+              {/* Mobile: Full width tabs, Desktop: Auto width */}
+              <div className="w-full sm:w-auto overflow-x-auto">
+                <ExpandableTabs 
+                  tabs={tabs} 
+                  activeColor="text-white"
+                  className="border-[#e2e8f0] dark:border-[#334155] min-w-max sm:min-w-0"
+                  onChange={handleTabChange}
+                  initialTab={selectedTab}
+                />
+              </div>
+              {/* Mobile: Stack selects, Desktop: Row */}
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Select value={sortBy} onValueChange={(value: SortOption) => setSortBy(value)}>
+                  <SelectTrigger className="w-full sm:w-[140px] text-foreground">
+                    <SelectValue placeholder="Sort by" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="time">Sort by Time</SelectItem>
+                    <SelectItem value="importance">Sort by Importance</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Select value={severityFilter} onValueChange={setSeverityFilter}>
+                  <SelectTrigger className="w-full sm:w-[180px]">
+                    <SelectValue placeholder="Filter by Severity" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Severities</SelectItem>
+                    <SelectItem value="CRITICAL">🔴 Critical</SelectItem>
+                    <SelectItem value="HIGH">🟠 High</SelectItem>
+                    <SelectItem value="MEDIUM">🟡 Medium</SelectItem>
+                    <SelectItem value="LOW">🔵 Low</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {/* Mobile: Full width date picker */}
               <TooltipProvider>
-                <DateRangePicker date={dateRange} onDateChange={handleDateRangeChange} className="w-[300px]" />
+                <DateRangePicker date={dateRange} onDateChange={handleDateRangeChange} className="w-full sm:w-[300px]" />
               </TooltipProvider>
             </div>
           </div>
@@ -395,21 +403,22 @@ export function NotificationDashboard() {
               )}
             </div>
           </div>
-          <div className="flex items-center justify-between px-4">
-            <div className="text-sm text-muted">
+          {/* Pagination - Mobile optimized */}
+          <div className="flex flex-col sm:flex-row items-center justify-between px-2 sm:px-4 gap-3 sm:gap-0">
+            <div className="text-xs sm:text-sm text-muted order-2 sm:order-1">
               Showing {((currentPage - 1) * pagination.perPage) + 1} to{" "}
               {Math.min(currentPage * pagination.perPage, pagination.total)} of{" "}
               {pagination.total}
             </div>
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-1 sm:space-x-2 order-1 sm:order-2">
               <Button
                 variant="outline"
                 size="icon"
                 onClick={() => handlePageChange(currentPage - 1)}
                 disabled={currentPage === 1}
-                className="nav-button hover:bg-[#3b82f6]/10 hover:text-[#3b82f6]"
+                className="nav-button hover:bg-[#3b82f6]/10 hover:text-[#3b82f6] h-8 w-8 sm:h-9 sm:w-9"
               >
-                <ChevronLeft className="h-4 w-4" />
+                <ChevronLeft className="h-3 w-3 sm:h-4 sm:w-4" />
               </Button>
               
               {pagination.totalPages <= 7 ? (
@@ -419,11 +428,12 @@ export function NotificationDashboard() {
                     variant={currentPage === page ? "default" : "outline"}
                     size="sm"
                     onClick={() => handlePageChange(page)}
-                    className={
+                    className={cn(
+                      "h-8 min-w-[32px] sm:h-9 sm:min-w-[36px] px-2 sm:px-3",
                       currentPage === page
                         ? "bg-[#3b82f6] text-black dark:text-white hover:bg-[#2563eb] border-2 border-black dark:border-white"
                         : "hover:bg-[#3b82f6]/10 hover:text-[#3b82f6]"
-                    }
+                    )}
                   >
                     {page}
                   </Button>
@@ -434,16 +444,17 @@ export function NotificationDashboard() {
                     variant={currentPage === 1 ? "default" : "outline"}
                     size="sm"
                     onClick={() => handlePageChange(1)}
-                    className={
+                    className={cn(
+                      "h-8 min-w-[32px] sm:h-9 sm:min-w-[36px] px-2 sm:px-3",
                       currentPage === 1
                         ? "bg-[#3b82f6] text-white hover:bg-[#2563eb] border-2 border-blue-700"
                         : "hover:bg-[#3b82f6]/10 hover:text-[#3b82f6]"
-                    }
+                    )}
                   >
                     1
                   </Button>
       
-                  {currentPage > 3 && <span className="px-2">...</span>}
+                  {currentPage > 3 && <span className="px-1 sm:px-2 text-xs sm:text-sm">...</span>}
       
                   {Array.from({ length: pagination.totalPages }, (_, i) => i + 1)
                     .filter(page => {
@@ -461,29 +472,31 @@ export function NotificationDashboard() {
                         variant={currentPage === page ? "default" : "outline"}
                         size="sm"
                         onClick={() => handlePageChange(page)}
-                        className={
+                        className={cn(
+                          "h-8 min-w-[32px] sm:h-9 sm:min-w-[36px] px-2 sm:px-3",
                           currentPage === page
                             ? "bg-[#3b82f6] text-black dark:text-white hover:bg-[#2563eb] border-2 border-black dark:border-white"
                             : "hover:bg-[#3b82f6]/10 hover:text-[#3b82f6]"
-                        }
+                        )}
                       >
                         {page}
                       </Button>
                     ))
                   }
       
-                  {currentPage < pagination.totalPages - 2 && <span className="px-2">...</span>}
+                  {currentPage < pagination.totalPages - 2 && <span className="px-1 sm:px-2 text-xs sm:text-sm">...</span>}
       
                   {pagination.totalPages > 1 && (
                     <Button
                       variant={currentPage === pagination.totalPages ? "default" : "outline"}
                       size="sm"
                       onClick={() => handlePageChange(pagination.totalPages)}
-                      className={
+                      className={cn(
+                        "h-8 min-w-[32px] sm:h-9 sm:min-w-[36px] px-2 sm:px-3",
                         currentPage === pagination.totalPages
                           ? "bg-[#3b82f6] text-white hover:bg-[#2563eb] border-2 border-blue-700"
                           : "hover:bg-[#3b82f6]/10 hover:text-[#3b82f6]"
-                      }
+                      )}
                     >
                       {pagination.totalPages}
                     </Button>
@@ -496,9 +509,9 @@ export function NotificationDashboard() {
                 size="icon"
                 onClick={() => handlePageChange(currentPage + 1)}
                 disabled={currentPage === pagination.totalPages || pagination.totalPages === 0}
-                className="nav-button hover:bg-[#3b82f6]/10 hover:text-[#3b82f6]"
+                className="nav-button hover:bg-[#3b82f6]/10 hover:text-[#3b82f6] h-8 w-8 sm:h-9 sm:w-9"
               >
-                <ChevronRight className="h-4 w-4" />
+                <ChevronRight className="h-3 w-3 sm:h-4 sm:w-4" />
               </Button>
             </div>
           </div>

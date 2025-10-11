@@ -12,6 +12,8 @@ dotenv.config();
 const prisma = new PrismaClient();
 
 export const auth = betterAuth({
+    baseURL: process.env.AUTH_BASE_URL || 'http://localhost:3000',
+    basePath: '/api/auth',
     database: prismaAdapter(prisma, { provider: 'postgresql' }),
     emailAndPassword: {
         enabled: true,

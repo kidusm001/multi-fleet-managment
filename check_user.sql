@@ -1,0 +1,1 @@
+SELECT u.email, u.role, u."isSubscribed", o.name as org_name, m.role as member_role FROM "user" u LEFT JOIN member m ON u.id = m."userId" LEFT JOIN organization o ON m."organizationId" = o.id WHERE u.email = 'robert.sterling@fleetmanager.com';

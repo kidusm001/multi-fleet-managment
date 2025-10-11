@@ -5,9 +5,7 @@ import { useTheme } from '@contexts/ThemeContext';
 import { cn } from '@lib/utils';
 import { driverService } from '@services/driverService';
 import ActiveRouteCard from '../components/ActiveRouteCard';
-import QuickStatsGrid from '../components/QuickStatsGrid';
-import UpcomingShiftsList from '../components/UpcomingShiftsList';
-import DriverGreeting from '../components/DriverGreeting';
+import { Calendar, Clock, MapPin, TrendingUp } from 'lucide-react';
 
 /**
  * Driver Dashboard View
@@ -34,8 +32,12 @@ function DashboardView() {
     try {
       setLoading(true);
       
-      // Fetch active route
-      const route = await driverService.getActiveRoute();
+      // Get today's date in the correct format
+      const today = new Date().toISOString().split('T')[0];
+      
+      // Fetch active route (today's routes with ACTIVE status)
+      const routes = await driverService.getMyRoutes({ date: today, status: 'ACTIVE' });
+      const route = routes && routes.length > 0 ? routes[0] : null;
       setActiveRoute(route);
 
       // Calculate stats if route exists
@@ -52,12 +54,16 @@ function DashboardView() {
         });
       }
 
-      // Fetch upcoming shifts
-      const shifts = await driverService.getUpcomingShifts(3);
+      // Fetch all routes for upcoming shifts
+      const allRoutes = await driverService.getMyRoutes({ status: 'ACTIVE' });
+      const shifts = allRoutes?.slice(0, 3) || [];
       setUpcomingShifts(shifts);
 
     } catch (error) {
       console.error('Failed to load dashboard:', error);
+      // Set empty state on error
+      setActiveRoute(null);
+      setUpcomingShifts([]);
     } finally {
       setLoading(false);
     }
@@ -97,42 +103,213 @@ function DashboardView() {
   }
 
   return (
-    <div className="space-y-6 py-4">
-      {/* Greeting */}
-      <DriverGreeting
-        greeting={getGreeting()}
-        driverName={session?.user?.name || 'Driver'}
-        activeRouteCount={activeRoute ? 1 : 0}
-      />
-
-      {/* Active Route Card */}
-      {activeRoute ? (
-        <ActiveRouteCard
-          route={activeRoute}
-          onNavigate={() => navigate(`/driver/navigate/${activeRoute.id}/${activeRoute.nextStopId}`)}
-          onComplete={() => navigate(`/driver/route/${activeRoute.id}`)}
-        />
-      ) : (
+    <div className={cn(
+      "min-h-screen p-4 md:p-6",
+      isDark ? "bg-gray-900" : "bg-gray-50"
+    )}>
+      <div className="max-w-7xl mx-auto space-y-6">
+        {/* Greeting Section */}
         <div className={cn(
-          "rounded-xl border p-6 text-center",
+          "rounded-2xl p-6 border",
           isDark
-            ? "bg-gray-800/50 border-gray-700"
-            : "bg-white border-gray-200"
+            ? "bg-gradient-to-br from-gray-800 to-gray-900 border-gray-700"
+            : "bg-gradient-to-br from-white to-gray-50 border-gray-200"
         )}>
+          <h1 className={cn(
+            "text-2xl md:text-3xl font-bold",
+            isDark ? "text-white" : "text-gray-900"
+          )}>
+            {getGreeting()}, {session?.user?.name?.split(' ')[0] || 'Driver'}!
+          </h1>
           <p className={cn(
-            "text-base",
+            "mt-2 flex items-center gap-2",
             isDark ? "text-gray-400" : "text-gray-600"
           )}>
-            No active route. Awaiting assignment.
+            <Calendar className="w-4 h-4" />
+            {new Date().toLocaleDateString('en-US', { 
+              weekday: 'long', 
+              year: 'numeric', 
+              month: 'long', 
+              day: 'numeric' 
+            })}
           </p>
         </div>
-      )}
 
-      {/* Stats Grid */}
-      {activeRoute && <QuickStatsGrid stats={stats} />}
+        {/* Active Route Card */}
+        {activeRoute ? (
+          <ActiveRouteCard
+            route={activeRoute}
+            onNavigate={() => navigate(`/driver/navigate/${activeRoute.id}/${activeRoute.nextStopId}`)}
+            onComplete={() => navigate(`/driver/route/${activeRoute.id}`)}
+          />
+        ) : (
+          <div className={cn(
+            "rounded-2xl border p-8 text-center",
+            isDark
+              ? "bg-gray-800/50 border-gray-700"
+              : "bg-white border-gray-200"
+          )}>
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-700 mb-4">
+              <MapPin className="w-8 h-8 text-gray-400" />
+            </div>
+            <h3 className={cn(
+              "text-lg font-semibold mb-2",
+              isDark ? "text-gray-200" : "text-gray-900"
+            )}>
+              No Active Route
+            </h3>
+            <p className={cn(
+              "text-sm",
+              isDark ? "text-gray-400" : "text-gray-600"
+            )}>
+              You don&apos;t have any active routes at the moment. Check back later for assignments.
+            </p>
+          </div>
+        )}
 
-      {/* Upcoming Shifts */}
-      <UpcomingShiftsList shifts={upcomingShifts} />
+        {/* Stats Grid */}
+        {activeRoute && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className={cn(
+              "rounded-xl p-4 border",
+              isDark
+                ? "bg-gray-800 border-gray-700"
+                : "bg-white border-gray-200"
+            )}>
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
+                  <MapPin className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                    {stats.stopsCompleted}/{stats.totalStops}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Stops</p>
+                </div>
+              </div>
+            </div>
+
+            <div className={cn(
+              "rounded-xl p-4 border",
+              isDark
+                ? "bg-gray-800 border-gray-700"
+                : "bg-white border-gray-200"
+            )}>
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-green-100 dark:bg-green-900/30">
+                  <Clock className="w-5 h-5 text-green-600 dark:text-green-400" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+                    {stats.timeElapsed}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Elapsed</p>
+                </div>
+              </div>
+            </div>
+
+            <div className={cn(
+              "rounded-xl p-4 border",
+              isDark
+                ? "bg-gray-800 border-gray-700"
+                : "bg-white border-gray-200"
+            )}>
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30">
+                  <TrendingUp className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+                    {stats.distance}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Distance</p>
+                </div>
+              </div>
+            </div>
+
+            <div className={cn(
+              "rounded-xl p-4 border",
+              isDark
+                ? "bg-gray-800 border-gray-700"
+                : "bg-white border-gray-200"
+            )}>
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-orange-100 dark:bg-orange-900/30">
+                  <MapPin className="w-5 h-5 text-orange-600 dark:text-orange-400" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+                    {stats.pickups}
+                  </p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">Pickups</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Upcoming Shifts */}
+        {upcomingShifts.length > 0 && (
+          <div className={cn(
+            "rounded-2xl border p-6",
+            isDark
+              ? "bg-gray-800 border-gray-700"
+              : "bg-white border-gray-200"
+          )}>
+            <h2 className={cn(
+              "text-xl font-semibold mb-4",
+              isDark ? "text-white" : "text-gray-900"
+            )}>
+              Upcoming Routes
+            </h2>
+            <div className="space-y-3">
+              {upcomingShifts.map((shift) => (
+                <div
+                  key={shift.id}
+                  className={cn(
+                    "p-4 rounded-xl border cursor-pointer transition-colors",
+                    isDark
+                      ? "bg-gray-700/50 border-gray-600 hover:bg-gray-700"
+                      : "bg-gray-50 border-gray-200 hover:bg-gray-100"
+                  )}
+                  onClick={() => navigate(`/driver/route/${shift.id}`)}
+                >
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className={cn(
+                        "font-semibold",
+                        isDark ? "text-white" : "text-gray-900"
+                      )}>
+                        {shift.name || `Route ${shift.id.slice(0, 8)}`}
+                      </h3>
+                      <p className={cn(
+                        "text-sm mt-1",
+                        isDark ? "text-gray-400" : "text-gray-600"
+                      )}>
+                        {shift.stops?.length || 0} stops • {shift.vehicle?.licensePlate || 'No vehicle'}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <p className={cn(
+                        "text-sm font-medium",
+                        isDark ? "text-gray-300" : "text-gray-700"
+                      )}>
+                        {new Date(shift.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      </p>
+                      <p className={cn(
+                        "text-xs",
+                        isDark ? "text-gray-500" : "text-gray-500"
+                      )}>
+                        {shift.startTime || 'No time set'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

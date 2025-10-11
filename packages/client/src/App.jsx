@@ -1,7 +1,7 @@
 import React, { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, useLocation, Outlet } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, useLocation, Outlet, Navigate } from "react-router-dom";
 import { ProtectedRoute } from '@components/Common/ProtectedRoute';
-import { ROLES } from '@data/constants';
+import { ROLES, ROUTES } from '@data/constants';
 import { AuthRoute } from '@components/Common/AuthRoute';
 
 import Footer from "@components/Common/Layout/Footer";
@@ -10,8 +10,6 @@ import TopBar from "@components/Common/Layout/TopBar";
 import OrganizationGuard from "@components/Common/Guards/OrganizationGuard";
 
 import { Suspense, lazy } from 'react';
-const Home = lazy(() => import('@pages/Home'));
-const About = lazy(() => import('@pages/About'));
 const Dashboard = lazy(() => import('@pages/Dashboard'));
 const RouteManagement = lazy(() => import('@pages/RouteManagement'));
 const ShuttleManagement = lazy(() => import('@pages/ShuttleManagement'));
@@ -24,9 +22,10 @@ const Login = lazy(() => import('@pages/Auth/Login'));
 const Signup = lazy(() => import('@pages/Auth/Signup'));
 const OrganizationSelection = lazy(() => import('@pages/OrganizationSelection'));
 const NotificationDashboard = lazy(() => import('@pages/notifications/components/notification-dashboard').then(m => ({ default: m.NotificationDashboard })));
+const MobileNotificationWrapper = lazy(() => import('@pages/notifications/components/MobileNotificationWrapper').then(m => ({ default: m.MobileNotificationWrapper })));
 const DriverPortal = lazy(() => import('@pages/DriverPortal'));
 
-import { RoleProvider } from "@contexts/RoleContext";
+import { RoleProvider, useRole } from "@contexts/RoleContext";
 import { OrganizationProvider } from "@contexts/OrganizationContext";
 import { orgsEnabled } from '@lib/organization/flags';
 import { ThemeProvider, useTheme } from "@contexts/ThemeContext";
@@ -36,6 +35,7 @@ import { NotificationProvider } from "@contexts/NotificationContext";
 import { ToastProvider } from '@contexts/ToastContext';
 import Unauthorized from "@pages/Unauthorized";
 import { NotificationSound } from "@components/Common/Notifications/NotificationSound";
+import { useViewport } from "@hooks/useViewport";
 
 import "@styles/App.css";
 
@@ -55,9 +55,44 @@ function ProtectedLayout({ isDark }) {
   );
 }
 
+// Driver-only layout (no admin features)
+function DriverLayout({ isDark }) {
+  const location = useLocation();
+  const isDriverPortal = location.pathname.startsWith('/driver');
+  
+  // Driver portal handles its own layout completely
+  if (isDriverPortal) {
+    return <Outlet />;
+  }
+  
+  // For notifications and other allowed routes, show minimal layout
+  return (
+    <div className={`min-h-screen ${isDark ? "bg-slate-900" : "bg-gray-50"} transition-colors duration-300`}>
+      <TopBar driverMode={true} />
+      <div className={`main-content backdrop-blur-xl ${isDark ? "bg-black/20" : "bg-white/20"}`}>
+        <main id="main" className={`content-area ${isDark ? "text-gray-100" : "text-gray-900"} pt-[60px]`}>
+          <Outlet />
+          <Footer />
+        </main>
+      </div>
+    </div>
+  );
+}
+
 function AppContent() {
   const { theme } = useTheme();
-  const isDark = theme === "dark";
+  const { role } = useRole();
+  const isDark = theme === 'dark';
+  const isDriver = role === ROLES.DRIVER;
+  const isEmployee = role === ROLES.EMPLOYEE;
+  const isSuperAdmin = role === ROLES.SUPERADMIN;
+  const isOwner = role === ROLES.OWNER;
+  const isAdmin = role === ROLES.ADMIN || isOwner || isSuperAdmin;
+  const isManager = role === ROLES.MANAGER;
+  const hasManagerAccess = isManager || isAdmin;
+  const viewport = useViewport();
+  const isMobile = viewport === 'mobile';
+
   const location = useLocation();
 
   // Track previous path to detect leaving /notifications
@@ -112,80 +147,141 @@ function AppContent() {
           }
         />
 
-        {/* Protected Routes Layout */}
+        {/* Root redirect for drivers */}
+        {isDriver && <Route index element={<Navigate to={ROUTES.DRIVER_PORTAL} replace />} />}
+
+        {/* Protected Routes Layout - Driver or Standard */}
         <Route
           element={
             <AuthRoute>
               <OrganizationGuard>
                 <NotificationProvider>
                   <NotificationSound />
-                  <ProtectedLayout isDark={isDark} />
+                  {isDriver ? (
+                    <DriverLayout isDark={isDark} />
+                  ) : (
+                    <ProtectedLayout isDark={isDark} />
+                  )}
                 </NotificationProvider>
               </OrganizationGuard>
             </AuthRoute>
           }
         >
-          <Route
-            index
-            element={<Suspense fallback={<div />}> <Home /> </Suspense>}
-          />
-          <Route
-            path="/"
-            element={<Suspense fallback={<div />}> <Home /> </Suspense>}
-          />
-          <Route
-            path="about"
-            element={<Suspense fallback={<div />}> <About /> </Suspense>}
-          />
-          <Route
-            path="dashboard"
-            element={<Suspense fallback={<div className="p-6">Loading dashboard…</div>}> <Dashboard /> </Suspense>}
-          />
-          <Route
-            path="routes"
-            element={
-              <ProtectedRoute allowedRoles={[ROLES.MANAGER, ROLES.ADMIN]}>
-                <Suspense fallback={<div />}> <RouteManagement /> </Suspense>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="shuttles"
-            element={<Suspense fallback={<div />}> <ShuttleManagement /> </Suspense>}
-          />
-          <Route
-            path="vehicles"
-            element={<Suspense fallback={<div />}> <VehicleManagement /> </Suspense>}
-          />
-          <Route
-            path="employees"
-            element={<Suspense fallback={<div />}> <EmployeeManagement /> </Suspense>}
-          />
-            <Route
-            path="payroll"
-            element={<Suspense fallback={<div />}> <Payroll /> </Suspense>}
-          />
-          <Route
-            path="organization-management"
-            element={
-              <ProtectedRoute allowedRoles={[ROLES.MANAGER, ROLES.ADMIN]}>
-                <Suspense fallback={<div />}> <OrganizationManagement /> </Suspense>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="notifications"
-            element={<Suspense fallback={<div />}> <NotificationDashboard /> </Suspense>}
-          />
-          <Route
-            path="settings"
-            element={<Suspense fallback={<div />}> <Settings /> </Suspense>}
-          />
-          {/* Driver Portal - Mobile optimized */}
-          <Route
-            path="driver/*"
-            element={<Suspense fallback={<div />}> <DriverPortal /> </Suspense>}
-          />
+          {/* Driver-only routes */}
+          {isDriver ? (
+            <>
+              <Route index element={<Navigate to={ROUTES.DRIVER_PORTAL} replace />} />
+              <Route
+                path="driver/*"
+                element={<Suspense fallback={<div />}> <DriverPortal /> </Suspense>}
+              />
+              <Route
+                path="notifications"
+                element={
+                  <Suspense fallback={<div />}> 
+                    {isMobile ? <MobileNotificationWrapper /> : <NotificationDashboard />} 
+                  </Suspense>
+                }
+              />
+              <Route
+                path="settings"
+                element={<Suspense fallback={<div />}> <Settings /> </Suspense>}
+              />
+              {/* Redirect all other routes to driver portal */}
+              <Route path="*" element={<Navigate to={ROUTES.DRIVER_PORTAL} replace />} />
+            </>
+          ) : isEmployee ? (
+            <>
+              <Route index element={<Navigate to={ROUTES.DASHBOARD} replace />} />
+              <Route
+                path="dashboard"
+                element={<Suspense fallback={<div className="p-6">Loading dashboard…</div>}> <Dashboard /> </Suspense>}
+              />
+              <Route
+                path="notifications"
+                element={
+                  <Suspense fallback={<div />}> 
+                    {isMobile ? <MobileNotificationWrapper /> : <NotificationDashboard />} 
+                  </Suspense>
+                }
+              />
+              <Route
+                path="settings"
+                element={<Suspense fallback={<div />}> <Settings /> </Suspense>}
+              />
+              <Route path="*" element={<Navigate to={ROUTES.DASHBOARD} replace />} />
+            </>
+          ) : (
+            <>
+              {/* Admin/Manager routes */}
+              <Route index element={<Navigate to={ROUTES.DASHBOARD} replace />} />
+              <Route
+                path="dashboard"
+                element={<Suspense fallback={<div className="p-6">Loading dashboard…</div>}> <Dashboard /> </Suspense>}
+              />
+              {hasManagerAccess && (
+                <Route
+                  path="routes"
+                  element={
+                    <ProtectedRoute allowedRoles={[ROLES.MANAGER, ROLES.ADMIN]}>
+                      <Suspense fallback={<div />}> <RouteManagement /> </Suspense>
+                    </ProtectedRoute>
+                  }
+                />
+              )}
+              <Route
+                path="shuttles"
+                element={<Suspense fallback={<div />}> <ShuttleManagement /> </Suspense>}
+              />
+              <Route
+                path="vehicles"
+                element={<Suspense fallback={<div />}> <VehicleManagement /> </Suspense>}
+              />
+              {hasManagerAccess && (
+                <Route
+                  path="employees"
+                  element={
+                    <ProtectedRoute allowedRoles={[ROLES.MANAGER, ROLES.ADMIN]}>
+                      <Suspense fallback={<div />}> <EmployeeManagement /> </Suspense>
+                    </ProtectedRoute>
+                  }
+                />
+              )}
+              {isAdmin && (
+                <Route
+                  path="payroll"
+                  element={
+                    <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
+                      <Suspense fallback={<div />}> <Payroll /> </Suspense>
+                    </ProtectedRoute>
+                  }
+                />
+              )}
+              {isAdmin && (
+                <Route
+                  path="organization-management"
+                  element={
+                    <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
+                      <Suspense fallback={<div />}> <OrganizationManagement /> </Suspense>
+                    </ProtectedRoute>
+                  }
+                />
+              )}
+              <Route
+                path="notifications"
+                element={
+                  <Suspense fallback={<div />}> 
+                    {isMobile ? <MobileNotificationWrapper /> : <NotificationDashboard />} 
+                  </Suspense>
+                }
+              />
+              <Route
+                path="settings"
+                element={<Suspense fallback={<div />}> <Settings /> </Suspense>}
+              />
+              <Route path="*" element={<Navigate to={ROUTES.DASHBOARD} replace />} />
+            </>
+          )}
         </Route>
       </Routes>
     </div>

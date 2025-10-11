@@ -41,6 +41,11 @@ export const driverService = {
     return response.data[0] || null;
   }),
 
+  getMyRoutes: AsyncHandler(async (filters = {}) => {
+    const response = await api.get('/drivers/me/routes', { params: filters });
+    return response.data;
+  }),
+
   getRoutes: AsyncHandler(async (filters = {}) => {
     const response = await api.get('/drivers/me/routes', { params: filters });
     return response.data;
