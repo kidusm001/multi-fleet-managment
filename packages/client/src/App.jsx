@@ -407,17 +407,11 @@ function AppContent() {
             </>
           ) : (
             <>
-              {/* Fallback for unknown roles */}
+              {/* Fallback for unknown roles (including basic users without org) */}
               <Route index element={homeElement} />
-              <Route
-                path="dashboard"
-                element={<Suspense fallback={<div className="p-6">Loading dashboard…</div>}> <Dashboard /> </Suspense>}
-              />
-              <Route
-                path="profile"
-                element={<Suspense fallback={<div />}> <Profile /> </Suspense>}
-              />
-              <Route path="*" element={<Navigate to={ROUTES.DASHBOARD} replace />} />
+              {/* Basic users without active org should be redirected to organizations by OrganizationGuard */}
+              {/* If they somehow get here, redirect them to organization selection */}
+              <Route path="*" element={<Navigate to="/organizations" replace />} />
             </>
           )}
         </Route>

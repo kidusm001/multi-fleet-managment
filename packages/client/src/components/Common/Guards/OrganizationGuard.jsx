@@ -34,10 +34,9 @@ export default function OrganizationGuard({ children }) {
   const { useSession, useListOrganizations, useActiveOrganization } = authClient;
   const { data: session, isLoading: sessionLoading } = useSession();
   const { data: organizations, isLoading: orgsLoading } = useListOrganizations();
-  const { data: activeOrganization } = useActiveOrganization();
+  const { data: activeOrganization, isPending: activeOrgLoading } = useActiveOrganization();
 
   const isSuperadmin = role === 'superadmin';
-  const isOwner = role === 'owner';
 
   // Reset validation cache when session changes
   useEffect(() => {
@@ -48,24 +47,16 @@ export default function OrganizationGuard({ children }) {
   const skipRoutes = [
     '/auth/login',
     '/auth/signup', 
-    '/organizations',
     '/unauthorized',
-    '/profile',
-    // Protected routes that should not trigger organization checks
-    '/notifications',
-    '/vehicles', 
-    '/shuttles',
-    '/routes',
-    '/employees',
-    '/dashboard',
-    '/settings',
-    '/payroll',
-    '/organization-management'
   ];
 
   const shouldSkipCheck = skipRoutes.some(route => 
     location.pathname.startsWith(route)
   );
+  
+  // Any user without an active organization (except superadmin) should be on /organizations
+  const isOnOrganizationPage = location.pathname.startsWith('/organizations');
+  const needsOrganizationRedirect = !isSuperadmin && !activeOrganization && !isOnOrganizationPage;
 
   useEffect(() => {
     // Clear any existing debounce timeout
@@ -79,8 +70,22 @@ export default function OrganizationGuard({ children }) {
       return;
     }
 
-    // Superadmin and Owner bypass organization requirements
-    if (isSuperadmin || isOwner) {
+    // Superadmin bypasses organization requirements
+    if (isSuperadmin) {
+      setIsChecking(false);
+      return;
+    }
+    
+    // Wait for active organization data to load before making decisions
+    if (activeOrgLoading) {
+      setIsChecking(true);
+      return;
+    }
+    
+    // Any user without active organization must be redirected to /organizations
+    if (needsOrganizationRedirect) {
+      console.log('OrganizationGuard - User without active org, redirecting to /organizations');
+      navigate('/organizations', { replace: true });
       setIsChecking(false);
       return;
     }
@@ -128,11 +133,10 @@ export default function OrganizationGuard({ children }) {
             }
           }
 
-          // Only redirect if user has no organizations at all
+          // If user has no organizations at all, redirect to organization selection
           if (!organizations || organizations.length === 0) {
-            console.log('User has no organizations, redirecting to dashboard');
-            setNeedsOrganization(true);
-            navigate('/', { replace: true });
+            console.log('User has no organizations, redirecting to organization selection');
+            navigate('/organizations', { replace: true });
             return;
           }
 
@@ -161,10 +165,10 @@ export default function OrganizationGuard({ children }) {
         clearTimeout(debounceRef.current);
       }
     };
-  }, [session, organizations, activeOrganization, sessionLoading, orgsLoading, navigate, shouldSkipCheck, location.pathname, isSuperadmin, isOwner, role]);
+  }, [session, organizations, activeOrganization, sessionLoading, orgsLoading, activeOrgLoading, navigate, shouldSkipCheck, location.pathname, isSuperadmin, role, needsOrganizationRedirect]);
 
-  // Show loading screen while checking
-  if (isChecking || sessionLoading || (session && orgsLoading)) {
+  // Show loading screen while checking or while data is loading
+  if (isChecking || sessionLoading || activeOrgLoading || (session && orgsLoading)) {
     return (
       <div className={cn(
         "min-h-screen flex items-center justify-center",

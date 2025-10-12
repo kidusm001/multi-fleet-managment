@@ -17,10 +17,10 @@ router.get('/:invitationId', async (req: Request, res: Response) => {
         });
 
         console.log(data);
-        res.redirect(`${CLIENT_URL}/dashboard`);
+        res.redirect(`${CLIENT_URL}/organizations`);
     } catch (error) {
         console.error(error);
-        res.redirect(`${CLIENT_URL}/dashboard`);
+        res.redirect(`${CLIENT_URL}/organizations`);
     }
 });
 
