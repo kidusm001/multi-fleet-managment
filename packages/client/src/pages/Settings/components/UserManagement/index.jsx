@@ -8,6 +8,7 @@ import { Input } from "@/components/Common/UI/Input";
 import { useOrganizations } from "@/contexts/OrganizationContext";
 import { useRole } from "@/contexts/RoleContext";
 import { ROLES } from "@data/constants";
+import axios from "axios";
 import {
   Select,
   SelectContent,
@@ -38,6 +39,8 @@ export default function UserManagement() {
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
+  const [orgFilter, setOrgFilter] = useState("all");
+  const [organizations, setOrganizations] = useState([]);
   const [_availableRoles, setAvailableRoles] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
@@ -88,6 +91,13 @@ export default function UserManagement() {
     }
   }, [session, /* eslint-disable-line react-hooks/exhaustive-deps */]);
 
+  // Load organizations for superadmin
+  useEffect(() => {
+    if (effectiveRole === ROLES.SUPERADMIN) {
+      loadOrganizations();
+    }
+  }, [effectiveRole]);
+
   useEffect(() => {
     if (!session?.user?.id) {
       return;
@@ -97,6 +107,16 @@ export default function UserManagement() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.user?.id, effectiveRole]);
+
+  // Load organizations (superadmin only)
+  const loadOrganizations = async () => {
+    try {
+      const response = await axios.get('/api/organization/admin/organizations');
+      setOrganizations(response.data?.data || []);
+    } catch (error) {
+      console.error("Error loading organizations:", error);
+    }
+  };
 
   // Load users with optional query
   const loadUsers = useCallback(async (query = {}) => {
@@ -256,6 +276,7 @@ export default function UserManagement() {
   const resetFilters = () => {
     setSearchQuery("");
     setRoleFilter("all");
+    setOrgFilter("all");
     setCurrentPage(1);
     loadUsers({ searchValue: "", filterField: undefined });
   };
@@ -342,6 +363,12 @@ export default function UserManagement() {
     setCurrentPage(1);
   };
 
+  // Organization filtering functionality (superadmin only)
+  const handleOrgFilter = (orgId) => {
+    setOrgFilter(orgId);
+    setCurrentPage(1);
+  };
+
   const accessibleUserIds = useMemo(() => {
     if (!effectiveRole || effectiveRole === ROLES.SUPERADMIN) {
       return null;
@@ -377,9 +404,21 @@ export default function UserManagement() {
 
       const matchesRole = roleFilter === "all" || user.role === roleFilter;
 
-      return matchesSearch && matchesRole;
+      // Organization filter (superadmin only)
+      let matchesOrg = true;
+      if (effectiveRole === ROLES.SUPERADMIN && orgFilter !== "all") {
+        const org = organizations.find(o => o.id === orgFilter);
+        if (org) {
+          const userIds = org.members?.map(m => m.userId || m.user?.id).filter(Boolean) || [];
+          matchesOrg = userIds.includes(user.id);
+        } else {
+          matchesOrg = false;
+        }
+      }
+
+      return matchesSearch && matchesRole && matchesOrg;
     });
-  }, [accessibleUsers, searchQuery, roleFilter]);
+  }, [accessibleUsers, searchQuery, roleFilter, orgFilter, effectiveRole, organizations]);
 
   const totalPages = useMemo(() => {
     return Math.max(1, Math.ceil(filteredUsers.length / rowsPerPage));
@@ -552,6 +591,39 @@ export default function UserManagement() {
               </SelectItem>
             </SelectContent>
           </Select>
+
+          {/* Organization Filter (Superadmin only) */}
+          {effectiveRole === ROLES.SUPERADMIN && (
+            <Select
+              value={orgFilter}
+              onValueChange={handleOrgFilter}
+            >
+              <SelectTrigger className={`w-[200px] rounded-md transition-all duration-200 bg-[var(--input-background)] border-[var(--input-border)] ${
+                isDark 
+                  ? "text-gray-200 hover:bg-gray-700/50 hover:border-gray-600" 
+                  : "text-gray-700 hover:bg-gray-50 hover:border-gray-300"
+              } ${orgFilter !== "all" ? "border-blue-500/50 dark:border-blue-500/30 shadow-sm" : ""}`}>
+                <div className="flex items-center">
+                  <Filter className="w-3.5 h-3.5 mr-2 text-[var(--text-secondary)]" />
+                  <SelectValue placeholder="Filter by organization" />
+                </div>
+              </SelectTrigger>
+              <SelectContent className={isDark ? "bg-gray-800 border-gray-700" : ""}>
+                <SelectItem value="all" className={isDark ? "text-gray-200 focus:bg-gray-700" : ""}>
+                  All Organizations
+                </SelectItem>
+                {organizations.map((org) => (
+                  <SelectItem 
+                    key={org.id} 
+                    value={org.id} 
+                    className={isDark ? "text-gray-200 focus:bg-gray-700" : ""}
+                  >
+                    {org.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
           
           {/* Refresh and Reset Filter Buttons */}
           <div className="flex gap-2">
@@ -559,11 +631,11 @@ export default function UserManagement() {
               variant="outline" 
               size="icon"
               onClick={resetFilters}
-              disabled={!searchQuery && roleFilter === "all"}
+              disabled={!searchQuery && roleFilter === "all" && orgFilter === "all"}
               title="Reset filters"
               className={`transition-all duration-200 ${
                 isDark ? "bg-gray-800 border-gray-700 hover:bg-gray-700" : ""
-              } ${(!searchQuery && roleFilter === "all") ? "opacity-50" : "hover:-translate-y-0.5"}`}
+              } ${(!searchQuery && roleFilter === "all" && orgFilter === "all") ? "opacity-50" : "hover:-translate-y-0.5"}`}
             >
               <X className="w-4 h-4" />
             </Button>
@@ -582,7 +654,7 @@ export default function UserManagement() {
         </div>
         
         {/* Active filters display */}
-        {(searchQuery || roleFilter !== "all") && (
+        {(searchQuery || roleFilter !== "all" || orgFilter !== "all") && (
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <span className="text-xs text-[var(--text-secondary)]">Active filters:</span>
             {searchQuery && (
@@ -602,6 +674,16 @@ export default function UserManagement() {
                   : "bg-blue-50 text-blue-600 hover:bg-blue-100"
               } transition-all cursor-pointer`} onClick={() => handleRoleFilter("all")}>
                 Role: {roleFilter}
+                <X className="w-3 h-3" />
+              </span>
+            )}
+            {orgFilter !== "all" && (
+              <span className={`text-xs px-2 py-1 rounded-full flex items-center gap-1 ${
+                isDark 
+                  ? "bg-purple-900/20 text-purple-400 hover:bg-purple-900/30"
+                  : "bg-purple-50 text-purple-600 hover:bg-purple-100"
+              } transition-all cursor-pointer`} onClick={() => handleOrgFilter("all")}>
+                Org: {organizations.find(o => o.id === orgFilter)?.name || orgFilter}
                 <X className="w-3 h-3" />
               </span>
             )}

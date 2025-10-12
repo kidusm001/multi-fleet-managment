@@ -74,7 +74,7 @@ export default function Dashboard() {
         // For superadmin, fetch all organizations
         if (isSuperadmin) {
           const orgResponse = await axios.get('/api/organization/admin/organizations');
-          setOrganizations(orgResponse.data || []);
+          setOrganizations(orgResponse.data?.data || []);
           
           // Superadmin doesn't need other stats
           setIsLoading(false);

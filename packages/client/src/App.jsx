@@ -338,7 +338,7 @@ function AppContent() {
             </>
           ) : (isSuperAdmin || isOwner) ? (
             <>
-              <Route index element={homeElement} />
+              <Route index element={isSuperAdmin ? <Navigate to="/organizations" replace /> : homeElement} />
               <Route
                 path="dashboard"
                 element={<Suspense fallback={<div className="p-6">Loading dashboard…</div>}> <Dashboard /> </Suspense>}
