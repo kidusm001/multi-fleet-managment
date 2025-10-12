@@ -13,7 +13,7 @@ async function runCommand(command: string, description: string) {
   
   try {
     const { stdout, stderr } = await execAsync(command, { 
-      cwd: '/home/cross/workspace/github.com/kidusm001/develop-worktree/packages/server',
+      cwd: '/home/leul/Documents/github/multi-fleet-managment/packages/server',
       maxBuffer: 10 * 1024 * 1024
     });
     if (stdout) console.log(stdout);
@@ -31,7 +31,7 @@ async function cleanDatabase() {
   console.log('🗑️  CLEANING DATABASE');
   console.log(`${'='.repeat(60)}\n`);
 
-  const dbPath = '/home/cross/workspace/github.com/kidusm001/develop-worktree/packages/server/prisma/dev.db';
+  const dbPath = '/home/leul/Documents/github/multi-fleet-managment/packages/server/prisma/dev.db';
   
   if (fs.existsSync(dbPath)) {
     fs.unlinkSync(dbPath);

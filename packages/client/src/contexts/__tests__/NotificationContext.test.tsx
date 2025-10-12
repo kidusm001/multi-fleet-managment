@@ -39,7 +39,17 @@ jest.mock('@contexts/RoleContext', () => ({
 }));
 
 jest.mock('@contexts/AuthContext', () => ({
-  useAuth: jest.fn(() => ({ isAuthenticated: true })),
+  useAuth: jest.fn(() => ({ 
+    isAuthenticated: true,
+    user: { id: 'user1', email: 'test@example.com' }
+  })),
+}));
+
+jest.mock('@contexts/OrganizationContext', () => ({
+  useOrganization: jest.fn(() => ({
+    activeOrganization: { id: 'org1', name: 'Test Org' },
+    isLoading: false,
+  })),
 }));
 
 jest.mock('@services/notificationApi', () => ({
@@ -86,7 +96,7 @@ describe('NotificationContext', () => {
     const mockNotifications = [
       { id: '1', type: 'shuttle_assigned', message: 'Test notification', seen: false }
     ];
-    localStorage.setItem('shuttle_notifications', JSON.stringify(mockNotifications));
+    localStorage.setItem('shuttle_notifications:user1:org1', JSON.stringify(mockNotifications));
 
     render(
       <NotificationProvider>
@@ -120,7 +130,7 @@ describe('NotificationContext', () => {
       { id: '1', type: 'shuttle_assigned', message: 'Test 1', seen: false },
       { id: '2', type: 'route_updated', message: 'Test 2', seen: false }
     ];
-    localStorage.setItem('shuttle_notifications', JSON.stringify(mockNotifications));
+    localStorage.setItem('shuttle_notifications:user1:org1', JSON.stringify(mockNotifications));
 
     render(
       <NotificationProvider>

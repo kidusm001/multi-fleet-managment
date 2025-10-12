@@ -22,7 +22,7 @@ export default function OrganizationGuard({ children }) {
   const isDark = theme === 'dark';
   
   const [isChecking, setIsChecking] = useState(true);
-  const [needsOrganization, setNeedsOrganization] = useState(false);
+  const [_needsOrganization, _setNeedsOrganization] = useState(false);
 
   // Debounce ref to prevent rapid organization checks
   const debounceRef = useRef(null);
@@ -191,7 +191,7 @@ export default function OrganizationGuard({ children }) {
   }
 
   // Show organization creation prompt if needed
-  if (needsOrganization) {
+  if (_needsOrganization) {
     return (
       <div className={cn(
         "min-h-screen flex items-center justify-center",

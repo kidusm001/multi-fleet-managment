@@ -8,6 +8,7 @@ jest.mock('@/lib/auth-client', () => ({
   authClient: {
     useListOrganizations: jest.fn(),
     useActiveOrganization: jest.fn(),
+    getSession: jest.fn(),
     organization: {
       create: jest.fn(),
       setActive: jest.fn(),
@@ -49,6 +50,14 @@ describe('OrganizationContext', () => {
     (authClient.useActiveOrganization as jest.Mock).mockReturnValue({
       data: mockOrganizations[0],
       isPending: false,
+    });
+
+    (authClient.getSession as jest.Mock).mockResolvedValue({
+      data: { 
+        user: { id: '1', email: 'test@example.com' },
+        activeOrganizationId: 'org2' // Mock the updated active organization ID
+      },
+      error: null,
     });
   });
 
