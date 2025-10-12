@@ -302,24 +302,69 @@ const RouteTable = ({ routes, onRouteClick }) => {
         </div>
       </div>
 
-      <div className="rounded-xl border bg-card text-card-foreground shadow-sm">
+      {/* Mobile compact list - only visible on small screens */}
+      <div className="block md:hidden">
+        <div className="space-y-3 p-3">
+          {pageData.map((row, i) => (
+            <div
+              key={`mobile-row-${row.routeId}-${i}`}
+              onClick={() => {
+                const route = routes.find((r) => r.id === row.routeId);
+                if (route) onRouteClick(route);
+              }}
+              className="bg-background/80 border border-border/30 rounded-lg p-3 flex items-start justify-between gap-3 hover:bg-background/90 cursor-pointer"
+            >
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="text-sm font-medium text-primary truncate">
+                    {row.routeName}
+                  </div>
+                  <div className="text-xs text-muted-foreground">#{row.routeId}</div>
+                </div>
+                <div className="mt-1 text-sm truncate">{row.employee.name}</div>
+                <div className="mt-1 text-xs text-muted-foreground flex flex-wrap gap-2">
+                  <span className="truncate">Pickup: {row.pickupLocation}</span>
+                  <span className="truncate">Drop: {row.dropOffLocation}</span>
+                </div>
+              </div>
+              <div className="flex flex-col items-end gap-2">
+                <div className="text-xs text-muted-foreground text-right">
+                  {row.shift.startTime} - {row.shift.endTime}
+                </div>
+                <div>
+                  <Badge
+                    variant={row.status === "active" ? "success" : "secondary"}
+                    className="capitalize text-xs px-2 py-1"
+                  >
+                    {row.status}
+                  </Badge>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Desktop / tablet table - hidden on small screens */}
+      <div className="hidden md:block rounded-xl border bg-card text-card-foreground shadow-sm">
         <Table>
           <TableHeader className="sticky top-0 z-50 bg-background">
             <TableRow>
               {[
                 { key: "routeName", label: "Route" },
                 { key: "employeeName", label: "Employee" },
-                { key: "department", label: "Department" },
-                { key: "pickupLocation", label: "Pick-up" },
-                { key: "dropOffLocation", label: "Drop-off" },
-                { key: "driver", label: "Driver" },
-                { key: "shuttleName", label: "Shuttle" },
+                { key: "department", label: "Department", hideOnMobile: true },
+                { key: "pickupLocation", label: "Pick-up", hideOnMobile: true },
+                { key: "dropOffLocation", label: "Drop-off", hideOnMobile: true },
+                { key: "driver", label: "Driver", hideOnMobile: true },
+                { key: "shuttleName", label: "Shuttle", hideOnMobile: true },
                 {
                   key: "shift",
                   label: sortColumn === "shift" ? "Time" : "Shift",
+                  hideOnMobile: true,
                 },
                 { key: "status", label: "Status" },
-              ].map(({ key, label }) => (
+              ].map(({ key, label, hideOnMobile }) => (
                 <TableHead
                   key={key}
                   className={cn(
@@ -329,7 +374,8 @@ const RouteTable = ({ routes, onRouteClick }) => {
                     "first:rounded-tl-lg last:rounded-tr-lg",
                     "bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/95",
                     "sticky top-0",
-                    "after:absolute after:inset-x-0 after:bottom-0 after:h-px after:bg-border"
+                    "after:absolute after:inset-x-0 after:bottom-0 after:h-px after:bg-border",
+                    hideOnMobile && "hidden md:table-cell"
                   )}
                   onClick={() => handleSort(key)}
                 >
@@ -361,7 +407,7 @@ const RouteTable = ({ routes, onRouteClick }) => {
                       if (route) onRouteClick(route);
                     }}
                   >
-                    <TableCell className="py-3 px-4">
+                    <TableCell className={cn("py-3 px-4", "table-cell") }>
                       <div className="font-medium text-primary">
                         {row.routeName}
                       </div>
@@ -369,21 +415,21 @@ const RouteTable = ({ routes, onRouteClick }) => {
                         #{row.routeId}
                       </div>
                     </TableCell>
-                    <TableCell className="py-3 px-4">
+                    <TableCell className={cn("py-3 px-4") }>
                       <div className="font-medium">{row.employee.name}</div>
                     </TableCell>
-                    <TableCell className="py-3 px-4">
+                    <TableCell className={cn("py-3 px-4", "hidden md:table-cell")}>
                       {row.department}
                     </TableCell>
-                    <TableCell className="py-3 px-4">
+                    <TableCell className={cn("py-3 px-4", "hidden md:table-cell")}>
                       {row.pickupLocation}
                     </TableCell>
-                    <TableCell className="py-3 px-4">
+                    <TableCell className={cn("py-3 px-4", "hidden md:table-cell") }>
                       <div className="max-w-[200px] truncate">
                         {row.dropOffLocation}
                       </div>
                     </TableCell>
-                    <TableCell className="py-3 px-4">
+                    <TableCell className={cn("py-3 px-4", "hidden md:table-cell")}>
                       <div className="font-medium">{row.driver.name}</div>
                       {row.driver.phone !== "N/A" && (
                         <div className="text-xs text-muted-foreground">
@@ -391,7 +437,7 @@ const RouteTable = ({ routes, onRouteClick }) => {
                         </div>
                       )}
                     </TableCell>
-                    <TableCell className="py-3 px-4">
+                    <TableCell className={cn("py-3 px-4", "hidden md:table-cell")}>
                       <div className="font-medium">{row.shuttle.name}</div>
                       {row.shuttle.capacity > 0 && (
                         <div className="text-xs text-muted-foreground">
@@ -399,17 +445,15 @@ const RouteTable = ({ routes, onRouteClick }) => {
                         </div>
                       )}
                     </TableCell>
-                    <TableCell className="py-3 px-4">
+                    <TableCell className={cn("py-3 px-4", "hidden md:table-cell")}>
                       <div className="font-medium">{row.shift.name}</div>
                       <div className="text-xs text-muted-foreground">
                         {row.shift.startTime} - {row.shift.endTime}
                       </div>
                     </TableCell>
-                    <TableCell className="py-3 px-4">
+                    <TableCell className={cn("py-3 px-4")}>
                       <Badge
-                        variant={
-                          row.status === "active" ? "success" : "secondary"
-                        }
+                        variant={row.status === "active" ? "success" : "secondary"}
                         className="capitalize"
                       >
                         {row.status}

@@ -3,7 +3,7 @@ import { Users, MapPin, Activity } from "lucide-react";
 
 import { StatsCard } from "./StatsCard";
 
-export function StatsSection({ employees, getEmployeeStats }) {
+export function StatsSection({ getEmployeeStats }) {
   const stats = getEmployeeStats();
 
   return (
@@ -14,7 +14,7 @@ export function StatsSection({ employees, getEmployeeStats }) {
   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <StatsCard
           title="Total Employees"
-          value={employees.length}
+          value={stats.activeEmployees}
           change="-5"
           icon={<Users className="h-5 w-5 text-sky-600 dark:text-sky-400" />}
           iconBg="bg-sky-100 dark:bg-sky-500/20"
@@ -28,11 +28,11 @@ export function StatsSection({ employees, getEmployeeStats }) {
           subtitle={`Most active: ${stats.topLocation}`}
         />
         <StatsCard
-          title="Active Employees"
-          value={stats.activeEmployees}
+          title="Assigned Employees"
+          value={stats.assigned}
           icon={<Activity className="h-5 w-5 text-amber-600 dark:text-amber-400" />}
           iconBg="bg-amber-100 dark:bg-amber-500/20"
-          subtitle={`${Math.round((stats.activeEmployees / employees.length) * 100) || 0}% of total`}
+          subtitle={`${stats.assignedPercentage}% of total`}
         />
       </div>
     </div>
@@ -40,13 +40,5 @@ export function StatsSection({ employees, getEmployeeStats }) {
 }
 
 StatsSection.propTypes = {
-  employees: PropTypes.arrayOf(
-    PropTypes.shape({
-      id: PropTypes.string.isRequired,
-      name: PropTypes.string.isRequired,
-      location: PropTypes.string.isRequired,
-      shuttle: PropTypes.string,
-    })
-  ).isRequired,
   getEmployeeStats: PropTypes.func.isRequired,
 };

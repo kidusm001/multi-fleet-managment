@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@components/Common/UI/Select";
-import { LayoutGrid, LayoutList, SlidersHorizontal, Table } from "lucide-react";
+import { LayoutGrid, SlidersHorizontal, Table, List } from "lucide-react";
 import PropTypes from "prop-types";
 import { useTheme } from "@contexts/ThemeContext/index";
 
@@ -63,13 +63,14 @@ const Header = ({
             <span className="text-sm font-medium">Grid</span>
           </Button>
 
-          {/* List button */}
+          {/* List button - Hidden on mobile */}
           <Button
             variant="ghost"
             size="sm"
             onClick={() => onViewModeChange("list")}
             className={cn(
               "h-9 px-3 rounded-lg flex items-center gap-1.5 transition-all duration-200",
+              "hidden md:flex", // Hide on mobile, show on medium screens and up
               viewMode === "list" 
                 ? isDark
                   ? "bg-primary/25 text-primary ring-1 ring-primary/30 font-medium"
@@ -78,7 +79,7 @@ const Header = ({
             )}
             aria-label="Switch to list view"
           >
-            <LayoutList className="h-4 w-4" />
+            <List className="h-4 w-4" />
             <span className="text-sm font-medium">List</span>
           </Button>
 

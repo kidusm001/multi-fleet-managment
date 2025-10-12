@@ -8,14 +8,12 @@ import {
   BuildingOfficeIcon,
 } from "@heroicons/react/24/outline";
 import { Input } from "@/components/Common/UI/Input";
-import { locationService } from "@/services/locationService";
-import { toast } from "sonner";
 
 function Controls({
   selectedShift,
   setSelectedShift,
-  selectedLocation,
-  setSelectedLocation,
+  selectedTime,
+  setSelectedTime,
   routes = [],
   shifts = [],
   _loading = false,
@@ -25,34 +23,26 @@ function Controls({
     availableSeats: 0,
   },
 }) {
+  const [searchTime, setSearchTime] = useState("");
   const [searchShift, setSearchShift] = useState("");
-  const [searchLocation, setSearchLocation] = useState("");
-  const [locations, setLocations] = useState([]);
+  const [times, setTimes] = useState([]);
   const currentShift = shifts.find((s) => s.id === selectedShift);
 
-  // Fetch locations on component mount
+  // Set times when shift is selected
   useEffect(() => {
-    const fetchLocations = async () => {
-      try {
-        const response = await locationService.getLocations();
-        setLocations(response.data || response);
-      } catch (error) {
-        console.error("Failed to load locations:", error);
-        toast.error("Failed to load locations");
-      }
-    };
-    fetchLocations();
-  }, []);
+    if (currentShift && currentShift.times) {
+      setTimes(currentShift.times);
+    } else {
+      setTimes([]);
+    }
+  }, [currentShift]);
 
-  const filteredShifts = shifts.filter(
-    (shift) =>
-      shift.name.toLowerCase().includes(searchShift.toLowerCase()) ||
-      shift.endTime.toLowerCase().includes(searchShift.toLowerCase())
+  const filteredTimes = times.filter((time) =>
+    time.toLowerCase().includes(searchTime.toLowerCase())
   );
 
-  const filteredLocations = locations.filter((location) =>
-    location.address?.toLowerCase().includes(searchLocation.toLowerCase()) ||
-    location.name?.toLowerCase().includes(searchLocation.toLowerCase())
+  const filteredShifts = shifts.filter((shift) =>
+    shift.name.toLowerCase().includes(searchShift.toLowerCase())
   );
 
   // Format time to 12-hour format with AM/PM
@@ -70,9 +60,9 @@ function Controls({
 
   return (
     <div className="border-r border-gray-200/50 dark:border-border/50 pr-8">
-      <div className="bg-white dark:bg-card p-6 rounded-2xl border border-gray-200/50 dark:border-border/50 shadow-sm mb-8">
-        <h3 className="text-lg font-semibold mb-4 flex items-center gap-3 text-gray-900 dark:text-foreground">
-          <ClockIcon className="w-5 h-5 text-blue-600 dark:text-primary" />
+      <div className="bg-white dark:bg-card p-4 md:p-6 rounded-2xl border border-gray-200/50 dark:border-border/50 shadow-sm mb-8">
+        <h3 className="text-base md:text-lg font-semibold mb-4 flex items-center gap-3 text-gray-900 dark:text-foreground">
+          <ClockIcon className="w-4 h-4 md:w-5 md:h-5 text-blue-600 dark:text-primary" />
           Select Shift
         </h3>
 
@@ -93,7 +83,7 @@ function Controls({
               <button
                 key={shift.id}
                 onClick={() => setSelectedShift(shift.id)}
-                className={`flex items-center justify-between w-full p-4 rounded-xl text-left transition-all border
+                className={`flex items-center justify-between w-full p-3 md:p-4 rounded-xl text-left transition-all border
                   ${
                     selectedShift === shift.id
                       ? "bg-blue-50 text-blue-700 border-blue-200/50 dark:bg-primary/5 dark:text-primary dark:border-primary/20"
@@ -101,14 +91,14 @@ function Controls({
                   }`}
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-white dark:bg-card border border-gray-200/50 dark:border-border/50 flex items-center justify-center">
-                    <span className="text-xl">{shift.icon || "🕒"}</span>
+                  <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-white dark:bg-card border border-gray-200/50 dark:border-border/50 flex items-center justify-center">
+                    <span className="text-lg md:text-xl">{shift.icon || "🕒"}</span>
                   </div>
                   <div>
-                    <div className="font-medium text-gray-900 dark:text-foreground">
+                    <div className="font-medium text-gray-900 dark:text-foreground text-sm md:text-base">
                       {shift.name}
                     </div>
-                    <div className="text-sm text-gray-500 dark:text-muted-foreground">
+                    <div className="text-xs md:text-sm text-gray-500 dark:text-muted-foreground">
                       Ends at {formatTime(shift.endTime)}
                     </div>
                   </div>
@@ -125,50 +115,50 @@ function Controls({
       </div>
 
       {selectedShift && (
-        <div className="bg-white dark:bg-card p-6 rounded-2xl border border-gray-200/50 dark:border-border/50 shadow-sm mb-8">
-          <h3 className="text-lg font-semibold mb-4 flex items-center gap-3 text-gray-900 dark:text-foreground">
-            <BuildingOfficeIcon className="w-5 h-5 text-green-600 dark:text-primary" />
-            Filter by Location
+        <div className="bg-white dark:bg-card p-4 md:p-6 rounded-2xl border border-gray-200/50 dark:border-border/50 shadow-sm mb-8">
+          <h3 className="text-base md:text-lg font-semibold mb-4 flex items-center gap-3 text-gray-900 dark:text-foreground">
+            <BuildingOfficeIcon className="w-4 h-4 md:w-5 md:h-5 text-green-600 dark:text-primary" />
+            Filter by Time
           </h3>
 
           <div className="relative mb-4">
             <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-muted-foreground" />
             <Input
               type="text"
-              placeholder="Search locations..."
-              value={searchLocation}
-              onChange={(e) => setSearchLocation(e.target.value)}
+              placeholder="Search times..."
+              value={searchTime}
+              onChange={(e) => setSearchTime(e.target.value)}
               className="pl-9 border-gray-200/50 dark:border-border/50 focus:border-green-500 focus:ring-green-500 dark:focus:border-primary dark:focus:ring-primary"
             />
           </div>
 
           <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
             <button
-              onClick={() => setSelectedLocation(null)}
-              className={`flex items-center justify-between w-full p-3 rounded-xl text-left transition-all border
+              onClick={() => setSelectedTime("")}
+              className={`flex items-center justify-between w-full p-2 md:p-3 rounded-xl text-left transition-all border
                 ${
-                  selectedLocation === null
+                  selectedTime === ""
                     ? "bg-green-50 text-green-700 border-green-200/50 dark:bg-primary/5 dark:text-primary dark:border-primary/20"
                     : "bg-white dark:bg-card text-gray-600 dark:text-muted-foreground border-gray-200/50 dark:border-border/50 hover:border-green-100 hover:bg-green-50/50 dark:hover:border-primary/20 dark:hover:bg-primary/5"
                 }`}
             >
               <div className="flex items-center gap-3">
                 <MapPinIcon className="w-4 h-4" />
-                <span className="text-sm font-medium">All Locations</span>
+                <span className="text-sm font-medium">All Times</span>
               </div>
-              {selectedLocation === null && (
+              {selectedTime === "" && (
                 <div className="w-5 h-5 rounded-full bg-green-600 dark:bg-primary flex items-center justify-center">
                   <div className="w-2.5 h-2.5 rounded-full bg-white" />
                 </div>
               )}
             </button>
-            {filteredLocations.map((location) => (
+            {filteredTimes.map((time) => (
               <button
-                key={location.id}
-                onClick={() => setSelectedLocation(location.id)}
-                className={`flex items-center justify-between w-full p-3 rounded-xl text-left transition-all border
+                key={time}
+                onClick={() => setSelectedTime(time)}
+                className={`flex items-center justify-between w-full p-2 md:p-3 rounded-xl text-left transition-all border
                   ${
-                    selectedLocation === location.id
+                    selectedTime === time
                       ? "bg-green-50 text-green-700 border-green-200/50 dark:bg-primary/5 dark:text-primary dark:border-primary/20"
                       : "bg-white dark:bg-card text-gray-600 dark:text-muted-foreground border-gray-200/50 dark:border-border/50 hover:border-green-100 hover:bg-green-50/50 dark:hover:border-primary/20 dark:hover:bg-primary/5"
                   }`}
@@ -176,15 +166,10 @@ function Controls({
                 <div className="flex items-center gap-3">
                   <MapPinIcon className="w-4 h-4" />
                   <div>
-                    <div className="text-sm font-medium">{location.name || location.address}</div>
-                    {location.name && location.address && (
-                      <div className="text-xs text-gray-500 dark:text-muted-foreground mt-0.5">
-                        {location.address}
-                      </div>
-                    )}
+                    <div className="text-sm font-medium">{time}</div>
                   </div>
                 </div>
-                {selectedLocation === location.id && (
+                {selectedTime === time && (
                   <div className="w-5 h-5 rounded-full bg-green-600 dark:bg-primary flex items-center justify-center">
                     <div className="w-2.5 h-2.5 rounded-full bg-white" />
                   </div>
@@ -196,66 +181,66 @@ function Controls({
       )}
 
       {selectedShift && currentShift && (
-        <div className="bg-white dark:bg-card p-6 rounded-2xl border border-gray-200/50 dark:border-border/50 shadow-sm">
-          <h3 className="text-lg font-semibold mb-6 flex items-center gap-3 text-gray-900 dark:text-foreground">
-            <MapPinIcon className="w-5 h-5 text-purple-600 dark:text-primary" />
+        <div className="bg-white dark:bg-card p-4 md:p-6 rounded-2xl border border-gray-200/50 dark:border-border/50 shadow-sm">
+          <h3 className="text-base md:text-lg font-semibold mb-4 md:mb-6 flex items-center gap-3 text-gray-900 dark:text-foreground">
+            <MapPinIcon className="w-4 h-4 md:w-5 md:h-5 text-purple-600 dark:text-primary" />
             Shift Overview
           </h3>
 
-          <div className="space-y-6">
-            <div className="grid gap-4">
-              <div className="p-4 rounded-xl bg-green-50/50 dark:bg-card border border-green-200/50 dark:border-border/50">
+          <div className="space-y-4 md:space-y-6">
+            <div className="grid gap-3 md:gap-4">
+              <div className="p-3 md:p-4 rounded-xl bg-green-50/50 dark:bg-card border border-green-200/50 dark:border-border/50">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-gray-500 dark:text-muted-foreground">
+                  <span className="text-xs md:text-sm text-gray-500 dark:text-muted-foreground">
                     Shift Time
                   </span>
                   <div className="text-right">
-                    <div className="font-medium text-green-700 dark:text-foreground">
+                    <div className="font-medium text-green-700 dark:text-foreground text-sm md:text-base">
                       Start: {formatTime(currentShift.startTime)}
                     </div>
-                    <div className="text-sm text-gray-500 dark:text-muted-foreground mt-1">
+                    <div className="text-xs md:text-sm text-gray-500 dark:text-muted-foreground mt-1">
                       End: {formatTime(currentShift.endTime)}
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div className="p-4 rounded-xl bg-blue-50/50 dark:bg-card border border-blue-200/50 dark:border-border/50">
+              <div className="p-3 md:p-4 rounded-xl bg-blue-50/50 dark:bg-card border border-blue-200/50 dark:border-border/50">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-gray-500 dark:text-muted-foreground">
+                  <span className="text-xs md:text-sm text-gray-500 dark:text-muted-foreground">
                     Unassigned in Shift
                   </span>
-                  <span className="text-2xl font-semibold text-blue-700 dark:text-foreground">
+                  <span className="text-lg md:text-2xl font-semibold text-blue-700 dark:text-foreground">
                     {stats.unassignedInShift}
                   </span>
                 </div>
               </div>
 
-              <div className="p-4 rounded-xl bg-purple-50/50 dark:bg-card border border-purple-200/50 dark:border-border/50">
+              <div className="p-3 md:p-4 rounded-xl bg-purple-50/50 dark:bg-card border border-purple-200/50 dark:border-border/50">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-gray-500 dark:text-muted-foreground">
+                  <span className="text-xs md:text-sm text-gray-500 dark:text-muted-foreground">
                     Total Routes
                   </span>
-                  <span className="text-2xl font-semibold text-purple-700 dark:text-foreground">
+                  <span className="text-lg md:text-2xl font-semibold text-purple-700 dark:text-foreground">
                     {routes.length}
                   </span>
                 </div>
                 {routes.length === 0 && (
-                  <div className="mt-2 p-3 bg-white dark:bg-card rounded-lg border border-purple-200/50 dark:border-primary/20">
-                    <p className="text-sm text-purple-600 dark:text-primary flex items-center gap-2">
-                      <PlusIcon className="w-4 h-4" />
+                  <div className="mt-2 p-2 md:p-3 bg-white dark:bg-card rounded-lg border border-purple-200/50 dark:border-primary/20">
+                    <p className="text-xs md:text-sm text-purple-600 dark:text-primary flex items-center gap-2">
+                      <PlusIcon className="w-3 h-3 md:w-4 md:h-4" />
                       Visit Route Management to create a new route
                     </p>
                   </div>
                 )}
               </div>
 
-              <div className="p-4 rounded-xl bg-amber-50/50 dark:bg-card border border-amber-200/50 dark:border-border/50">
+              <div className="p-3 md:p-4 rounded-xl bg-amber-50/50 dark:bg-card border border-amber-200/50 dark:border-border/50">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-gray-500 dark:text-muted-foreground">
+                  <span className="text-xs md:text-sm text-gray-500 dark:text-muted-foreground">
                     Available Seats
                   </span>
-                  <span className="text-2xl font-semibold text-amber-700 dark:text-foreground">
+                  <span className="text-lg md:text-2xl font-semibold text-amber-700 dark:text-foreground">
                     {stats.availableSeats}
                   </span>
                 </div>
@@ -271,8 +256,8 @@ function Controls({
 Controls.propTypes = {
   selectedShift: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
   setSelectedShift: PropTypes.func.isRequired,
-  selectedLocation: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
-  setSelectedLocation: PropTypes.func.isRequired,
+  selectedTime: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+  setSelectedTime: PropTypes.func.isRequired,
   routes: PropTypes.arrayOf(
     PropTypes.shape({
       id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,

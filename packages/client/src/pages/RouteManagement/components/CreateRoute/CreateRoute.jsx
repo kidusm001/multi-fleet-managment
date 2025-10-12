@@ -23,7 +23,9 @@ import LocationSelection from "./components/LocationSelection";
 import RouteList from "./components/RouteList";
 import EmployeeTable from "./components/EmployeeTable";
 import CreateRouteForm from "./components/CreateRouteForm";
+import MobileCreateRouteForm from "./components/MobileCreateRouteForm";
 import ShuttlePreview from "./components/ShuttlePreview";
+import MobileShuttlePreview from "./components/MobileShuttlePreview";
 import CustomButton from "./components/CustomButton";
 // Styles
 import styles from "./styles/CreateRoute.module.css";
@@ -50,6 +52,11 @@ function CreateRoute() {
   const [routes, setRoutes] = useState([]);
   const [shuttles, setShuttles] = useState([]);
   const [loading, setLoading] = useState(false);
+
+  // Check if device is mobile
+  const isMobile = () => {
+    return window.innerWidth < 768; // md breakpoint
+  };
 
   // Load location from navigation state or stored state
   useEffect(() => {
@@ -398,78 +405,141 @@ function CreateRoute() {
       className={cn(
         styles.mainCard,
         "select-none",
-        "dark:select-border-transparent"
+        "dark:select-border-transparent",
+        "p-4 md:p-6"
       )}
     >
-      <CardHeader className="px-6 pt-6 pb-4">
-        <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Create Route</h2>
+      <CardHeader className="px-4 md:px-6 pt-4 md:pt-6 pb-3 md:pb-4">
+        <h2 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-gray-100">Create Route</h2>
       </CardHeader>
-      <CardContent className={styles.cardContent}>
+      <CardContent className={cn(styles.cardContent, "p-4 md:p-6")}>
         {loading ? (
-          <div className={styles.loadingContainer}>
+          <div className={cn(styles.loadingContainer, "py-8")}>
             <LoadingAnimation />
-            <p>Creating route...</p>
+            <p className="text-sm md:text-base">Creating route...</p>
           </div>
         ) : pageState === "initial" ? (
           <>
-            {/* Shift Selection with Create Route Button */}
-            <div className={styles.shiftHeader}>
-              <ShiftSelection
-                selectedShift={selectedShift}
-                onShiftChange={handleShiftChange}
-                shifts={shifts}
-                stats={{
-                  shifts: shifts.length,
-                  employees: employees.length,
-                  routes: routes.length,
-                  shuttlesCount: shuttles.length,
-                }}
-              />
+            {/* Mobile Layout - Compact and Stacked */}
+            <div className="block md:hidden">
+              <div className="px-3 py-3 space-y-3">
+                {/* Mobile Shift Selection */}
+                <div className="bg-white rounded-2xl p-3 shadow-sm">
+                  <ShiftSelection
+                    selectedShift={selectedShift}
+                    onShiftChange={handleShiftChange}
+                    shifts={shifts}
+                    stats={{
+                      shifts: shifts.length,
+                      employees: employees.length,
+                      routes: routes.length,
+                      shuttlesCount: shuttles.length,
+                    }}
+                  />
+                </div>
 
-              {/* Location Selection and Create Button Row - only show when shift is selected */}
-              {selectedShift && (
-                <div className={styles.locationAndCreateRow}>
-                  <div className={styles.locationSelectionWrapper}>
+                {/* Mobile Location Selection and Create Button - only show when shift is selected */}
+                {selectedShift && (
+                  <div className="bg-white rounded-2xl p-3 shadow-sm space-y-3">
                     <LocationSelection
                       selectedLocation={selectedLocation}
                       onLocationChange={handleLocationChange}
                       locations={locations}
                     />
-                  </div>
-                  <div className={styles.createButtonWrapper}>
                     <CustomButton onClick={handleCreateRoute} disabled={!selectedLocation}>
                       Create Route
                     </CustomButton>
                   </div>
+                )}
+
+                {/* Mobile Routes List */}
+                <div className="bg-white rounded-2xl p-3 shadow-sm">
+                  <div className="flex justify-between items-center mb-3">
+                    <h2 className="text-lg font-semibold text-gray-900">Current Routes</h2>
+                    <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded-full">
+                      {routes.length} routes
+                    </span>
+                  </div>
+                  <ScrollArea className="h-48">
+                    <RouteList routes={routes} />
+                  </ScrollArea>
                 </div>
-              )}
+
+                {/* Mobile Employees List */}
+                <div className="bg-white rounded-2xl p-3 shadow-sm">
+                  <div className="flex justify-between items-center mb-3">
+                    <h2 className="text-lg font-semibold text-gray-900">Available Employees</h2>
+                    <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">
+                      {employees.length} employees
+                    </span>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <EmployeeTable data={employees} />
+                  </div>
+                </div>
+              </div>
             </div>
 
-            {/* Main Content Grid - Always show */}
-            <div className={styles.mainGrid}>
-              {/* Left Panel - Routes */}
-              <div className={styles.sidePanel}>
-                <div className={styles.routeListHeader}>
-                  <h2 className={styles.cardTitle}>Current Routes</h2>
-                  <span className={styles.cardBadge}>
-                    {routes.length} routes
-                  </span>
-                </div>
-                <ScrollArea className={styles.routeListScroll}>
-                  <RouteList routes={routes} />
-                </ScrollArea>
+            <div className="hidden md:block">
+              {/* Shift Selection with Create Route Button */}
+              <div className={cn(styles.shiftHeader, "flex flex-col lg:flex-row gap-4 lg:gap-6")}>
+                <ShiftSelection
+                  selectedShift={selectedShift}
+                  onShiftChange={handleShiftChange}
+                  shifts={shifts}
+                  stats={{
+                    shifts: shifts.length,
+                    employees: employees.length,
+                    routes: routes.length,
+                    shuttlesCount: shuttles.length,
+                  }}
+                />
+
+                {/* Location Selection and Create Button Row - only show when shift is selected */}
+                {selectedShift && (
+                  <div className={cn(styles.locationAndCreateRow, "flex flex-col sm:flex-row gap-4 sm:gap-6")}>
+                    <div className={styles.locationSelectionWrapper}>
+                      <LocationSelection
+                        selectedLocation={selectedLocation}
+                        onLocationChange={handleLocationChange}
+                        locations={locations}
+                      />
+                    </div>
+                    <div className={styles.createButtonWrapper}>
+                      <CustomButton onClick={handleCreateRoute} disabled={!selectedLocation}>
+                        Create Route
+                      </CustomButton>
+                    </div>
+                  </div>
+                )}
               </div>
 
-              {/* Right Panel - Employees */}
-              <div className={styles.mainContent}>
-                <div className={styles.employeeTableHeader}>
-                  <h2 className={styles.cardTitle}>Available Employees</h2>
-                  <span className={styles.cardBadge}>
-                    {employees.length} employees
-                  </span>
+              {/* Main Content Grid - Always show */}
+              <div className={cn(styles.mainGrid, "grid grid-cols-1 lg:grid-cols-[350px_1fr] gap-4 lg:gap-6")}>
+                {/* Left Panel - Routes */}
+                <div className={cn(styles.sidePanel, "h-[300px] lg:h-[500px] order-2 lg:order-1")}>
+                  <div className={styles.routeListHeader}>
+                    <h2 className={styles.cardTitle}>Current Routes</h2>
+                    <span className={styles.cardBadge}>
+                      {routes.length} routes
+                    </span>
+                  </div>
+                  <ScrollArea className={styles.routeListScroll}>
+                    <RouteList routes={routes} />
+                  </ScrollArea>
                 </div>
-                <div className={styles.tableWrapper}>
-                  <EmployeeTable data={employees} />
+
+                {/* Right Panel - Employees */}
+                <div className={cn(styles.mainContent, "h-[300px] lg:h-[500px] order-1 lg:order-2")}>
+                  <div className={styles.employeeTableHeader}>
+                    <h2 className={styles.cardTitle}>Available Employees</h2>
+                    <span className={styles.cardBadge}>
+                      {employees.length} employees
+                    </span>
+                  </div>
+                  <div className={styles.tableWrapper}>
+                    <EmployeeTable data={employees} />
+                  </div>
                 </div>
               </div>
             </div>
@@ -477,22 +547,37 @@ function CreateRoute() {
         ) : (
           // Show form for both creating and preview states
           <>
-            <CreateRouteForm
-              key={`create-route-form-${pageState}`}
-              selectedShift={routeData.selectedShift || selectedShift}
-              routeData={routeData}
-              setRouteData={setRouteData}
-              onBack={handleBackToList}
-              onPreview={handlePreview}
-              employees={employees}
-              shiftEndTime={routeData.shiftEndTime}
-              isPreviewMode={pageState === "preview"}
-              shifts={shifts}
-            />
+            {isMobile() ? (
+              <MobileCreateRouteForm
+                key={`mobile-create-route-form-${pageState}`}
+                selectedShift={routeData.selectedShift || selectedShift}
+                routeData={routeData}
+                setRouteData={setRouteData}
+                onBack={handleBackToList}
+                onPreview={handlePreview}
+                employees={employees}
+                shiftEndTime={routeData.shiftEndTime}
+                isPreviewMode={pageState === "preview"}
+                shifts={shifts}
+              />
+            ) : (
+              <CreateRouteForm
+                key={`create-route-form-${pageState}`}
+                selectedShift={routeData.selectedShift || selectedShift}
+                routeData={routeData}
+                setRouteData={setRouteData}
+                onBack={handleBackToList}
+                onPreview={handlePreview}
+                employees={employees}
+                shiftEndTime={routeData.shiftEndTime}
+                isPreviewMode={pageState === "preview"}
+                shifts={shifts}
+              />
+            )}
             {/* Show preview overlay when in preview state */}
             {pageState === "preview" && (
-              <div className={styles.previewOverlay}>
-                <ShuttlePreview
+              isMobile() ? (
+                <MobileShuttlePreview
                   routeData={{
                     ...routeData,
                     selectedShift: routeData.selectedShift || selectedShift,
@@ -502,7 +587,20 @@ function CreateRoute() {
                   onClose={() => setPageState("creating")}
                   onAccept={handleCreateRouteSubmit}
                 />
-              </div>
+              ) : (
+                <div className={styles.previewOverlay}>
+                  <ShuttlePreview
+                    routeData={{
+                      ...routeData,
+                      selectedShift: routeData.selectedShift || selectedShift,
+                      setName: handleNameChange,
+                    }}
+                    show={true}
+                    onClose={() => setPageState("creating")}
+                    onAccept={handleCreateRouteSubmit}
+                  />
+                </div>
+              )
             )}
           </>
         )}

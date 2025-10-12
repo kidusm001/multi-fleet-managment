@@ -237,16 +237,220 @@ export function EmployeeTable({
 
   return (
     <div className="space-y-6">
-      {/* Employee table with enhanced filtering and pagination */}
-      <div className="space-y-4">
+      {/* Mobile Layout - Compact Card View */}
+      <div className="block md:hidden">
+        <div className="space-y-3">
+          {/* Mobile Filters */}
+          <div className="bg-white rounded-2xl p-3 shadow-sm space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <Select
+                value={departmentFilter}
+                onValueChange={setDepartmentFilter}
+              >
+                <SelectTrigger className="h-8 text-xs bg-white dark:bg-slate-900">
+                  <SelectValue placeholder="Department" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Departments</SelectItem>
+                  {departments &&
+                    departments.map((dept) => (
+                      <SelectItem key={dept.id} value={dept.id.toString()}>
+                        {dept.name}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={shiftFilter} onValueChange={setShiftFilter}>
+                <SelectTrigger className="h-8 text-xs bg-white dark:bg-slate-900">
+                  <SelectValue placeholder="Shift" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Shifts</SelectItem>
+                  {shifts &&
+                    shifts.map((shift) => (
+                      <SelectItem key={shift.id} value={shift.id.toString()}>
+                        {shift.name}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="h-8 text-xs bg-white dark:bg-slate-900">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="inactive">Inactive</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Select
+                value={assignmentFilter}
+                onValueChange={setAssignmentFilter}
+              >
+                <SelectTrigger className="h-8 text-xs bg-white dark:bg-slate-900">
+                  <SelectValue placeholder="Assignment" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Employees</SelectItem>
+                  <SelectItem value="assigned">Assigned</SelectItem>
+                  <SelectItem value="unassigned">Unassigned</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <Select
+              value={itemsPerPage.toString()}
+              onValueChange={onItemsPerPageChange}
+            >
+              <SelectTrigger className="h-8 text-xs bg-white dark:bg-slate-900">
+                <SelectValue placeholder="Page Size" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="5">5 per page</SelectItem>
+                <SelectItem value="10">10 per page</SelectItem>
+                <SelectItem value="25">25 per page</SelectItem>
+                <SelectItem value="50">50 per page</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Mobile Employee Cards */}
+          <div className="space-y-3">
+            {sortedEmployees.length > 0 ? (
+              sortedEmployees.map((item) => (
+                <div
+                  key={item.id}
+                  className={cn(
+                    "bg-white rounded-xl p-3 shadow-sm border",
+                    item.status === "active" && "border-green-200 bg-green-50/30",
+                    item.status === "inactive" && "border-red-200 bg-red-50/30"
+                  )}
+                >
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <h3 className="font-semibold text-sm text-gray-900">{item.name}</h3>
+                      <p className="text-xs text-gray-600">{item.email || "-"}</p>
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      {renderStatusBadge(item.status)}
+                      {renderAssignmentBadge(item)}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-xs text-gray-600">
+                    <div><span className="font-medium">Contact:</span> {item.contact || "-"}</div>
+                    <div><span className="font-medium">Dept:</span> {typeof item.department === "object" ? item.department?.name || "-" : item.department || "-"}</div>
+                    <div><span className="font-medium">Shift:</span> {typeof item.shift === "object" ? item.shift?.name || "-" : item.shift || "-"}</div>
+                    <div><span className="font-medium">Location:</span> {item.location}</div>
+                  </div>
+
+                  {role === ROLES.ADMIN && (
+                    <div className="mt-3 pt-3 border-t border-gray-200">
+                      {item.status === "inactive" ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleActivateEmployee(item.id)}
+                          className="w-full h-8 text-xs bg-green-500 hover:bg-green-600 text-white border-none"
+                        >
+                          Activate
+                        </Button>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => handleDeactivateEmployee(item.id)}
+                          className="w-full h-8 text-xs bg-red-600 hover:bg-red-700 text-white"
+                        >
+                          Deactivate
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))
+            ) : (
+              <div className="bg-white rounded-xl p-6 text-center text-sm text-gray-500">
+                No employees match the current filters
+              </div>
+            )}
+          </div>
+
+          {/* Mobile Pagination */}
+          {totalItems > 0 && (
+            <div className="bg-white rounded-xl p-3 shadow-sm border">
+              <div className="text-xs text-gray-500 text-center mb-3">
+                Showing {Math.min((currentPage - 1) * itemsPerPage + 1, totalItems)} to{" "}
+                {Math.min(currentPage * itemsPerPage, totalItems)} of {totalItems} employees
+              </div>
+              <div className="flex justify-center gap-2">
+                <Button
+                  onClick={() => onPageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  variant="secondary"
+                  size="sm"
+                  className="h-8 px-3 text-xs"
+                >
+                  <ChevronLeft className="h-3 w-3" />
+                  Prev
+                </Button>
+                <div className="flex gap-1 overflow-x-auto">
+                  {getPageNumbers().map((page, index) => {
+                    if (page === "ellipsis" || page === "ellipsis2") {
+                      return (
+                        <div key={`ellipsis-${index}`} className="px-1 text-xs text-gray-400">
+                          ...
+                        </div>
+                      );
+                    }
+                    return (
+                      <Button
+                        key={page}
+                        onClick={() => onPageChange(page)}
+                        variant={currentPage === page ? "primary" : "outline"}
+                        size="sm"
+                        className={cn(
+                          "h-8 w-8 p-0 text-xs flex-shrink-0",
+                          currentPage === page && "bg-indigo-600 hover:bg-indigo-700 text-white"
+                        )}
+                      >
+                        {page}
+                      </Button>
+                    );
+                  })}
+                </div>
+                <Button
+                  onClick={() => onPageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  variant="secondary"
+                  size="sm"
+                  className="h-8 px-3 text-xs"
+                >
+                  Next
+                  <ChevronRight className="h-3 w-3" />
+                </Button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Desktop Layout - Original Table */}
+      <div className="hidden md:block">
+        {/* Employee table with enhanced filtering and pagination */}
+        <div className="space-y-4">
           {/* Filters for employee list */}
-          <div className="flex flex-wrap gap-3 items-center mb-4">
+          <div className="flex flex-col sm:flex-row flex-wrap gap-3 items-start sm:items-center mb-4">
             {/* Department filter */}
             <Select
               value={departmentFilter}
               onValueChange={setDepartmentFilter}
             >
-              <SelectTrigger className="h-9 w-[180px] text-sm bg-white dark:bg-slate-900">
+              <SelectTrigger className="h-9 w-full sm:w-[180px] text-sm bg-white dark:bg-slate-900">
                 <SelectValue placeholder="Department" />
               </SelectTrigger>
               <SelectContent>
@@ -262,7 +466,7 @@ export function EmployeeTable({
 
             {/* Shift filter */}
             <Select value={shiftFilter} onValueChange={setShiftFilter}>
-              <SelectTrigger className="h-9 w-[180px] text-sm bg-white dark:bg-slate-900">
+              <SelectTrigger className="h-9 w-full sm:w-[180px] text-sm bg-white dark:bg-slate-900">
                 <SelectValue placeholder="Shift" />
               </SelectTrigger>
               <SelectContent>
@@ -278,7 +482,7 @@ export function EmployeeTable({
 
             {/* Status filter */}
             <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="h-9 w-[180px] text-sm bg-white dark:bg-slate-900">
+              <SelectTrigger className="h-9 w-full sm:w-[180px] text-sm bg-white dark:bg-slate-900">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
@@ -293,7 +497,7 @@ export function EmployeeTable({
               value={assignmentFilter}
               onValueChange={setAssignmentFilter}
             >
-              <SelectTrigger className="h-9 w-[180px] text-sm bg-white dark:bg-slate-900">
+              <SelectTrigger className="h-9 w-full sm:w-[180px] text-sm bg-white dark:bg-slate-900">
                 <SelectValue placeholder="Assignment" />
               </SelectTrigger>
               <SelectContent>
@@ -308,7 +512,7 @@ export function EmployeeTable({
               value={itemsPerPage.toString()}
               onValueChange={onItemsPerPageChange}
             >
-              <SelectTrigger className="h-9 w-[120px] text-sm bg-white dark:bg-slate-900">
+              <SelectTrigger className="h-9 w-full sm:w-[120px] text-sm bg-white dark:bg-slate-900">
                 <SelectValue placeholder="Page Size" />
               </SelectTrigger>
               <SelectContent>
@@ -320,37 +524,38 @@ export function EmployeeTable({
             </Select>
           </div>
 
-          <Table>
-            <TableHeader>
-              <TableRow>
-                {/* Removed the ID column as requested */}
-                <TableHead onClick={() => requestSort("name")}>
-                  Name <SortIndicator columnKey="name" />
-                </TableHead>
-                <TableHead onClick={() => requestSort("contact")}>
-                  Contact <SortIndicator columnKey="contact" />
-                </TableHead>
-                <TableHead onClick={() => requestSort("email")}>
-                  Email <SortIndicator columnKey="email" />
-                </TableHead>
-                <TableHead onClick={() => requestSort("department")}>
-                  Department <SortIndicator columnKey="department" />
-                </TableHead>
-                <TableHead onClick={() => requestSort("shift")}>
-                  Shift <SortIndicator columnKey="shift" />
-                </TableHead>
-                <TableHead onClick={() => requestSort("location")}>
-                  Location <SortIndicator columnKey="location" />
-                </TableHead>
-                <TableHead onClick={() => requestSort("assigned")}>
-                  Assignment <SortIndicator columnKey="assigned" />
-                </TableHead>
-                <TableHead onClick={() => requestSort("status")}>
-                  Status <SortIndicator columnKey="status" />
-                </TableHead>
-                {role === ROLES.ADMIN && <TableHead>Actions</TableHead>}
-              </TableRow>
-            </TableHeader>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  {/* Removed the ID column as requested */}
+                  <TableHead onClick={() => requestSort("name")} className="min-w-[120px]">
+                    Name <SortIndicator columnKey="name" />
+                  </TableHead>
+                  <TableHead onClick={() => requestSort("contact")} className="min-w-[120px]">
+                    Contact <SortIndicator columnKey="contact" />
+                  </TableHead>
+                  <TableHead onClick={() => requestSort("email")} className="min-w-[180px]">
+                    Email <SortIndicator columnKey="email" />
+                  </TableHead>
+                  <TableHead onClick={() => requestSort("department")} className="min-w-[120px]">
+                    Department <SortIndicator columnKey="department" />
+                  </TableHead>
+                  <TableHead onClick={() => requestSort("shift")} className="min-w-[100px]">
+                    Shift <SortIndicator columnKey="shift" />
+                  </TableHead>
+                  <TableHead onClick={() => requestSort("location")} className="min-w-[120px]">
+                    Location <SortIndicator columnKey="location" />
+                  </TableHead>
+                  <TableHead onClick={() => requestSort("assigned")} className="min-w-[140px]">
+                    Assignment <SortIndicator columnKey="assigned" />
+                  </TableHead>
+                  <TableHead onClick={() => requestSort("status")} className="min-w-[100px]">
+                    Status <SortIndicator columnKey="status" />
+                  </TableHead>
+                  {role === ROLES.ADMIN && <TableHead className="min-w-[100px]">Actions</TableHead>}
+                </TableRow>
+              </TableHeader>
             <TableBody>
               {sortedEmployees.length > 0 ? (
                 sortedEmployees.map((item) => (
@@ -426,28 +631,41 @@ export function EmployeeTable({
               )}
             </TableBody>
           </Table>
+          </div>
 
       {/* Updated pagination controls based on Pagination.jsx */}
           {totalItems > 0 && (
-            <div className="sticky bottom-0 left-0 right-0 mt-auto flex items-center justify-between px-6 py-4 border-t border-gray-200/50 dark:border-border/50 bg-indigo-50/50 dark:bg-card rounded-lg">
-              <div className="text-sm text-gray-500 dark:text-muted-foreground">
+            <div className="sticky bottom-0 left-0 right-0 mt-auto flex flex-col sm:flex-row items-center justify-between gap-4 px-4 sm:px-6 py-4 border-t border-gray-200/50 dark:border-border/50 bg-indigo-50/50 dark:bg-card rounded-lg">
+              <div className="text-sm text-gray-500 dark:text-muted-foreground text-center sm:text-left">
                 Showing{" "}
                 {Math.min((currentPage - 1) * itemsPerPage + 1, totalItems)} to{" "}
                 {Math.min(currentPage * itemsPerPage, totalItems)} of{" "}
                 {totalItems} employees
               </div>
-              <div className="flex items-center gap-2">
-                <Button
-                  onClick={() => onPageChange(currentPage - 1)}
-                  disabled={currentPage === 1}
-                  variant="secondary"
-                  size="sm"
-                  className="gap-1"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                  Previous
-                </Button>
-                <div className="flex items-center gap-2">
+              <div className="flex flex-col sm:flex-row items-center gap-2">
+                <div className="flex items-center gap-2 order-2 sm:order-1">
+                  <Button
+                    onClick={() => onPageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    variant="secondary"
+                    size="sm"
+                    className="gap-1 w-full sm:w-auto"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    Previous
+                  </Button>
+                  <Button
+                    onClick={() => onPageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    variant="secondary"
+                    size="sm"
+                    className="gap-1 w-full sm:w-auto"
+                  >
+                    Next
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+                <div className="flex items-center gap-2 overflow-x-auto order-1 sm:order-2">
                   {getPageNumbers().map((page, index) => {
                     if (page === "ellipsis" || page === "ellipsis2") {
                       return (
@@ -463,7 +681,7 @@ export function EmployeeTable({
                         variant={currentPage === page ? "primary" : "outline"}
                         size="sm"
                         className={cn(
-                          "h-8 w-8 p-0",
+                          "h-8 w-8 p-0 flex-shrink-0",
                           currentPage === page &&
                             "bg-indigo-600 hover:bg-indigo-700 text-white"
                         )}
@@ -473,20 +691,11 @@ export function EmployeeTable({
                     );
                   })}
                 </div>
-                <Button
-                  onClick={() => onPageChange(currentPage + 1)}
-                  disabled={currentPage === totalPages}
-                  variant="secondary"
-                  size="sm"
-                  className="gap-1"
-                >
-                  Next
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
               </div>
             </div>
           )}
-    </div>
+        </div>
+      </div>
     </div>
   );
 }

@@ -36,7 +36,7 @@ import StatsPanel from "./components/StatsPanel";
 // Constants for pagination
 const ITEMS_PER_PAGE = {
   GRID: 6,
-  LIST: 12,
+  LIST: 10,
   TABLE: 1000, // High number to effectively show all items in table mode
 };
 
@@ -413,10 +413,10 @@ function RouteManagementView({ refreshTrigger }) {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-background/90 p-6 flex flex-col">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background/95 to-background/90 p-4 md:p-6 flex flex-col">
       {/* Header Section - Update with improved styling and spacing */}
-      <div className="flex flex-col gap-6 sticky top-0 z-10 bg-background/80 backdrop-blur-lg pb-4">
-        <div className="flex justify-between items-center">
+      <div className="flex flex-col gap-4 md:gap-6 sticky top-0 z-10 bg-background/80 backdrop-blur-lg pb-4">
+        <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4">
           <Header
             viewMode={viewMode}
             onViewModeChange={setViewMode}
@@ -424,9 +424,9 @@ function RouteManagementView({ refreshTrigger }) {
             onItemsPerPageChange={setItemsPerPage}
             showItemsPerPageSelector={
               viewMode !== "table"
-            } /* Hide items per page selector in table mode */
+            }
           />
-          <div className="flex items-center gap-4">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 md:gap-4">
             {/* Only show selection mode options in grid or list view */}
             {viewMode !== "table" &&
               (isSelectionMode ? (
@@ -434,7 +434,7 @@ function RouteManagementView({ refreshTrigger }) {
                   <Button
                     variant="outline"
                     onClick={toggleSelectionMode}
-                    className="gap-2 rounded-lg border-border/30 hover:bg-background/90"
+                    className="gap-2 rounded-lg border-border/30 hover:bg-background/90 text-sm"
                   >
                     Cancel
                   </Button>
@@ -442,7 +442,7 @@ function RouteManagementView({ refreshTrigger }) {
                     variant="destructive"
                     onClick={handleBulkDelete}
                     disabled={selectedRoutes.size === 0}
-                    className="gap-2 rounded-lg"
+                    className="gap-2 rounded-lg text-sm"
                   >
                     Delete Selected ({selectedRoutes.size})
                   </Button>
@@ -452,7 +452,7 @@ function RouteManagementView({ refreshTrigger }) {
                   variant="outline"
                   onClick={toggleSelectionMode}
                   className={cn(
-                    "gap-2 rounded-lg shadow-sm",
+                    "gap-2 rounded-lg shadow-sm text-sm",
                     isDark
                       ? "bg-primary/15 text-primary border-primary/20 hover:bg-primary/20"
                       : "bg-blue-500/90 text-white border-blue-600/50 hover:bg-blue-600 hover:text-white"
@@ -489,31 +489,32 @@ function RouteManagementView({ refreshTrigger }) {
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col gap-6">
+      <div className="flex-1 flex flex-col gap-4 md:gap-6">
         {viewMode === "table" ? (
-          <RouteTable
-            routes={paginatedRoutes}
-            onRouteClick={handleRouteClick}
-            onExportClick={() => {}}
-            onMapPreview={handleMapPreview}
-            onDeleteRoute={handleDelete}
-            filterDepartment={filterDepartment} // Pass the main filter to RouteTable
-          />
+          // Wrap table in a container that constrains width on mobile but allows overflow on desktop
+          <div className="w-full overflow-x-auto md:overflow-x-visible" style={{ maxWidth: '90vw' }}>
+            <RouteTable
+              routes={paginatedRoutes}
+              onRouteClick={handleRouteClick}
+              onExportClick={() => {}}
+              onMapPreview={handleMapPreview}
+              onDeleteRoute={handleDelete}
+              filterDepartment={filterDepartment} // Pass the main filter to RouteTable
+            />
+          </div>
         ) : (
           <motion.div
             variants={containerVariants}
             initial="hidden"
             animate="visible"
             className={cn(
-              "grid gap-6 w-full",
+              "grid gap-4 md:gap-6 w-full",
               viewMode === "grid"
-                ? "grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
+                ? "grid-cols-1 md:grid-cols-2 xl:grid-cols-3"
+                : viewMode === "list"
+                ? "grid-cols-1"
                 : "grid-cols-1"
             )}
-            style={{
-              // Further reduced area for grid view (~10% smaller)
-              minHeight: viewMode === "grid" ? "224px" : "auto",
-            }}
           >
             <AnimatePresence mode="popLayout">
               {paginatedRoutes.map((route) => (
@@ -522,17 +523,9 @@ function RouteManagementView({ refreshTrigger }) {
                   variants={itemVariants}
                   layoutId={`route-${route.id}`}
                   layout="position"
-                    className={cn(
-                    "group w-full",
-                    viewMode === "list" && "col-span-full",
-                    // Make individual grid items taller but reduced from earlier change (~10% smaller)
-                    viewMode === "grid" &&
-                      activeRouteId !== route.id &&
-                      // further reduced heights for items
-                      "h-[19rem] md:h-[21rem]"
-                  )}
+                  className={cn("group w-full", viewMode === "list" && "col-span-full")}
                 >
-                  <motion.div layout className="h-full">
+                  <motion.div layout>
                     <RouteCard
                       route={route}
                       isActive={activeRouteId === route.id}

@@ -11,7 +11,6 @@ import { shiftService } from "@/services/shiftService";
 import { getUnassignedEmployeesByShift, getRoutesByShift } from "@/services/api";
 import { toast } from "sonner";
 import LoadingAnimation from "@/components/Common/LoadingAnimation";
-import styles from "./RouteAssignment.module.css";
 
 function RouteAssignment({ refreshTrigger }) {
   const navigate = useNavigate();
@@ -178,15 +177,15 @@ function RouteAssignment({ refreshTrigger }) {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-[1440px] mx-auto p-8">
-        <div className="mb-10">
-          <div className="flex justify-between items-center mb-8">
+      <div className="max-w-[1440px] mx-auto p-4 md:p-8">
+        <div className="mb-6 md:mb-10">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 md:mb-8">
             <div>
-              <h2 className="text-3xl font-bold text-foreground tracking-tight mb-2">
+              <h2 className="text-2xl md:text-3xl font-bold text-foreground tracking-tight mb-2">
                 Route Assignment
               </h2>
               {selectedShift && selectedTime && (
-                <p className="text-muted-foreground">
+                <p className="text-muted-foreground text-sm md:text-base">
                   {shifts.find((s) => s.id === selectedShift)?.name} -{" "}
                   {selectedTime}
                 </p>
@@ -200,7 +199,7 @@ function RouteAssignment({ refreshTrigger }) {
             {error}
           </div>
         ) : (
-          <div className="grid grid-cols-[350px_1fr] gap-8 bg-white dark:bg-card rounded-3xl shadow-sm p-8 border border-gray-200/50 dark:border-border/50">
+          <div className="grid grid-cols-1 lg:grid-cols-[350px_1fr] gap-6 md:gap-8 bg-white dark:bg-card rounded-2xl md:rounded-3xl shadow-sm p-4 md:p-8 border border-gray-200/50 dark:border-border/50">
             <Controls
               selectedShift={selectedShift}
               setSelectedShift={setSelectedShift}
@@ -225,14 +224,14 @@ function RouteAssignment({ refreshTrigger }) {
             />
 
             {/* Available Routes List - using filtered availableRoutes */}
-            <div className={styles.availableRoutes}>
-              <div className="flex items-center justify-between">
-                <h5 className="font-medium">Available Routes</h5>
+            <div className="lg:col-span-2 mt-6 lg:mt-0">
+              <div className="flex items-center justify-between mb-4">
+                <h5 className="font-medium text-base md:text-lg">Available Routes</h5>
                 <Badge variant="outline" className="text-orange-500">
                   {availableRoutes.length} routes
                 </Badge>
               </div>
-              <div className="space-y-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
                 {availableRoutes.map((routeOption) => {
                   const shuttleCapacity = routeOption.shuttle?.capacity || routeOption.shuttle?.category?.capacity || 0;
                   const shuttleName = routeOption.shuttle?.name || routeOption.shuttle?.plateNumber || 'Unknown Vehicle';
@@ -240,21 +239,23 @@ function RouteAssignment({ refreshTrigger }) {
                   return (
                     <button
                       key={routeOption.id}
-                      className={cn(styles.routeOption, {
-                        [styles.selected]:
-                          selectedRoute?.id === routeOption.id,
-                      })}
+                      className={cn(
+                        "p-3 md:p-4 rounded-xl border transition-all duration-200 text-left",
+                        selectedRoute?.id === routeOption.id
+                          ? "bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800"
+                          : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-orange-300 dark:hover:border-orange-600"
+                      )}
                       onClick={() => setSelectedRoute(routeOption)}
                     >
                       <div className="flex items-center justify-between mb-2">
-                        <Badge variant="outline">{routeOption.name}</Badge>
-                        <Badge className="bg-orange-100 text-orange-500">
+                        <Badge variant="outline" className="text-xs">{routeOption.name}</Badge>
+                        <Badge className="bg-orange-100 text-orange-700 text-xs">
                           {shuttleName}
                         </Badge>
                       </div>
-                      <div className="flex items-center gap-2 text-sm text-gray-500">
+                      <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
                         <Users className="w-4 h-4" />
-                        <span>
+                        <span className="text-xs md:text-sm">
                           {routeOption.stops.length} / {shuttleCapacity} Passengers
                         </span>
                       </div>

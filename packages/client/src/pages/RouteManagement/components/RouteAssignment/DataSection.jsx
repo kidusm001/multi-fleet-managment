@@ -289,14 +289,14 @@ function DataSection({
   }
 
   return (
-    <div className="bg-white dark:bg-card rounded-3xl p-8 border border-gray-200/50 dark:border-border/50">
-      <div className="mb-8">
-        <h3 className="text-xl font-semibold mb-6 flex items-center gap-3 text-gray-900 dark:text-foreground">
-          <UserGroupIcon className="w-5 h-5 text-indigo-600 dark:text-primary" />
+    <div className="bg-white dark:bg-card rounded-2xl md:rounded-3xl p-4 md:p-8 border border-gray-200/50 dark:border-border/50">
+      <div className="mb-6 md:mb-8">
+        <h3 className="text-lg md:text-xl font-semibold mb-4 md:mb-6 flex items-center gap-3 text-gray-900 dark:text-foreground">
+          <UserGroupIcon className="w-4 h-4 md:w-5 md:h-5 text-indigo-600 dark:text-primary" />
           Available Employees
         </h3>
 
-        <div className="grid grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 md:gap-4 mb-4 md:mb-6">
           <div className="col-span-2">
             <div className="relative">
               <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-muted-foreground" />
@@ -346,19 +346,19 @@ function DataSection({
           <table className="w-full">
             <thead className="bg-indigo-50/50 dark:bg-card">
               <tr>
-                <th className="text-left py-4 px-6 text-xs font-semibold text-indigo-600 dark:text-muted-foreground uppercase tracking-wider border-b border-gray-200/50 dark:border-border/50">
+                <th className="text-left py-2 md:py-4 px-3 md:px-6 text-xs md:text-xs font-semibold text-indigo-600 dark:text-muted-foreground uppercase tracking-wider border-b border-gray-200/50 dark:border-border/50">
                   Name
                 </th>
-                <th className="text-left py-4 px-6 text-xs font-semibold text-indigo-600 dark:text-muted-foreground uppercase tracking-wider border-b border-gray-200/50 dark:border-border/50">
+                <th className="text-left py-2 md:py-4 px-3 md:px-6 text-xs md:text-xs font-semibold text-indigo-600 dark:text-muted-foreground uppercase tracking-wider border-b border-gray-200/50 dark:border-border/50">
                   Work Location
                 </th>
-                <th className="text-left py-4 px-6 text-xs font-semibold text-indigo-600 dark:text-muted-foreground uppercase tracking-wider border-b border-gray-200/50 dark:border-border/50">
+                <th className="text-left py-2 md:py-4 px-3 md:px-6 text-xs md:text-xs font-semibold text-indigo-600 dark:text-muted-foreground uppercase tracking-wider border-b border-gray-200/50 dark:border-border/50">
                   Address
                 </th>
-                <th className="text-left py-4 px-6 text-xs font-semibold text-indigo-600 dark:text-muted-foreground uppercase tracking-wider border-b border-gray-200/50 dark:border-border/50">
+                <th className="text-left py-2 md:py-4 px-3 md:px-6 text-xs md:text-xs font-semibold text-indigo-600 dark:text-muted-foreground uppercase tracking-wider border-b border-gray-200/50 dark:border-border/50">
                   Department
                 </th>
-                <th className="text-left py-4 px-6 text-xs font-semibold text-indigo-600 dark:text-muted-foreground uppercase tracking-wider border-b border-gray-200/50 dark:border-border/50">
+                <th className="text-left py-2 md:py-4 px-3 md:px-6 text-xs md:text-xs font-semibold text-indigo-600 dark:text-muted-foreground uppercase tracking-wider border-b border-gray-200/50 dark:border-border/50">
                   Action
                 </th>
               </tr>
@@ -379,40 +379,40 @@ function DataSection({
                     key={employee.id}
                     className="hover:bg-indigo-50/50 dark:hover:bg-primary/5 transition-colors"
                   >
-                    <td className="py-4 px-6">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-indigo-100/50 dark:bg-primary/10 flex items-center justify-center text-indigo-600 dark:text-primary font-medium text-sm">
+                    <td className="py-2 md:py-4 px-3 md:px-6">
+                      <div className="flex items-center gap-2 md:gap-3">
+                        <div className="w-6 h-6 md:w-8 md:h-8 rounded-full bg-indigo-100/50 dark:bg-primary/10 flex items-center justify-center text-indigo-600 dark:text-primary font-medium text-xs md:text-sm">
                           {employee.name
                             .split(" ")
                             .map((n) => n[0])
                             .join("")}
                         </div>
-                        <span className="text-sm font-medium text-gray-900 dark:text-foreground">
+                        <span className="text-xs md:text-sm font-medium text-gray-900 dark:text-foreground">
                           {employee.name}
                         </span>
                       </div>
                     </td>
-                    <td className="py-4 px-6 text-sm text-gray-500 dark:text-muted-foreground">
+                    <td className="py-2 md:py-4 px-3 md:px-6 text-xs md:text-sm text-gray-500 dark:text-muted-foreground">
                       {employee.workLocation?.address || "No Work Location"}
                     </td>
-                    <td className="py-4 px-6 text-sm text-gray-500 dark:text-muted-foreground">
+                    <td className="py-2 md:py-4 px-3 md:px-6 text-xs md:text-sm text-gray-500 dark:text-muted-foreground">
                       {employee.stop?.address || "No Stop Address"}
                     </td>
-                    <td className="py-4 px-6">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100/50 dark:bg-primary/10 text-indigo-600 dark:text-primary">
+                    <td className="py-2 md:py-4 px-3 md:px-6">
+                      <span className="inline-flex items-center px-1.5 md:px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100/50 dark:bg-primary/10 text-indigo-600 dark:text-primary">
                         {employee.department?.name ||
                           employee.department ||
                           "No Department"}
                       </span>
                     </td>
-                    <td className="py-4 px-6">
+                    <td className="py-2 md:py-4 px-3 md:px-6">
                       <Button
                         onClick={() => handleAssignClick(employee)}
                         variant="ghost"
                         size="sm"
-                        className="h-8 px-3 text-xs font-medium bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400 hover:text-indigo-600 dark:hover:text-primary flex items-center gap-1.5 rounded-md transition-colors"
+                        className="h-6 md:h-8 px-2 md:px-3 text-xs font-medium bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400 hover:text-indigo-600 dark:hover:text-primary flex items-center gap-1 md:gap-1.5 rounded-md transition-colors"
                       >
-                        <MapPinIcon className="w-3.5 h-3.5" />
+                        <MapPinIcon className="w-3 h-3 md:w-3.5 md:h-3.5" />
                         Assign
                       </Button>
                     </td>
@@ -426,7 +426,7 @@ function DataSection({
         {/* Pagination */}
         {totalPages > 1 && (
           <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200/50 dark:border-border/50 bg-indigo-50/50 dark:bg-card">
-            <div className="text-sm text-gray-500 dark:text-muted-foreground">
+            <div className="text-xs md:text-sm text-gray-500 dark:text-muted-foreground">
               Showing {(currentPage - 1) * itemsPerPage + 1} to{" "}
               {Math.min(currentPage * itemsPerPage, filteredEmployees.length)}{" "}
               of {filteredEmployees.length} results

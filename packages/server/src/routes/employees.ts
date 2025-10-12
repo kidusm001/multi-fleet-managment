@@ -853,7 +853,7 @@ router.get('/', requireAuth, async (req: Request, res: Response) => {
 
 router.get('/management', requireAuth, async (req: Request, res: Response) => {
     try {
-        const activeOrgId: string | null | undefined = req.session?.session?.activeOrganizationId;
+        const activeOrgId: string | null | undefined = req.activeOrganizationId;
         if (!activeOrgId) {
             return res.status(400).json({ message: 'No active organization found in session' });
         }
@@ -874,9 +874,33 @@ router.get('/management', requireAuth, async (req: Request, res: Response) => {
             where: {
                 organizationId: activeOrgId,
             },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                        role: true,
+                        createdAt: true
+                    }
+                },
+                department: true,
+                shift: true,
+                workLocation: true,
+                stop: true
+            },
+            orderBy: {
+                createdAt: 'desc'
+            }
         })
 
-        res.json(employees);
+        // Transform employees to include computed location field prioritizing stop address
+        const transformedEmployees = employees.map(employee => ({
+            ...employee,
+            location: employee.stop?.address || 'No stop assigned'
+        }));
+
+        res.json(transformedEmployees);
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: 'Internal Server Error' });
@@ -893,7 +917,7 @@ router.get('/:id', requireAuth, validateSchema(EmployeeIdParam, 'params'), async
     try {
         const { id } = req.params;
 
-        const activeOrgId: string | null | undefined = req.session?.session?.activeOrganizationId;
+        const activeOrgId: string | null | undefined = req.activeOrganizationId;
         if (!activeOrgId) {
             return res.status(400).json({ message: 'No active organization found in session' });
         }
@@ -967,7 +991,7 @@ router.post('/', requireAuth, validateSchema(CreateEmployeeSchema, 'body'), asyn
             locationId,
         }: CreateEmployee = req.body;
 
-        const activeOrgId: string | null | undefined = req.session?.session?.activeOrganizationId;
+        const activeOrgId: string | null | undefined = req.activeOrganizationId;
         if (!activeOrgId) {
             return res.status(400).json({ message: 'No active organization found in session' });
         }
@@ -1124,7 +1148,7 @@ router.put('/:id',
                 locationId,
             }: CreateEmployee = req.body;
 
-            const activeOrgId: string | null | undefined = req.session?.session?.activeOrganizationId;
+            const activeOrgId: string | null | undefined = req.activeOrganizationId;
             if (!activeOrgId) {
                 return res.status(400).json({ message: 'No active organization found in session' });
             }
@@ -1303,7 +1327,7 @@ router.delete('/:id', requireAuth, validateSchema(EmployeeIdParam, 'params'), as
     try {
         const { id } = req.params;
 
-        const activeOrgId: string | null | undefined = req.session?.session?.activeOrganizationId;
+        const activeOrgId: string | null | undefined = req.activeOrganizationId;
         if (!activeOrgId) {
             return res.status(400).json({ message: 'No active organization found in session' });
         }
@@ -1365,7 +1389,7 @@ router.get('/by-department/:departmentId', requireAuth, validateSchema(Departmen
     try {
         const { departmentId } = req.params;
         const { includeDeleted } = req.query;
-        const activeOrgId = req.session?.session?.activeOrganizationId;
+        const activeOrgId = req.activeOrganizationId;
 
         if (!activeOrgId) {
             return res.status(400).json({ message: 'Active organization not found' });
@@ -1430,7 +1454,7 @@ router.get('/by-shift/:shiftId', requireAuth, validateSchema(ShiftIdParam, 'para
     try {
         const { shiftId } = req.params;
         const { includeDeleted } = req.query;
-        const activeOrgId = req.session?.session?.activeOrganizationId;
+        const activeOrgId = req.activeOrganizationId;
 
         if (!activeOrgId) {
             return res.status(400).json({ message: 'Active organization not found' });
@@ -1495,7 +1519,7 @@ router.get('/by-work-location/:workLocationId', requireAuth, validateSchema(Work
     try {
         const { workLocationId } = req.params;
         const { includeDeleted } = req.query;
-        const activeOrgId = req.session?.session?.activeOrganizationId;
+        const activeOrgId = req.activeOrganizationId;
 
         if (!activeOrgId) {
             return res.status(400).json({ message: 'Active organization not found' });
@@ -1559,7 +1583,7 @@ router.get('/by-work-location/:workLocationId', requireAuth, validateSchema(Work
 router.get('/shift/:shiftId/unassigned', requireAuth, validateSchema(ShiftIdParam, 'params'), async (req: Request, res: Response) => {
     try {
         const { shiftId } = req.params;
-        const activeOrgId = req.session?.session?.activeOrganizationId;
+        const activeOrgId = req.activeOrganizationId;
 
         if (!activeOrgId) {
             return res.status(400).json({ message: 'Active organization not found' });
@@ -1616,7 +1640,7 @@ router.patch('/:id/assign-stop', requireAuth, validateSchema(EmployeeIdParam, 'p
     try {
         const { id } = req.params;
         const { stopId } = req.body;
-        const activeOrgId = req.session?.session?.activeOrganizationId;
+        const activeOrgId = req.activeOrganizationId;
 
         if (!activeOrgId) {
             return res.status(400).json({ message: 'Active organization not found' });
@@ -1711,7 +1735,7 @@ router.patch('/:id/assign-stop', requireAuth, validateSchema(EmployeeIdParam, 'p
 router.patch('/:id/restore', requireAuth, validateSchema(EmployeeIdParam, 'params'), async (req: Request, res: Response) => {
     try {
         const { id } = req.params;
-        const activeOrgId = req.session?.session?.activeOrganizationId;
+        const activeOrgId = req.activeOrganizationId;
 
         if (!activeOrgId) {
             return res.status(400).json({ message: 'Active organization not found' });
@@ -1774,7 +1798,7 @@ router.patch('/:id/restore', requireAuth, validateSchema(EmployeeIdParam, 'param
  */
 router.get('/stats/summary', requireAuth, async (req: Request, res: Response) => {
     try {
-        const activeOrgId = req.session?.session?.activeOrganizationId;
+        const activeOrgId = req.activeOrganizationId;
 
         if (!activeOrgId) {
             return res.status(400).json({ message: 'Active organization not found' });

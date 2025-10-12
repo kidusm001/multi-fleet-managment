@@ -175,6 +175,9 @@ class EmployeeService {
     const rawEmployees = safeParseEmployees(response.data);
     const employees = rawEmployees.map(emp => ({
       ...emp,
+      // Extract contact and email from nested user object
+      contact: emp.user?.phoneNumber || emp.contact || '-',
+      email: emp.user?.email || emp.email || '-',
       assigned: Boolean(emp.shuttle || emp.assigned),
       status: emp.deleted ? 'inactive' : (emp.status || 'active')
     }));

@@ -121,11 +121,7 @@ export default function EmployeeManagement() {
         if (isMounted) {
           console.error('Error fetching employees:', error);
           setError('Failed to load employees. Please try again later.');
-          toast({
-            title: "Error",
-            description: "Failed to load employees",
-            variant: "destructive",
-          });
+          toast.error("Failed to load employees");
         }
       } finally {
         if (isMounted) {
@@ -202,17 +198,10 @@ export default function EmployeeManagement() {
             )
           );
 
-          toast({
-            title: "Success",
-            description: "Employee deactivated successfully",
-          });
+          toast.success("Employee deactivated successfully");
         } catch (error) {
           console.error('Error deactivating employee:', error);
-          toast({
-            title: "Error",
-            description: "Failed to deactivate employee",
-            variant: "destructive",
-          });
+          toast.error("Failed to deactivate employee");
         } finally {
           setIsLoading(false);
         }
@@ -237,17 +226,10 @@ export default function EmployeeManagement() {
             )
           );
 
-          toast({
-            title: "Success",
-            description: "Employee activated successfully",
-          });
+          toast.success("Employee activated successfully");
         } catch (error) {
           console.error('Error activating employee:', error);
-          toast({
-            title: "Error",
-            description: "Failed to activate employee",
-            variant: "destructive",
-          });
+          toast.error("Failed to activate employee");
         } finally {
           setIsLoading(false);
         }
@@ -274,30 +256,29 @@ export default function EmployeeManagement() {
   return (
     <LoadingWrapper isLoading={isLoading}>
       <main className="content-area text-[var(--text-primary)]">
-        <div className="container mx-auto min-w-[90%] py-6">
+        <div className="container mx-auto min-w-[90%] py-4 md:py-6 px-4 md:px-6">
           <div className="rounded-[30px] border border-[var(--divider)] shadow-[0_12px_48px_-8px_rgba(66,114,255,0.15),0_8px_24px_-4px_rgba(66,114,255,0.1)] bg-[var(--card-background)]">
-            <div className="flex justify-between items-center p-6 border-b border-[var(--divider)]">
-              <h1 className="text-2xl font-bold text-[var(--text-primary)]">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 md:p-6 border-b border-[var(--divider)] gap-4 sm:gap-0">
+              <h1 className="text-xl md:text-2xl font-bold text-[var(--text-primary)]">
                 Employee Management
               </h1>
               
             </div>
 
-            <div className="p-6">
+            <div className="p-4 md:p-6">
               {error ? (
-                <div className="text-red-500 p-4 rounded-xl bg-red-50 dark:bg-red-900/20 mb-6">
+                <div className="text-red-500 p-4 rounded-xl bg-red-50 dark:bg-red-900/20 mb-4 md:mb-6">
                   {error}
                 </div>
               ) : (
-                <div className="space-y-6">
+                <div className="space-y-4 md:space-y-6">
                   <StatsSection
-                    employees={employees}
                     getEmployeeStats={getEmployeeStats}
                   />
 
                   {/* Employees Section */}
-                  <div className="rounded-2xl border border-[var(--divider)] bg-[var(--card-background)] shadow-lg p-6">
-                    <h2 className="text-xl font-bold mb-6 text-[var(--text-primary)]">
+                  <div className="rounded-2xl border border-[var(--divider)] bg-[var(--card-background)] shadow-lg p-4 md:p-6">
+                    <h2 className="text-lg md:text-xl font-bold mb-4 md:mb-6 text-[var(--text-primary)]">
                       Employee List
                     </h2>
                     <EmployeeTable

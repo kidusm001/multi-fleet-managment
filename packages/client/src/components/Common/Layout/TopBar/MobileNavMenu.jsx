@@ -164,47 +164,84 @@ const MobileNavMenu = ({ isOpen, onClose, isDark }) => {
               {navItems.map((item, index) => {
                 const Icon = getNavIcon(item.label);
                 const isActive = isActivePath(item.path);
+                const hasSubpaths = item.subpaths && item.subpaths.length > 0;
 
                 return (
-                  <Link
-                      key={item.label}
-                      ref={index === 0 ? firstLinkRef : null}
-                      to={item.path}
-                      onClick={(_e) => {
-                        // Removed notifications-specific hard reload workaround since notifications are disabled
-                        // if (location.pathname === '/notifications' && item.path !== '/notifications') {
-                        //   e.preventDefault();
-                        //   window.location.href = item.path;
-                        //   return;
-                        // }
-                        handleLinkClick();
-                      }}
-                    className={cn(
-                      "flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group",
-                      isActive
-                        ? isDark
-                          ? "bg-[#4272FF]/20 text-[#4272FF] border border-[#4272FF]/30"
-                          : "bg-[#4272FF]/10 text-[#4272FF] border border-[#4272FF]/20"
-                        : isDark
-                        ? "text-white/70 hover:text-white hover:bg-white/5"
-                        : "text-gray-600 hover:text-gray-900 hover:bg-gray-50",
-                      "focus:outline-none focus:ring-2 focus:ring-[#4272FF]/50"
-                    )}
-                  >
-                    <Icon 
+                  <div key={item.label}>
+                    <Link
+                        ref={index === 0 ? firstLinkRef : null}
+                        to={item.path}
+                        onClick={(_e) => {
+                          // Removed notifications-specific hard reload workaround since notifications are disabled
+                          // if (location.pathname === '/notifications' && item.path !== '/notifications') {
+                          //   e.preventDefault();
+                          //   window.location.href = item.path;
+                          //   return;
+                          // }
+                          handleLinkClick();
+                        }}
                       className={cn(
-                        "w-6 h-6 transition-colors",
-                        isActive ? "text-current" : "text-current/70 group-hover:text-current"
-                      )} 
-                    />
-                    <span className="font-medium">{item.label}</span>
-                    {isActive && (
-                      <motion.div
-                        layoutId="activeIndicator"
-                        className="ml-auto w-2 h-2 bg-[#4272FF] rounded-full"
+                        "flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 group",
+                        isActive
+                          ? isDark
+                            ? "bg-[#4272FF]/20 text-[#4272FF] border border-[#4272FF]/30"
+                            : "bg-[#4272FF]/10 text-[#4272FF] border border-[#4272FF]/20"
+                          : isDark
+                          ? "text-white/70 hover:text-white hover:bg-white/5"
+                          : "text-gray-600 hover:text-gray-900 hover:bg-gray-50",
+                        "focus:outline-none focus:ring-2 focus:ring-[#4272FF]/50"
+                      )}
+                    >
+                      <Icon 
+                        className={cn(
+                          "w-6 h-6 transition-colors",
+                          isActive ? "text-current" : "text-current/70 group-hover:text-current"
+                        )} 
                       />
+                      <span className="font-medium">{item.label}</span>
+                      {isActive && (
+                        <motion.div
+                          layoutId="activeIndicator"
+                          className="ml-auto w-2 h-2 bg-[#4272FF] rounded-full"
+                        />
+                      )}
+                    </Link>
+                    
+                    {/* Subpaths */}
+                    {hasSubpaths && (
+                      <div className="ml-8 mt-1 space-y-1">
+                        {item.subpaths.map((subpath) => {
+                          const isSubpathActive = isActivePath(subpath.path);
+                          return (
+                            <Link
+                              key={subpath.path}
+                              to={subpath.path}
+                              onClick={handleLinkClick}
+                              className={cn(
+                                "flex items-center gap-3 px-4 py-2 rounded-lg transition-all duration-200 group text-sm",
+                                isSubpathActive
+                                  ? isDark
+                                    ? "bg-[#4272FF]/15 text-[#4272FF] border border-[#4272FF]/25"
+                                    : "bg-[#4272FF]/8 text-[#4272FF] border border-[#4272FF]/15"
+                                  : isDark
+                                  ? "text-white/60 hover:text-white hover:bg-white/5"
+                                  : "text-gray-500 hover:text-gray-900 hover:bg-gray-50",
+                                "focus:outline-none focus:ring-2 focus:ring-[#4272FF]/50"
+                              )}
+                            >
+                              <span className="font-medium">{subpath.label}</span>
+                              {isSubpathActive && (
+                                <motion.div
+                                  layoutId="subActiveIndicator"
+                                  className="ml-auto w-1.5 h-1.5 bg-[#4272FF] rounded-full"
+                                />
+                              )}
+                            </Link>
+                          );
+                        })}
+                      </div>
                     )}
-                  </Link>
+                  </div>
                 );
               })}
             </nav>

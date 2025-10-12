@@ -37,6 +37,28 @@ export default function Profile() {
     phone: '',
   });
 
+  // Function to refresh user data
+  const refreshUserData = async () => {
+    try {
+      // Get fresh session data
+      const { data: freshSession } = await authClient.getSession();
+      if (freshSession?.user) {
+        setFormData({
+          name: freshSession.user.name || '',
+          email: freshSession.user.email || '',
+          phone: freshSession.user.phone || '',
+        });
+      }
+    } catch (error) {
+      console.error('Failed to refresh user data:', error);
+    }
+  };
+
+  useEffect(() => {
+    // Refresh user data when component mounts
+    refreshUserData();
+  }, []);
+
   useEffect(() => {
     if (session?.user) {
       setFormData({
@@ -225,7 +247,7 @@ export default function Profile() {
                       "text-2xl md:text-3xl font-bold",
                       isDark ? "text-gray-100" : "text-gray-900"
                     )}>
-                      {session?.user?.name || 'User'}
+                      {formData.name || session?.user?.name || 'User'}
                     </h2>
                   )}
                   <div className="flex flex-wrap items-center justify-center md:justify-start gap-3 mt-2">
@@ -270,7 +292,7 @@ export default function Profile() {
                         "text-sm",
                         isDark ? "text-gray-300" : "text-gray-700"
                       )}>
-                        {session?.user?.email}
+                        {formData.email || session?.user?.email || 'Not set'}
                       </span>
                     )}
                   </div>
@@ -300,7 +322,7 @@ export default function Profile() {
                         "text-sm",
                         isDark ? "text-gray-300" : "text-gray-700"
                       )}>
-                        {session?.user?.phone || 'Not set'}
+                        {formData.phone || session?.user?.phone || 'Not set'}
                       </span>
                     )}
                   </div>

@@ -46,7 +46,7 @@ const RouteCard = ({
       className={cn(
         "w-full h-full cursor-pointer transition-all duration-300",
   // Make cards slightly shorter again (~10% reduction)
-  viewMode === "grid" ? "min-h-[11rem] md:min-h-[13rem]" : "",
+  viewMode === "grid" ? "min-h-[8rem] md:min-h-[13rem]" : "",
         "rounded-2xl border shadow-sm",
         "bg-gradient-to-br from-white to-zinc-50/80 dark:from-zinc-900 dark:to-zinc-800/80",
         "hover:-translate-y-0.5 hover:shadow-md",
@@ -76,7 +76,7 @@ const RouteCard = ({
       <motion.div
         layout
         className={cn(
-          "p-6 w-full h-full relative z-10",
+          "p-4 md:p-6 w-full h-full relative z-10",
           viewMode === "list" ? "flex-1" : "",
           "flex flex-col"
         )}
@@ -108,19 +108,19 @@ const RouteCard = ({
               )}
               <motion.h3
                 layoutId={`title-${route.id}`}
-                className="text-lg font-semibold text-foreground group-hover:text-sky-500 dark:group-hover:text-sky-400 transition-colors"
+                className="text-base md:text-lg font-semibold text-foreground group-hover:text-sky-500 dark:group-hover:text-sky-400 transition-colors"
               >
                 {route.name}
               </motion.h3>
             </div>
             <motion.div
               layoutId={`shuttle-${route.id}`}
-              className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-300"
+              className="flex items-center gap-2 text-xs md:text-sm text-zinc-600 dark:text-zinc-300"
             >
               <Bus className="h-4 w-4 text-sky-500 dark:text-sky-400" />
               <span>{(route.shuttle?.name || route.vehicle?.name || route.vehicle?.plateNumber) || "Not assigned"}</span>
             </motion.div>
-            <motion.div className="flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
+            <motion.div className="flex items-center gap-2 text-xs md:text-sm text-zinc-500 dark:text-zinc-400">
               <Briefcase className="h-4 w-4 text-indigo-500 dark:text-indigo-400" />
               <span>{route.shift?.name || "No Shift"}</span>
             </motion.div>
@@ -239,7 +239,7 @@ const QuickInfoCard = ({ icon, label, bgColor }) => (
     "flex items-center gap-2.5 rounded-xl",
     "bg-white dark:bg-white/5",
     "border border-zinc-100 dark:border-white/5",
-    "p-3 transition-all duration-200",
+    "p-2 md:p-3 transition-all duration-200",
     "hover:bg-zinc-50 dark:hover:bg-white/10",
     "group-hover:border-zinc-200 dark:group-hover:border-white/10"
   )}>
@@ -250,7 +250,7 @@ const QuickInfoCard = ({ icon, label, bgColor }) => (
     )}>
       {icon}
     </div>
-    <span className="text-zinc-600 dark:text-zinc-300 font-medium">
+    <span className="text-xs md:text-sm text-zinc-600 dark:text-zinc-300 font-medium">
       {label}
     </span>
   </div>
@@ -258,7 +258,7 @@ const QuickInfoCard = ({ icon, label, bgColor }) => (
 
 RouteCard.propTypes = {
   route: PropTypes.object.isRequired,
-  viewMode: PropTypes.oneOf(["grid", "list"]).isRequired,
+  viewMode: PropTypes.oneOf(["grid", "list", "table"]).isRequired,
   onRouteClick: PropTypes.func.isRequired,
   onMapPreview: PropTypes.func.isRequired, // Add this back
   onDeleteRoute: PropTypes.func.isRequired,

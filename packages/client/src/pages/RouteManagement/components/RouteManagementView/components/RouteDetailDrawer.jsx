@@ -347,7 +347,7 @@ const RouteDetailDrawer = ({
           <DrawerHeader className="border-b border-border bg-background">
             <div className="flex items-center justify-between">
               <div>
-                <DrawerTitle className="text-xl">
+                <DrawerTitle className="text-lg md:text-xl">
                   {route.name}
                 </DrawerTitle>
                 <DrawerDescription className="flex items-center gap-2 mt-1">
@@ -394,7 +394,7 @@ const RouteDetailDrawer = ({
             </div>
           </DrawerHeader>
 
-          <div className="p-6 bg-background">
+          <div className="p-4 md:p-6 bg-background">
             <Tabs value={activeTab} onValueChange={setActiveTab}>
               <TabsList className="grid w-full grid-cols-2 mb-6 bg-muted">
                 <TabsTrigger value="overview">Overview</TabsTrigger>
@@ -406,7 +406,7 @@ const RouteDetailDrawer = ({
                 <div className="bg-gradient-to-br from-sky-50/50 to-indigo-50/50 dark:from-sky-900/30 dark:to-indigo-900/30 rounded-2xl p-6 space-y-6">
                   <div className="grid grid-cols-2 gap-x-8 gap-y-6">
                     <div className="col-span-2">
-                      <h3 className="text-lg font-medium mb-4">
+                      <h3 className="text-base md:text-lg font-medium mb-4">
                         Route Summary
                       </h3>
                       <div className="grid grid-cols-2 gap-4">
@@ -427,7 +427,7 @@ const RouteDetailDrawer = ({
                     </div>
 
                     <div className="space-y-4">
-                      <h3 className="text-lg font-medium">Time & Distance</h3>
+                      <h3 className="text-base md:text-lg font-medium">Time & Distance</h3>
                       <div className="space-y-3">
                         <InfoCard
                           icon={<Clock className="h-5 w-5 text-rose-500" />}
@@ -445,7 +445,7 @@ const RouteDetailDrawer = ({
                     </div>
 
                     <div className="space-y-4">
-                      <h3 className="text-lg font-medium">Schedule</h3>
+                      <h3 className="text-base md:text-lg font-medium">Schedule</h3>
                       <div className="space-y-3">
                         <div className="bg-card/60 rounded-xl p-4">
                           <div className="flex justify-between items-center mb-2">
@@ -483,7 +483,7 @@ const RouteDetailDrawer = ({
 
               <TabsContent value="passengers">
                 <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-medium text-foreground">
+                  <h3 className="text-base md:text-lg font-medium text-foreground">
                     Passengers (
                     {route.stops?.filter((stop) => stop.employee).length || 0})
                   </h3>
@@ -611,7 +611,7 @@ const RouteDetailDrawer = ({
 const TimeInfo = ({ label, time }) => (
   <div>
     <p className="text-xs text-muted-foreground">{label}</p>
-    <p className="text-sm font-medium mt-0.5 text-foreground">{time}</p>
+    <p className="text-xs md:text-sm font-medium mt-0.5 text-foreground">{time}</p>
   </div>
 );
 
@@ -628,9 +628,9 @@ const InfoCard = ({ icon, label, value, variant = "default" }) => (
       <>
         <div className="flex items-center gap-2">
           {icon}
-          <span className="text-sm text-muted-foreground">{label}</span>
+          <span className="text-xs md:text-sm text-muted-foreground">{label}</span>
         </div>
-        <p className="text-lg font-semibold text-foreground">{value}</p>
+        <p className="text-base md:text-lg font-semibold text-foreground">{value}</p>
       </>
     ) : (
       <>
@@ -656,14 +656,14 @@ const PassengerCard = ({
       "bg-card",
       "hover:bg-muted",
       "border border-border",
-      "flex items-center justify-between p-4 rounded-xl",
+      "flex items-center justify-between p-3 md:p-4 rounded-xl",
       "transition-all duration-200",
       isSelected && "ring-2 ring-primary"
     )}
   >
     <div className="flex items-center gap-3">
       <div className="flex items-center gap-4">
-        <span className="text-sm font-medium text-muted-foreground w-6">
+        <span className="text-xs md:text-sm font-medium text-muted-foreground w-6">
           #{index}
         </span>
         <button
@@ -688,8 +688,8 @@ const PassengerCard = ({
           />
         </button>
       </div>
-      <div className="h-12 w-12 rounded-xl bg-muted flex items-center justify-center">
-        <span className="text-lg font-medium text-sky-500">
+      <div className="h-10 md:h-12 w-10 md:w-12 rounded-xl bg-muted flex items-center justify-center">
+        <span className="text-sm md:text-lg font-medium text-sky-500">
           {stop.employee.name
             .split(" ")
             .map((n) => n[0])
@@ -697,11 +697,11 @@ const PassengerCard = ({
         </span>
       </div>
       <div>
-        <p className="font-medium text-foreground">{stop.employee.name}</p>
-        <p className="text-sm text-muted-foreground">
+        <p className="font-medium text-foreground text-sm md:text-base">{stop.employee.name}</p>
+        <p className="text-xs md:text-sm text-muted-foreground">
           {stop.employee.department?.name || "No Department"}
         </p>
-        <p className="text-sm text-muted-foreground mt-1">
+        <p className="text-xs md:text-sm text-muted-foreground mt-1">
           {stop.location}
         </p>
       </div>

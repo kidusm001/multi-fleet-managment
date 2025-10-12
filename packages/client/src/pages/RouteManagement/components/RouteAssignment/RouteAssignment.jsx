@@ -74,57 +74,118 @@ function RouteAssignment() {
 
   return (
     <div className="min-h-screen bg-gray-50/50">
-      <div className="max-w-[1440px] mx-auto p-8">
-        <div className="mb-10">
-          <div className="flex justify-between items-center">
-            <div>
-              <h2 className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-indigo-400 bg-clip-text text-transparent tracking-tight mb-2">
-                Route Assignment
-              </h2>
-              {selectedShift && selectedTime && (
-                <p className="text-gray-600">
-                  {shifts.find((s) => s.id === selectedShift)?.name} -{" "}
-                  {selectedTime}
-                </p>
-              )}
-            </div>
-            {/* Removed unused button with PlusIcon to avoid unused import */}
+      {/* Mobile Layout - Compact and Stacked */}
+      <div className="block md:hidden">
+        <div className="px-3 py-3 space-y-3">
+          {/* Mobile Header - Compact */}
+          <div className="bg-white rounded-2xl p-3 shadow-sm">
+            <h2 className="text-lg font-bold bg-gradient-to-r from-indigo-600 to-indigo-400 bg-clip-text text-transparent mb-2">
+              Route Assignment
+            </h2>
+            {selectedShift && selectedTime && (
+              <p className="text-xs text-gray-600">
+                {shifts.find((s) => s.id === selectedShift)?.name} - {selectedTime}
+              </p>
+            )}
           </div>
-        </div>
 
-        {error ? (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
-            {error}
+          {error ? (
+            <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-red-700 text-sm">
+              {error}
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {/* Mobile Controls - Compact */}
+              <div className="bg-white rounded-2xl p-3 shadow-sm">
+                <Controls
+                  selectedShift={selectedShift}
+                  setSelectedShift={setSelectedShift}
+                  selectedTime={selectedTime}
+                  setSelectedTime={setSelectedTime}
+                  selectedRoute={selectedRoute}
+                  setSelectedRoute={setSelectedRoute}
+                  routes={routes}
+                  shifts={shifts}
+                  loading={loading}
+                />
+              </div>
+
+              {/* Mobile Data Section - Full width, compact */}
+              <div className="bg-white rounded-2xl shadow-sm">
+                <DataSection
+                  selectedShift={selectedShift}
+                  selectedTime={selectedTime}
+                  selectedRoute={selectedRoute}
+                  routes={routes}
+                  loading={loading}
+                  onRouteUpdate={(updatedRoute) => {
+                    setRoutes(
+                      routes.map((r) =>
+                        r.id === updatedRoute.id ? updatedRoute : r
+                      )
+                    );
+                  }}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Desktop Layout - Original */}
+      <div className="hidden md:block">
+        <div className="max-w-[1440px] mx-auto p-8">
+          <div className="mb-10">
+            <div className="flex justify-between items-center">
+              <div>
+                <h2 className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-indigo-400 bg-clip-text text-transparent tracking-tight mb-2">
+                  Route Assignment
+                </h2>
+                {selectedShift && selectedTime && (
+                  <p className="text-gray-600">
+                    {shifts.find((s) => s.id === selectedShift)?.name} -{" "}
+                    {selectedTime}
+                  </p>
+                )}
+              </div>
+              {/* Removed unused button with PlusIcon to avoid unused import */}
+            </div>
           </div>
-        ) : (
-          <div className="grid grid-cols-[350px_1fr] gap-8 bg-white rounded-3xl shadow-sm p-8">
-            <Controls
-              selectedShift={selectedShift}
-              setSelectedShift={setSelectedShift}
-              selectedTime={selectedTime}
-              setSelectedTime={setSelectedTime}
-              selectedRoute={selectedRoute}
-              setSelectedRoute={setSelectedRoute}
-              routes={routes}
-              shifts={shifts}
-              loading={loading}
-            />
-            <DataSection
-              selectedShift={selectedShift}
-              selectedTime={selectedTime}
-              selectedRoute={selectedRoute}
-              routes={routes}
-              loading={loading}
-              onRouteUpdate={(updatedRoute) => {
-                setRoutes(
-                  routes.map((r) =>
-                    r.id === updatedRoute.id ? updatedRoute : r
-                  )
-                );
-              }}
-            />
-          </div>
-        )}
+
+          {error ? (
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">
+              {error}
+            </div>
+          ) : (
+            <div className="grid grid-cols-[350px_1fr] gap-8 bg-white rounded-3xl shadow-sm p-8">
+              <Controls
+                selectedShift={selectedShift}
+                setSelectedShift={setSelectedShift}
+                selectedTime={selectedTime}
+                setSelectedTime={setSelectedTime}
+                selectedRoute={selectedRoute}
+                setSelectedRoute={setSelectedRoute}
+                routes={routes}
+                shifts={shifts}
+                loading={loading}
+              />
+              <DataSection
+                selectedShift={selectedShift}
+                selectedTime={selectedTime}
+                selectedRoute={selectedRoute}
+                routes={routes}
+                loading={loading}
+                onRouteUpdate={(updatedRoute) => {
+                  setRoutes(
+                    routes.map((r) =>
+                      r.id === updatedRoute.id ? updatedRoute : r
+                    )
+                  );
+                }}
+              />
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
