@@ -382,6 +382,9 @@ importers:
       redis:
         specifier: ^5.8.3
         version: 5.8.3
+      resend:
+        specifier: ^6.1.2
+        version: 6.1.2
       shared:
         specifier: workspace:*
         version: link:../shared
@@ -7657,6 +7660,15 @@ packages:
 
   requires-port@1.0.0:
     resolution: {integrity: sha512-KigOCHcocU3XODJxsu8i/j8T9tzT4adHiecwORRQ0ZZFcp7ahwXuRU1m+yuO90C5ZUyGeGfocHDI14M3L3yDAQ==}
+
+  resend@6.1.2:
+    resolution: {integrity: sha512-C9Q+YkRe57P8MQlkHG3yatSR/B6sqBGA06Ri2DveJfkz9Vm16182FC/iHB0K6IAfmqZ4yRrFebFw1EPuktLtSg==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      '@react-email/render': '*'
+    peerDependenciesMeta:
+      '@react-email/render':
+        optional: true
 
   resolve-cwd@3.0.0:
     resolution: {integrity: sha512-OrZaX2Mb+rJCpH/6CpSqt9xFVpN++x01XnN2ie9g6P5/3xelLAkXWVADpdz1IHD/KFfEXyE6V0U01OQ3UO2rEg==}
@@ -18238,6 +18250,8 @@ snapshots:
     optional: true
 
   requires-port@1.0.0: {}
+
+  resend@6.1.2: {}
 
   resolve-cwd@3.0.0:
     dependencies:

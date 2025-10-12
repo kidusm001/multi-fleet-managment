@@ -492,7 +492,8 @@ export default function NewMembersPanel() {
               const { error } = await authClient.organization.inviteMember({
                 email: email,
                 role: role,
-                organizationId: activeOrganization.id
+                organizationId: activeOrganization.id,
+                resend: true
               });
 
               if (error) {

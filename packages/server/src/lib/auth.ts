@@ -4,12 +4,15 @@ import { PrismaClient } from '@prisma/client';
 import { admin, organization } from 'better-auth/plugins';
 import {fayda} from 'fayda';
 import { AdminAc, OrgAc, superadmin, user, owner, admin as organizationAdmin, manager, driver, employee } from './permissions';
+import { Resend } from 'resend';
 import dotenv from 'dotenv';
+import { loadAndInterpolateTemplate } from '../services/emailService';
 
 dotenv.config();
 
 
 const prisma = new PrismaClient();
+const resend = new Resend(process.env.RESEND_API_KEY!);
 
 export const auth = betterAuth({
     database: prismaAdapter(prisma, { provider: 'postgresql' }),
@@ -44,6 +47,21 @@ export const auth = betterAuth({
             }
         }),
         organization({
+            async sendInvitationEmail(data) {
+                const inviteLink = `${process.env.BETTER_AUTH_URL}/api/accept-invitation/${data.id}`;
+                resend.emails.send({
+                    from: `${process.env.RESEND_SENDER_NAME} <${process.env.RESEND_SENDER_EMAIL}>`,
+                    to: data.email,
+                    subject: "Organization Invitation",
+                    html: await loadAndInterpolateTemplate('organization-invitation.html', {
+                        organizationName: data.organization.name,
+                        email: data.email,
+                        invitedByUsername: data.inviter.user.name,
+                        invitedByEmail: data.inviter.user.email,
+                        inviteLink
+                    })
+                });
+            },
             allowUserToCreateOrganization: async (user) => {
               return await gotSubscribed(user.id);
             },
