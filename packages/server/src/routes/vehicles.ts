@@ -41,9 +41,12 @@ router.get('/superadmin/', requireAuth, requireRole(["superadmin"]), async (req:
             include: {
                 category: true,
                 driver: true,
+                serviceProvider: true,
                 routes: true,
                 organization: true,
-                payrollReports: true
+                payrollReports: true,
+                attendanceRecords: true,
+                payrollEntries: true
             }
         });
 
@@ -67,9 +70,12 @@ router.get('/superadmin/with-deleted', requireAuth, requireRole(["superadmin"]),
             include: {
                 category: true,
                 driver: true,
+                serviceProvider: true,
                 routes: true,
                 organization: true,
-                payrollReports: true
+                payrollReports: true,
+                attendanceRecords: true,
+                payrollEntries: true
             }
         });
 
@@ -98,10 +104,13 @@ router.get('/superadmin/:id', requireAuth, requireRole(["superadmin"]), async (r
             include: {
                 category: true,
                 driver: true,
+                serviceProvider: true,
                 routes: true,
                 organization: true,
                 payrollReports: true,
-                vehicleAvailability: true
+                vehicleAvailability: true,
+                attendanceRecords: true,
+                payrollEntries: true
             }
         });
 
@@ -134,9 +143,12 @@ router.get('/superadmin/by-organization/:organizationId', requireAuth, requireRo
             include: {
                 category: true,
                 driver: true,
+                serviceProvider: true,
                 routes: true,
                 organization: true,
-                payrollReports: true
+                payrollReports: true,
+                attendanceRecords: true,
+                payrollEntries: true
             }
         });
 
@@ -169,6 +181,7 @@ router.post('/superadmin', requireAuth, requireRole(["superadmin"]), async (req:
             dailyRate,
             categoryId,
             driverId,
+            serviceProviderId,
             organizationId
         } = req.body;
 
@@ -239,6 +252,17 @@ router.post('/superadmin', requireAuth, requireRole(["superadmin"]), async (req:
             }
         }
 
+        // Verify service provider exists if provided
+        if (serviceProviderId) {
+            const serviceProvider = await prisma.serviceProvider.findUnique({
+                where: { id: serviceProviderId }
+            });
+
+            if (!serviceProvider) {
+                return res.status(404).json({ message: 'Service provider not found' });
+            }
+        }
+
         // Determine final status and set maintenance dates if needed
         const finalStatus = status || VehicleStatus.AVAILABLE;
         const isMaintenanceStatus = finalStatus === VehicleStatus.MAINTENANCE;
@@ -259,11 +283,13 @@ router.post('/superadmin', requireAuth, requireRole(["superadmin"]), async (req:
                 dailyRate: dailyRate ? parseFloat(dailyRate.toString()) : null,
                 categoryId,
                 driverId,
+                serviceProviderId,
                 organizationId
             },
             include: {
                 category: true,
                 driver: true,
+                serviceProvider: true,
                 organization: true
             }
         });
@@ -306,6 +332,7 @@ router.put('/superadmin/:id', requireAuth, requireRole(["superadmin"]), async (r
             dailyRate,
             categoryId,
             driverId,
+            serviceProviderId,
             isActive
         } = req.body;
 
@@ -367,6 +394,17 @@ router.put('/superadmin/:id', requireAuth, requireRole(["superadmin"]), async (r
             }
         }
 
+        // Verify service provider exists if provided
+        if (serviceProviderId) {
+            const serviceProvider = await prisma.serviceProvider.findUnique({
+                where: { id: serviceProviderId }
+            });
+
+            if (!serviceProvider) {
+                return res.status(404).json({ message: 'Service provider not found' });
+            }
+        }
+
         const updateData: any = {};
         
         if (plateNumber !== undefined) updateData.plateNumber = plateNumber;
@@ -383,6 +421,7 @@ router.put('/superadmin/:id', requireAuth, requireRole(["superadmin"]), async (r
         if (dailyRate !== undefined) updateData.dailyRate = dailyRate ? parseFloat(dailyRate.toString()) : null;
         if (categoryId !== undefined) updateData.categoryId = categoryId;
         if (driverId !== undefined) updateData.driverId = driverId;
+        if (serviceProviderId !== undefined) updateData.serviceProviderId = serviceProviderId;
         if (isActive !== undefined) updateData.isActive = isActive;
 
         const vehicle = await prisma.vehicle.update({
@@ -391,6 +430,7 @@ router.put('/superadmin/:id', requireAuth, requireRole(["superadmin"]), async (r
             include: {
                 category: true,
                 driver: true,
+                serviceProvider: true,
                 organization: true
             }
         });
@@ -772,6 +812,7 @@ router.get('/', requireAuth, async (req: Request, res: Response) => {
             include: {
                 category: true,
                 driver: true,
+                serviceProvider: true,
             },
             orderBy: {
                 createdAt: 'desc'
@@ -820,7 +861,8 @@ router.get('/available', requireAuth, async (req: Request, res: Response) => {
             },
             include: {
                 category: true,
-                driver: true
+                driver: true,
+                serviceProvider: true
             },
             orderBy: {
                 plateNumber: 'asc'
@@ -863,9 +905,12 @@ router.get('/:id', requireAuth, validateSchema(VehicleIdParamSchema, 'params'), 
             include: {
                 category: true,
                 driver: true,
+                serviceProvider: true,
                 routes: true,
                 payrollReports: true,
-                vehicleAvailability: true
+                vehicleAvailability: true,
+                attendanceRecords: true,
+                payrollEntries: true
             }
         });
 
@@ -930,6 +975,15 @@ router.post('/', requireAuth, validateSchema(CreateVehicleSchema, 'body'), async
             }
         }
 
+        if (vehicleData.serviceProviderId) {
+            const serviceProvider = await prisma.serviceProvider.findFirst({
+                where: { id: vehicleData.serviceProviderId, organizationId: activeOrgId }
+            });
+            if (!serviceProvider) {
+                return res.status(404).json({ message: 'Service provider not found in this organization' });
+            }
+        }
+
         // Set maintenance dates automatically if status is MAINTENANCE
         const isMaintenanceStatus = vehicleData.status === VehicleStatus.MAINTENANCE;
         const createData: any = {
@@ -951,6 +1005,7 @@ router.post('/', requireAuth, validateSchema(CreateVehicleSchema, 'body'), async
             include: {
                 category: true,
                 driver: true,
+                serviceProvider: true,
             }
         });
 
@@ -1013,6 +1068,7 @@ router.put('/:id', requireAuth, validateMultiple([{ schema: VehicleIdParamSchema
             include: {
                 category: true,
                 driver: true,
+                serviceProvider: true,
             }
         });
 
@@ -1133,6 +1189,7 @@ router.patch('/:id/restore', requireAuth, validateSchema(VehicleIdParamSchema, '
             include: {
                 category: true,
                 driver: true,
+                serviceProvider: true,
             }
         });
 
@@ -1198,6 +1255,7 @@ router.patch('/:id/assign-driver', requireAuth, validateMultiple([{ schema: Vehi
             include: {
                 category: true,
                 driver: true,
+                serviceProvider: true,
             }
         });
 
@@ -1278,6 +1336,7 @@ router.patch('/:id/status', requireAuth, validateMultiple([{ schema: VehicleIdPa
             include: {
                 category: true,
                 driver: true,
+                serviceProvider: true,
             }
         });
 
@@ -1443,6 +1502,7 @@ router.patch('/:id/maintenance-status', requireAuth, validateSchema(VehicleIdPar
             include: {
                 category: true,
                 driver: true,
+                serviceProvider: true,
                 routes: {
                     where: {
                         deleted: false

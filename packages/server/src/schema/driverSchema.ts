@@ -13,6 +13,13 @@ export const CreateDriverSchema = z.object({
     experienceYears: z.number().int().min(0).nullable(),
     rating: z.number().min(0).max(5).default(0.0),
     isActive: z.boolean().default(true),
+    // Payroll fields
+    baseSalary: z.number().min(0).nullable().optional(),
+    hourlyRate: z.number().min(0).nullable().optional(),
+    overtimeRate: z.number().min(0).default(1.5).optional(),
+    // Banking details
+    bankAccountNumber: z.string().max(255).nullable().optional(),
+    bankName: z.string().max(255).nullable().optional(),
 });
 
 export const UpdateDriverSchema = z.object({
@@ -24,6 +31,13 @@ export const UpdateDriverSchema = z.object({
     experienceYears: z.number().int().min(0).nullable().optional(),
     rating: z.number().min(0).max(5).optional(),
     isActive: z.boolean().optional(),
+    // Payroll fields
+    baseSalary: z.number().min(0).nullable().optional(),
+    hourlyRate: z.number().min(0).nullable().optional(),
+    overtimeRate: z.number().min(0).optional(),
+    // Banking details
+    bankAccountNumber: z.string().max(255).nullable().optional(),
+    bankName: z.string().max(255).nullable().optional(),
 });
 
 export type CreateDriver = z.infer<typeof CreateDriverSchema>;

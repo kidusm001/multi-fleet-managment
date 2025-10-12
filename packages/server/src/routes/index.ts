@@ -15,6 +15,11 @@ import userRoutes from './users';
 import locationRoutes from './locations';
 import organizationRoutes from './organization';
 import activitiesRoutes from './activities';
+import serviceProviderRoutes from './service-providers';
+import attendanceRoutes from './attendance';
+import payrollPeriodRoutes from './payroll-periods';
+import cacheRoutes from './cache';
+import invitationRoutes from './invitation';
 // import shiftRoutes from './shiftRoutes';
 // import employeeRoutes from './employeeRoutes';
 // import routeRoutes from './routeRoutes';
@@ -54,6 +59,11 @@ router.use('/users', userRoutes);
 router.use('/locations', locationRoutes);
 router.use('/organization', organizationRoutes);
 router.use('/activities', activitiesRoutes);
+router.use('/service-providers', serviceProviderRoutes);
+router.use('/attendance', attendanceRoutes);
+router.use('/payroll-periods', payrollPeriodRoutes);
+router.use('/cache', cacheRoutes);
+router.use('/accept-invitation', invitationRoutes);
 
 // Register routes
 // router.use('/shifts', shiftRoutes);
