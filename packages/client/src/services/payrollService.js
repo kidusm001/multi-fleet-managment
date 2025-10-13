@@ -63,43 +63,303 @@ const sampleData = {
 };
 
 export const payrollService = {
-  async generateMonthlyPayroll(shuttleId, month, year) {
+  // ==================== NEW PAYROLL PERIODS API ====================
+
+  /**
+   * Get all payroll periods for the organization
+   */
+  async getPayrollPeriods(params = {}) {
     try {
-      // Call the backend to generate payroll data for this shuttle
-      // Backend will now calculate based on actual routes, work days, and efficiency
-      const response = await api.post('/payroll/generate', { 
-        shuttleId, 
-        month, 
-        year,
-        useActualRoutes: true // Signal to use real route data
+      const response = await api.get('/payroll-periods', { params });
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching payroll periods:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get a specific payroll period with all entries
+   */
+  async getPayrollPeriod(periodId) {
+    try {
+      const response = await api.get(`/payroll-periods/${periodId}`);
+      return response.data;
+    } catch (error) {
+      console.error("Error fetching payroll period:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Create a new payroll period
+   */
+  async createPayrollPeriod(name, startDate, endDate) {
+    try {
+      const response = await api.post('/payroll-periods', {
+        name,
+        startDate,
+        endDate
       });
       return response.data;
     } catch (error) {
-      console.error("Error generating payroll:", error);
-      // Return mock success response only if API fails
-      return { id: `mock-${shuttleId}`, month, year, status: "PROCESSED" };
+      console.error("Error creating payroll period:", error);
+      throw error;
     }
   },
 
-  async getMonthlyPayrollByShuttle(shuttleId, month, year) {
+  /**
+   * Generate payroll entries for a period (TRIGGER)
+   */
+  async generatePayrollEntries(periodId) {
     try {
-      // Get specifically calculated data for this shuttle
-      const response = await api.get(`/payroll/shuttle/${shuttleId}/${month}/${year}`);
+      const response = await api.post(`/payroll-periods/${periodId}/generate-entries`);
       return response.data;
     } catch (error) {
-      console.error("Error fetching shuttle payroll:", error);
-      return sampleData.shuttles.find(s => s.id === shuttleId.toString()) || null;
+      console.error("Error generating payroll entries:", error);
+      throw error;
     }
   },
 
+  /**
+   * Update payroll period status
+   */
+  async updatePayrollPeriodStatus(periodId, status) {
+    try {
+      const response = await api.patch(`/payroll-periods/${periodId}/status`, { status });
+      return response.data;
+    } catch (error) {
+      console.error("Error updating payroll period status:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Update/adjust a payroll entry
+   */
+  async updatePayrollEntry(periodId, entryId, updates) {
+    try {
+      const response = await api.patch(`/payroll-periods/${periodId}/entries/${entryId}`, updates);
+      return response.data;
+    } catch (error) {
+      console.error("Error updating payroll entry:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Delete a payroll period
+   */
+  async deletePayrollPeriod(periodId) {
+    try {
+      const response = await api.delete(`/payroll-periods/${periodId}`);
+      return response.data;
+    } catch (error) {
+      console.error("Error deleting payroll period:", error);
+      throw error;
+    }
+  },
+
+  // ==================== HELPER METHODS FOR UI ====================
+
+  /**
+   * Get current month's payroll period (or create if doesn't exist)
+   */
+  async getCurrentMonthPeriod() {
+    try {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = now.getMonth();
+      
+      const startDate = new Date(year, month, 1).toISOString();
+      const endDate = new Date(year, month + 1, 0, 23, 59, 59).toISOString();
+      
+      // Try to fetch existing periods
+      const { periods } = await this.getPayrollPeriods({ status: 'PENDING' });
+      
+      // Check if current month period exists
+      const currentPeriod = periods?.find(p => {
+        const pStart = new Date(p.startDate);
+        return pStart.getMonth() === month && pStart.getFullYear() === year;
+      });
+      
+      if (currentPeriod) {
+        return currentPeriod;
+      }
+      
+      // Create if doesn't exist
+      const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
+                         'July', 'August', 'September', 'October', 'November', 'December'];
+      const name = `${monthNames[month]} ${year}`;
+      
+      return await this.createPayrollPeriod(name, startDate, endDate);
+    } catch (error) {
+      console.error("Error getting current month period:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get payroll distribution from entries
+   */
+  async getPayrollDistribution(month, year) {
+    try {
+      // Get periods for the specified month/year
+      const { periods } = await this.getPayrollPeriods();
+      
+      const targetPeriod = periods?.find(p => {
+        const pStart = new Date(p.startDate);
+        return pStart.getMonth() === month && pStart.getFullYear() === year;
+      });
+      
+      if (!targetPeriod) {
+        return sampleData.distribution;
+      }
+      
+      // Get full period with entries
+      const period = await this.getPayrollPeriod(targetPeriod.id);
+      
+      // Calculate distribution from entries
+      const distribution = {
+        ownedShuttles: 0,
+        outsourcedShuttles: 0,
+        maintenance: 0,
+        other: 0
+      };
+      
+      period.payrollEntries?.forEach(entry => {
+        const amount = Number(entry.netPay || 0);
+        
+        if (entry.driver) {
+          distribution.ownedShuttles += amount;
+        } else if (entry.serviceProvider) {
+          distribution.outsourcedShuttles += amount;
+        }
+      });
+      
+      return distribution;
+    } catch (error) {
+      console.error("Error fetching payroll distribution:", error);
+      return sampleData.distribution;
+    }
+  },
+
+  /**
+   * Get historical payroll data from past periods
+   */
+  async getHistoricalPayrollData(months = 12) {
+    try {
+      const { periods } = await this.getPayrollPeriods();
+      
+      if (!periods || periods.length === 0) {
+        return sampleData.historical.slice(0, months);
+      }
+      
+      // Convert periods to historical format
+      const historical = periods
+        .slice(0, months)
+        .map(p => ({
+          month: new Date(p.startDate).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+          totalExpenses: Number(p.totalAmount || 0),
+          maintenance: Number(p.totalAmount || 0) * 0.15, // Estimate 15% for maintenance
+          fleetUtilization: 85 // Placeholder
+        }));
+      
+      return historical;
+    } catch (error) {
+      console.error("Error fetching historical payroll data:", error);
+      return sampleData.historical.slice(0, months);
+    }
+  },
+
+  /**
+   * Get future projections based on historical data
+   */
+  async getFutureProjections(startMonth, startYear, numMonths = 6) {
+    try {
+      const historical = await this.getHistoricalPayrollData(6);
+      
+      if (historical.length < 2) {
+        return sampleData.projections.slice(0, numMonths);
+      }
+      
+      // Simple projection based on average growth
+      const avgGrowth = historical.reduce((sum, curr, i) => {
+        if (i === 0) return 0;
+        return sum + ((curr.totalExpenses - historical[i-1].totalExpenses) / historical[i-1].totalExpenses);
+      }, 0) / (historical.length - 1);
+      
+      const lastAmount = historical[historical.length - 1].totalExpenses;
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      
+      const projections = Array.from({ length: numMonths }, (_, i) => {
+        const projectedAmount = lastAmount * Math.pow(1 + avgGrowth, i + 1);
+        const monthIndex = (startMonth + i) % 12;
+        
+        return {
+          month: `${monthNames[monthIndex]} ${startYear + Math.floor((startMonth + i) / 12)}`,
+          projectedPayment: projectedAmount,
+          projectedMaintenance: projectedAmount * 0.15,
+          projectedUtilization: 85,
+          confidence: Math.max(30, 85 - (i * 10))
+        };
+      });
+      
+      return projections;
+    } catch (error) {
+      console.error("Error fetching projections:", error);
+      return sampleData.projections.slice(0, numMonths);
+    }
+  },
+
+  /**
+   * Get all payroll entries (for backwards compatibility)
+   */
   async getAllMonthlyPayrolls(month, year) {
     try {
-      // The backend will now auto-generate any missing payrolls based on actual routes
-      const response = await api.get(`/payroll/monthly/${month}/${year}`);
-      return response.data;
+      // Get periods for the specified month/year
+      const { periods } = await this.getPayrollPeriods();
+      
+      const targetPeriod = periods?.find(p => {
+        const pStart = new Date(p.startDate);
+        const targetMonth = typeof month === 'string' ? 
+          ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].indexOf(month) : month;
+        return pStart.getMonth() === targetMonth && pStart.getFullYear() === year;
+      });
+      
+      if (!targetPeriod) {
+        return sampleData.shuttles.map(shuttle => ({
+          id: shuttle.id,
+          shuttle: {
+            id: shuttle.id,
+            type: shuttle.type,
+            model: shuttle.model
+          },
+          workedDays: shuttle.workedDays,
+          dailyRate: shuttle.dailyRate,
+          status: shuttle.status,
+          efficiency: shuttle.efficiency
+        }));
+      }
+      
+      // Get full period with entries
+      const period = await this.getPayrollPeriod(targetPeriod.id);
+      
+      // Transform entries to old format for backwards compatibility
+      return period.payrollEntries?.map(entry => ({
+        id: entry.id,
+        shuttle: entry.vehicle ? {
+          id: entry.vehicle.id,
+          type: entry.driver ? 'in-house' : 'outsourced',
+          model: entry.vehicle.model
+        } : null,
+        workedDays: entry.daysWorked || 0,
+        dailyRate: Number(entry.amount || 0) / (entry.daysWorked || 1),
+        status: entry.status,
+        efficiency: 85 // Placeholder
+      })) || [];
     } catch (error) {
       console.error("Error fetching all payrolls:", error);
-      // Only return sample data if API fails
       return sampleData.shuttles.map(shuttle => ({
         id: shuttle.id,
         shuttle: {
@@ -115,50 +375,10 @@ export const payrollService = {
     }
   },
 
-  async getPayrollDistribution(month, year) {
-    try {
-      // Backend now automatically generates missing data from actual routes
-      const response = await api.get(`/payroll/distribution/${month}/${year}`);
-      return response.data;
-    } catch (error) {
-      console.error("Error fetching payroll distribution:", error);
-      return sampleData.distribution;
-    }
-  },
-
-  async getHistoricalPayrollData(months = 12) {
-    try {
-      // Get historical data based on actual past payrolls
-      const response = await api.get('/payroll/historical', { params: { months } });
-      return response.data;
-    } catch (error) {
-      console.error("Error fetching historical payroll data:", error);
-      return sampleData.historical.slice(0, months);
-    }
-  },
-
-  async getFutureProjections(startMonth, startYear, numMonths = 6) {
-    try {
-      // Get projections based on historical trends from actual data
-      const response = await api.get('/payroll/projections', {
-        params: { 
-          startMonth, 
-          startYear, 
-          numMonths,
-          useRealData: true // Signal to use real historical data for projections
-        }
-      });
-      return response.data;
-    } catch (error) {
-      console.error("Error fetching projections:", error);
-      return sampleData.projections.slice(0, numMonths);
-    }
-  },
-
   async processPayroll(payrollId) {
     try {
-      const response = await api.post(`/payroll/process/${payrollId}`);
-      return response.data;
+      // Update status to PROCESSED
+      return await this.updatePayrollPeriodStatus(payrollId, 'PROCESSED');
     } catch (error) {
       console.error("Error processing payroll:", error);
       return { id: payrollId, status: "PROCESSED" };

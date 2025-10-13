@@ -13,7 +13,8 @@ import {
   MapPin,
   UserPlus,
   Plus,
-  Building2
+  Building2,
+  Calendar
 } from "lucide-react";
 
 // Icon mapping for navigation items
@@ -24,6 +25,7 @@ const getNavIcon = (label) => {
     "Vehicles": Car,
     "Employees": Users,
     "Payroll": DollarSign,
+    "Attendance": Calendar,
     "Settings": Settings,
     "Management": MapPin,
     "Assignment": UserPlus,
