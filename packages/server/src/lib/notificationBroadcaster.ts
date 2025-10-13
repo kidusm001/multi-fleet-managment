@@ -198,22 +198,22 @@ export async function broadcastNotification(notificationOrOptions: NotificationP
   };
 
   // Emit to specific user if specified
-  if (options.toUserId) {
-    console.log(`[NotificationBroadcaster] Emitting to user:${options.toUserId}`);
-    io.to(`user:${options.toUserId}`).emit('notification:new', formattedNotification);
+  if (broadcastOptions.toUserId) {
+    console.log(`[NotificationBroadcaster] Emitting to user:${broadcastOptions.toUserId}`);
+    io.to(`user:${broadcastOptions.toUserId}`).emit('notification:new', formattedNotification);
   }
 
   // Emit to specific roles
-  if (options.toRoles && options.toRoles.length > 0) {
-    options.toRoles.forEach(role => {
+  if (broadcastOptions.toRoles && broadcastOptions.toRoles.length > 0) {
+    broadcastOptions.toRoles.forEach(role => {
       console.log(`[NotificationBroadcaster] Emitting to role:${role}`);
       io!.to(`role:${role}`).emit('notification:new', formattedNotification);
     });
   }
 
   // Emit to entire organization
-  console.log(`[NotificationBroadcaster] Emitting to org:${options.organizationId}`);
-  io.to(`org:${options.organizationId}`).emit('notification:new', formattedNotification);
+  console.log(`[NotificationBroadcaster] Emitting to org:${broadcastOptions.organizationId}`);
+  io.to(`org:${broadcastOptions.organizationId}`).emit('notification:new', formattedNotification);
 
   return notification;
 }

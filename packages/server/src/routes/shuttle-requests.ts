@@ -4,6 +4,7 @@ import { requireAuth } from '../middleware/auth';
 import { fromNodeHeaders } from 'better-auth/node';
 import { auth } from '../lib/auth';
 import { broadcastNotification } from '../lib/notificationBroadcaster';
+import { requireOrganizationRole } from '../middleware/organization';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -164,96 +165,95 @@ router.post('/', requireAuth, async (req, res) => {
 });
 
 // Update shuttle request status (admin/owner/manager only)
-router.patch('/:id/status', requireAuth, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { status } = req.body;
-    const activeOrgId: string | null | undefined = req.session?.session?.activeOrganizationId;
+router.patch(
+  '/:id/status',
+  requireAuth,
+  requireOrganizationRole(['admin', 'owner', 'manager']),
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { status } = req.body;
+      const activeOrgId = req.session?.session?.activeOrganizationId;
 
-    if (!activeOrgId) {
-      return res.status(400).json({ error: 'Organization context required' });
-    }
+      if (!activeOrgId) {
+        return res.status(400).json({ error: 'Organization context required' });
+      }
 
-    // Check permissions - allow admin, owner, and manager roles
-    const userRole = req.user?.role;
-    if (!userRole || !['admin', 'owner', 'manager'].includes(userRole)) {
-      return res.status(403).json({ error: 'Unauthorized - Admin, Owner, or Manager access required' });
-    }
+      // Validate status
+      if (!['PENDING', 'APPROVED', 'REJECTED'].includes(status)) {
+        return res.status(400).json({ error: 'Invalid status' });
+      }
 
-    // Validate status
-    if (!['PENDING', 'APPROVED', 'REJECTED'].includes(status)) {
-      return res.status(400).json({ error: 'Invalid status' });
-    }
-
-    const updated = await prisma.shuttleRequest.update({
-      where: {
-        id,
-        organizationId: activeOrgId
-      },
-      data: {
-        status
-      },
-      include: {
-        shift: {
-          select: {
-            id: true,
-            name: true,
-            startTime: true,
-            endTime: true
-          }
+      const updated = await prisma.shuttleRequest.update({
+        where: {
+          id,
+          organizationId: activeOrgId
         },
-        employee: {
-          select: {
-            id: true,
-            userId: true,
-            user: {
-              select: {
-                name: true,
-                email: true
+        data: {
+          status
+        },
+        include: {
+          shift: {
+            select: {
+              id: true,
+              name: true,
+              startTime: true,
+              endTime: true
+            }
+          },
+          employee: {
+            select: {
+              id: true,
+              userId: true,
+              user: {
+                select: {
+                  name: true,
+                  email: true
+                }
               }
             }
           }
         }
-      }
-    });
+      });
 
-    // Notify the employee about status change
-    const notificationType = status === 'APPROVED' 
-      ? NotificationType.REQUEST_APPROVED 
-      : status === 'REJECTED'
-      ? NotificationType.REQUEST_REJECTED
-      : NotificationType.REQUEST_PENDING;
+      // Notify the employee about status change
+      const notificationType = status === 'APPROVED' 
+        ? NotificationType.REQUEST_APPROVED 
+        : status === 'REJECTED'
+        ? NotificationType.REQUEST_REJECTED
+        : NotificationType.REQUEST_PENDING;
 
-    const importance = status === 'APPROVED'
-      ? ImportanceLevel.HIGH
-      : status === 'REJECTED'
-      ? ImportanceLevel.MEDIUM
-      : ImportanceLevel.LOW;
+      const importance = status === 'APPROVED'
+        ? ImportanceLevel.HIGH
+        : status === 'REJECTED'
+        ? ImportanceLevel.MEDIUM
+        : ImportanceLevel.LOW;
 
-    await broadcastNotification({
-      organizationId: activeOrgId,
-      title: `Shuttle Request ${status}`,
-      message: `Your shuttle request for ${new Date(updated.date).toLocaleDateString()} has been ${status.toLowerCase()}`,
-      type: notificationType,
-      importance: importance,
-      toRoles: ['employee'],
-      toUserId: updated.employee.userId,
-      fromRole: userRole || 'manager',
-      relatedEntityId: updated.id,
-      actionUrl: `/shuttle-requests/${updated.id}`,
-      metadata: {
-        requestId: updated.id,
-        status: status,
-        date: updated.date
-      }
-    });
+      await broadcastNotification({
+        organizationId: activeOrgId,
+        title: `Shuttle Request ${status}`,
+        message: `Your shuttle request for ${new Date(updated.date).toLocaleDateString()} has been ${status.toLowerCase()}`,
+        type: notificationType,
+        importance: importance,
+        toRoles: ['employee'],
+        toUserId: updated.employee.userId,
+        fromRole: req.user?.role || 'manager',
+        relatedEntityId: updated.id,
+        actionUrl: `/shuttle-requests/${updated.id}`,
+        metadata: {
+          requestId: updated.id,
+          status: status,
+          date: updated.date
+        }
+      });
 
-    res.json({ success: true, data: updated });
-  } catch (error) {
-    console.error('Error updating shuttle request status:', error);
-    res.status(500).json({ error: 'Failed to update shuttle request status' });
+      res.json({ success: true, data: updated });
+    } catch (error) {
+      console.error('Error updating shuttle request status:', error);
+      res.status(500).json({ error: 'Failed to update shuttle request status' });
+    }
   }
-});
+);
 
 // Get all shuttle requests (admin/owner/manager only)
 router.get('/', requireAuth, async (req, res) => {

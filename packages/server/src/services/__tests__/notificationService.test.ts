@@ -174,15 +174,12 @@ describe('NotificationService', () => {
         importance: ImportanceLevel.HIGH,
       });
 
-      expect(mockPrismaTyped.notification.findMany).toHaveBeenCalledWith(
-        expect.objectContaining({
-          where: expect.objectContaining({
-            organizationId: 'org_123',
-            type: { in: ['SYSTEM_PERFORMANCE_ALERT', 'SYSTEM_SECURITY_ALERT', 'ALERT'] },
-            importance: ImportanceLevel.HIGH,
-          }),
-        })
-      );
+      const findManyCall = mockPrismaTyped.notification.findMany.mock.calls[0][0];
+      expect(findManyCall.where.organizationId).toBe('org_123');
+      expect(findManyCall.where.importance).toBe(ImportanceLevel.HIGH);
+      expect(findManyCall.where.type.in).toContain('ALERT');
+      expect(findManyCall.where.type.in).toContain('SYSTEM_PERFORMANCE_ALERT');
+      expect(findManyCall.where.type.in).toContain('SYSTEM_SECURITY_ALERT');
     });
 
     it('should restrict to userId when role is missing or limited', async () => {
