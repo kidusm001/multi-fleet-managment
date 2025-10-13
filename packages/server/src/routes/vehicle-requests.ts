@@ -1,5 +1,5 @@
-import express, { Request, Response } from 'express';
-import {  VehicleRequest, ApprovalStatus } from '@prisma/client';
+import express, { Request, Response, NextFunction } from 'express';
+import {  VehicleRequest, ApprovalStatus, Prisma } from '@prisma/client';
 import { requireAuth, requireRole } from '../middleware/auth';
 import { fromNodeHeaders } from 'better-auth/node';
 import { auth } from '../lib/auth';
@@ -16,8 +16,57 @@ import {
 } from '../schema/vehicleRequestSchema';
 import { validateSchema } from '../middleware/zodValidation';
 import prisma from '../db';
+import { notificationService } from '../services/notificationService';
+import { broadcastNotification } from '../lib/notificationBroadcaster';
 
 const router = express.Router();
+
+// Helper function to get active organization ID with fallback
+async function getActiveOrganizationId(req: Request): Promise<string | null> {
+    let activeOrgId: string | null | undefined = (req as any).activeOrganizationId;
+
+    if (!activeOrgId) {
+        activeOrgId = req.session?.session?.activeOrganizationId;
+    }
+
+    if (!activeOrgId) {
+        const user = req.user;
+        if (user?.id) {
+            try {
+                const member = await prisma.member.findFirst({
+                    where: { userId: user.id },
+                    include: { organization: true },
+                    orderBy: { createdAt: 'asc' },
+                });
+                if (member) {
+                    activeOrgId = member.organizationId;
+                    if (req.session?.session) {
+                        req.session.session.activeOrganizationId = activeOrgId;
+                    }
+                }
+            } catch (error) {
+                console.error('getActiveOrganizationId - Error finding member:', error);
+            }
+        }
+    }
+
+    if (activeOrgId && !(req as any).activeOrganizationId) {
+        (req as any).activeOrganizationId = activeOrgId;
+    }
+
+    return activeOrgId || null;
+}
+
+const ADMIN_NOTIFICATION_ROLES = ['admin', 'owner', 'administrator'];
+const MANAGER_NOTIFICATION_ROLES = ['manager', 'fleetManager'];
+
+function normalizeVehicleTypeForRequest(type?: string | null) {
+    if (!type) {
+        return 'IN_HOUSE';
+    }
+    const upper = type.toString().toUpperCase().replace(/[-\s]/g, '_');
+    return upper.includes('OUT') ? 'OUTSOURCED' : 'IN_HOUSE';
+}
 
 /**
  * @route   GET /superadmin
@@ -288,7 +337,7 @@ router.get('/superadmin/stats/summary', requireAuth, requireRole(["superadmin"])
  */
 router.get('/', requireAuth, async (req: Request, res: Response) => {
     try {
-        const activeOrgId: string | null | undefined = req.session?.session?.activeOrganizationId;
+    const activeOrgId = await getActiveOrganizationId(req);
         if (!activeOrgId) {
             return res.status(400).json({ message: 'Active organization not found' });
         }
@@ -326,6 +375,91 @@ router.get('/', requireAuth, async (req: Request, res: Response) => {
 });
 
 /**
+ * @route   GET /my-requests
+ * @desc    Get vehicle requests created by the current user
+ * @access  Private
+ */
+router.get('/my-requests', requireAuth, async (req: Request, res: Response) => {
+    try {
+        const requesterId = req.user?.id;
+        if (!requesterId) {
+            return res.status(401).json({ message: 'Unauthorized' });
+        }
+
+        const activeOrgId = await getActiveOrganizationId(req);
+        if (!activeOrgId) {
+            return res.status(400).json({ message: 'Active organization not found' });
+        }
+
+        const hasPermission = await auth.api.hasPermission({
+            headers: await fromNodeHeaders(req.headers),
+            body: {
+                permissions: {
+                    vehicleRequest: ["read"]
+                }
+            }
+        });
+
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
+
+        const vehicleRequests = await prisma.vehicleRequest.findMany({
+            where: {
+                organizationId: activeOrgId,
+                requestedBy: requesterId,
+            },
+            include: { category: true, organization: true },
+            orderBy: { requestedAt: 'desc' },
+        });
+
+        res.json(vehicleRequests);
+    } catch (error) {
+        console.error('Failed to load personal vehicle requests:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+/**
+ * @route   GET /pending
+ * @desc    Admin retrieves all pending vehicle requests
+ * @access  Private (User)
+ */
+router.get('/pending', requireAuth, async (req: Request, res: Response) => {
+    try {
+    const activeOrgId = await getActiveOrganizationId(req);
+        if (!activeOrgId) {
+            return res.status(400).json({ message: 'Active organization not found' });
+        }
+
+        const hasPermission = await auth.api.hasPermission({
+            headers: await fromNodeHeaders(req.headers),
+            body: {
+                permissions: {
+                    vehicleRequest: ["read"] 
+                }
+            }
+        });
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
+
+        const vehicleRequests = await prisma.vehicleRequest.findMany({
+            where: { 
+                status: ApprovalStatus.PENDING,
+                organizationId: activeOrgId
+            },
+            include: { category: true, organization: true },
+            orderBy: { requestedAt: 'desc' },
+        });
+        res.json(vehicleRequests);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+/**
  * @route   GET /:id
  * @desc    Get a specific vehicle request by ID in a specific organization
  * @access  Private (User)
@@ -334,7 +468,7 @@ router.get('/:id', requireAuth, validateSchema(VehicleRequestIdParamSchema, 'par
     try {
         const { id } = req.params;
         
-        const activeOrgId: string | null | undefined = req.session?.session?.activeOrganizationId;
+    const activeOrgId = await getActiveOrganizationId(req);
         if (!activeOrgId) {
             return res.status(400).json({ message: 'Active organization not found' });
         }
@@ -378,60 +512,104 @@ router.get('/:id', requireAuth, validateSchema(VehicleRequestIdParamSchema, 'par
  * @desc    Fleet manager submits a new vehicle request
  * @access  Private (User)
  */
-router.post('/', requireAuth, validateSchema(CreateVehicleRequestSchema, 'body'), async (req: Request, res: Response) => {
-    try {
-        const {
-            name,
-            licensePlate,
-            categoryId,
-            dailyRate,
-            capacity,
-            type,
-            model,
-            vendor,
-            requestedBy,
-        }: CreateVehicleRequestInput = req.body;
-
-        const activeOrgId: string | null | undefined = req.session?.session?.activeOrganizationId;
-        if (!activeOrgId) {
-            return res.status(400).json({ message: 'Active organization not found' });
+router.post(
+    '/',
+    requireAuth,
+    (req: Request, _res: Response, next: NextFunction) => {
+        const sessionUserId = req.session?.session?.user?.id;
+        if (!req.body) {
+            req.body = {};
         }
-
-        const hasPermission = await auth.api.hasPermission({
-            headers: await fromNodeHeaders(req.headers),
-            body: {
-                permissions: {
-                    vehicleRequest: ["create"] 
-                }
+        if (!req.body.requestedBy) {
+            const fallbackId = req.user?.id || sessionUserId;
+            if (fallbackId) {
+                req.body.requestedBy = fallbackId;
             }
-        });
-        if (!hasPermission.success) {
-            return res.status(403).json({ message: 'Unauthorized' });
         }
-
-        const vehicleRequest = await prisma.vehicleRequest.create({
-            data: {
+        next();
+    },
+    validateSchema(CreateVehicleRequestSchema, 'body'),
+    async (req: Request, res: Response) => {
+        try {
+            const {
                 name,
                 licensePlate,
+                categoryId,
                 dailyRate,
                 capacity,
                 type,
                 model,
-                vendor: vendor || "",
+                vendor,
                 requestedBy,
-                status: 'PENDING',
-                organizationId: activeOrgId,
-                categoryId: categoryId || null,
-            },
-            include: { category: true },
-        });
+            }: CreateVehicleRequestInput = req.body;
 
-        res.status(201).json(vehicleRequest);
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Internal Server Error' });
+            const activeOrgId = await getActiveOrganizationId(req);
+            if (!activeOrgId) {
+                return res.status(400).json({ message: 'Active organization not found' });
+            }
+
+            const requesterId = requestedBy || req.user?.id || req.session?.session?.user?.id;
+            if (!requesterId) {
+                return res.status(401).json({ message: 'Unauthorized' });
+            }
+
+            const hasPermission = await auth.api.hasPermission({
+                headers: await fromNodeHeaders(req.headers),
+                body: {
+                    permissions: {
+                        vehicleRequest: ["create"] 
+                    }
+                }
+            });
+            if (!hasPermission.success) {
+                return res.status(403).json({ message: 'Unauthorized' });
+            }
+
+            const normalizedType = normalizeVehicleTypeForRequest(type);
+            const numericDailyRate = typeof dailyRate === 'number' && !Number.isNaN(dailyRate)
+                ? dailyRate
+                : null;
+
+            const vehicleRequest = await prisma.vehicleRequest.create({
+                data: {
+                    name,
+                    licensePlate,
+                    dailyRate: numericDailyRate,
+                    capacity,
+                    type: normalizedType,
+                    model,
+                    vendor: normalizedType === 'OUTSOURCED' ? vendor || null : null,
+                    requestedBy: requesterId,
+                    status: ApprovalStatus.PENDING,
+                    organizationId: activeOrgId,
+                    categoryId: categoryId || null,
+                },
+                include: { category: true },
+            });
+
+            const requesterName = req.user?.name || 'A manager';
+            const fromRole = req.organizationRole || req.user?.role || 'manager';
+            try {
+                await notificationService.createNotification({
+                    organizationId: activeOrgId,
+                    title: 'Vehicle Request Submitted',
+                    message: `${requesterName} requested to add vehicle "${name}".`,
+                    toRoles: ADMIN_NOTIFICATION_ROLES,
+                    fromRole: fromRole || undefined,
+                    type: 'REQUEST_CREATED',
+                    relatedEntityId: vehicleRequest.id,
+                });
+            } catch (notificationError) {
+                console.error('Failed to create notification for vehicle request creation:', notificationError);
+            }
+
+            res.status(201).json(vehicleRequest);
+        } catch (error) {
+            console.error(error);
+            res.status(500).json({ message: 'Internal Server Error' });
+        }
     }
-});
+);
 
 /**
  * @route   PUT /:id
@@ -446,7 +624,7 @@ router.put('/:id', requireAuth,
         const { id } = req.params;
         const updateData = req.body;
 
-        const activeOrgId: string | null | undefined = req.session?.session?.activeOrganizationId;
+    const activeOrgId = await getActiveOrganizationId(req);
         if (!activeOrgId) {
             return res.status(400).json({ message: 'Active organization not found' });
         }
@@ -507,7 +685,7 @@ router.delete('/:id', requireAuth, validateSchema(VehicleRequestIdParamSchema, '
     try {
         const { id } = req.params;
 
-        const activeOrgId: string | null | undefined = req.session?.session?.activeOrganizationId;
+    const activeOrgId = await getActiveOrganizationId(req);
         if (!activeOrgId) {
             return res.status(400).json({ message: 'Active organization not found' });
         }
@@ -558,45 +736,6 @@ router.delete('/:id', requireAuth, validateSchema(VehicleRequestIdParamSchema, '
 });
 
 /**
- * @route   GET /pending
- * @desc    Admin retrieves all pending vehicle requests
- * @access  Private (User)
- */
-router.get('/pending', requireAuth, async (req: Request, res: Response) => {
-    try {
-        const activeOrgId: string | null | undefined = req.session?.session?.activeOrganizationId;
-        if (!activeOrgId) {
-            return res.status(400).json({ message: 'Active organization not found' });
-        }
-
-        const hasPermission = await auth.api.hasPermission({
-            headers: await fromNodeHeaders(req.headers),
-            body: {
-                permissions: {
-                    vehicleRequest: ["read"] 
-                }
-            }
-        });
-        if (!hasPermission.success) {
-            return res.status(403).json({ message: 'Unauthorized' });
-        }
-
-        const vehicleRequests = await prisma.vehicleRequest.findMany({
-            where: { 
-                status: ApprovalStatus.PENDING,
-                organizationId: activeOrgId
-            },
-            include: { category: true, organization: true },
-            orderBy: { requestedAt: 'desc' },
-        });
-        res.json(vehicleRequests);
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ message: 'Internal Server Error' });
-    }
-});
-
-/**
  * @route   POST /:id/approve
  * @desc    Admin approves a vehicle request and creates the actual vehicle
  * @access  Private (User)
@@ -605,7 +744,7 @@ router.post('/:id/approve', requireAuth, validateSchema(VehicleRequestIdParamSch
     try {
         const { id } = req.params;
 
-        const activeOrgId: string | null | undefined = req.session?.session?.activeOrganizationId;
+    const activeOrgId = await getActiveOrganizationId(req);
         if (!activeOrgId) {
             return res.status(400).json({ message: 'Active organization not found' });
         }
@@ -662,6 +801,33 @@ router.post('/:id/approve', requireAuth, validateSchema(VehicleRequestIdParamSch
             include: { category: true },
         });
 
+        // Notify managers, owners, and admins about the approval
+        const approverName = req.user?.name || 'An admin';
+        const approverRole = req.organizationRole || req.user?.role || 'admin';
+        try {
+            const notification = await notificationService.createNotification({
+                organizationId: activeOrgId,
+                title: 'Vehicle Request Approved',
+                message: `${approverName} approved the vehicle request for "${vehicleRequest.name}".`,
+                toRoles: [...ADMIN_NOTIFICATION_ROLES, ...MANAGER_NOTIFICATION_ROLES],
+                fromRole: approverRole || undefined,
+                type: 'REQUEST_APPROVED',
+                relatedEntityId: vehicleRequest.id,
+            });
+            // Broadcast via socket for real-time updates
+            await broadcastNotification({
+                title: notification.title,
+                message: notification.message,
+                type: 'INFO',
+                importance: 'MEDIUM',
+                toRoles: [...ADMIN_NOTIFICATION_ROLES, ...MANAGER_NOTIFICATION_ROLES],
+                organizationId: activeOrgId,
+                actionUrl: `/shuttles`,
+            });
+        } catch (notificationError) {
+            console.error('Failed to create notification for vehicle request approval:', notificationError);
+        }
+
         res.json({ updatedRequest, vehicle });
     } catch (error) {
         console.error(error);
@@ -682,7 +848,7 @@ router.post('/:id/reject', requireAuth,
         const { id } = req.params;
         const { comment }: RejectVehicleRequestInput = req.body;
 
-        const activeOrgId: string | null | undefined = req.session?.session?.activeOrganizationId;
+    const activeOrgId = await getActiveOrganizationId(req);
         if (!activeOrgId) {
             return res.status(400).json({ message: 'Active organization not found' });
         }
@@ -721,6 +887,32 @@ router.post('/:id/reject', requireAuth,
                 comment: comment || 'No comment provided',
             },
         });
+
+        // Notify managers, owners, and admins about the rejection
+        const rejecterName = req.user?.name || 'An admin';
+        const rejecterRole = req.organizationRole || req.user?.role || 'admin';
+        try {
+            const notification = await notificationService.createNotification({
+                organizationId: activeOrgId,
+                title: 'Vehicle Request Rejected',
+                message: `${rejecterName} rejected the vehicle request for "${vehicleRequest.name}". Reason: ${comment}`,
+                toRoles: [...ADMIN_NOTIFICATION_ROLES, ...MANAGER_NOTIFICATION_ROLES],
+                fromRole: rejecterRole || undefined,
+                type: 'REQUEST_REJECTED',
+                relatedEntityId: vehicleRequest.id,
+            });
+            // Broadcast via socket for real-time updates
+            await broadcastNotification({
+                title: notification.title,
+                message: notification.message,
+                type: 'WARNING',
+                importance: 'MEDIUM',
+                toRoles: [...ADMIN_NOTIFICATION_ROLES, ...MANAGER_NOTIFICATION_ROLES],
+                organizationId: activeOrgId,
+            });
+        } catch (notificationError) {
+            console.error('Failed to create notification for vehicle request rejection:', notificationError);
+        }
 
         res.json(updatedRequest);
     } catch (error) {

@@ -36,14 +36,7 @@ vi.mock('../../db', () => ({
       findFirst: vi.fn(),
       findMany: vi.fn(),
     },
-    $transaction: vi.fn((callback) => {
-      if (typeof callback === 'function') {
-        return callback({
-          attendanceRecord: { create: vi.fn() },
-        });
-      }
-      return Promise.resolve();
-    }),
+    $transaction: vi.fn(),
   },
 }));
 
@@ -240,8 +233,30 @@ describe('Attendance API', () => {
         { id: 'driver-2', organizationId: mockOrganizationId },
       ];
 
+      const mockCreatedRecords = [
+        {
+          id: 'record-1',
+          organizationId: mockOrganizationId,
+          vehicleId: 'vehicle-1',
+          driverId: 'driver-1',
+          date: new Date('2024-01-15'),
+          hoursWorked: 8,
+          tripsCompleted: 10,
+        },
+        {
+          id: 'record-2',
+          organizationId: mockOrganizationId,
+          vehicleId: 'vehicle-2',
+          driverId: 'driver-2',
+          date: new Date('2024-01-15'),
+          hoursWorked: 9,
+          tripsCompleted: 12,
+        },
+      ];
+
       (prisma.vehicle.findMany as any).mockResolvedValue(mockVehicles);
       (prisma.driver.findMany as any).mockResolvedValue(mockDrivers);
+      (prisma.$transaction as any).mockResolvedValue(mockCreatedRecords);
 
       const response = await request(app)
         .post('/attendance/bulk')

@@ -8,14 +8,11 @@ export * from '../../middleware/errorHandler';
 // Admin helpers
 export * from './admin';
 
-// Session helpers
-export * from './session';
+// Session helpers (excluding validateSession to avoid conflict with middleware)
+export { refreshSession, getSessionData, clearSession, hasActiveSession, getSessionExpiration } from './session';
 
 // Permission helpers
 export * from './permissions';
-
-// Route wrappers
-export * from './routeWrappers';
 
 // Database integration
 export * from './database';

@@ -16,20 +16,7 @@ type RoleKey = string;
 
 export const NAV_CONFIG: Record<RoleKey, NavItem[]> = {
   [ROLES.SUPERADMIN]: [
-    { label: "Dashboard", path: ROUTES.DASHBOARD },
-    {
-      label: "Routes",
-      path: ROUTES.ROUTES,
-      subpaths: [
-        { label: "Management", path: ROUTES.ROUTES },
-        { label: "Assignment", path: `${ROUTES.ROUTES}?tab=assignment` },
-        { label: "Create Route", path: `${ROUTES.ROUTES}?modal=create` },
-      ],
-    },
-    { label: "Vehicles", path: ROUTES.VEHICLES },
-    { label: "Employees", path: ROUTES.EMPLOYEES },
-    { label: "Payroll", path: ROUTES.PAYROLL },
-    { label: "Org Management", path: ROUTES.ORGANIZATION_MANAGEMENT },
+    { label: "Organizations", path: "/organizations" },
     { label: "Settings", path: ROUTES.SETTINGS },
   ],
   [ROLES.OWNER]: [
@@ -81,7 +68,10 @@ export const NAV_CONFIG: Record<RoleKey, NavItem[]> = {
     { label: "Employees", path: ROUTES.EMPLOYEES },
   ],
   [ROLES.DRIVER]: [],
-  [ROLES.EMPLOYEE]: [],
+  [ROLES.EMPLOYEE]: [
+    { label: "Dashboard", path: ROUTES.EMPLOYEE_PORTAL },
+    { label: "Request", path: `${ROUTES.EMPLOYEE_PORTAL}/request` },
+  ],
   // Fallback for unauth/unknown role
   default: [],
 };

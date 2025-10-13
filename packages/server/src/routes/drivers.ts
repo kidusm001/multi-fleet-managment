@@ -1051,17 +1051,21 @@ router.patch('/me/routes/:routeId/status', requireAuth, async (req: Request, res
             where: { id: routeId },
             data: { status },
             include: {
-                driver: {
-                    select: {
-                        id: true,
-                        name: true,
-                        email: true
+                vehicleAvailability: {
+                    include: {
+                        driver: {
+                            select: {
+                                id: true,
+                                name: true,
+                                email: true
+                            }
+                        }
                     }
                 },
                 vehicle: {
                     select: {
                         id: true,
-                        licensePlate: true,
+                        plateNumber: true,
                         make: true,
                         model: true,
                         capacity: true

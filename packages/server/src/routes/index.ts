@@ -11,6 +11,7 @@ import vehicleAvailabilityRoutes from './vehicle-availability';
 import payrollReportRoutes from './payroll-reports';
 import notificationRoutes from './notifications';
 import vehicleRequestRoutes from './vehicle-requests';
+import shuttleRequestRoutes from './shuttle-requests';
 import userRoutes from './users';
 import locationRoutes from './locations';
 import organizationRoutes from './organization';
@@ -54,7 +55,8 @@ router.use('/routes', routeRoutes);
 router.use('/shuttle-availability', vehicleAvailabilityRoutes);
 router.use('/payroll-reports', payrollReportRoutes);
 router.use('/notifications', notificationRoutes);
-router.use('/shuttle-requests', vehicleRequestRoutes);
+router.use('/vehicle-requests', vehicleRequestRoutes);
+router.use('/shuttle-requests-employee', shuttleRequestRoutes);
 router.use('/users', userRoutes);
 router.use('/locations', locationRoutes);
 router.use('/organization', organizationRoutes);
@@ -128,10 +130,13 @@ const debugRoute: RequestHandler = (req, res) => {
             'POST /notifications - Create new notification (superadmin only)',
             'PUT /notifications/:id - Update notification (superadmin only)',
             'DELETE /notifications/:id - Delete notification (superadmin only)',
-            'GET /vehicle-requests - List all vehicle requests (superadmin only)',
-            'POST /vehicle-requests - Create new vehicle request (superadmin only)',
-            'PUT /vehicle-requests/:id - Update vehicle request (superadmin only)',
-            'DELETE /vehicle-requests/:id - Delete vehicle request (superadmin only)'
+            'GET /vehicle-requests - List all vehicle requests (organization users)',
+            'POST /vehicle-requests - Create new vehicle request (organization users)',
+            'PUT /vehicle-requests/:id - Update vehicle request (organization users)',
+            'DELETE /vehicle-requests/:id - Delete vehicle request (organization users)',
+            'GET /vehicle-requests/pending - Get pending vehicle requests (organization users)',
+            'POST /vehicle-requests/:id/approve - Approve vehicle request (organization users)',
+            'POST /vehicle-requests/:id/reject - Reject vehicle request (organization users)'
         ],
         backupLocation: 'routes.backup/'
     });

@@ -49,7 +49,7 @@ async function waitForStyleLoad(map) {
   });
 }
 
-function MapComponent({ selectedRoute, selectedShuttle, newStop, mapStyle, initialZoom, showDirections = false, enableOptimization = true }) {
+function MapComponent({ selectedRoute, selectedShuttle, newStop, mapStyle, initialZoom, showDirections = false, enableOptimization = true, currentUserId = null }) {
   const mapContainer = useRef(null);
   const map = useRef(null);
   const markersRef = useRef([]);
@@ -120,8 +120,13 @@ function MapComponent({ selectedRoute, selectedShuttle, newStop, mapStyle, initi
             areas: optimizedRoute.waypoints
               .slice(1, -1)
               .map((wp) => selectedRoute.areas[wp.originalIndex]),
+            // Pass employee user IDs for current user identification
+            employeeUserIds: optimizedRoute.waypoints
+              .slice(1, -1)
+              .map((wp) => selectedRoute.employeeUserIds?.[wp.originalIndex]),
           },
           shuttle: selectedShuttle,
+          currentUserId: currentUserId,
         });
         markersRef.current.push(...routeMarkers);
 
@@ -395,7 +400,7 @@ function MapComponent({ selectedRoute, selectedShuttle, newStop, mapStyle, initi
       console.error("Error updating route:", error);
       setMapError("Failed to update route");
     }
-  }, [selectedRoute, selectedShuttle, mapInitialized, newStop, showDirections, isDark, enableOptimization]);
+  }, [selectedRoute, selectedShuttle, mapInitialized, newStop, showDirections, isDark, enableOptimization, currentUserId]);
 
   // Add function to clean up controls
   const cleanupControls = useCallback(() => {
@@ -654,6 +659,7 @@ MapComponent.propTypes = {
     coordinates: PropTypes.arrayOf(PropTypes.arrayOf(PropTypes.number)),
     areas: PropTypes.arrayOf(PropTypes.string),
     dropOffOrder: PropTypes.arrayOf(PropTypes.number),
+    employeeUserIds: PropTypes.arrayOf(PropTypes.string),
   }),
   selectedShuttle: PropTypes.any,
   newStop: PropTypes.shape({
@@ -665,6 +671,7 @@ MapComponent.propTypes = {
   initialZoom: PropTypes.number,
   showDirections: PropTypes.bool,
   enableOptimization: PropTypes.bool,
+  currentUserId: PropTypes.string,
 };
 
 export default MapComponent;

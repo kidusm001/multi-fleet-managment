@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { authClient } from '@/lib/auth-client';
 import { 
   Users, 
@@ -13,6 +14,8 @@ import {
   Filter
 } from 'lucide-react';
 import AddMemberModal from './AddMemberModal';
+import EditRoleModal from './EditRoleModal';
+import DeleteMemberModal from './DeleteMemberModal';
 import { Card, CardContent, CardHeader, CardTitle } from '@components/Common/UI/Card';
 import { Button } from '@components/Common/UI/Button';
 import { Input } from '@components/Common/UI/Input';
@@ -56,8 +59,6 @@ const ROLE_CONFIG = {
   }
 };
 
-const AVAILABLE_ROLES = ['owner', 'admin', 'manager', 'driver', 'employee'];
-
 export default function NewMembersPanel() {
   const { useActiveOrganization } = authClient;
   const { data: activeOrganization, isLoading: orgLoading } = useActiveOrganization();
@@ -71,6 +72,11 @@ export default function NewMembersPanel() {
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [showAddMemberModal, setShowAddMemberModal] = useState(false);
   const [lastLoadedOrgId, setLastLoadedOrgId] = useState(null);
+  
+  // Modal states for edit role and delete member
+  const [showEditRoleModal, setShowEditRoleModal] = useState(false);
+  const [showDeleteMemberModal, setShowDeleteMemberModal] = useState(false);
+  const [selectedMember, setSelectedMember] = useState(null);
 
   // Memoized loadMembers function to prevent infinite re-renders
   const loadMembers = useCallback(async (organizationId) => {
@@ -465,10 +471,8 @@ export default function NewMembersPanel() {
                             variant="outline"
                             size="sm"
                             onClick={() => {
-                              const newRole = prompt('Enter new role (owner, admin, manager, driver, employee):');
-                              if (newRole && AVAILABLE_ROLES.includes(newRole)) {
-                                handleRoleChange(member.id, newRole);
-                              }
+                              setSelectedMember(member);
+                              setShowEditRoleModal(true);
                             }}
                           >
                             <Shield className="w-4 h-4" />
@@ -478,9 +482,8 @@ export default function NewMembersPanel() {
                             size="sm"
                             className="text-red-600 hover:text-red-700"
                             onClick={() => {
-                              if (confirm(`Remove ${member.name || member.userId} from the organization?`)) {
-                                handleRemoveMember(member.id);
-                              }
+                              setSelectedMember(member);
+                              setShowDeleteMemberModal(true);
                             }}
                           >
                             <AlertCircle className="w-4 h-4" />
@@ -537,6 +540,32 @@ export default function NewMembersPanel() {
           onAddMember={handleAddMember}
         />
       )}
+      
+      {/* Edit Role Modal */}
+      {showEditRoleModal && selectedMember && (
+        <EditRoleModal
+          isOpen={showEditRoleModal}
+          onClose={() => {
+            setShowEditRoleModal(false);
+            setSelectedMember(null);
+          }}
+          onUpdateRole={handleRoleChange}
+          member={selectedMember}
+        />
+      )}
+      
+      {/* Delete Member Modal */}
+      {showDeleteMemberModal && selectedMember && (
+        <DeleteMemberModal
+          isOpen={showDeleteMemberModal}
+          onClose={() => {
+            setShowDeleteMemberModal(false);
+            setSelectedMember(null);
+          }}
+          onDelete={handleRemoveMember}
+          member={selectedMember}
+        />
+      )}
     </div>
   );
 }
@@ -566,11 +595,21 @@ function InviteMemberModal({ isOpen, onClose, onInvite }) {
     }
   };
 
+  // Lock body scroll while modal is open
+  useEffect(() => {
+    if (!isOpen) return;
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = originalOverflow || '';
+    };
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-96 max-w-[90vw]">
+  const modal = (
+    <div className="fixed inset-0 bg-black/50 z-50 p-4 flex items-center justify-center">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-96 max-w-[90vw] max-h-[90vh] overflow-y-auto">
         <h3 className="text-lg font-semibold mb-4">Invite Member</h3>
         
         <div className="space-y-4">
@@ -626,4 +665,6 @@ function InviteMemberModal({ isOpen, onClose, onInvite }) {
       </div>
     </div>
   );
+
+  return createPortal(modal, document.body);
 }

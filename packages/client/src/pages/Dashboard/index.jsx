@@ -2,6 +2,7 @@ import React, { useState, useCallback, useMemo, Suspense, useEffect, useRef } fr
 import { MapPin, Users, Bus } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
 import { useTheme } from "@contexts/ThemeContext";
+import { useAuth } from "@contexts/AuthContext";
 import { ErrorBoundary } from "@components/Common/ErrorBoundary";
 import { routeService } from "@services/routeService";
 import { useViewport } from "@hooks/useViewport";
@@ -24,6 +25,7 @@ function DashboardDesktop() {
   const [selectedRoute, setSelectedRoute] = useState(null);
   const [isDetailsExpanded, setIsDetailsExpanded] = useState(false);
   const { theme } = useTheme();
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [loading, setLoading] = useState(true);
@@ -56,10 +58,10 @@ function DashboardDesktop() {
     fetchRoutes();
   }, []);
 
-  // Transform route for map component using the same approach as RouteManagementView
+  // Transform route stops to map-compatible format
   const transformRouteForMap = useCallback((route) => {
-    if (!route || !route.stops || route.stops.length === 0) return null;
-
+    if (!route?.stops) return null;
+    
     // Transform route data to match what the MapComponent expects
     return {
       id: route.id,
@@ -74,6 +76,8 @@ function DashboardDesktop() {
         if (!employee) return "Unassigned Stop";
         return `${employee.name}\n${employee.location || ""}`;
       }),
+      // Add employee user IDs to identify current employee's stop
+      employeeUserIds: route.stops.map((stop) => stop.employee?.userId || null),
     };
   }, []);
 
@@ -206,6 +210,7 @@ function DashboardDesktop() {
                 selectedRoute={mapRouteData}
                 mapStyle={mapStyle}
                 initialZoom={11.5}
+                currentUserId={user?.id}
               />
             </div>
           </Suspense>

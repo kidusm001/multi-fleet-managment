@@ -54,23 +54,27 @@ export function HQMarker({ map, location = null }) {
   return marker;
 }
 
-export function RouteMarkers({ map, route, shuttle }) {
+export function RouteMarkers({ map, route, shuttle, currentUserId = null }) {
   return route.areas.map((area, index) => {
+    // Check if this stop belongs to the current user
+    const isCurrentUser = currentUserId && route.employeeUserIds?.[index] === currentUserId;
+    
     const el = document.createElement("div");
     el.className = "drop-off-order";
     el.style.cssText = `
-      background-color: #4272FF;
+      background-color: ${isCurrentUser ? '#10B981' : '#4272FF'};
       color: white;
-      padding: 6px 10px;
+      padding: ${isCurrentUser ? '8px 12px' : '6px 10px'};
       border-radius: 16px;
-      font-size: 14px;
+      font-size: ${isCurrentUser ? '16px' : '14px'};
       font-weight: bold;
       border: 3px solid white;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-      z-index: 1;
+      box-shadow: 0 ${isCurrentUser ? '4px 8px' : '2px 4px'} rgba(0,0,0,0.2);
+      z-index: ${isCurrentUser ? '3' : '1'};
       cursor: pointer;
+      transform: ${isCurrentUser ? 'scale(1.1)' : 'scale(1)'};
     `;
-    el.innerHTML = (index + 1).toString();
+    el.innerHTML = isCurrentUser ? 'ME' : (index + 1).toString();
 
     const popup = new mapboxgl.Popup({
       offset: 25,
@@ -80,7 +84,9 @@ export function RouteMarkers({ map, route, shuttle }) {
       anchor: "bottom",
     }).setHTML(`
       <div style="padding: 8px;">
-        <div style="font-weight: bold;">Drop-off Point ${index + 1}</div>
+        <div style="font-weight: bold; color: ${isCurrentUser ? '#10B981' : 'inherit'};">
+          ${isCurrentUser ? '📍 Your Location' : `Drop-off Point ${index + 1}`}
+        </div>
         <div>${area}</div>
         ${
           shuttle
@@ -134,10 +140,12 @@ RouteMarkers.propTypes = {
       PropTypes.arrayOf(PropTypes.number.isRequired)
     ).isRequired,
     areas: PropTypes.arrayOf(PropTypes.string.isRequired).isRequired,
+    employeeUserIds: PropTypes.arrayOf(PropTypes.string),
   }).isRequired,
   shuttle: PropTypes.shape({
     id: PropTypes.string.isRequired,
     capacity: PropTypes.number.isRequired,
     driver: PropTypes.string,
   }),
+  currentUserId: PropTypes.string,
 };

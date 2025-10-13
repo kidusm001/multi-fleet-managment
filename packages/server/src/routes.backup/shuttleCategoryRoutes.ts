@@ -28,10 +28,10 @@ const INITIAL_CATEGORIES = [
 
 // Initialize categories if they don't exist
 const initializeCategories = async () => {
-  // Check if default tenant exists
-  const defaultTenant = await prisma.tenant.findUnique({ where: { id: 'default-tenant' } });
-  if (!defaultTenant) {
-    console.warn('[VehicleCategory Init] Skipped: default tenant not found.');
+  // Check if default organization exists
+  const defaultOrg = await prisma.organization.findFirst();
+  if (!defaultOrg) {
+    console.warn('[VehicleCategory Init] Skipped: no organizations found.');
     return;
   }
   for (const category of INITIAL_CATEGORIES) {
@@ -40,7 +40,7 @@ const initializeCategories = async () => {
     });
     if (!existing) {
       await prisma.vehicleCategory.create({
-        data: { ...category, tenant: { connect: { id: 'default-tenant' } } }
+        data: { ...category, organizationId: defaultOrg.id }
       });
     }
   }
@@ -83,15 +83,16 @@ router.get('/:id', idValidation, validateRequest, requireRole(['admin', 'adminis
  */
 router.post('/', vehicleCategoryValidation, validateRequest, requireRole(['admin', 'administrator']), asyncHandler(async (req, res) => {
   const { name, capacity } = req.body as ShuttleCategoryBody;
-  const tenantId = (req as any).user?.tenantId || 'default-tenant';
-  const category = await prisma.vehicleCategory.create({ data: { name, capacity, tenant: { connect: { id: tenantId } } }, include: { vehicles: true } });
+  const organizationId = (req as any).session?.activeOrganizationId || 'default-org';
+  const category = await prisma.vehicleCategory.create({ data: { name, capacity, organizationId }, include: { vehicles: true } });
   await notificationService.createNotification({
+    organizationId,
     toRoles: ['admin', 'administrator', 'fleetManager'],
     fromRole: 'system',
-    notificationType: 'vehicle',
-    subject: 'New Shuttle Category Added',
+    type: 'VEHICLE_CREATED',
+    title: 'New Shuttle Category Added',
     message: `A new vehicle category "${name}" with capacity ${capacity} has been created`,
-    importance: 'Medium',
+    importance: 'MEDIUM',
     relatedEntityId: category.id.toString()
   });
   res.status(201).send(category);
@@ -112,12 +113,13 @@ router.put('/:id', [...idValidation, ...vehicleCategoryValidation], validateRequ
   }
   const category = await prisma.vehicleCategory.update({ where: { id }, data: { name, capacity }, include: { vehicles: true } });
   await notificationService.createNotification({
+    organizationId: oldCategory.organizationId,
     toRoles: ['admin', 'administrator', 'fleetManager'],
     fromRole: 'system',
-    notificationType: 'vehicle',
-    subject: 'Shuttle Category Updated',
+    type: 'VEHICLE_UPDATED',
+    title: 'Shuttle Category Updated',
     message: `Vehicle category "${oldCategory.name}" has been updated to "${name}" with capacity ${capacity}`,
-    importance: oldCategory.vehicles.length > 0 ? 'High' : 'Medium',
+    importance: oldCategory.vehicles.length > 0 ? 'HIGH' : 'MEDIUM',
     relatedEntityId: id.toString()
   });
   res.send(category);
@@ -141,12 +143,13 @@ router.delete('/:id', idValidation, validateRequest, requireRole(['admin', 'admi
   }
   await prisma.vehicleCategory.delete({ where: { id } });
   await notificationService.createNotification({
+    organizationId: category.organizationId,
     toRoles: ['admin', 'administrator', 'fleetManager'],
     fromRole: 'system',
-    notificationType: 'vehicle',
-    subject: 'Shuttle Category Deleted',
+    type: 'VEHICLE_DELETED',
+    title: 'Shuttle Category Deleted',
     message: `Vehicle category "${category.name}" has been deleted`,
-    importance: 'High',
+    importance: 'HIGH',
     relatedEntityId: id.toString()
   });
   res.status(204).send();

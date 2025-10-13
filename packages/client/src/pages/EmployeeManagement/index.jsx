@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { useRole } from "@contexts/RoleContext";
 import { toast } from 'sonner';
+import EmployeeShuttleRequestsTable from '../ShuttleManagement/components/EmployeeShuttleRequestsTable';
 // removed unused XLSX
 import { ROLES } from "@data/constants";
 // imports trimmed
@@ -304,6 +305,13 @@ export default function EmployeeManagement() {
                       onItemsPerPageChange={handleItemsPerPageChange}
                     />
                   </div>
+
+                  {/* Employee Shuttle Requests Section */}
+                  {(role === 'admin' || role === 'owner' || role === 'manager') && (
+                    <div className="rounded-2xl border border-[var(--divider)] bg-[var(--card-background)] shadow-lg p-4 md:p-6">
+                      <EmployeeShuttleRequestsTable />
+                    </div>
+                  )}
                 </div>
               )}
             </div>

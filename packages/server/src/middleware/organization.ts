@@ -39,17 +39,50 @@ export function withOrganization(handler: Function) {
 export function requireOrganizationRole(allowedRoles: string | string[]) {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
-      if (!req.user || !req.activeOrganization) {
-        return res.status(401).json({ error: 'Authentication and organization context required' });
+      if (!req.user) {
+        console.log('[requireOrganizationRole] No user in request');
+        return res.status(401).json({ error: 'Authentication required' });
+      }
+
+      const activeOrgId = req.session?.session?.activeOrganizationId;
+      if (!activeOrgId) {
+        console.log('[requireOrganizationRole] No activeOrganizationId in session');
+        return res.status(400).json({ error: 'Organization context required' });
       }
 
       const roles = Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles];
 
-      // Check if user has required role in the organization
-      const member = req.activeOrganization.members?.find((m: any) => m.userId === req.user.id);
-      if (!member || !roles.includes(member.role)) {
+      // Use Better Auth's getActiveMember API to get the user's role in the organization
+      const activeMember = await auth.api.getActiveMember({
+        headers: fromNodeHeaders(req.headers)
+      });
+
+      if (!activeMember) {
+        return res.status(403).json({ error: 'Not a member of this organization' });
+      }
+
+      // The response is the member object directly with the role property
+      const memberRole = activeMember.role;
+
+      console.log('[requireOrganizationRole] Role check:', {
+        userId: req.user.id,
+        activeOrgId,
+        memberRole,
+        allowedRoles: roles,
+        hasRequiredRole: memberRole ? roles.includes(memberRole) : false
+      });
+
+      // Check if user has required role
+      if (!memberRole || !roles.includes(memberRole)) {
+        console.log('[requireOrganizationRole] Insufficient permissions:', {
+          userRole: memberRole,
+          requiredRoles: roles
+        });
         return res.status(403).json({ error: 'Insufficient organization permissions' });
       }
+
+      // Store member info in request for later use
+      req.organizationMember = activeMember;
 
       next();
     } catch (error) {

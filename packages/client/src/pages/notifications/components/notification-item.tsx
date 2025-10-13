@@ -51,8 +51,20 @@ const getTypeIcon = (type: string) => {
   if (typeStr.startsWith('DRIVER_')) return <UserCog className="h-6 w-6" />;
   if (typeStr.startsWith('DEPARTMENT_')) return <Building className="h-6 w-6" />;
   if (typeStr.startsWith('SHIFT_')) return <Clock className="h-6 w-6" />;
+  if (typeStr.startsWith('STOP_')) return <Building className="h-6 w-6" />;
+  if (typeStr.startsWith('ORG_')) return <Building className="h-6 w-6" />;
+  if (typeStr.startsWith('USER_')) return <Users className="h-6 w-6" />;
+  if (typeStr.startsWith('PERMISSIONS_')) return <Shield className="h-6 w-6" />;
+  if (typeStr.startsWith('ACCOUNT_')) return <Shield className="h-6 w-6" />;
+  if (typeStr.startsWith('PAYROLL_')) return <UserCog className="h-6 w-6" />;
+  if (typeStr.startsWith('PAYMENT_')) return <UserCog className="h-6 w-6" />;
+  if (typeStr.startsWith('AVAILABILITY_')) return <Clock className="h-6 w-6" />;
+  if (typeStr.startsWith('REQUEST_')) return <Users className="h-6 w-6" />;
   if (typeStr.startsWith('SYSTEM_')) return <Settings className="h-6 w-6" />;
   if (typeStr.startsWith('SECURITY_')) return <Shield className="h-6 w-6" />;
+  if (typeStr.startsWith('INFO')) return <Bell className="h-6 w-6" />;
+  if (typeStr.startsWith('WARNING')) return <Bell className="h-6 w-6" />;
+  if (typeStr.startsWith('ALERT')) return <Bell className="h-6 w-6" />;
   return <Bell className="h-6 w-6" />;
 };
 

@@ -15,6 +15,7 @@ declare global {
       activeOrganizationId?: string | null;
       organizationRole?: string | null;
       activeMember?: Member | null;
+      organizationMember?: any;
     }
   }
 }

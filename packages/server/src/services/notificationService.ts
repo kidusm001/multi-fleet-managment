@@ -75,22 +75,71 @@ try {
       notificationTypeMap["SHUTTLE"] = notificationTypeMap["VEHICLE"];
     }
 
+    // Map additional notification types to main categories for filtering
+    // This ensures ALL notifications are categorized under at least one filter tab
+    
+    // DEPARTMENT, SHIFT, STOP notifications -> EMPLOYEE category (employee-related operations)
+    const employeeRelated = ['DEPARTMENT_CREATED', 'DEPARTMENT_UPDATED', 'DEPARTMENT_DELETED',
+                             'SHIFT_CREATED', 'SHIFT_UPDATED', 'SHIFT_DELETED', 'SHIFT_TIME_CHANGED',
+                             'STOP_CREATED', 'STOP_UPDATED', 'STOP_DELETED', 'STOP_RELOCATED',
+                             'AVAILABILITY_CREATED', 'AVAILABILITY_UPDATED', 'AVAILABILITY_DELETED'];
+    if (!notificationTypeMap['EMPLOYEE']) notificationTypeMap['EMPLOYEE'] = [];
+    employeeRelated.forEach(type => {
+      if (!notificationTypeMap['EMPLOYEE'].includes(type)) {
+        notificationTypeMap['EMPLOYEE'].push(type);
+      }
+    });
+
+    // ORG, USER, PERMISSIONS, ACCOUNT, generic notifications -> SYSTEM category (system/admin operations)
+    const systemRelated = ['ORG_CREATED', 'ORG_UPDATED', 'ORG_DELETED', 'ORG_SUSPENDED', 
+                           'ORG_SUBSCRIPTION_EXPIRING', 'ORG_USER_LIMIT', 'ORG_STORAGE_WARNING',
+                           'USER_INVITED', 'USER_JOINED', 'USER_ROLE_CHANGED', 'USER_REMOVED',
+                           'USER_ACCESS_REVOKED', 'USER_REACTIVATED',
+                           'PERMISSIONS_UPDATED', 'ACCOUNT_SUSPENDED',
+                           'INFO', 'WARNING', 'ALERT',
+                           'REPORT_GENERATED', 'REPORT_EXPORTED',
+                           'LOW_AVAILABILITY'];
+    if (!notificationTypeMap['SYSTEM']) notificationTypeMap['SYSTEM'] = [];
+    systemRelated.forEach(type => {
+      if (!notificationTypeMap['SYSTEM'].includes(type)) {
+        notificationTypeMap['SYSTEM'].push(type);
+      }
+    });
+
+    // PAYROLL, PAYMENT notifications -> EMPLOYEE category (employee compensation)
+    const payrollRelated = ['PAYROLL_GENERATED', 'PAYROLL_APPROVED', 'PAYROLL_AVAILABLE',
+                            'PAYMENT_PROCESSED', 'PAYROLL_ISSUE'];
+    payrollRelated.forEach(type => {
+      if (!notificationTypeMap['EMPLOYEE'].includes(type)) {
+        notificationTypeMap['EMPLOYEE'].push(type);
+      }
+    });
+
+    // VEHICLE_OVERBOOKED -> Both VEHICLE and EMPLOYEE categories
+    if (!notificationTypeMap['EMPLOYEE'].includes('VEHICLE_OVERBOOKED')) {
+      notificationTypeMap['EMPLOYEE'].push('VEHICLE_OVERBOOKED');
+    }
+
+    console.log('[NotificationService] Final category counts:');
+    console.log('  ROUTE:', notificationTypeMap['ROUTE']?.length || 0, 'types');
+    console.log('  VEHICLE:', notificationTypeMap['VEHICLE']?.length || 0, 'types');
+    console.log('  EMPLOYEE:', notificationTypeMap['EMPLOYEE']?.length || 0, 'types');
+    console.log('  DRIVER:', notificationTypeMap['DRIVER']?.length || 0, 'types');
+    console.log('  REQUEST:', notificationTypeMap['REQUEST']?.length || 0, 'types');
+    console.log('  SYSTEM:', notificationTypeMap['SYSTEM']?.length || 0, 'types');
+
 const expandNotificationType = (type: NotificationType): { mode: 'in'; values: string[] } | { mode: 'equals'; value: string } | null => {
   const t = String(type);
-  const prefix = t.split('_')[0];
-  const expanded = notificationTypeMap[prefix];
+  
+  // Check if this is a category filter (e.g., "EMPLOYEE", "ROUTE", "VEHICLE")
+  // vs a specific notification type (e.g., "EMPLOYEE_CREATED")
+  const expanded = notificationTypeMap[t];
 
   if (expanded && expanded.length > 0) {
-    const deduped: string[] = [];
-    for (const member of expanded) {
-      if (member !== t && !deduped.includes(member)) {
-        deduped.push(member);
-      }
-    }
+    // This is a category filter - return all notifications containing this token
+    const deduped: string[] = [...new Set(expanded)];
 
-    if ((expanded.includes(t) || allNotificationMembersSet.has(t)) && !deduped.includes(t)) {
-      deduped.push(t);
-    }
+    console.log(`[expandNotificationType] Filter "${t}" expanded to ${deduped.length} types:`, deduped.slice(0, 5), deduped.length > 5 ? `...and ${deduped.length - 5} more` : '');
 
     if (deduped.length === 1) {
       return { mode: 'equals', value: deduped[0] };
@@ -99,10 +148,12 @@ const expandNotificationType = (type: NotificationType): { mode: 'in'; values: s
     return { mode: 'in', values: deduped };
   }
 
+  // Check if it's a specific notification type
   if (allNotificationMembersSet.has(t)) {
     return { mode: 'equals', value: t };
   }
 
+  console.warn(`[expandNotificationType] Unknown type "${t}" - not found in map or members set`);
   return null;
 };
 interface NotificationQuery {

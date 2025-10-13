@@ -10,6 +10,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { shuttleCategoryService } from "@/services/shuttleCategoryService";
 import { driverService } from "@/services/driverService";
 import { useRole } from "@/contexts/RoleContext";
+import { useSession } from "@/lib/auth-client";
 
 
 const initialFormState = {
@@ -29,7 +30,8 @@ const initialFormState = {
 export default function AddShuttleDialog({ onClose, onAdd }) {
   const { theme } = useTheme();
   const { role } = useRole();
-  const isFleetManager = role === "fleetManager";
+  const { data: session } = useSession();
+  const isManager = role === "manager" || role === "fleetManager";
 
   const [formData, setFormData] = useState(initialFormState);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -121,24 +123,44 @@ export default function AddShuttleDialog({ onClose, onAdd }) {
     setIsSubmitting(true);
 
     try {
+      const normalizedType = formData.type?.toLowerCase() === "outsourced" ? "OUTSOURCED" : "IN_HOUSE";
+      const parsedCapacity = Number(formData.capacity);
+      const parsedDailyRate = Number(formData.dailyRate);
+      const hasDailyRate = typeof formData.dailyRate === "string"
+        ? formData.dailyRate.trim().length > 0
+        : formData.dailyRate !== undefined && formData.dailyRate !== null;
+
+      if (!Number.isFinite(parsedCapacity) || parsedCapacity <= 0) {
+        throw new Error("Capacity must be a positive number");
+      }
+
       const submitData = {
         name: formData.name.trim(),
-        type: formData.type || "in-house",
+        type: normalizedType,
         model: formData.customModel ? formData.model.trim() : formData.model,
-        capacity: formData.capacity,
+        capacity: parsedCapacity,
         status: formData.status,
-        vendor: formData.type === "outsourced" ? formData.vendor?.trim() : null,
-        categoryId: formData.categoryId,
+        vendor: normalizedType === "OUTSOURCED" ? formData.vendor?.trim() : null,
+        categoryId: formData.categoryId || undefined,
         licensePlate: formData.licensePlate.trim().toUpperCase(),
-        dailyRate: parseFloat(formData.dailyRate) || 0,
+        dailyRate: hasDailyRate && Number.isFinite(parsedDailyRate) ? parsedDailyRate : undefined,
         driverId: formData.driverId || null,
       };
 
       console.log("Sending shuttle data:", submitData);
       // Call the appropriate API method based on the user role:
-      if (isFleetManager) {
-        // For fleet managers, the dialog will request a shuttle
-        await onAdd({ mode: "request", data: submitData });
+      if (isManager) {
+        const requesterId = session?.user?.id;
+        if (!requesterId) {
+          throw new Error("Unable to determine current user for request");
+        }
+        await onAdd({
+          mode: "request",
+          data: {
+            ...submitData,
+            requestedBy: requesterId,
+          },
+        });
       } else {
         // For admins, the dialog will add a new shuttle directly
         await onAdd({ mode: "add", data: submitData });
@@ -168,7 +190,7 @@ export default function AddShuttleDialog({ onClose, onAdd }) {
             >
               <div className="flex items-center justify-between p-6">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                  {isFleetManager ? "Request Shuttle" : "Add New Shuttle"}
+                  {isManager ? "Request Addition" : "Add New Shuttle"}
                 </h3>
                 <Button
                   type="button"
@@ -436,7 +458,7 @@ export default function AddShuttleDialog({ onClose, onAdd }) {
                   Cancel
                 </Button>
                 <Button type="submit">
-                  {isFleetManager ? "Request Shuttle" : "Add Shuttle"}
+                  {isManager ? "Request Addition" : "Add Shuttle"}
                 </Button>
               </div>
             </form>

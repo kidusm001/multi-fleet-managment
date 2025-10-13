@@ -58,15 +58,12 @@ export async function updateUserProfile(req: Request, userId: string, profileDat
   try {
     // Check if user can update this profile
     if (req.user?.id !== userId) {
-      const canUpdate = await auth.api.hasPermission({
-        headers: fromNodeHeaders(req.headers),
-        body: {
-          permissions: { user: ['set-password'] }
-        }
-      });
+      // Check if user has permission to update other profiles
+      const { canManageUsers } = await import('./permissions');
+      const canUpdateOthers = await canManageUsers(req);
 
-      if (!canUpdate) {
-        throw new Error('Insufficient permissions to update user profile');
+      if (!canUpdateOthers) {
+        throw new Error('Insufficient permissions to update user profiles');
       }
     }
 
@@ -186,15 +183,15 @@ export async function getUserOrganizationsWithDetails(req: Request) {
  */
 export async function createOrganizationWithDefaults(req: Request, orgData: any) {
   try {
-    // Check if user can create organizations
+    // Check if user has permission to create organizations
     const canCreate = await auth.api.hasPermission({
       headers: fromNodeHeaders(req.headers),
       body: {
-        permissions: { organization: ['create'] }
+        permissions: { organization: ['create'] } as any
       }
     });
 
-    if (!canCreate) {
+    if (!canCreate.success) {
       throw new Error('Insufficient permissions to create organization');
     }
 

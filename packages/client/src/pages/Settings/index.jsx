@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useRole } from "@/contexts/RoleContext";
+import { ROLES } from "@data/constants";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Users, 
@@ -29,26 +31,34 @@ const tabs = [
   { id: "drivers", label: "Drivers", icon: Truck },
   { id: "departments", label: "Departments", icon: Building2 },
   { id: "shifts", label: "Shifts", icon: Clock },
-  { id: "users", label: "Users", icon: UserCog },
   { id: "shuttles", label: "Shuttles", icon: Bus },
   { id: "categories", label: "Categories", icon: Car },
+];
+
+const superadminTabs = [
+  { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { id: "users", label: "Users", icon: UserCog },
 ];
 
 export default function Settings() {
   useTheme();
   const navigate = useNavigate();
   const location = useLocation();
+  const { role } = useRole();
   const [activeTab, setActiveTab] = useState("dashboard");
+
+  const isSuperadmin = role === ROLES.SUPERADMIN;
+  const availableTabs = isSuperadmin ? superadminTabs : tabs;
 
   // Check location state to see if we need to activate a specific tab
   useEffect(() => {
-    if (location.state?.activeTab && tabs.some(tab => tab.id === location.state.activeTab)) {
+    if (location.state?.activeTab && availableTabs.some(tab => tab.id === location.state.activeTab)) {
       setActiveTab(location.state.activeTab);
       
       // Clear the state to prevent it from persisting on refresh
       navigate(location.pathname, { replace: true });
     }
-  }, [location, navigate]);
+  }, [location, navigate, availableTabs]);
 
   const handleTabChange = (tabId) => {
     if (tabId === "shuttles") {
@@ -86,16 +96,21 @@ export default function Settings() {
     <div className="container mx-auto px-6 py-8 max-w-[1400px]">
       {/* Settings Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-[var(--text-primary)]">Admin Settings</h1>
+        <h1 className="text-3xl font-bold text-[var(--text-primary)]">
+          {isSuperadmin ? "System Settings" : "Admin Settings"}
+        </h1>
         <p className="text-[var(--text-secondary)] mt-2">
-          Manage your organization&#39;s settings and configurations
+          {isSuperadmin 
+            ? "Manage system-wide settings and configurations"
+            : "Manage your organization's settings and configurations"
+          }
         </p>
       </div>
 
       {/* Navigation Tabs */}
       <div className="mb-8 border-b border-[var(--divider)]">
         <div className="flex flex-wrap gap-2 sm:gap-4 md:gap-8">
-          {tabs.map((tab) => {
+          {availableTabs.map((tab) => {
             const Icon = tab.icon;
             return (
               <button

@@ -37,6 +37,7 @@ import {
 import { cn } from "@/lib/utils";
 import axios from "axios";
 import { toast } from "sonner";
+import Settings from "@/pages/Settings";
 
 // Use auth hooks from the configured client
 const { useSession, useListOrganizations, useActiveOrganization } = authClient;
@@ -54,6 +55,7 @@ export default function OrganizationSelection() {
   const isDark = theme === "dark";
 
   const [searchTerm, setSearchTerm] = useState("");
+  const [activeTab, setActiveTab] = useState("organizations");
   const [isCreating, setIsCreating] = useState(false);
   const [createError, setCreateError] = useState("");
   const [newOrgName, setNewOrgName] = useState("");
@@ -425,7 +427,7 @@ export default function OrganizationSelection() {
 
       if (isAlreadyActive) {
         console.log(
-          `Organization ${org.name} is already active, navigating to dashboard...`
+          `Organization ${org.name} is already active, navigating to appropriate dashboard...`
         );
       } else {
         console.log(
@@ -437,11 +439,13 @@ export default function OrganizationSelection() {
           organizationId: org.id,
         });
 
-        console.log("Organization set as active, navigating to dashboard...");
+        console.log("Organization set as active, navigating to appropriate dashboard...");
       }
 
-      // Navigate to dashboard regardless of whether it was already active
-      navigate("/dashboard");
+      // Navigate to the appropriate dashboard based on role
+      // For employees, navigate to employee portal; for others, navigate to dashboard
+      const dashboardRoute = role === 'employee' ? '/employee-portal' : '/dashboard';
+      navigate(dashboardRoute);
     } catch (error) {
       console.error("Failed to set active organization:", error);
       // Optional: Show a toast notification about the error
@@ -774,7 +778,7 @@ export default function OrganizationSelection() {
             {isSuperadmin ? (
               <span className="flex items-center justify-center gap-2">
                 <Shield className="w-8 h-8" />
-                All Organizations (Superadmin)
+                Superadmin Portal
               </span>
             ) : isFirstOrganization ? (
               "Welcome to Fleet Management!"
@@ -784,7 +788,7 @@ export default function OrganizationSelection() {
           </h1>
           <p className="text-muted-foreground">
             {isSuperadmin
-              ? "Manage all organizations in the system"
+              ? "Manage organizations and system settings"
               : isFirstOrganization
               ? "Let's create your first organization to get started"
               : "Choose an organization to continue or create a new one"}
@@ -812,6 +816,43 @@ export default function OrganizationSelection() {
           )}
         </div>
 
+        {/* Superadmin Tabs */}
+        {isSuperadmin && (
+          <div className="mb-6 border-b border-[var(--divider)]">
+            <div className="flex gap-4">
+              <button
+                onClick={() => setActiveTab("organizations")}
+                className={cn(
+                  "flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-all",
+                  activeTab === "organizations"
+                    ? "border-[var(--primary)] text-[var(--primary)]"
+                    : "border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                )}
+              >
+                <Building2 className="w-4 h-4" />
+                <span>Organizations</span>
+              </button>
+              <button
+                onClick={() => setActiveTab("settings")}
+                className={cn(
+                  "flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition-all",
+                  activeTab === "settings"
+                    ? "border-[var(--primary)] text-[var(--primary)]"
+                    : "border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                )}
+              >
+                <Shield className="w-4 h-4" />
+                <span>Settings</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Tab Content */}
+        {isSuperadmin && activeTab === "settings" ? (
+          <Settings />
+        ) : (
+          <>
         {/* Search and Refresh - Show when we have or expect organizations */}
         {(shouldShowOrganizations ||
           (!orgsLoading && !isFirstOrganization)) && (
@@ -1264,6 +1305,8 @@ export default function OrganizationSelection() {
               </form>
             </CardContent>
           </Card>
+        )}
+        </>
         )}
 
         {/* Edit Organization Modal - Beautiful Modern Design */}

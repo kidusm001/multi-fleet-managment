@@ -27,25 +27,26 @@ export interface ListUsersQuery {
  */
 export async function createUser(req: Request, userData: CreateUserData) {
   try {
-    // Check if requester is admin
+    // Check if requester has permission to create users (admin-level permission)
     const canCreate = await auth.api.hasPermission({
       headers: fromNodeHeaders(req.headers),
       body: {
-        permissions: { admin: ['create'] }
+        permissions: { user: ['create'] } as any
       }
     });
 
-    if (!canCreate) {
+    if (!canCreate.success) {
       throw new Error('Insufficient permissions to create users');
     }
 
-    // Create user using Better Auth
+    // Create user using Better Auth admin API
     const result = await auth.api.createUser({
+      headers: fromNodeHeaders(req.headers),
       body: {
         email: userData.email,
         password: userData.password,
         name: userData.name || '',
-        role: userData.role || 'user'
+        role: (userData.role === 'superadmin' || userData.role === 'user') ? userData.role : 'user'
       }
     });
 
@@ -61,19 +62,19 @@ export async function createUser(req: Request, userData: CreateUserData) {
  */
 export async function listUsers(req: Request, query: ListUsersQuery = {}) {
   try {
-    // Check if requester is admin
+    // Check if requester has permission to list users (admin-level permission)
     const canList = await auth.api.hasPermission({
       headers: fromNodeHeaders(req.headers),
       body: {
-        permissions: { user: ['list'] }
+        permissions: { user: ['list'] } as any
       }
     });
 
-    if (!canList) {
+    if (!canList.success) {
       throw new Error('Insufficient permissions to list users');
     }
 
-    // List users using Better Auth
+    // List users using Better Auth admin API
     const result = await auth.api.listUsers({
       headers: fromNodeHeaders(req.headers),
       query
@@ -91,24 +92,27 @@ export async function listUsers(req: Request, query: ListUsersQuery = {}) {
  */
 export async function updateUserRole(req: Request, userId: string, role: string | string[]) {
   try {
-    // Check if requester is admin
+    // Check if requester has permission to set roles (admin-level permission)
     const canUpdate = await auth.api.hasPermission({
       headers: fromNodeHeaders(req.headers),
       body: {
-        permissions: { user: ['set-role'] }
+        permissions: { user: ['set-role'] } as any
       }
     });
 
-    if (!canUpdate) {
+    if (!canUpdate.success) {
       throw new Error('Insufficient permissions to update user roles');
     }
 
-    // Update user role using Better Auth
+    // Validate role type
+    const validRole = (role === 'superadmin' || role === 'user') ? role : 'user';
+
+    // Update user role using Better Auth admin API
     const result = await auth.api.setRole({
       headers: fromNodeHeaders(req.headers),
       body: {
         userId,
-        role
+        role: validRole
       }
     });
 
@@ -124,19 +128,19 @@ export async function updateUserRole(req: Request, userId: string, role: string 
  */
 export async function banUser(req: Request, userId: string, banReason?: string, banExpiresIn?: number) {
   try {
-    // Check if requester is admin
+    // Check if requester has permission to ban users (admin-level permission)
     const canBan = await auth.api.hasPermission({
       headers: fromNodeHeaders(req.headers),
       body: {
-        permissions: { user: ['ban'] }
+        permissions: { user: ['ban'] } as any
       }
     });
 
-    if (!canBan) {
+    if (!canBan.success) {
       throw new Error('Insufficient permissions to ban users');
     }
 
-    // Ban user using Better Auth
+    // Ban user using Better Auth admin API
     const result = await auth.api.banUser({
       headers: fromNodeHeaders(req.headers),
       body: {
@@ -158,19 +162,19 @@ export async function banUser(req: Request, userId: string, banReason?: string, 
  */
 export async function unbanUser(req: Request, userId: string) {
   try {
-    // Check if requester is admin
+    // Check if requester has permission to unban users (admin-level permission)
     const canUnban = await auth.api.hasPermission({
       headers: fromNodeHeaders(req.headers),
       body: {
-        permissions: { user: ['ban'] }
+        permissions: { user: ['ban'] } as any
       }
     });
 
-    if (!canUnban) {
+    if (!canUnban.success) {
       throw new Error('Insufficient permissions to unban users');
     }
 
-    // Unban user using Better Auth
+    // Unban user using Better Auth admin API
     const result = await auth.api.unbanUser({
       headers: fromNodeHeaders(req.headers),
       body: {
@@ -190,19 +194,19 @@ export async function unbanUser(req: Request, userId: string) {
  */
 export async function impersonateUser(req: Request, userId: string) {
   try {
-    // Check if requester is admin
+    // Check if requester has permission to impersonate users (admin-level permission)
     const canImpersonate = await auth.api.hasPermission({
       headers: fromNodeHeaders(req.headers),
       body: {
-        permissions: { user: ['impersonate'] }
+        permissions: { user: ['impersonate'] } as any
       }
     });
 
-    if (!canImpersonate) {
+    if (!canImpersonate.success) {
       throw new Error('Insufficient permissions to impersonate users');
     }
 
-    // Impersonate user using Better Auth
+    // Impersonate user using Better Auth admin API
     const result = await auth.api.impersonateUser({
       headers: fromNodeHeaders(req.headers),
       body: {

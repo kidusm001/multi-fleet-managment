@@ -21,7 +21,7 @@ describe('routeService', () => {
       const result = await routeService.getAllRoutes();
 
       expect(api.get).toHaveBeenCalledWith('/routes', {
-        params: { include: 'shuttle,shift,stops.employee.department' }
+        params: { include: 'shuttle,shift,location,stops.employee.department' }
       });
       expect(result).toEqual(mockRoutes);
     });
@@ -78,7 +78,7 @@ describe('routeService', () => {
       const result = await routeService.getRouteById('1');
 
       expect(api.get).toHaveBeenCalledWith('/routes/1', {
-        params: { include: 'shuttle,shift,stops.employee.department' }
+        params: { include: 'shuttle,shift,location,stops.employee.department' }
       });
       expect(result).toEqual(mockRoute);
     });
@@ -126,7 +126,7 @@ describe('routeService', () => {
       const result = await routeService.getRoutesByShift(1);
 
       expect(api.get).toHaveBeenCalledWith('/routes/shift/1', {
-        params: { include: 'shuttle,stops.employee' }
+        params: { include: 'shuttle,location,stops.employee' }
       });
       expect(result).toEqual(mockRoutes);
     });

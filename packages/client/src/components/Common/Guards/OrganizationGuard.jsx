@@ -1,10 +1,11 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { authClient } from '@/lib/auth-client';
-import { Loader2, Building2 } from 'lucide-react';
+import { Building2 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useRole } from '@/contexts/RoleContext';
 import { cn } from '@/lib/utils';
+import LoadingAnimation from '@/components/Common/LoadingAnimation';
 
 /**
  * Organization Guard Component
@@ -22,7 +23,7 @@ export default function OrganizationGuard({ children }) {
   const isDark = theme === 'dark';
   
   const [isChecking, setIsChecking] = useState(true);
-  const [needsOrganization, setNeedsOrganization] = useState(false);
+  const [_needsOrganization, _setNeedsOrganization] = useState(false);
 
   // Debounce ref to prevent rapid organization checks
   const debounceRef = useRef(null);
@@ -170,28 +171,14 @@ export default function OrganizationGuard({ children }) {
   // Show loading screen while checking or while data is loading
   if (isChecking || sessionLoading || activeOrgLoading || (session && orgsLoading)) {
     return (
-      <div className={cn(
-        "min-h-screen flex items-center justify-center",
-        isDark ? "bg-slate-900" : "bg-gray-50"
-      )}>
-        <div className="text-center">
-          <div className="flex justify-center mb-4">
-            <div className="relative">
-              <Building2 className="w-12 h-12 text-primary" />
-              <Loader2 className="w-6 h-6 absolute -top-1 -right-1 animate-spin text-primary" />
-            </div>
-          </div>
-          <h2 className="text-xl font-semibold mb-2">Loading Organizations</h2>
-          <p className="text-muted-foreground">
-            Checking your organization access...
-          </p>
-        </div>
+      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-slate-900">
+        <LoadingAnimation />
       </div>
     );
   }
 
   // Show organization creation prompt if needed
-  if (needsOrganization) {
+  if (_needsOrganization) {
     return (
       <div className={cn(
         "min-h-screen flex items-center justify-center",

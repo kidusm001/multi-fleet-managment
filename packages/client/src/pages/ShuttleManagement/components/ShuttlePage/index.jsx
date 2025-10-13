@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import MaintenanceSchedule from '../MaintenanceSchedule';
 import DriverStatus from '../DriverStatus';
 import ShuttleTable from '../ShuttleTable';
-import PendingShuttleRequestsTable from '../PendingShuttleRequestsTable';
+import PendingShuttleRequestsTable from '../PendingShuttleRequestsTable/index';
+import ManagerVehicleRequestsTable from '../ManagerVehicleRequestsTable/index';
 import { useShuttleManagement } from '@/hooks/useShuttleManagement';
 import { useRole } from '@/contexts/RoleContext';
 import { cn } from '@/lib/utils';
@@ -163,11 +164,18 @@ export default function ShuttlePage() {
           </div>
 
           {/* Pass the callback to the PendingShuttleRequestsTable */}
-          {role === 'admin' && (
+          {(role === 'admin' || role === 'owner') && (
             <div className="mt-6">
               <PendingShuttleRequestsTable 
                 onRequestStatusChanged={handleRequestStatusChanged}
               />
+            </div>
+          )}
+
+          {/* Manager Vehicle Requests - Show only their own requests */}
+          {role === 'manager' && (
+            <div className="mt-6">
+              <ManagerVehicleRequestsTable />
             </div>
           )}
 

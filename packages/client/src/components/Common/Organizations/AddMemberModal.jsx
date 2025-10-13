@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Loader2, UserPlus } from 'lucide-react';
 import { Button } from '@components/Common/UI/Button';
 import { Input } from '@components/Common/UI/Input';
@@ -51,11 +52,21 @@ export default function AddMemberModal({ isOpen, onClose, onAddMember }) {
     onClose();
   };
 
+  // Prevent body scroll while modal is open
+  useEffect(() => {
+    if (!isOpen) return;
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = originalOverflow || '';
+    };
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-96 max-w-[90vw]">
+  const modal = (
+    <div className="fixed inset-0 bg-black/50 z-50 p-4 flex items-center justify-center">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-96 max-w-[90vw] max-h-[90vh] overflow-y-auto">
         <h3 className="text-lg font-semibold mb-4">Add Member</h3>
         
         <div className="space-y-4">
@@ -127,4 +138,6 @@ export default function AddMemberModal({ isOpen, onClose, onAddMember }) {
       </div>
     </div>
   );
+
+  return createPortal(modal, document.body);
 }

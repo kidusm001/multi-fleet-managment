@@ -108,18 +108,18 @@ describe('Integration: Complete Payroll Flow', () => {
 
       // Calculate expected values
       const totalDays = attendanceRecords.length; // 22 days
-      const totalHours = attendanceRecords.reduce((sum, r) => sum + r.hoursWorked, 0); // 188 hours
-      const totalTrips = attendanceRecords.reduce((sum, r) => sum + r.tripsCompleted, 0); // 302 trips
+      const totalHours = attendanceRecords.reduce((sum, r) => sum + r.hoursWorked, 0); // 190.5 hours
+      const totalTrips = attendanceRecords.reduce((sum, r) => sum + r.tripsCompleted, 0); // 299 trips
       const totalKms = attendanceRecords.reduce((sum, r) => sum + r.kmsCovered, 0); // 3835 kms
 
       // Expected calculations
       const regularHours = 160;
-      const overtimeHours = totalHours - regularHours; // 28 hours
+      const overtimeHours = totalHours - regularHours; // 30.5 hours
       const basePay = 5000;
-      const overtimePay = overtimeHours * 30 * 1.5; // 28 * 30 * 1.5 = 1260
-      const performanceBonus = (totalTrips - 50) * 5; // (302 - 50) * 5 = 1260
+      const overtimePay = overtimeHours * 30 * 1.5; // 30.5 * 30 * 1.5 = 1372.5
+      const performanceBonus = (totalTrips - 50) * 5; // (299 - 50) * 5 = 1245
       const punctualityBonus = (totalDays / 22) >= 0.95 ? 100 : 0; // 100%
-      const avgSpeed = totalKms / totalHours; // 3835 / 188 = 20.4 km/h
+      const avgSpeed = totalKms / totalHours; // 3835 / 190.5 = 20.13 km/h
       const efficiencyBonus = avgSpeed > 10 ? 50 : 0; // 50
       
       const grossPay = basePay + overtimePay + performanceBonus + punctualityBonus + efficiencyBonus;
@@ -166,15 +166,15 @@ describe('Integration: Complete Payroll Flow', () => {
       // (In a real test, we'd call the actual endpoint)
       
       expect(totalDays).toBe(22);
-      expect(totalHours).toBe(188);
-      expect(totalTrips).toBe(302);
-      expect(overtimeHours).toBe(28);
-      expect(performanceBonus).toBe(1260);
+      expect(totalHours).toBe(190.5);
+      expect(totalTrips).toBe(299);
+      expect(overtimeHours).toBe(30.5);
+      expect(performanceBonus).toBe(1245);
       expect(punctualityBonus).toBe(100);
       expect(efficiencyBonus).toBe(50);
-      expect(grossPay).toBe(7670); // 5000 + 1260 + 1260 + 100 + 50
-      expect(tdsDeduction).toBe(767);
-      expect(expectedNetPay).toBe(6903);
+      expect(grossPay).toBe(7767.5); // 5000 + 1372.5 + 1245 + 100 + 50
+      expect(tdsDeduction).toBe(776.75);
+      expect(expectedNetPay).toBe(6990.75);
     });
   });
 

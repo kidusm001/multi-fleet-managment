@@ -42,8 +42,13 @@ export default function Home() {
       return ROUTES.DRIVER_PORTAL;
     }
 
-    // Admin, Manager, Employee need active org to go to dashboard
-    if (role === ROLES.ADMIN || role === ROLES.MANAGER || role === ROLES.EMPLOYEE) {
+    // Employee goes to employee portal
+    if (role === ROLES.EMPLOYEE) {
+      return activeOrganization ? ROUTES.EMPLOYEE_PORTAL : ROUTES.ORGANIZATIONS;
+    }
+
+    // Admin, Manager need active org to go to dashboard
+    if (role === ROLES.ADMIN || role === ROLES.MANAGER) {
       return activeOrganization ? ROUTES.DASHBOARD : ROUTES.ORGANIZATIONS;
     }
 
@@ -70,8 +75,13 @@ export default function Home() {
       return ROUTES.DRIVER_PORTAL;
     }
 
-    // Admin, Manager, Employee need active org for dashboard
-    if (role === ROLES.ADMIN || role === ROLES.MANAGER || role === ROLES.EMPLOYEE) {
+    // Employee goes to employee portal
+    if (role === ROLES.EMPLOYEE) {
+      return activeOrganization ? ROUTES.EMPLOYEE_PORTAL : ROUTES.ORGANIZATIONS;
+    }
+
+    // Admin, Manager need active org for dashboard
+    if (role === ROLES.ADMIN || role === ROLES.MANAGER) {
       return activeOrganization ? ROUTES.DASHBOARD : ROUTES.ORGANIZATIONS;
     }
 
@@ -98,8 +108,13 @@ export default function Home() {
       return "Open Driver Portal";
     }
 
-    // Admin, Manager, Employee need active org
-    if (role === ROLES.ADMIN || role === ROLES.MANAGER || role === ROLES.EMPLOYEE) {
+    // Employee goes to employee portal
+    if (role === ROLES.EMPLOYEE) {
+      return activeOrganization ? "Open Employee Portal" : "Select Organization";
+    }
+
+    // Admin, Manager need active org
+    if (role === ROLES.ADMIN || role === ROLES.MANAGER) {
       return activeOrganization ? "Go to Dashboard" : "Select an Organization";
     }
 
@@ -138,8 +153,14 @@ export default function Home() {
       return;
     }
 
-    // Admin, Manager, Employee need active org to proceed
-    const requiresActiveOrganization = role === ROLES.ADMIN || role === ROLES.MANAGER || role === ROLES.EMPLOYEE;
+    // Employee doesn't need active org for portal, goes there directly
+    if (role === ROLES.EMPLOYEE) {
+      navigate(autoTarget, { replace: true });
+      return;
+    }
+
+    // Admin, Manager need active org to proceed
+    const requiresActiveOrganization = role === ROLES.ADMIN || role === ROLES.MANAGER;
 
     if (requiresActiveOrganization) {
       if (isLoadingActiveOrg || isLoadingOrganizations) {
@@ -162,7 +183,7 @@ export default function Home() {
   };
 
   const needsOrganizationSelection = useMemo(() => {
-    const organizationRoles = [ROLES.SUPERADMIN, ROLES.OWNER, ROLES.ADMIN, ROLES.MANAGER, ROLES.EMPLOYEE];
+    const organizationRoles = [ROLES.SUPERADMIN, ROLES.OWNER, ROLES.ADMIN, ROLES.MANAGER];
     return organizationRoles.includes(role) && !activeOrganization;
   }, [role, activeOrganization]);
 

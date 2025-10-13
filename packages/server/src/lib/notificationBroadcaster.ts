@@ -166,22 +166,27 @@ export async function broadcastNotification(notificationOrOptions: NotificationP
     throw new Error('Notification broadcaster not initialized');
   }
 
-  // Convert NotificationPayload to BroadcastNotificationOptions if needed
-  const options = 'organizationId' in notificationOrOptions && 'type' in notificationOrOptions && typeof notificationOrOptions.type === 'string' && notificationOrOptions.type.includes('_')
-    ? convertNotificationPayloadToOptions(notificationOrOptions as NotificationPayload)
+  // Check if it's a NotificationPayload (has NotificationType enum)
+  const isPayload = 'organizationId' in notificationOrOptions && 'type' in notificationOrOptions && typeof notificationOrOptions.type === 'string' && notificationOrOptions.type.includes('_');
+  
+  // For database storage, use the original NotificationType enum
+  // For broadcast, convert to simple types (INFO, WARNING, etc.)
+  const originalPayload = isPayload ? notificationOrOptions as NotificationPayload : null;
+  const broadcastOptions = isPayload 
+    ? convertNotificationPayloadToOptions(originalPayload!) 
     : notificationOrOptions as BroadcastNotificationOptions;
 
   const notification = await notificationService.createNotification({
-    title: options.title,
-    message: options.message,
-    type: options.type as any, // Cast to any since service expects NotificationType but we map broadcast types
-    importance: options.importance as any,
-    toRoles: options.toRoles || [],
-    toUserId: options.toUserId,
-    organizationId: options.organizationId,
-    actionUrl: options.actionUrl,
-    metadata: options.metadata,
-    fromRole: 'organizationId' in notificationOrOptions ? (notificationOrOptions as NotificationPayload).fromRole : undefined,
+    title: broadcastOptions.title,
+    message: broadcastOptions.message,
+    type: originalPayload ? originalPayload.type : broadcastOptions.type as any, // Use original type for database, mapped type only for non-payload
+    importance: broadcastOptions.importance as any,
+    toRoles: broadcastOptions.toRoles || [],
+    toUserId: broadcastOptions.toUserId,
+    organizationId: broadcastOptions.organizationId,
+    actionUrl: broadcastOptions.actionUrl,
+    metadata: broadcastOptions.metadata,
+    fromRole: originalPayload ? originalPayload.fromRole : undefined,
   });
 
   // Format notification for frontend
@@ -193,22 +198,22 @@ export async function broadcastNotification(notificationOrOptions: NotificationP
   };
 
   // Emit to specific user if specified
-  if (options.toUserId) {
-    console.log(`[NotificationBroadcaster] Emitting to user:${options.toUserId}`);
-    io.to(`user:${options.toUserId}`).emit('notification:new', formattedNotification);
+  if (broadcastOptions.toUserId) {
+    console.log(`[NotificationBroadcaster] Emitting to user:${broadcastOptions.toUserId}`);
+    io.to(`user:${broadcastOptions.toUserId}`).emit('notification:new', formattedNotification);
   }
 
   // Emit to specific roles
-  if (options.toRoles && options.toRoles.length > 0) {
-    options.toRoles.forEach(role => {
+  if (broadcastOptions.toRoles && broadcastOptions.toRoles.length > 0) {
+    broadcastOptions.toRoles.forEach(role => {
       console.log(`[NotificationBroadcaster] Emitting to role:${role}`);
       io!.to(`role:${role}`).emit('notification:new', formattedNotification);
     });
   }
 
   // Emit to entire organization
-  console.log(`[NotificationBroadcaster] Emitting to org:${options.organizationId}`);
-  io.to(`org:${options.organizationId}`).emit('notification:new', formattedNotification);
+  console.log(`[NotificationBroadcaster] Emitting to org:${broadcastOptions.organizationId}`);
+  io.to(`org:${broadcastOptions.organizationId}`).emit('notification:new', formattedNotification);
 
   return notification;
 }

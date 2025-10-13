@@ -52,6 +52,7 @@ vi.mock('../../middleware/auth', () => ({
         role: 'admin',
       },
     };
+    req.activeOrganizationId = 'org_test_123';
     next();
   },
   requireRole: (roles: string[]) => async (req: any, _res: any, next: any) => {
