@@ -26,15 +26,11 @@ const employeeService = {
     await api.delete(`/employees/${id}`);
   },
 
-
-  // Updated: backend soft delete uses DELETE; previous POST deactivate endpoint does not exist
   deactivateEmployee: async (employeeId) => {
-  const response = await api.delete(`/employees/${employeeId}`);
-  // Validate deleted (soft-deactivated) employee shape
-  return safeParseEmployee(response.data);
+    const response = await api.delete(`/employees/${employeeId}`);
+    return safeParseEmployee(response.data);
   },
 
-  // Stub: backend /employees/suggest-routes not present yet. Provide safe fallback.
   suggestRoutes: (() => {
     let warned = false;
     return async (_location) => {
@@ -47,11 +43,9 @@ const employeeService = {
   })(),
 
   getEmployeeStats: async () => {
-    // Preferred: backend aggregated stats endpoint
     try {
       const response = await api.get('/employees/stats/summary');
       const data = response.data || {};
-      // Basic shape guard with graceful fallback pieces
       const total = typeof data.totalEmployees === 'number' ? data.totalEmployees : 0;
       const assigned = typeof data.assignedEmployees === 'number' ? data.assignedEmployees : 0;
       const departments = typeof data.employeesByDepartment === 'object' ? Object.keys(data.employeesByDepartment).length : 0;
@@ -59,7 +53,6 @@ const employeeService = {
       return { total, assigned, departments, recentlyAdded };
     } catch (primaryError) {
       console.warn('[employeeService.getEmployeeStats] /employees/stats/summary failed, falling back to client derivation:', primaryError?.message);
-      // Fallback: derive from management listing
       try {
         const response = await api.get('/employees/management');
         const employees = safeParseEmployees(response.data || []);
@@ -79,11 +72,17 @@ const employeeService = {
       }
     }
   },
+
+  getCurrentEmployee: async () => {
+    const response = await api.get('/employees/me');
+    return safeParseEmployee(response.data);
+  },
 };
 
 export const {
   getAllEmployees,
   getEmployeeById,
+  getCurrentEmployee,
   createEmployee,
   updateEmployee,
   deleteEmployee,
@@ -93,4 +92,4 @@ export const {
 } = employeeService;
 
 export { employeeService };
-export default employeeService; 
+export default employeeService;

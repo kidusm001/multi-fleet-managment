@@ -427,7 +427,7 @@ export default function OrganizationSelection() {
 
       if (isAlreadyActive) {
         console.log(
-          `Organization ${org.name} is already active, navigating to dashboard...`
+          `Organization ${org.name} is already active, navigating to appropriate dashboard...`
         );
       } else {
         console.log(
@@ -439,11 +439,13 @@ export default function OrganizationSelection() {
           organizationId: org.id,
         });
 
-        console.log("Organization set as active, navigating to dashboard...");
+        console.log("Organization set as active, navigating to appropriate dashboard...");
       }
 
-      // Navigate to dashboard regardless of whether it was already active
-      navigate("/dashboard");
+      // Navigate to the appropriate dashboard based on role
+      // For employees, navigate to employee portal; for others, navigate to dashboard
+      const dashboardRoute = role === 'employee' ? '/employee-portal' : '/dashboard';
+      navigate(dashboardRoute);
     } catch (error) {
       console.error("Failed to set active organization:", error);
       // Optional: Show a toast notification about the error

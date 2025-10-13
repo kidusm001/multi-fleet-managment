@@ -25,7 +25,7 @@ router.post(
   requireRole(['fleetManager', 'administrator', 'admin']),
   asyncHandler(async (req: Request<{}, {}, VehicleRequestBody>, res: Response) => {
     const { name, licensePlate, categoryId, dailyRate, capacity, type, model, vendor } = req.body;
-    const tenantId = (req as any).user?.tenantId || 'default-tenant';
+    const organizationId = (req as any).session?.activeOrganizationId || 'default-org';
     const requestedBy = (req as any).user?.role || 'fleetManager';
 
   const vehicleRequest = await prisma.vehicleRequest.create({
@@ -40,18 +40,19 @@ router.post(
         vendor: vendor || null,
         requestedBy,
         status: ApprovalStatus.PENDING,
-    tenantId,
+        organizationId,
       },
       include: { category: true },
     });
 
     await notificationService.createNotification({
+      organizationId,
       toRoles: ['admin', 'administrator'],
       fromRole: requestedBy,
-      notificationType: 'vehicle',
-      subject: 'New Vehicle Request',
+      type: 'REQUEST_CREATED',
+      title: 'New Vehicle Request',
       message: `A new vehicle request for "${name}" has been submitted.`,
-      importance: 'High',
+      importance: 'HIGH',
       relatedEntityId: vehicleRequest.id,
     });
 
@@ -97,24 +98,25 @@ router.post(
       data: {
         name: request.name,
         plateNumber: request.licensePlate,
-        category: request.categoryId ? { connect: { id: request.categoryId } } : undefined,
+        categoryId: request.categoryId || undefined,
         dailyRate: request.dailyRate ?? undefined,
         capacity: request.capacity,
-        type: request.type,
+        type: request.type as any,
         model: request.model,
         vendor: request.vendor ?? undefined,
-        tenant: { connect: { id: tenantId } },
+        organizationId: request.organizationId,
       },
       include: { category: true },
     });
 
     await notificationService.createNotification({
+      organizationId: request.organizationId,
       toRoles: ['fleetManager'],
       fromRole: approver,
-      notificationType: 'vehicle',
-      subject: 'Vehicle Request Approved',
+      type: 'REQUEST_APPROVED',
+      title: 'Vehicle Request Approved',
       message: `Vehicle request "${request.name}" has been approved and created as ${vehicle.plateNumber}.`,
-      importance: 'High',
+      importance: 'HIGH',
       relatedEntityId: vehicle.id,
     });
 
@@ -143,12 +145,13 @@ router.post(
     });
 
     await notificationService.createNotification({
+      organizationId: request.organizationId,
       toRoles: ['fleetManager'],
       fromRole: approver,
-      notificationType: 'vehicle',
-      subject: 'Vehicle Request Rejected',
+      type: 'REQUEST_REJECTED',
+      title: 'Vehicle Request Rejected',
       message: `Your vehicle request "${request.name}" has been rejected.${comment ? ' Reason: ' + comment : ''}`,
-      importance: 'High',
+      importance: 'HIGH',
       relatedEntityId: id,
     });
 

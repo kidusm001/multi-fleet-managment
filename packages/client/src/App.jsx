@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, useLocation, Outlet, Navigate } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, useLocation, Outlet, Navigate, useNavigate } from "react-router-dom";
 import { ProtectedRoute } from '@components/Common/ProtectedRoute';
 import { ROLES, ROUTES } from '@data/constants';
 import { AuthRoute } from '@components/Common/AuthRoute';
@@ -38,13 +38,102 @@ import { ToastProvider } from '@contexts/ToastContext';
 import Unauthorized from "@pages/Unauthorized";
 import { NotificationSound } from "@components/Common/Notifications/NotificationSound";
 import { useViewport } from "@hooks/useViewport";
+import ThemeToggle from "@components/Common/UI/ThemeToggle";
+import { NotificationDropdown } from "@components/Common/Notifications/NotificationDropdown";
+import { UserDropdown } from "@/components/Common/Layout/TopBar/user-dropdown-menu";
+import { Link } from "react-router-dom";
+import { cn } from "@lib/utils";
+import { LayoutDashboard, Send } from "lucide-react";
+import LoadingAnimation from "@components/Common/LoadingAnimation";
 
 import "@styles/App.css";
+
+// Employee TopBar - Minimal version for employee portal
+function EmployeeTopBar() {
+  const { theme } = useTheme();
+  const isDark = theme === "dark";
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const tabs = [
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/employee-portal' },
+    { id: 'request', label: 'Request Shuttle', icon: Send, path: '/employee-portal/request' },
+  ];
+
+  const activeTab = location.pathname === '/employee-portal/request' ? 'request' : 'dashboard';
+
+  return (
+    <div className={cn(
+      "fixed top-0 left-0 right-0 z-50 border-b h-[60px]",
+      isDark ? "bg-slate-900/95 border-slate-700" : "bg-white/95 border-gray-200"
+    )}>
+      <div className="flex items-center justify-between h-full px-4">
+        {/* Logo/Brand */}
+        <div className="flex items-center">
+          <Link to="/employee-portal" className="flex items-center space-x-2">
+            <img
+              src={isDark ? "/assets/images/logo-light.png" : "/assets/images/logo-dark.PNG"}
+              alt="Fleet Management"
+              className="h-6 sm:h-8 w-auto"
+            />
+          </Link>
+        </div>
+
+        {/* Navigation Tabs */}
+        <div className="flex items-center space-x-4 sm:space-x-8">
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            
+            return (
+              <button
+                key={tab.id}
+                onClick={() => navigate(tab.path)}
+                className={cn(
+                  "group inline-flex items-center py-1.5 sm:py-2 px-1 border-b-2 font-medium text-xs sm:text-sm transition-colors",
+                  isActive
+                    ? "border-primary text-primary"
+                    : cn(
+                        "border-transparent",
+                        isDark
+                          ? "text-gray-400 hover:text-gray-300 hover:border-gray-600"
+                          : "text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                      )
+                )}
+              >
+                <Icon
+                  className={cn(
+                    "mr-1.5 sm:mr-2 h-4 w-4 sm:h-5 sm:w-5 transition-colors",
+                    isActive
+                      ? "text-primary"
+                      : isDark
+                      ? "text-gray-400 group-hover:text-gray-300"
+                      : "text-gray-400 group-hover:text-gray-500"
+                  )}
+                  aria-hidden="true"
+                />
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Right side actions */}
+        <div className="flex items-center space-x-2 sm:space-x-4">
+          <ThemeToggle />
+          <NotificationDropdown />
+          <UserDropdown />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // Layout for all authenticated/protected pages
 function ProtectedLayout({ isDark }) {
   const location = useLocation();
   const isHomeLanding = location.pathname === ROUTES.HOME;
+  const isEmployeePortal = location.pathname.startsWith('/employee-portal');
 
   if (isHomeLanding) {
     return <Outlet />;
@@ -52,12 +141,12 @@ function ProtectedLayout({ isDark }) {
 
   return (
     <div className={`min-h-screen ${isDark ? "bg-slate-900" : "bg-gray-50"} transition-colors duration-300`}>
-      <TopBar />
+      {isEmployeePortal ? <EmployeeTopBar /> : <TopBar />}
       <div className={`main-content backdrop-blur-xl ${isDark ? "bg-black/20" : "bg-white/20"}`}>
         <main id="main" className={`content-area ${isDark ? "text-gray-100" : "text-gray-900"} pt-[60px]`}>
           <Outlet />
           {orgsEnabled() && <ErrorBanner />}
-          <Footer />
+          {!isEmployeePortal && <Footer />}
         </main>
       </div>
     </div>
@@ -133,7 +222,7 @@ function AppContent() {
 
   return (
     <div className={`app-container ${isDark ? "dark" : ""}`}>
-      <Routes>
+      <Routes key={`routes-${role}`}>
         {/* Public Routes */}
         <Route
           path="/auth/login"
@@ -158,7 +247,11 @@ function AppContent() {
           path="/organizations"
           element={
             <AuthRoute>
-              <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading…</div>}>
+              <Suspense fallback={
+                <div className="min-h-screen flex items-center justify-center">
+                  <LoadingAnimation />
+                </div>
+              }>
                 <OrganizationSelection />
               </Suspense>
             </AuthRoute>
@@ -216,6 +309,10 @@ function AppContent() {
               <Route
                 path="employee-portal/*"
                 element={<Suspense fallback={<div>Loading...</div>}> <EmployeePortal /> </Suspense>}
+              />
+              <Route
+                path="organizations"
+                element={<Suspense fallback={<div className="min-h-screen flex items-center justify-center"><LoadingAnimation /></div>}> <OrganizationSelection /> </Suspense>}
               />
               <Route
                 path="dashboard"

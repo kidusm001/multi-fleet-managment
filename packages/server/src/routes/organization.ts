@@ -7,6 +7,70 @@ import { fromNodeHeaders } from 'better-auth/node';
 const router = express.Router();
 
 /**
+ * List members of the current user's active organization
+ * GET /api/organization/list-members
+ */
+router.get('/list-members', requireAuth, async (req, res) => {
+    try {
+        // Get the current user's session to find their active organization
+        const session = await auth.api.getSession({
+            headers: fromNodeHeaders(req.headers),
+        });
+
+        if (!session || !session.user) {
+            return res.status(401).json({ message: 'Unauthorized' });
+        }
+
+        // Get the user's active organization from the session
+        const activeOrgId = (session as any).session?.activeOrganizationId;
+        if (!activeOrgId) {
+            return res.status(400).json({ message: 'No active organization found' });
+        }
+
+        // Fetch members with user details
+        const members = await prisma.member.findMany({
+            where: {
+                organizationId: activeOrgId,
+            },
+            include: {
+                user: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                        role: true,
+                    },
+                },
+            },
+            orderBy: {
+                createdAt: 'asc',
+            },
+        });
+
+        // Format the response to match better-auth's expected format
+        const formattedMembers = members.map((member) => ({
+            id: member.id,
+            userId: member.userId,
+            role: member.role,
+            createdAt: member.createdAt,
+            user: member.user,
+            organizationId: member.organizationId,
+        }));
+
+        res.status(200).json({
+            data: {
+                members: formattedMembers,
+            },
+        });
+    } catch (error: any) {
+        console.error('List members error:', error);
+        res.status(500).json({
+            message: error.message || 'Failed to list members'
+        });
+    }
+});
+
+/**
  * Add a member directly to an organization
  * POST /api/organization/add-member
  */

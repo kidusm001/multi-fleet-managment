@@ -207,7 +207,50 @@ class ShuttleService {
   async requestShuttle(shuttleData) {
     try {
       console.log("Sending shuttle request data:", shuttleData);
-      const response = await api.post('/vehicle-requests', shuttleData);
+      const formattedData = {
+        name: shuttleData.name?.trim(),
+        licensePlate: shuttleData.licensePlate?.trim(),
+        capacity: Number(shuttleData.capacity),
+        type: this.mapVehicleType(shuttleData.type),
+        model: shuttleData.model?.trim(),
+        vendor: this.mapVehicleType(shuttleData.type) === 'OUTSOURCED'
+          ? shuttleData.vendor?.trim() || undefined
+          : undefined,
+        dailyRate: shuttleData.dailyRate !== undefined && shuttleData.dailyRate !== null
+          ? Number(shuttleData.dailyRate)
+          : undefined,
+        categoryId: shuttleData.categoryId || undefined,
+        requestedBy: shuttleData.requestedBy,
+      };
+
+      if (!formattedData.requestedBy) {
+        throw new Error('Requester information missing');
+      }
+
+      if (!formattedData.name || !formattedData.licensePlate || !Number.isFinite(formattedData.capacity)) {
+        throw new Error('Missing required vehicle request fields');
+      }
+
+      Object.keys(formattedData).forEach((key) => {
+        if (formattedData[key] === undefined || formattedData[key] === null || formattedData[key] === '') {
+          delete formattedData[key];
+        }
+      });
+
+      const response = await api.post('/vehicle-requests', formattedData);
+
+      if (typeof window !== 'undefined') {
+        try {
+          window.dispatchEvent(new CustomEvent('vehicle-request:refresh', {
+            detail: {
+              request: response.data,
+            },
+          }));
+        } catch (dispatchError) {
+          console.error('Failed to dispatch vehicle request refresh event:', dispatchError);
+        }
+      }
+
       return response.data;
     } catch (error) {
       console.error('Error requesting shuttle:', error);
@@ -228,6 +271,21 @@ class ShuttleService {
   async approveShuttleRequest(id) {
     try {
       const response = await api.post(`/vehicle-requests/${id}/approve`);
+
+      // Clear shuttle cache to force fresh data
+      this.clearCache();
+
+      if (typeof window !== 'undefined') {
+        try {
+          window.dispatchEvent(new CustomEvent('vehicle-request:refresh', {
+            detail: { requestId: id, status: 'APPROVED' },
+          }));
+          window.dispatchEvent(new CustomEvent('shuttle:list-refresh'));
+        } catch (dispatchError) {
+          console.error('Failed to dispatch shuttle refresh event:', dispatchError);
+        }
+      }
+
       return response.data;
     } catch (error) {
       console.error('Error approving shuttle request:', error);
@@ -238,6 +296,20 @@ class ShuttleService {
   async rejectShuttleRequest(id, comment) {
     try {
       const response = await api.post(`/vehicle-requests/${id}/reject`, { comment });
+
+      // Clear shuttle cache
+      this.clearCache();
+
+      if (typeof window !== 'undefined') {
+        try {
+          window.dispatchEvent(new CustomEvent('vehicle-request:refresh', {
+            detail: { requestId: id, status: 'REJECTED' },
+          }));
+        } catch (dispatchError) {
+          console.error('Failed to dispatch vehicle request refresh event:', dispatchError);
+        }
+      }
+
       return response.data;
     } catch (error) {
       console.error('Error rejecting shuttle request:', error);

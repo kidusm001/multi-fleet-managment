@@ -1,8 +1,9 @@
 import { useState, useCallback, useEffect } from 'react';
 import { shuttleService } from '@/services/shuttleService';
 
-// Create a custom event for maintenance updates
+// Custom events for keeping shuttle data in sync across components
 const MAINTENANCE_UPDATE_EVENT = 'shuttle-maintenance-update';
+const SHUTTLE_LIST_REFRESH_EVENT = 'shuttle:list-refresh';
 
 export function useShuttleManagement() {
   const [shuttles, setShuttles] = useState([]);
@@ -24,6 +25,21 @@ export function useShuttleManagement() {
 
   useEffect(() => {
     fetchShuttles();
+  }, [fetchShuttles]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      return undefined;
+    }
+
+    const handleRefresh = () => {
+      fetchShuttles();
+    };
+
+    window.addEventListener(SHUTTLE_LIST_REFRESH_EVENT, handleRefresh);
+    return () => {
+      window.removeEventListener(SHUTTLE_LIST_REFRESH_EVENT, handleRefresh);
+    };
   }, [fetchShuttles]);
 
   const selectShuttle = useCallback((shuttle) => {
@@ -104,5 +120,6 @@ export function useShuttleManagement() {
     refreshShuttles: fetchShuttles,
     updateShuttleStatus,
     MAINTENANCE_UPDATE_EVENT,
+    SHUTTLE_LIST_REFRESH_EVENT,
   };
 } 

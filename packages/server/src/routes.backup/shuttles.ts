@@ -2,6 +2,7 @@ import express, { Request, Response, NextFunction } from 'express';
 import { body, param, validationResult } from 'express-validator';
 import asyncHandler from 'express-async-handler';
 import prisma from '../db';
+import { requireAuth } from '../middleware/auth';
 
 const router = express.Router();
 
@@ -15,7 +16,7 @@ interface ShuttleBody {
   dailyRate: number;
   capacity: number;
   model?: string;
-  type?: 'in-house' | 'outsourced';
+  type?: 'IN_HOUSE' | 'OUTSOURCED';
   vendor?: string | null;
 }
 
@@ -28,7 +29,7 @@ const shuttleValidation = [
   body('categoryId').optional().isString().withMessage('Category ID must be a string'),
   body('dailyRate').optional().isFloat({ min: 0 }).withMessage('Daily rate must be positive'),
   body('model').optional().trim(),
-  body('type').optional().isIn(['in-house', 'outsourced']).withMessage('Invalid type'),
+  body('type').optional().isIn(['IN_HOUSE', 'OUTSOURCED']).withMessage('Invalid type'),
   body('vendor').optional().trim()
 ];
 
@@ -115,9 +116,17 @@ router.get(
 
 router.post(
   '/',
+  requireAuth,
   createShuttleValidation,
   validate,
-  asyncHandler(async (req: Request<{}, {}, ShuttleBody>, res: Response) => {
+  asyncHandler(async (req: Request<{}, {}, ShuttleBody>, res: Response): Promise<void> => {
+  const activeOrgId = req.session?.session?.activeOrganizationId;
+  
+  if (!activeOrgId) {
+    res.status(400).json({ error: 'Organization context required' });
+    return;
+  }
+
   const shuttle = await prisma.vehicle.create({
       data: {
     name: req.body.name,
@@ -126,9 +135,9 @@ router.post(
     dailyRate: req.body.dailyRate,
     capacity: req.body.capacity,
     model: req.body.model || '',
-    type: req.body.type || 'in-house',
+    type: req.body.type || 'IN_HOUSE',
     vendor: req.body.vendor || null,
-  tenantId: (req as any).auth?.tenantId || 'tenant-dev'
+    organizationId: activeOrgId
       },
       include: { 
         category: true 
@@ -164,8 +173,8 @@ router.put(
         ...(req.body.name !== undefined && { name: req.body.name }),
         ...(req.body.model !== undefined && { model: req.body.model }), // Changed condition
   ...(req.body.licensePlate !== undefined && { plateNumber: req.body.licensePlate }),
-  ...(req.body.categoryId !== undefined && { categoryId: String(req.body.categoryId) }),
-  ...(req.body.dailyRate !== undefined && { dailyRate: Number(req.body.dailyRate) }),
+  ...(req.body.categoryId !== undefined && { categoryId: req.body.categoryId }),
+  ...(req.body.dailyRate !== undefined && { dailyRate: req.body.dailyRate }),
         ...(req.body.type !== undefined && { type: req.body.type }),
         ...(req.body.vendor !== undefined && { vendor: req.body.vendor }) // This will now update even if vendor is null
       };

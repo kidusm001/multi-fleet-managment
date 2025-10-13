@@ -73,6 +73,10 @@ export default function PendingShuttleRequestsTable({ onRequestStatusChanged }) 
     try {
       await shuttleService.approveShuttleRequest(id);
       await fetchPendingRequests();
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('vehicle-request:refresh'));
+        window.dispatchEvent(new CustomEvent('shuttle:list-refresh'));
+      }
       // Trigger the callback to refresh the main shuttle table
       if (onRequestStatusChanged) {
         onRequestStatusChanged();
@@ -99,6 +103,9 @@ export default function PendingShuttleRequestsTable({ onRequestStatusChanged }) 
     try {
       await shuttleService.rejectShuttleRequest(currentRejectId, rejectComment);
       await fetchPendingRequests();
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('vehicle-request:refresh'));
+      }
       // Trigger the callback to refresh the main shuttle table
       if (onRequestStatusChanged) {
         onRequestStatusChanged();

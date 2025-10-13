@@ -22,6 +22,29 @@ vi.mock('../../middleware/requireRole', () => ({
   }
 }));
 
+// Mock requireAuth to simulate authentication
+vi.mock('../../middleware/auth', () => ({
+  requireAuth: (req: any, res: any, next: any) => {
+    // Simulate authenticated user with session
+    req.user = { id: 'u1', role: 'admin' };
+    req.session = {
+      session: {
+        activeOrganizationId: 'org1'
+      }
+    };
+    req.activeOrganizationId = 'org1';
+    req.activeMember = { role: 'admin' };
+    req.organizationRole = 'admin';
+    next();
+  },
+  requireRole: (allowed: string[]) => (req: any, res: any, next: any) => {
+    const role = (req.headers['x-role'] || '').toString();
+    if (!role || !allowed.includes(role)) return res.status(403).json({ message: 'Forbidden' });
+    (req as any).user = { id: 'u1', role };
+    next();
+  }
+}));
+
 // Mock Prisma Client constructor used via ../db singleton
 vi.mock('../../db', () => ({
   default: prismaMock as any
@@ -48,7 +71,11 @@ describe('Vehicle Routes (shuttles.ts) — CRUD, status, deleted/restore', () =>
   });
 
   it('POST /shuttles creates a vehicle', async () => {
-    prismaMock.vehicle.create.mockResolvedValue({ id: 'v1', name: 'Van' });
+    prismaMock.vehicle.create.mockResolvedValue({ 
+      id: 'v1', 
+      name: 'Van',
+      organizationId: 'org1'
+    });
     const res = await request(app)
       .post('/shuttles')
       .set('x-role', 'admin')

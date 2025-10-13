@@ -149,6 +149,8 @@ describe('Drivers Routes', () => {
             vehicleAvailability: true,
             payrollReports: true,
             assignedVehicles: true,
+            attendanceRecords: true,
+            payrollEntries: true,
           },
           orderBy: { createdAt: 'desc' },
         });
@@ -159,6 +161,8 @@ describe('Drivers Routes', () => {
             vehicleAvailability: true,
             payrollReports: true,
             assignedVehicles: true,
+            attendanceRecords: true,
+            payrollEntries: true,
           },
           orderBy: { createdAt: 'desc' },
         });
@@ -188,6 +192,8 @@ describe('Drivers Routes', () => {
             vehicleAvailability: true,
             payrollReports: true,
             assignedVehicles: true,
+            attendanceRecords: true,
+            payrollEntries: true,
           },
         });
       });
@@ -215,6 +221,8 @@ describe('Drivers Routes', () => {
             vehicleAvailability: true,
             payrollReports: true,
             assignedVehicles: true,
+            attendanceRecords: true,
+            payrollEntries: true,
           },
           orderBy: { name: 'asc' },
         });

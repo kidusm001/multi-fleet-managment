@@ -14,7 +14,6 @@ jest.mock('@/lib/auth-client', () => ({
       setActive: jest.fn(),
       update: jest.fn(),
       delete: jest.fn(),
-      listMembers: jest.fn(),
       inviteMember: jest.fn(),
       removeMember: jest.fn(),
       updateMemberRole: jest.fn(),
@@ -277,9 +276,10 @@ describe('OrganizationContext', () => {
 
   describe('Member management', () => {
     it('should list members successfully', async () => {
-      (authClient.organization.listMembers as jest.Mock).mockResolvedValue({
-        data: { members: mockMembers },
-        error: null,
+      // Mock fetch for the custom endpoint
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ data: { members: mockMembers } }),
       });
 
       const wrapper = ({ children }: { children: React.ReactNode }) => (
@@ -289,12 +289,15 @@ describe('OrganizationContext', () => {
       const { result } = renderHook(() => useOrganizations(), { wrapper });
 
       await act(async () => {
-        const members = await result.current.listMembers('org1');
+        const members = await result.current.listMembers();
         expect(members).toEqual(mockMembers);
       });
 
-      expect(authClient.organization.listMembers).toHaveBeenCalledWith({
-        query: { organizationId: 'org1' },
+      expect(global.fetch).toHaveBeenCalledWith('/api/organization/list-members', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
       });
     });
 
@@ -333,13 +336,14 @@ describe('OrganizationContext', () => {
     });
 
     it('should remove member successfully', async () => {
-      (authClient.organization.removeMember as jest.Mock).mockResolvedValue({
-        data: {},
-        error: null,
+      // Mock fetch for the custom endpoint (called by loadMembers)
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ data: { members: mockMembers.slice(1) } }),
       });
 
-      (authClient.organization.listMembers as jest.Mock).mockResolvedValue({
-        data: { members: mockMembers.slice(1) },
+      (authClient.organization.removeMember as jest.Mock).mockResolvedValue({
+        data: {},
         error: null,
       });
 
@@ -360,13 +364,14 @@ describe('OrganizationContext', () => {
     });
 
     it('should update member role successfully', async () => {
-      (authClient.organization.updateMemberRole as jest.Mock).mockResolvedValue({
-        data: {},
-        error: null,
+      // Mock fetch for the custom endpoint (called by loadMembers)
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ data: { members: mockMembers } }),
       });
 
-      (authClient.organization.listMembers as jest.Mock).mockResolvedValue({
-        data: { members: mockMembers },
+      (authClient.organization.updateMemberRole as jest.Mock).mockResolvedValue({
+        data: {},
         error: null,
       });
 
@@ -388,9 +393,10 @@ describe('OrganizationContext', () => {
     });
 
     it('should load members and update state', async () => {
-      (authClient.organization.listMembers as jest.Mock).mockResolvedValue({
-        data: { members: mockMembers },
-        error: null,
+      // Mock fetch for the custom endpoint
+      global.fetch = jest.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ data: { members: mockMembers } }),
       });
 
       const wrapper = ({ children }: { children: React.ReactNode }) => (
@@ -405,6 +411,13 @@ describe('OrganizationContext', () => {
 
       await waitFor(() => {
         expect(result.current.members).toEqual(mockMembers);
+      });
+
+      expect(global.fetch).toHaveBeenCalledWith('/api/organization/list-members', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
       });
     });
   });

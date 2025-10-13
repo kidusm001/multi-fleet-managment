@@ -176,7 +176,7 @@ export const manager = OrgAc.newRole({
     vehicle: ["read", "update", "assign", "activate", "maintenance"],
     vehicleCategory: ["read"],
     vehicleAvailability: ["create", "read", "update", "delete"],
-    vehicleRequest: ["read", "update"],
+    vehicleRequest: ["create", "read", "update"],
 
     route: ["create", "read", "update", "delete", "assign", "activate", "optimize"],
     stop: ["create", "read", "update", "delete", "assign", "sequence"],

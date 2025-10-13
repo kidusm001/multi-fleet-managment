@@ -206,12 +206,16 @@ describe('Payroll Periods API', () => {
         startDate: new Date('2024-01-01'),
         endDate: new Date('2024-01-31'),
         status: 'PENDING',
+        organizationId: mockOrganizationId,
       };
 
       const mockDriver = {
         id: 'driver-2',
+        name: 'Jane Doe',
         baseSalary: null,
         hourlyRate: new Decimal(25),
+        overtimeRate: 1.5,
+        organizationId: mockOrganizationId,
       };
 
       const mockAttendance = [
@@ -230,7 +234,13 @@ describe('Payroll Periods API', () => {
       (prisma.attendanceRecord.findMany as any).mockResolvedValue(mockAttendance);
       (prisma.$transaction as any).mockImplementation(async (callback: any) => {
         return await callback({
-          payrollEntry: { create: vi.fn().mockResolvedValue({}) },
+          payrollEntry: { create: vi.fn().mockResolvedValue({
+            id: 'entry-1',
+            amount: new Decimal(3750),
+            bonuses: new Decimal(0),
+            deductions: new Decimal(375),
+            netPay: new Decimal(3375),
+          }) },
           payrollPeriod: { update: vi.fn() },
         });
       });
@@ -276,6 +286,7 @@ describe('Payroll Periods API', () => {
         startDate: new Date('2024-01-01'),
         endDate: new Date('2024-01-31'),
         status: 'PENDING',
+        organizationId: mockOrganizationId,
       };
 
       const mockServiceProvider = {
@@ -283,6 +294,7 @@ describe('Payroll Periods API', () => {
         companyName: 'ABC Transport',
         monthlyRate: new Decimal(10000),
         perTripRate: new Decimal(5),
+        perKmRate: new Decimal(2),
         gstNumber: '29AABCT1234F1Z5',
       };
 
@@ -310,7 +322,13 @@ describe('Payroll Periods API', () => {
 
       (prisma.$transaction as any).mockImplementation(async (callback: any) => {
         return await callback({
-          payrollEntry: { create: vi.fn().mockResolvedValue({}) },
+          payrollEntry: { create: vi.fn().mockResolvedValue({
+            id: 'entry-1',
+            amount: new Decimal(20250),
+            bonuses: new Decimal(500),
+            deductions: new Decimal(405),
+            netPay: new Decimal(19845),
+          }) },
           payrollPeriod: { update: vi.fn() },
         });
       });
@@ -323,11 +341,12 @@ describe('Payroll Periods API', () => {
       // Verify calculations:
       // Monthly: $10,000
       // Per-trip bonus: 250 × $5 = $1,250
+      // Per-km bonus: 3500 × $2 = $7,000
       // Quality bonus: $500 (>200 trips)
       // Expenses: $1,200 + $300 = $1,500
-      // Gross: $13,250
-      // TDS (2%): $265
-      // Net: $12,985
+      // Gross: $20,250
+      // TDS (2%): $405
+      // Net: $19,845
     });
 
     it('should apply performance penalty', async () => {

@@ -13,12 +13,13 @@ export interface PermissionCheck {
  */
 export async function hasPermission(req: Request, check: PermissionCheck) {
   try {
+    // Use Better Auth's access control system for all permission checks
     const result = await auth.api.hasPermission({
       headers: fromNodeHeaders(req.headers),
       body: check
     });
 
-    return result;
+    return result.success;
   } catch (error) {
     console.error('Permission check error:', error);
     return false;
@@ -68,10 +69,10 @@ export async function getUserPermissions(req: Request) {
     // Define permissions based on role and organization context
     const permissions: Record<string, string[]> = {};
 
-    // Admin permissions
-    if (userRole === 'admin' || userRole === 'superadmin') {
-      permissions.user = ['create', 'list', 'set-role', 'ban', 'impersonate', 'delete', 'set-password'];
-      permissions.session = ['list', 'revoke', 'delete'];
+    // Admin permissions (superadmin has all permissions)
+    if (userRole === 'superadmin') {
+      permissions.admin = ['create', 'list', 'set-role', 'ban', 'impersonate', 'delete'];
+      permissions.user = ['manage'];
     }
 
     // Organization permissions based on member role
@@ -82,13 +83,35 @@ export async function getUserPermissions(req: Request) {
           permissions.organization = ['update', 'delete'];
           permissions.member = ['create', 'update', 'delete'];
           permissions.invitation = ['create', 'cancel'];
+          // Add all business permissions for owner
+          permissions.department = ['create', 'read', 'update', 'delete'];
+          permissions.shift = ['create', 'read', 'update', 'delete', 'assign'];
+          permissions.employee = ['create', 'read', 'update', 'delete', 'assign', 'transfer'];
+          permissions.driver = ['create', 'read', 'update', 'delete', 'assign', 'activate', 'rate'];
+          permissions.vehicle = ['create', 'read', 'update', 'delete', 'assign', 'activate', 'maintenance'];
+          permissions.route = ['create', 'read', 'update', 'delete', 'assign', 'activate', 'optimize'];
+          permissions.payroll = ['create', 'read', 'update', 'delete', 'process', 'approve', 'export'];
+          permissions.analytics = ['read', 'export', 'dashboard', 'reports'];
         } else if (member.role === 'admin') {
           permissions.organization = ['update'];
           permissions.member = ['create', 'update', 'delete'];
           permissions.invitation = ['create', 'cancel'];
+          // Add business permissions for admin
+          permissions.department = ['create', 'read', 'update', 'delete'];
+          permissions.shift = ['create', 'read', 'update', 'delete', 'assign'];
+          permissions.employee = ['create', 'read', 'update', 'delete', 'assign', 'transfer'];
+          permissions.driver = ['create', 'read', 'update', 'delete', 'assign', 'activate', 'rate'];
+          permissions.vehicle = ['create', 'read', 'update', 'delete', 'assign', 'activate', 'maintenance'];
+          permissions.route = ['create', 'read', 'update', 'delete', 'assign', 'activate', 'optimize'];
+          permissions.payroll = ['create', 'read', 'update', 'delete', 'process', 'approve', 'export'];
+          permissions.analytics = ['read', 'export', 'dashboard', 'reports'];
         } else if (member.role === 'manager') {
-          permissions.member = ['update'];
-          permissions.invitation = ['create'];
+          permissions.shift = ['create', 'read', 'update', 'delete', 'assign'];
+          permissions.employee = ['read', 'update', 'assign'];
+          permissions.driver = ['read', 'update', 'assign', 'activate', 'rate'];
+          permissions.vehicle = ['read', 'update', 'assign', 'activate', 'maintenance'];
+          permissions.route = ['create', 'read', 'update', 'delete', 'assign', 'activate', 'optimize'];
+          permissions.payroll = ['create', 'read', 'update', 'process', 'export'];
         }
       }
     }

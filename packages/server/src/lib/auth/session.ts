@@ -40,8 +40,8 @@ export async function validateSession(req: Request) {
     return {
       isValid: true,
       user: session.user,
-      session: session,
-      activeOrganizationId: session.activeOrganizationId
+      session: session.session,
+      activeOrganizationId: session.session?.activeOrganizationId
     };
   } catch (error) {
     console.error('Session validation error:', error);
@@ -67,11 +67,11 @@ export async function getSessionData(req: Request) {
       headers: fromNodeHeaders(req.headers)
     });
 
-    const activeOrganization = organizations?.find(org => org.id === session.activeOrganizationId) || organizations?.[0];
+    const activeOrganization = organizations?.find(org => org.id === session.session?.activeOrganizationId) || organizations?.[0];
 
     return {
       user: session.user,
-      session: session,
+      session: session.session,
       organizations: organizations || [],
       activeOrganization: activeOrganization || null
     };
@@ -136,7 +136,7 @@ export async function getSessionExpiration(req: Request) {
     }
 
     const now = new Date();
-    const expiresAt = new Date(session.expiresAt);
+    const expiresAt = new Date(session.session?.expiresAt);
     const isExpired = expiresAt <= now;
 
     return {

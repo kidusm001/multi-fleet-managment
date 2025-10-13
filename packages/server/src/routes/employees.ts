@@ -1875,4 +1875,72 @@ router.get('/stats/summary', requireAuth, async (req: Request, res: Response) =>
     }
 });
 
+/**
+ * @route   GET /me
+ * @desc    Get current user's employee record
+ * @access  Private (User)
+ */
+router.get('/me', requireAuth, async (req: Request, res: Response) => {
+    try {
+        const userId = req.user?.id;
+        const activeOrgId: string | null | undefined = req.activeOrganizationId;
+
+        if (!userId) {
+            return res.status(401).json({ message: 'Unauthorized' });
+        }
+
+        if (!activeOrgId) {
+            return res.status(400).json({ message: 'No active organization found in session' });
+        }
+
+        const employee = await prisma.employee.findFirst({
+            where: {
+                userId,
+                organizationId: activeOrgId,
+                deleted: false
+            },
+            include: {
+                organization: true,
+                user: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                        role: true,
+                        createdAt: true,
+                        updatedAt: true,
+                        emailVerified: true,
+                        image: true
+                    }
+                },
+                department: true,
+                shift: true,
+                workLocation: true,
+                stop: {
+                    include: {
+                        route: {
+                            include: {
+                                vehicle: true
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        if (!employee) {
+            return res.status(404).json({ message: 'Employee record not found' });
+        }
+
+        res.json(employee);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+/**
+ * User-specific routes
+ */
+
 export default router;

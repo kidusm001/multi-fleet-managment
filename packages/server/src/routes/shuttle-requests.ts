@@ -1,23 +1,32 @@
 import express from 'express';
 import { PrismaClient } from '@prisma/client';
+import { requireAuth } from '../middleware/auth';
+import { fromNodeHeaders } from 'better-auth/node';
+import { auth } from '../lib/auth';
 
 const router = express.Router();
 const prisma = new PrismaClient();
 
 // Get my shuttle requests (for employees)
-router.get('/my-requests', async (req, res) => {
+router.get('/my-requests', requireAuth, async (req, res) => {
   try {
-    const userId = (req as any).user?.id;
+    const userId = req.user?.id;
     
     if (!userId) {
       return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const activeOrgId: string | null | undefined = req.session?.session?.activeOrganizationId;
+    if (!activeOrgId) {
+      return res.status(400).json({ error: 'Organization context required' });
     }
 
     const requests = await prisma.shuttleRequest.findMany({
       where: {
         employee: {
           userId
-        }
+        },
+        organizationId: activeOrgId
       },
       include: {
         shift: {
@@ -42,33 +51,30 @@ router.get('/my-requests', async (req, res) => {
 });
 
 // Create shuttle request
-router.post('/', async (req, res) => {
+router.post('/', requireAuth, async (req, res) => {
   try {
-    const userId = (req as any).user?.id;
-    const organizationId = (req as any).organizationId;
+    const userId = req.user?.id;
+    const activeOrgId: string | null | undefined = req.session?.session?.activeOrganizationId;
     
     if (!userId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    if (!organizationId) {
+    if (!activeOrgId) {
       return res.status(400).json({ error: 'Organization context required' });
     }
 
     const { date, shiftId, pickupLocation, notes } = req.body;
 
-    // Validate required fields
-    if (!date || !shiftId || !pickupLocation) {
-      return res.status(400).json({ 
-        error: 'Missing required fields: date, shiftId, and pickupLocation are required' 
-      });
-    }
-
-    // Find employee record
+    // Find employee record with shift and work location
     const employee = await prisma.employee.findFirst({
       where: {
         userId,
-        organizationId
+        organizationId: activeOrgId
+      },
+      include: {
+        shift: true,
+        workLocation: true
       }
     });
 
@@ -76,16 +82,35 @@ router.post('/', async (req, res) => {
       return res.status(404).json({ error: 'Employee record not found' });
     }
 
+    // Use provided values or default to employee's data
+    const finalShiftId = shiftId || employee.shiftId;
+    const finalPickupLocation = pickupLocation || employee.workLocation?.address || employee.location;
+
+    // Check if employee already has a request for this date
+    const existingRequest = await prisma.shuttleRequest.findFirst({
+      where: {
+        employeeId: employee.id,
+        date: new Date(date),
+        status: {
+          in: ['PENDING', 'APPROVED']
+        }
+      }
+    });
+
+    if (existingRequest) {
+      return res.status(409).json({ error: 'You already have a shuttle request for this date' });
+    }
+
     // Create shuttle request
     const shuttleRequest = await prisma.shuttleRequest.create({
       data: {
         employeeId: employee.id,
         date: new Date(date),
-        shiftId,
-        pickupLocation,
+        shiftId: finalShiftId,
+        pickupLocation: finalPickupLocation,
         notes: notes || null,
         status: 'PENDING',
-        organizationId
+        organizationId: activeOrgId,
       },
       include: {
         shift: {
@@ -106,15 +131,21 @@ router.post('/', async (req, res) => {
   }
 });
 
-// Update shuttle request status (admin only)
-router.patch('/:id/status', async (req, res) => {
+// Update shuttle request status (admin/owner/manager only)
+router.patch('/:id/status', requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;
-    const organizationId = (req as any).organizationId;
+    const activeOrgId: string | null | undefined = req.session?.session?.activeOrganizationId;
 
-    if (!organizationId) {
+    if (!activeOrgId) {
       return res.status(400).json({ error: 'Organization context required' });
+    }
+
+    // Check permissions - allow admin, owner, and manager roles
+    const userRole = req.user?.role;
+    if (!userRole || !['admin', 'owner', 'manager'].includes(userRole)) {
+      return res.status(403).json({ error: 'Unauthorized - Admin, Owner, or Manager access required' });
     }
 
     // Validate status
@@ -125,7 +156,7 @@ router.patch('/:id/status', async (req, res) => {
     const updated = await prisma.shuttleRequest.update({
       where: {
         id,
-        organizationId
+        organizationId: activeOrgId
       },
       data: {
         status
@@ -160,18 +191,18 @@ router.patch('/:id/status', async (req, res) => {
   }
 });
 
-// Get all shuttle requests (admin only)
-router.get('/', async (req, res) => {
+// Get all shuttle requests (admin/owner/manager only)
+router.get('/', requireAuth, async (req, res) => {
   try {
-    const organizationId = (req as any).organizationId;
+    const activeOrgId: string | null | undefined = req.session?.session?.activeOrganizationId;
 
-    if (!organizationId) {
+    if (!activeOrgId) {
       return res.status(400).json({ error: 'Organization context required' });
     }
 
     const requests = await prisma.shuttleRequest.findMany({
       where: {
-        organizationId
+        organizationId: activeOrgId
       },
       include: {
         shift: {

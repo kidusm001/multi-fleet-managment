@@ -122,7 +122,7 @@ interface OrganizationContextType {
   
   // Members
   members: Member[];
-  listMembers: (organizationId?: string) => Promise<Member[]>;
+  listMembers: () => Promise<Member[]>;
   inviteMember: (data: { email: string; role: string; organizationId?: string }) => Promise<Invitation>;
   addMember: (data: { userId: string; role: string; organizationId?: string; teamId?: string }) => Promise<Member>;
   removeMember: (memberIdOrEmail: string, organizationId?: string) => Promise<void>;
@@ -344,16 +344,22 @@ export function OrganizationProvider({ children }: OrganizationProviderProps) {
   };
 
   // Member actions
-  const listMembers = async (organizationId?: string) => {
+  const listMembers = async () => {
     try {
-      const result = await authClient.organization.listMembers({
-        query: organizationId ? { organizationId } : undefined,
+      // Use custom endpoint instead of better-auth client to avoid the 500 error
+      const response = await fetch('/api/organization/list-members', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
       });
-      
-      if (result.error) {
-        throw new Error(result.error.message);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to list members');
       }
-      
+
+      const result = await response.json();
       return result.data?.members || [];
     } catch (error: unknown) {
       throw new Error(error instanceof Error ? error.message : 'Failed to list members');

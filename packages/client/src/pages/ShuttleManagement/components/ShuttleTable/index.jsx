@@ -16,6 +16,7 @@ import ShuttleDetails from "./ShuttleDetails";
 import AddShuttleDialog from "./AddShuttleDialog";
 import { shuttleService } from '@/services/shuttleService';
 import { useRole } from "@/contexts/RoleContext";
+import { toast } from "sonner";
 
 const columnHelper = createColumnHelper();
 
@@ -109,6 +110,7 @@ export default function ShuttleTable() {
   const [pageSize] = useState(8); // Increased page size for better usability
   const [pageIndex, setPageIndex] = useState(0);
   const { role } = useRole();
+  const isManager = role === "manager" || role === "fleetManager";
 
   // Create a ref to store the refresh function for external access
   const refreshTableRef = useRef(null);
@@ -190,20 +192,32 @@ export default function ShuttleTable() {
     try {
       if (mode === "add") {
         await addShuttleAction(data);
+        toast.success("Shuttle added successfully");
         refreshShuttles();
       } else if (mode === "request") {
         // Log the requestData
+        const capacity = typeof data.capacity === "number" ? data.capacity : Number(data.capacity);
+        const rawDailyRate = data.dailyRate;
+        const numericDailyRate = typeof rawDailyRate === "number" ? rawDailyRate : Number(rawDailyRate);
+
+        if (!Number.isFinite(capacity) || capacity <= 0) {
+          throw new Error("Capacity must be a positive number");
+        }
+
         const requestData = {
           ...data,
-          capacity: parseInt(data.capacity, 10),
-          dailyRate: parseFloat(data.dailyRate),
+          capacity,
+          dailyRate: Number.isFinite(numericDailyRate) && numericDailyRate > 0 ? numericDailyRate : undefined,
         };
+
         console.log("RequestData for shuttle request:", requestData);
         await shuttleService.requestShuttle(requestData);
+        toast.success("Vehicle request submitted for approval");
         refreshShuttles();
       }
     } catch (error) {
       console.error("Error adding/requesting shuttle:", error);
+      toast.error(error.response?.data?.message || "Failed to process shuttle");
     } finally {
       setIsAddDialogOpen(false);
     }
@@ -237,15 +251,31 @@ export default function ShuttleTable() {
     <Card
       title="Fleet Management"
       action={
-        <Button
-          onClick={() => setIsAddDialogOpen(true)}
-          size="sm"
-          variant="primary"
-          className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white shadow-sm hover:shadow-md transition-all duration-200"
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          {role === "fleetManager" ? "Request Shuttle" : "Add Shuttle"}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            onClick={() => {
+              shuttleService.clearCache();
+              refreshShuttles();
+            }}
+            size="sm"
+            variant="outline"
+            className="border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800"
+          >
+            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            Refresh
+          </Button>
+          <Button
+            onClick={() => setIsAddDialogOpen(true)}
+            size="sm"
+            variant="primary"
+            className="bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white shadow-sm hover:shadow-md transition-all duration-200"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            {isManager ? "Request Addition" : "Add Shuttle"}
+          </Button>
+        </div>
       }
       className="overflow-hidden mt-6"
     >
