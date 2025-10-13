@@ -3,7 +3,6 @@ import MaintenanceSchedule from '../MaintenanceSchedule';
 import DriverStatus from '../DriverStatus';
 import ShuttleTable from '../ShuttleTable';
 import PendingShuttleRequestsTable from '../PendingShuttleRequestsTable/index';
-import EmployeeShuttleRequestsTable from '../EmployeeShuttleRequestsTable';
 import ManagerVehicleRequestsTable from '../ManagerVehicleRequestsTable/index';
 import { useShuttleManagement } from '@/hooks/useShuttleManagement';
 import { useRole } from '@/contexts/RoleContext';
@@ -177,13 +176,6 @@ export default function ShuttlePage() {
           {role === 'manager' && (
             <div className="mt-6">
               <ManagerVehicleRequestsTable />
-            </div>
-          )}
-
-          {/* Employee Shuttle Requests Table */}
-          {(role === 'admin' || role === 'owner' || role === 'manager') && (
-            <div className="mt-6">
-              <EmployeeShuttleRequestsTable />
             </div>
           )}
 

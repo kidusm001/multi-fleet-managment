@@ -1,8 +1,9 @@
 import express from 'express';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, NotificationType, ImportanceLevel } from '@prisma/client';
 import { requireAuth } from '../middleware/auth';
 import { fromNodeHeaders } from 'better-auth/node';
 import { auth } from '../lib/auth';
+import { broadcastNotification } from '../lib/notificationBroadcaster';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -120,7 +121,38 @@ router.post('/', requireAuth, async (req, res) => {
             startTime: true,
             endTime: true
           }
+        },
+        employee: {
+          select: {
+            user: {
+              select: {
+                name: true,
+                email: true
+              }
+            }
+          }
         }
+      }
+    });
+
+    // Broadcast notification to admins, owners, and managers
+    await broadcastNotification({
+      organizationId: activeOrgId,
+      title: 'New Shuttle Request',
+      message: `${shuttleRequest.employee.user.name} requested shuttle service for ${new Date(date).toLocaleDateString()}`,
+      type: NotificationType.REQUEST_CREATED,
+      importance: ImportanceLevel.MEDIUM,
+      toRoles: ['admin', 'owner', 'manager'],
+      fromRole: 'employee',
+      relatedEntityId: shuttleRequest.id,
+      actionUrl: `/shuttle-requests/${shuttleRequest.id}`,
+      metadata: {
+        requestId: shuttleRequest.id,
+        employeeId: employee.id,
+        employeeName: shuttleRequest.employee.user.name,
+        date: date,
+        shiftId: finalShiftId,
+        pickupLocation: finalPickupLocation
       }
     });
 
@@ -173,6 +205,7 @@ router.patch('/:id/status', requireAuth, async (req, res) => {
         employee: {
           select: {
             id: true,
+            userId: true,
             user: {
               select: {
                 name: true,
@@ -181,6 +214,37 @@ router.patch('/:id/status', requireAuth, async (req, res) => {
             }
           }
         }
+      }
+    });
+
+    // Notify the employee about status change
+    const notificationType = status === 'APPROVED' 
+      ? NotificationType.REQUEST_APPROVED 
+      : status === 'REJECTED'
+      ? NotificationType.REQUEST_REJECTED
+      : NotificationType.REQUEST_PENDING;
+
+    const importance = status === 'APPROVED'
+      ? ImportanceLevel.HIGH
+      : status === 'REJECTED'
+      ? ImportanceLevel.MEDIUM
+      : ImportanceLevel.LOW;
+
+    await broadcastNotification({
+      organizationId: activeOrgId,
+      title: `Shuttle Request ${status}`,
+      message: `Your shuttle request for ${new Date(updated.date).toLocaleDateString()} has been ${status.toLowerCase()}`,
+      type: notificationType,
+      importance: importance,
+      toRoles: ['employee'],
+      toUserId: updated.employee.userId,
+      fromRole: userRole || 'manager',
+      relatedEntityId: updated.id,
+      actionUrl: `/shuttle-requests/${updated.id}`,
+      metadata: {
+        requestId: updated.id,
+        status: status,
+        date: updated.date
       }
     });
 

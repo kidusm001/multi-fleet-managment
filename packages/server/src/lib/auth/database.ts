@@ -187,7 +187,7 @@ export async function createOrganizationWithDefaults(req: Request, orgData: any)
     const canCreate = await auth.api.hasPermission({
       headers: fromNodeHeaders(req.headers),
       body: {
-        permissions: { organization: ['create'] }
+        permissions: { organization: ['create'] } as any
       }
     });
 
