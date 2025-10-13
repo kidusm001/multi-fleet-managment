@@ -68,7 +68,10 @@ export const NAV_CONFIG: Record<RoleKey, NavItem[]> = {
     { label: "Employees", path: ROUTES.EMPLOYEES },
   ],
   [ROLES.DRIVER]: [],
-  [ROLES.EMPLOYEE]: [],
+  [ROLES.EMPLOYEE]: [
+    { label: "Dashboard", path: ROUTES.EMPLOYEE_PORTAL },
+    { label: "Request", path: `${ROUTES.EMPLOYEE_PORTAL}/request` },
+  ],
   // Fallback for unauth/unknown role
   default: [],
 };

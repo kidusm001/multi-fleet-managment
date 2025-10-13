@@ -14,6 +14,8 @@ import {
   Filter
 } from 'lucide-react';
 import AddMemberModal from './AddMemberModal';
+import EditRoleModal from './EditRoleModal';
+import DeleteMemberModal from './DeleteMemberModal';
 import { Card, CardContent, CardHeader, CardTitle } from '@components/Common/UI/Card';
 import { Button } from '@components/Common/UI/Button';
 import { Input } from '@components/Common/UI/Input';
@@ -57,8 +59,6 @@ const ROLE_CONFIG = {
   }
 };
 
-const AVAILABLE_ROLES = ['owner', 'admin', 'manager', 'driver', 'employee'];
-
 export default function NewMembersPanel() {
   const { useActiveOrganization } = authClient;
   const { data: activeOrganization, isLoading: orgLoading } = useActiveOrganization();
@@ -72,6 +72,11 @@ export default function NewMembersPanel() {
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [showAddMemberModal, setShowAddMemberModal] = useState(false);
   const [lastLoadedOrgId, setLastLoadedOrgId] = useState(null);
+  
+  // Modal states for edit role and delete member
+  const [showEditRoleModal, setShowEditRoleModal] = useState(false);
+  const [showDeleteMemberModal, setShowDeleteMemberModal] = useState(false);
+  const [selectedMember, setSelectedMember] = useState(null);
 
   // Memoized loadMembers function to prevent infinite re-renders
   const loadMembers = useCallback(async (organizationId) => {
@@ -466,10 +471,8 @@ export default function NewMembersPanel() {
                             variant="outline"
                             size="sm"
                             onClick={() => {
-                              const newRole = prompt('Enter new role (owner, admin, manager, driver, employee):');
-                              if (newRole && AVAILABLE_ROLES.includes(newRole)) {
-                                handleRoleChange(member.id, newRole);
-                              }
+                              setSelectedMember(member);
+                              setShowEditRoleModal(true);
                             }}
                           >
                             <Shield className="w-4 h-4" />
@@ -479,9 +482,8 @@ export default function NewMembersPanel() {
                             size="sm"
                             className="text-red-600 hover:text-red-700"
                             onClick={() => {
-                              if (confirm(`Remove ${member.name || member.userId} from the organization?`)) {
-                                handleRemoveMember(member.id);
-                              }
+                              setSelectedMember(member);
+                              setShowDeleteMemberModal(true);
                             }}
                           >
                             <AlertCircle className="w-4 h-4" />
@@ -536,6 +538,32 @@ export default function NewMembersPanel() {
           isOpen={showAddMemberModal}
           onClose={() => setShowAddMemberModal(false)}
           onAddMember={handleAddMember}
+        />
+      )}
+      
+      {/* Edit Role Modal */}
+      {showEditRoleModal && selectedMember && (
+        <EditRoleModal
+          isOpen={showEditRoleModal}
+          onClose={() => {
+            setShowEditRoleModal(false);
+            setSelectedMember(null);
+          }}
+          onUpdateRole={handleRoleChange}
+          member={selectedMember}
+        />
+      )}
+      
+      {/* Delete Member Modal */}
+      {showDeleteMemberModal && selectedMember && (
+        <DeleteMemberModal
+          isOpen={showDeleteMemberModal}
+          onClose={() => {
+            setShowDeleteMemberModal(false);
+            setSelectedMember(null);
+          }}
+          onDelete={handleRemoveMember}
+          member={selectedMember}
         />
       )}
     </div>

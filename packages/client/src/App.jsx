@@ -23,6 +23,7 @@ const OrganizationSelection = lazy(() => import('@pages/OrganizationSelection'))
 const NotificationDashboard = lazy(() => import('@pages/notifications/components/notification-dashboard').then(m => ({ default: m.NotificationDashboard })));
 const MobileNotificationWrapper = lazy(() => import('@pages/notifications/components/MobileNotificationWrapper').then(m => ({ default: m.MobileNotificationWrapper })));
 const DriverPortal = lazy(() => import('@pages/DriverPortal'));
+const EmployeePortal = lazy(() => import('@pages/EmployeePortal'));
 const Home = lazy(() => import('@pages/Home'));
 const Profile = lazy(() => import('@pages/Profile'));
 
@@ -188,23 +189,23 @@ function AppContent() {
               <Route index element={homeElement} />
               <Route
                 path="driver/*"
-                element={<Suspense fallback={<div />}> <DriverPortal /> </Suspense>}
+                element={<Suspense fallback={<div>Loading...</div>}> <DriverPortal /> </Suspense>}
               />
               <Route
                 path="notifications"
                 element={
-                  <Suspense fallback={<div />}> 
-                    {isMobile ? <MobileNotificationWrapper /> : <NotificationDashboard />} 
+                  <Suspense fallback={<div>Loading...</div>}>
+                    {isMobile ? <MobileNotificationWrapper /> : <NotificationDashboard />}
                   </Suspense>
                 }
               />
               <Route
                 path="settings"
-                element={<Suspense fallback={<div />}> <Settings /> </Suspense>}
+                element={<Suspense fallback={<div>Loading...</div>}> <Settings /> </Suspense>}
               />
               <Route
                 path="profile"
-                element={<Suspense fallback={<div />}> <Profile /> </Suspense>}
+                element={<Suspense fallback={<div>Loading...</div>}> <Profile /> </Suspense>}
               />
               {/* Redirect all other routes to driver portal */}
               <Route path="*" element={<Navigate to={ROUTES.DRIVER_PORTAL} replace />} />
@@ -213,24 +214,28 @@ function AppContent() {
             <>
               <Route index element={homeElement} />
               <Route
+                path="employee-portal/*"
+                element={<Suspense fallback={<div>Loading...</div>}> <EmployeePortal /> </Suspense>}
+              />
+              <Route
                 path="dashboard"
                 element={<Suspense fallback={<div className="p-6">Loading dashboard…</div>}> <Dashboard /> </Suspense>}
               />
               <Route
                 path="notifications"
                 element={
-                  <Suspense fallback={<div />}> 
-                    {isMobile ? <MobileNotificationWrapper /> : <NotificationDashboard />} 
+                  <Suspense fallback={<div>Loading...</div>}>
+                    {isMobile ? <MobileNotificationWrapper /> : <NotificationDashboard />}
                   </Suspense>
                 }
               />
               <Route
                 path="settings"
-                element={<Suspense fallback={<div />}> <Settings /> </Suspense>}
+                element={<Suspense fallback={<div>Loading...</div>}> <Settings /> </Suspense>}
               />
               <Route
                 path="profile"
-                element={<Suspense fallback={<div />}> <Profile /> </Suspense>}
+                element={<Suspense fallback={<div>Loading...</div>}> <Profile /> </Suspense>}
               />
               <Route path="*" element={<Navigate to={ROUTES.DASHBOARD} replace />} />
             </>
@@ -245,33 +250,33 @@ function AppContent() {
                 path="routes"
                 element={
                   <ProtectedRoute allowedRoles={[ROLES.MANAGER]}>
-                    <Suspense fallback={<div />}> <RouteManagement /> </Suspense>
+                    <Suspense fallback={<div>Loading...</div>}> <RouteManagement /> </Suspense>
                   </ProtectedRoute>
                 }
               />
               <Route
                 path="vehicles"
-                element={<Suspense fallback={<div />}> <VehicleManagement /> </Suspense>}
+                element={<Suspense fallback={<div>Loading...</div>}> <VehicleManagement /> </Suspense>}
               />
               <Route
                 path="employees"
                 element={
                   <ProtectedRoute allowedRoles={[ROLES.MANAGER]}>
-                    <Suspense fallback={<div />}> <EmployeeManagement /> </Suspense>
+                    <Suspense fallback={<div>Loading...</div>}> <EmployeeManagement /> </Suspense>
                   </ProtectedRoute>
                 }
               />
               <Route
                 path="notifications"
                 element={
-                  <Suspense fallback={<div />}> 
+                  <Suspense fallback={<div>Loading...</div>}> 
                     {isMobile ? <MobileNotificationWrapper /> : <NotificationDashboard />} 
                   </Suspense>
                 }
               />
               <Route
                 path="profile"
-                element={<Suspense fallback={<div />}> <Profile /> </Suspense>}
+                element={<Suspense fallback={<div>Loading...</div>}> <Profile /> </Suspense>}
               />
               <Route path="*" element={<Navigate to={ROUTES.DASHBOARD} replace />} />
             </>
@@ -286,19 +291,19 @@ function AppContent() {
                 path="routes"
                 element={
                   <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
-                    <Suspense fallback={<div />}> <RouteManagement /> </Suspense>
+                    <Suspense fallback={<div>Loading...</div>}> <RouteManagement /> </Suspense>
                   </ProtectedRoute>
                 }
               />
               <Route
                 path="vehicles"
-                element={<Suspense fallback={<div />}> <VehicleManagement /> </Suspense>}
+                element={<Suspense fallback={<div>Loading...</div>}> <VehicleManagement /> </Suspense>}
               />
               <Route
                 path="employees"
                 element={
                   <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
-                    <Suspense fallback={<div />}> <EmployeeManagement /> </Suspense>
+                    <Suspense fallback={<div>Loading...</div>}> <EmployeeManagement /> </Suspense>
                   </ProtectedRoute>
                 }
               />
@@ -306,7 +311,7 @@ function AppContent() {
                 path="payroll"
                 element={
                   <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
-                    <Suspense fallback={<div />}> <Payroll /> </Suspense>
+                    <Suspense fallback={<div>Loading...</div>}> <Payroll /> </Suspense>
                   </ProtectedRoute>
                 }
               />
@@ -314,25 +319,25 @@ function AppContent() {
                 path="organization-management"
                 element={
                   <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
-                    <Suspense fallback={<div />}> <OrganizationManagement /> </Suspense>
+                    <Suspense fallback={<div>Loading...</div>}> <OrganizationManagement /> </Suspense>
                   </ProtectedRoute>
                 }
               />
               <Route
                 path="notifications"
                 element={
-                  <Suspense fallback={<div />}> 
-                    {isMobile ? <MobileNotificationWrapper /> : <NotificationDashboard />} 
+                  <Suspense fallback={<div>Loading...</div>}>
+                    {isMobile ? <MobileNotificationWrapper /> : <NotificationDashboard />}
                   </Suspense>
                 }
               />
               <Route
                 path="settings"
-                element={<Suspense fallback={<div />}> <Settings /> </Suspense>}
+                element={<Suspense fallback={<div>Loading...</div>}> <Settings /> </Suspense>}
               />
               <Route
                 path="profile"
-                element={<Suspense fallback={<div />}> <Profile /> </Suspense>}
+                element={<Suspense fallback={<div>Loading...</div>}> <Profile /> </Suspense>}
               />
               <Route path="*" element={<Navigate to={ROUTES.ORGANIZATION_MANAGEMENT} replace />} />
             </>
@@ -347,19 +352,19 @@ function AppContent() {
                 path="routes"
                 element={
                   <ProtectedRoute allowedRoles={[ROLES.SUPERADMIN, ROLES.OWNER]}>
-                    <Suspense fallback={<div />}> <RouteManagement /> </Suspense>
+                    <Suspense fallback={<div>Loading...</div>}> <RouteManagement /> </Suspense>
                   </ProtectedRoute>
                 }
               />
               <Route
                 path="vehicles"
-                element={<Suspense fallback={<div />}> <VehicleManagement /> </Suspense>}
+                element={<Suspense fallback={<div>Loading...</div>}> <VehicleManagement /> </Suspense>}
               />
               <Route
                 path="employees"
                 element={
                   <ProtectedRoute allowedRoles={[ROLES.SUPERADMIN, ROLES.OWNER]}>
-                    <Suspense fallback={<div />}> <EmployeeManagement /> </Suspense>
+                    <Suspense fallback={<div>Loading...</div>}> <EmployeeManagement /> </Suspense>
                   </ProtectedRoute>
                 }
               />
@@ -367,7 +372,7 @@ function AppContent() {
                 path="payroll"
                 element={
                   <ProtectedRoute allowedRoles={[ROLES.SUPERADMIN, ROLES.OWNER]}>
-                    <Suspense fallback={<div />}> <Payroll /> </Suspense>
+                    <Suspense fallback={<div>Loading...</div>}> <Payroll /> </Suspense>
                   </ProtectedRoute>
                 }
               />
@@ -375,7 +380,7 @@ function AppContent() {
                 path="organizations"
                 element={
                   <ProtectedRoute allowedRoles={[ROLES.SUPERADMIN, ROLES.OWNER]}>
-                    <Suspense fallback={<div />}> <OrganizationSelection /> </Suspense>
+                    <Suspense fallback={<div>Loading...</div>}> <OrganizationSelection /> </Suspense>
                   </ProtectedRoute>
                 }
               />
@@ -383,25 +388,25 @@ function AppContent() {
                 path="organization-management"
                 element={
                   <ProtectedRoute allowedRoles={[ROLES.SUPERADMIN, ROLES.OWNER]}>
-                    <Suspense fallback={<div />}> <OrganizationManagement /> </Suspense>
+                    <Suspense fallback={<div>Loading...</div>}> <OrganizationManagement /> </Suspense>
                   </ProtectedRoute>
                 }
               />
               <Route
                 path="notifications"
                 element={
-                  <Suspense fallback={<div />}> 
-                    {isMobile ? <MobileNotificationWrapper /> : <NotificationDashboard />} 
+                  <Suspense fallback={<div>Loading...</div>}>
+                    {isMobile ? <MobileNotificationWrapper /> : <NotificationDashboard />}
                   </Suspense>
                 }
               />
               <Route
                 path="settings"
-                element={<Suspense fallback={<div />}> <Settings /> </Suspense>}
+                element={<Suspense fallback={<div>Loading...</div>}> <Settings /> </Suspense>}
               />
               <Route
                 path="profile"
-                element={<Suspense fallback={<div />}> <Profile /> </Suspense>}
+                element={<Suspense fallback={<div>Loading...</div>}> <Profile /> </Suspense>}
               />
               <Route path="*" element={<Navigate to={ROUTES.ORGANIZATIONS} replace />} />
             </>

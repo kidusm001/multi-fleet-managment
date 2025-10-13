@@ -44,6 +44,7 @@ export const ROUTES = {
   NOTIFICATIONS: '/notifications',
   SETTINGS: '/settings',
   DRIVER_PORTAL: '/driver',
+  EMPLOYEE_PORTAL: '/employee-portal',
   PROFILE: '/profile'
 };
 

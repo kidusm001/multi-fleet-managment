@@ -52,6 +52,7 @@ model Shift {
   routes              Route[]
   organization        Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   vehicleAvailability VehicleAvailability[]
+  shuttleRequests     ShuttleRequest[]
 
   @@index([organizationId])
   @@map("shifts")
@@ -74,12 +75,13 @@ model Employee {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  department   Department   @relation(fields: [departmentId], references: [id], onDelete: Cascade)
-  shift        Shift        @relation(fields: [shiftId], references: [id], onDelete: Cascade)
-  stop         Stop?        @relation(fields: [stopId], references: [id], onDelete: SetNull)
-  workLocation Location?    @relation("EmployeeLocation", fields: [locationId], references: [id], onDelete: SetNull)
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  department     Department       @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  shift          Shift            @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  stop           Stop?            @relation(fields: [stopId], references: [id], onDelete: SetNull)
+  workLocation   Location?        @relation("EmployeeLocation", fields: [locationId], references: [id], onDelete: SetNull)
+  shuttleRequests ShuttleRequest[]
 
   @@index([assigned])
   @@index([organizationId])
@@ -532,6 +534,28 @@ model VehicleRequest {
   @@map("vehicle_requests")
 }
 
+model ShuttleRequest {
+  id             String         @id @default(cuid())
+  employeeId     String
+  date           DateTime
+  shiftId        String
+  pickupLocation String
+  notes          String?
+  status         RequestStatus  @default(PENDING)
+  organizationId String
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  employee     Employee     @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  shift        Shift        @relation(fields: [shiftId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId])
+  @@index([organizationId])
+  @@index([status])
+  @@map("shuttle_requests")
+}
+
 // ===========Better-Auth models=============
 
 model User {
@@ -620,6 +644,7 @@ model Organization {
   notifications       Notification[]
   vehicleRequests     VehicleRequest[]
   locations           Location[]
+  shuttleRequests     ShuttleRequest[]
 
   // Payroll relations
   serviceProviders  ServiceProvider[]
@@ -819,6 +844,12 @@ enum PaymentMethod {
 }
 
 enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum RequestStatus {
   PENDING
   APPROVED
   REJECTED
