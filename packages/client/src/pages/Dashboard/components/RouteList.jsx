@@ -17,13 +17,13 @@ const RouteList = ({
   return (
     <Card className="bg-white/95 dark:bg-[#0c1222]/95 backdrop-blur-md shadow-lg border-0 rounded-xl overflow-hidden">
       <CardContent className="p-4">
-        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center justify-between">
           <span>Routegna Routes</span>
           <span className="text-xs font-medium px-2 py-1 rounded-full bg-[#4272FF]/10 text-[#4272FF] dark:text-[#4272FF]">
             {filteredRoutes.length} routes
           </span>
         </h3>
-        <div className="space-y-2 overflow-y-auto custom-scrollbar pr-2" style={{ maxHeight: '500px' }}>{filteredRoutes.length > 0 ? (
+        <div className="space-y-2 overflow-y-auto custom-scrollbar pr-2 h-60 md:h-80">{filteredRoutes.length > 0 ? (
             filteredRoutes
               .sort((a, b) => {
                 const timeA = a.nextDeparture ? new Date(a.nextDeparture) : new Date('9999-12-31');

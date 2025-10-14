@@ -16,7 +16,7 @@ main {
   padding: 4rem 2rem 1.5rem;
   color: var(--text-primary);
   position: relative;
-  margin-top: 0px;
+  margin-top: 1rem;
   -webkit-backdrop-filter: blur(12px);
   backdrop-filter: blur(12px);
   z-index: 40;

@@ -168,9 +168,9 @@ function MobileDashboardView() {
     : 'mapbox://styles/skywalkertew/cm3oo0bb3007e01qw3rd7gdcl';
 
   return (
-    <div className="flex flex-col h-[calc(100vh-60px)]">
-      {/* Map Container - 75% of available space */}
-      <div className="relative flex-[3] min-h-[400px]">
+    <div className="flex flex-col h-full overflow-hidden">
+      {/* Map Container - 50% of viewport */}
+      <div className="relative h-[50vh] flex-shrink-0">
         <ErrorBoundary fallback={<div>Error loading map</div>}>
           <Suspense
             fallback={
@@ -209,31 +209,23 @@ function MobileDashboardView() {
         )}
       </div>
 
-      {/* Route List Container - Fixed height for 5 routes */}
-      <div className="bg-white dark:bg-gray-900 overflow-hidden">
-        <div className="flex flex-col">
-          {/* Search and Filter - Fixed */}
-          <div className="flex-shrink-0 p-4 pb-2">
-            <SearchAndFilter
-              searchQuery={searchQuery}
-              onSearchChange={handleSearch}
-              statusFilter={statusFilter}
-              setStatusFilter={setStatusFilter}
-            />
-          </div>
-
-          {/* Route List - Fixed height for 5 routes, then scroll */}
-          <div className="px-4 pb-4" style={{ height: '600px' }}>
-            <div className="h-full overflow-y-auto">
-              <RouteList
-                filteredRoutes={filteredRoutes}
-                selectedRoute={selectedRoute}
-                handleRouteSelect={handleRouteSelect}
-                searchQuery={searchQuery}
-                loading={loading}
-              />
-            </div>
-          </div>
+      {/* Route List Container - Fixed size, no scroll on container */}
+            {/* Route List Container - Fixed 20rem */}
+      <div className="bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 p-4 h-full">
+        <SearchAndFilter
+          searchQuery={searchQuery}
+          onSearchChange={handleSearch}
+          statusFilter={statusFilter}
+          setStatusFilter={setStatusFilter}
+        />
+        <div className="mt-4">
+          <RouteList
+            filteredRoutes={filteredRoutes}
+            selectedRoute={selectedRoute}
+            handleRouteSelect={handleRouteSelect}
+            searchQuery={searchQuery}
+            loading={loading}
+          />
         </div>
       </div>
 

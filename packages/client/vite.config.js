@@ -6,9 +6,9 @@ export default defineConfig({
   plugins: [react()],
   server: {
     port: 5173,
-  host: 'localhost',
-  strictPort: true,
-  open: 'http://localhost:5173',
+    host: '0.0.0.0', // Allow access from network
+    strictPort: true,
+    open: false,
     proxy: {
       '/_auth': {
         target: 'http://localhost:3000',
