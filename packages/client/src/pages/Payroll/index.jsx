@@ -165,45 +165,39 @@ export default function EnhancedShuttlePayrollDashboard() {
           console.log("Loaded payroll data:", shuttleDataTemp.length, "entries");
         }
 
-        // Get payroll distribution data or calculate it from sample data
+        // Calculate real payroll distribution from actual data
         let distributionData;
-        try {
-          const distribution = await payrollService.getPayrollDistribution(currentMonth, currentYear);
-          distributionData = [
-            { name: "Owned Shuttles", value: Number(distribution.ownedShuttles || 0) },
-            { name: "Outsourced Shuttles", value: Number(distribution.outsourcedShuttles || 0) },
-            { name: "Maintenance", value: Number(distribution.maintenance || 0) },
-            { name: "Other Expenses", value: Number(distribution.other || 0) }
-          ];
-        } catch (error) {
-          console.error("Error fetching distribution data:", error);
-          // Calculate from sample data
-          const ownedCost = shuttleDataTemp
-            .filter(s => s.type === 'Owned')
-            .reduce((sum, s) => sum + (s.costPerDay * s.usageDays), 0);
-          
-          const outsourcedCost = shuttleDataTemp
-            .filter(s => s.type === 'Outsourced')
-            .reduce((sum, s) => sum + (s.costPerDay * s.usageDays), 0);
-          
-          const maintenanceCost = shuttleDataTemp.reduce((sum, s) => {
-            const dailyMaintenance = s.type === 'Owned' ? 15 : 20;
-            return sum + (dailyMaintenance * s.usageDays);
-          }, 0);
-          
-          const otherExpenses = shuttleDataTemp.reduce((sum, s) => {
-            const insurance = s.type === 'Owned' ? 200 : 250;
-            const other = s.usageDays * 10;
-            return sum + insurance + other;
-          }, 0);
-          
-          distributionData = [
-            { name: "Owned Shuttles", value: ownedCost },
-            { name: "Outsourced Shuttles", value: outsourcedCost },
-            { name: "Maintenance", value: maintenanceCost },
-            { name: "Other Expenses", value: otherExpenses }
-          ];
-        }
+        
+        // Calculate actual costs by category
+        const driverPayroll = shuttleDataTemp
+          .filter(s => s.driver)
+          .reduce((sum, s) => sum + (Number(s.totalAmount) || (Number(s.usageDays || 0) * Number(s.costPerDay || 0))), 0);
+        
+        const serviceProviderPayroll = shuttleDataTemp
+          .filter(s => s.serviceProvider)
+          .reduce((sum, s) => sum + (Number(s.totalAmount) || (Number(s.usageDays || 0) * Number(s.costPerDay || 0))), 0);
+        
+        // Count entries by type for better insight
+        const driverCount = shuttleDataTemp.filter(s => s.driver).length;
+        const serviceProviderCount = shuttleDataTemp.filter(s => s.serviceProvider).length;
+        
+        console.log("Distribution:", {
+          drivers: driverPayroll,
+          serviceProviders: serviceProviderPayroll,
+          driverCount,
+          serviceProviderCount
+        });
+        
+        distributionData = [
+          { 
+            name: `Driver Payroll (${driverCount})`, 
+            value: driverPayroll 
+          },
+          { 
+            name: `Service Providers (${serviceProviderCount})`, 
+            value: serviceProviderPayroll 
+          }
+        ].filter(item => item.value > 0); // Only show categories with actual values
 
         // Get historical data or generate sample data
         let monthlyData;
