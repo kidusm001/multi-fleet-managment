@@ -10,6 +10,11 @@ import { toast } from "sonner";
 import { MAP_CONFIG } from "@/data/constants";
 import { optimizeRoute } from "@/services/routeOptimization";
 import { cn } from "@/lib/utils";
+import {
+  resolveOriginCoordinates,
+  toMapStops,
+  withOrderedStops,
+} from "../../../Dashboard/utils/sortStops";
 
 import styles from "./AssignmentModal.module.css";
 
@@ -131,8 +136,7 @@ const AssignmentModal = ({ employee, routes, onClose, onAssign, show }) => {
           );
         }
 
-        const allStops = [
-          ...selectedRoute.stops.map((stop) => {
+        const existingStops = (selectedRoute.stops || []).map((stop) => {
             const displayName = buildStopDisplayName(stop);
             const normalizedLocation = formatAddress(
               stop.location || stop.area || stop.employee?.area
@@ -144,9 +148,27 @@ const AssignmentModal = ({ employee, routes, onClose, onAssign, show }) => {
               area: normalizedLocation || displayName,
               location: normalizedLocation || displayName,
             };
-          }),
-          employeeStopForOptimization,
-        ];
+          });
+
+        const employeeStopAsRouteStop = employeeStopForOptimization
+          ? {
+              ...employeeStopForOptimization,
+              employee: {
+                ...employee,
+                name: employee.name,
+                location:
+                  displayStopAddress ||
+                  displayWorkAddress ||
+                  employeeFallbackLocation ||
+                  "",
+                userId: employee.userId || employee.id,
+              },
+            }
+          : null;
+
+        const allStops = employeeStopAsRouteStop
+          ? [...existingStops, employeeStopAsRouteStop]
+          : existingStops;
 
         // Filter out stops without valid coordinates
         const validStops = allStops.filter(
@@ -157,53 +179,55 @@ const AssignmentModal = ({ employee, routes, onClose, onAssign, show }) => {
           throw new Error("No valid stops found");
         }
 
+        const originCoords = resolveOriginCoordinates(selectedRoute);
+        const routeLocationLabel = formatAddress(
+          selectedRoute?.location?.address || selectedRoute?.location?.name
+        ) || "HQ";
+
         // Prepare data for optimization
+        const dropOffCoordinates = validStops.map((stop) => [
+          stop.longitude,
+          stop.latitude,
+        ]);
+
         const routeForOptimization = {
-          coordinates: validStops.map((stop) => [
-            stop.longitude,
-            stop.latitude,
-          ]),
-          areas: validStops.map((stop) => stop.displayName || stop.area || stop.location || ""),
+          coordinates: [
+            originCoords,
+            ...dropOffCoordinates,
+            originCoords,
+          ],
+          areas: [
+            routeLocationLabel,
+            ...validStops.map(
+              (stop) => stop.displayName || stop.area || stop.location || ""
+            ),
+            routeLocationLabel,
+          ],
         };
 
         // Optimize the route
         const optimized = await optimizeRoute(routeForOptimization);
 
-        // Create the optimized route data
+        const mapStops = toMapStops(allStops, originCoords);
+
         const optimizedRouteData = {
           id: selectedRoute.id,
-          coordinates: optimized.coordinates,
-          areas: optimized.areas.map(formatAddress),
+          coordinates: mapStops.coordinates,
+          areas: mapStops.areas,
+          employeeUserIds: mapStops.employeeUserIds,
           stops: validStops,
+          passengers: validStops.filter((stop) => stop.employee).length,
           status: "preview",
+          location: selectedRoute.location,
         };
 
         // Calculate metrics for optimized route
-        let totalDistance = 0;
-        for (let i = 0; i < optimized.coordinates.length - 1; i++) {
-          const [lon1, lat1] = optimized.coordinates[i];
-          const [lon2, lat2] = optimized.coordinates[i + 1];
-
-          // Haversine formula for approximate distance
-          const R = 6371; // Earth's radius in km
-          const dLat = ((lat2 - lat1) * Math.PI) / 180;
-          const dLon = ((lon2 - lon1) * Math.PI) / 180;
-          const a =
-            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-            Math.cos((lat1 * Math.PI) / 180) *
-              Math.cos((lat2 * Math.PI) / 180) *
-              Math.sin(dLon / 2) *
-              Math.sin(dLon / 2);
-          const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-          totalDistance += R * c;
-        }
-
-        // Estimate time based on average speed of 30 km/h
-        const estimatedTime = Math.ceil((totalDistance / 30) * 60); // Convert to minutes
+        const totalDistance = optimized.metrics?.totalDistance ?? 0;
+        const totalTime = optimized.metrics?.totalTime ?? 0;
 
         setRouteMetrics({
-          totalDistance: parseFloat(totalDistance.toFixed(2)),
-          totalTime: estimatedTime,
+          totalDistance,
+          totalTime,
         });
 
         setOptimizedRoute(optimizedRouteData);
@@ -222,6 +246,7 @@ const AssignmentModal = ({ employee, routes, onClose, onAssign, show }) => {
     displayStopAddress,
     displayWorkAddress,
     employeeStopForOptimization,
+    employeeFallbackLocation,
   ]);
 
   const handleConfirm = async () => {
@@ -314,7 +339,9 @@ const AssignmentModal = ({ employee, routes, onClose, onAssign, show }) => {
                         dropOffOrder: optimizedRoute.stops.map((_, i) => i),
                         stops: optimizedRoute.stops.length,
                         passengers: optimizedRoute.stops.filter((stop) => stop.employee).length,
+                        employeeUserIds: optimizedRoute.employeeUserIds,
                         status: optimizedRoute.status,
+                        location: optimizedRoute.location,
                       }}
                       selectedShuttle={selectedRoute?.shuttle}
                       center={mapCenter}
@@ -444,7 +471,7 @@ const AssignmentModal = ({ employee, routes, onClose, onAssign, show }) => {
                           [styles.selected]:
                             selectedRoute?.id === routeOption.id,
                         })}
-                        onClick={() => setSelectedRoute(routeOption)}
+                        onClick={() => setSelectedRoute(withOrderedStops(routeOption))}
                       >
                         <div className="flex items-center justify-between mb-2">
                           <Badge variant="outline">{routeOption.name}</Badge>
@@ -496,7 +523,7 @@ AssignmentModal.propTypes = {
   employee: PropTypes.shape({
     id: PropTypes.string.isRequired,
     name: PropTypes.string.isRequired,
-    location: PropTypes.string.isRequired,
+    location: PropTypes.string,
     stopId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
     stop: PropTypes.shape({
       id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),

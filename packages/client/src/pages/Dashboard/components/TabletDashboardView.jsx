@@ -10,6 +10,7 @@ import RouteList from "./RouteList";
 import StatsCards from "./StatsCards";
 import RouteDetails from "./RouteDetails";
 import "../styles.css";
+import { resolveOriginCoordinates, toMapStops, withOrderedStops } from "../utils/sortStops";
 
 // Lazy load the map component
 const MapComponent = React.lazy(() =>
@@ -43,7 +44,9 @@ function TabletDashboardView() {
         const routesData = await routeService.getAllRoutes();
         setRoutes(routesData);
         if (routesData.length > 0) {
-          setSelectedRoute(routesData[0]);
+          setSelectedRoute(withOrderedStops(routesData[0]));
+        } else {
+          setSelectedRoute(null);
         }
       } catch (err) {
         console.error("Error fetching routes:", err);
@@ -58,21 +61,19 @@ function TabletDashboardView() {
 
   // Transform route for map component
   const transformRouteForMap = useCallback((route) => {
-    if (!route || !route.stops || route.stops.length === 0) return null;
+    if (!route || !Array.isArray(route.stops) || route.stops.length === 0) {
+      return null;
+    }
+
+    const originCoords = resolveOriginCoordinates(route);
+    const mapStops = toMapStops(route.stops, originCoords);
 
     return {
       id: route.id,
-      coordinates: route.stops
-        .map((stop) => [
-          stop.longitude || stop.stop?.longitude,
-          stop.latitude || stop.stop?.latitude,
-        ])
-        .filter((coord) => coord[0] && coord[1]),
-      areas: route.stops.map((stop) => {
-        const employee = stop.employee;
-        if (!employee) return "Unassigned Stop";
-        return `${employee.name}\n${employee.location || ""}`;
-      }),
+      coordinates: mapStops.coordinates,
+      areas: mapStops.areas,
+      employeeUserIds: mapStops.employeeUserIds,
+      location: route.location,
     };
   }, []);
 
@@ -88,7 +89,7 @@ function TabletDashboardView() {
 
   // Route selection handler
   const handleRouteSelect = useCallback((route) => {
-    setSelectedRoute(route);
+    setSelectedRoute(route ? withOrderedStops(route) : null);
   }, []);
 
   // Toggle details panel
@@ -104,7 +105,9 @@ function TabletDashboardView() {
       if (selectedRoute) {
         const updatedRoute = routesData.find(r => r.id === selectedRoute.id);
         if (updatedRoute) {
-          setSelectedRoute(updatedRoute);
+          setSelectedRoute(withOrderedStops(updatedRoute));
+        } else {
+          setSelectedRoute(null);
         }
       }
     } catch (err) {
@@ -200,6 +203,7 @@ function TabletDashboardView() {
                 selectedRoute={mapRouteData}
                 mapStyle={mapStyle}
                 initialZoom={11.5}
+                enableOptimization={false}
               />
             </div>
           </Suspense>

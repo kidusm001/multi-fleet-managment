@@ -49,10 +49,17 @@ MapPreviewModal.propTypes = {
     coordinates: PropTypes.arrayOf(PropTypes.arrayOf(PropTypes.number))
       .isRequired,
     areas: PropTypes.arrayOf(PropTypes.string).isRequired,
+    employeeUserIds: PropTypes.arrayOf(PropTypes.string),
     dropOffOrder: PropTypes.arrayOf(PropTypes.number).isRequired,
     stops: PropTypes.number.isRequired,
     passengers: PropTypes.number.isRequired,
     status: PropTypes.string.isRequired,
+    location: PropTypes.shape({
+      coords: PropTypes.arrayOf(PropTypes.number),
+      latitude: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+      longitude: PropTypes.oneOfType([PropTypes.number, PropTypes.string]),
+      address: PropTypes.string,
+    }),
   }),
   onClose: PropTypes.func.isRequired,
 };

@@ -4,8 +4,9 @@ import PropTypes from "prop-types";
 import { useTheme } from "@contexts/ThemeContext";
 import { useRole } from "@contexts/RoleContext";
 import { toast } from "sonner";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { routeService } from "@services/routeService";
+import { sortStopsBySequence } from "../utils/sortStops";
 
 const RouteDetails = ({
   selectedRoute,
@@ -18,6 +19,7 @@ const RouteDetails = ({
   const isDark = theme === "dark";
   const isEmployee = role === 'employee';
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const orderedStops = useMemo(() => sortStopsBySequence(selectedRoute?.stops), [selectedRoute]);
 
   const handleToggleStatus = async () => {
     try {
@@ -136,7 +138,7 @@ const RouteDetails = ({
             <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-2">
               <p className="text-sm text-gray-500 dark:text-gray-400">Stops</p>
               <p className="text-lg font-semibold text-gray-900 dark:text-white">
-                {selectedRoute.stops?.length || 0}
+                {orderedStops.length}
               </p>
             </div>
             <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-2">
@@ -144,7 +146,7 @@ const RouteDetails = ({
                 Passengers
               </p>
               <p className="text-lg font-semibold text-gray-900 dark:text-white">
-                {selectedRoute.stops?.filter(stop => stop.employee)?.length || 0}
+                {orderedStops.filter(stop => stop.employee)?.length || 0}
               </p>
             </div>
           </div>
@@ -196,9 +198,9 @@ const RouteDetails = ({
               </div>
 
               {/* Employee Stops */}
-              {selectedRoute.stops?.map((stop, index) => (
+              {orderedStops.map((stop, index) => (
                 <div
-                  key={index}
+                  key={stop.id || index}
                   className={`p-3 rounded-lg ${
                     isDark ? "bg-gray-800/80" : "bg-gray-50"
                   }`}

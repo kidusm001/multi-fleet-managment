@@ -120,7 +120,7 @@ async function retryFetch(url, options = {}, maxRetries = 3) {
 export async function optimizeRoute(coordinates, enableOptimization = true) {
   if (!coordinates || !Array.isArray(coordinates) || coordinates.length < 2) {
     console.error('Invalid coordinates provided for route optimization:', coordinates);
-    return { coordinates: [], waypoints: [], dropOffOrder: [], distance: 0, duration: 0 };
+    return { coordinates: [], waypoints: [], dropOffOrder: [], distance: 0, duration: 0, optimized: false, usingFallback: true };
   }
 
   // Validate all coordinates are valid arrays of [longitude, latitude]
@@ -135,27 +135,31 @@ export async function optimizeRoute(coordinates, enableOptimization = true) {
 
   if (!validCoordinates) {
     console.error('Invalid coordinate format in array:', coordinates);
-    return { coordinates: [], waypoints: [], dropOffOrder: [], distance: 0, duration: 0 };
+    return { coordinates: [], waypoints: [], dropOffOrder: [], distance: 0, duration: 0, optimized: false, usingFallback: true };
   }
 
   const [hqCoords, ...dropOffPoints] = coordinates;
 
-  // Check if Mapbox token is available and optimization is enabled
-  if (!MAPBOX_ACCESS_TOKEN || !enableOptimization) {
-    console.warn('Mapbox token not available or optimization disabled, using fallback route');
+  if (!MAPBOX_ACCESS_TOKEN) {
+    console.warn('Mapbox token not available, using fallback route');
     return getFallbackRoute(hqCoords, dropOffPoints);
   }
 
   try {
-    // Get initial ordering using TSP
-    const initialOrder = getInitialOrder(hqCoords, dropOffPoints);
+    // Build ordering array — use optimization result when enabled, otherwise keep natural order
+    let stopOrder = dropOffPoints.map((_, index) => index);
 
-    if (!initialOrder.length && dropOffPoints.length > 0) {
-      throw new Error('Failed to generate initial order');
+    if (enableOptimization && dropOffPoints.length > 1) {
+      const optimizedOrder = getInitialOrder(hqCoords, dropOffPoints);
+
+      if (optimizedOrder.length === dropOffPoints.length) {
+        stopOrder = optimizedOrder;
+      } else {
+        console.warn('Failed to generate optimized order, using natural stop order instead');
+      }
     }
 
-    // Reorder drop-off points based on TSP
-    const orderedDropOffs = initialOrder.map(index => dropOffPoints[index]);
+    const orderedDropOffs = stopOrder.map(index => dropOffPoints[index]);
 
     // Format waypoints for the Directions API (HQ -> ordered drops -> HQ)
     const waypointsString = [
@@ -179,21 +183,22 @@ export async function optimizeRoute(coordinates, enableOptimization = true) {
     // Create waypoints with proper ordering
     const waypoints = [
       { location: hqCoords, originalIndex: 0, newIndex: 0 },
-      ...initialOrder.map((originalIndex, newIndex) => ({
+      ...stopOrder.map((originalIndex, newIndex) => ({
         location: dropOffPoints[originalIndex],
         originalIndex: originalIndex + 1,
         newIndex: newIndex + 1
       })),
-      { location: hqCoords, originalIndex: 0, newIndex: initialOrder.length + 1 }
+      { location: hqCoords, originalIndex: 0, newIndex: stopOrder.length + 1 }
     ];
 
     return {
       coordinates: route.geometry.coordinates,
       waypoints,
-      dropOffOrder: initialOrder.map(i => i + 1),
+      dropOffOrder: stopOrder.map(i => i + 1),
       distance: route.distance, // Distance in meters
       duration: route.duration,  // Duration in seconds
-      optimized: true // Flag to indicate successful optimization
+      optimized: enableOptimization && stopOrder.some((value, index) => value !== index),
+      usingFallback: false
     };
 
   } catch (error) {
@@ -213,7 +218,7 @@ function getFallbackRoute(hqCoords, dropOffPoints) {
     for (let i = 0; i < validRoute.length - 1; i++) {
       const dist = calculateDistance(validRoute[i], validRoute[i + 1]);
       if (dist === null) {
-        return { coordinates: [], waypoints: [], dropOffOrder: [], distance: 0, duration: 0, optimized: false };
+        return { coordinates: [], waypoints: [], dropOffOrder: [], distance: 0, duration: 0, optimized: false, usingFallback: true };
       }
       totalDistance += dist * 1000; // Convert km to meters
       totalDuration += (dist / 40) * 3600; // Assume average speed of 40 km/h
@@ -229,10 +234,11 @@ function getFallbackRoute(hqCoords, dropOffPoints) {
       dropOffOrder: dropOffPoints.map((_, i) => i + 1),
       distance: totalDistance,
       duration: totalDuration,
-      optimized: false // Flag to indicate fallback route
+      optimized: false, // Flag to indicate fallback route
+      usingFallback: true
     };
   } catch (fallbackError) {
     console.error('Error in fallback route generation:', fallbackError);
-    return { coordinates: [], waypoints: [], dropOffOrder: [], distance: 0, duration: 0, optimized: false };
+    return { coordinates: [], waypoints: [], dropOffOrder: [], distance: 0, duration: 0, optimized: false, usingFallback: true };
   }
 }

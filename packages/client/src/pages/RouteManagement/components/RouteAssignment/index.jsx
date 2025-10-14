@@ -11,6 +11,7 @@ import { shiftService } from "@/services/shiftService";
 import { getUnassignedEmployeesByShift, getRoutesByShift } from "@/services/api";
 import { toast } from "sonner";
 import LoadingAnimation from "@/components/Common/LoadingAnimation";
+import { withOrderedStops } from "../../../Dashboard/utils/sortStops";
 
 function RouteAssignment({ refreshTrigger }) {
   const navigate = useNavigate();
@@ -90,6 +91,8 @@ function RouteAssignment({ refreshTrigger }) {
           ...route,
           shuttle: route.vehicle || shuttlesData.find((s) => s.id === route.vehicleId)
         }));
+
+        const normalizedRoutes = transformedRoutes.map((route) => withOrderedStops(route));
         
         for (const route of transformedRoutes) {
           const shuttleCapacity = route.shuttle?.capacity || route.shuttle?.category?.capacity;
@@ -104,11 +107,11 @@ function RouteAssignment({ refreshTrigger }) {
         }
         setStats({
           unassignedInShift: employeesResponse.data.length,
-          totalRoutes: transformedRoutes.length,
+          totalRoutes: normalizedRoutes.length,
           availableSeats: totalAvailableSeats,
         });
         
-        setRoutes(transformedRoutes);
+        setRoutes(normalizedRoutes);
       } catch (err) {
         toast.warning("Error calculating available seats");
         setShuttles([]); // Clear shuttles on error
@@ -117,7 +120,7 @@ function RouteAssignment({ refreshTrigger }) {
           ...route,
           shuttle: route.vehicle
         }));
-        setRoutes(transformedRoutes);
+        setRoutes(transformedRoutes.map((route) => withOrderedStops(route)));
       }
     } catch (err) {
       setError("Failed to load routes. Please try again.");
@@ -163,7 +166,8 @@ function RouteAssignment({ refreshTrigger }) {
   };
 
   const handleRouteUpdate = (updatedRoute) => {
-    setRoutes(routes.map((r) => (r.id === updatedRoute.id ? updatedRoute : r)));
+    const normalizedRoute = withOrderedStops(updatedRoute);
+    setRoutes(routes.map((r) => (r.id === normalizedRoute.id ? normalizedRoute : r)));
   };
 
   if (loading) {
@@ -245,7 +249,7 @@ function RouteAssignment({ refreshTrigger }) {
                           ? "bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800"
                           : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-orange-300 dark:hover:border-orange-600"
                       )}
-                      onClick={() => setSelectedRoute(routeOption)}
+                      onClick={() => setSelectedRoute(withOrderedStops(routeOption))}
                     >
                       <div className="flex items-center justify-between mb-2">
                         <Badge variant="outline" className="text-xs">{routeOption.name}</Badge>

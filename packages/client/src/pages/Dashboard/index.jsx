@@ -14,6 +14,7 @@ import RouteDetails from "./components/RouteDetails";
 import MobileDashboardView from "./components/MobileDashboardView";
 import TabletDashboardView from "./components/TabletDashboardView";
 import "./styles.css";
+import { resolveOriginCoordinates, toMapStops, withOrderedStops } from "./utils/sortStops";
 
 // Lazy load the map component
 const MapComponent = React.lazy(() =>
@@ -40,7 +41,9 @@ function DashboardDesktop() {
         const routesData = await routeService.getAllRoutes();
         setRoutes(routesData);
         if (routesData.length > 0) {
-          setSelectedRoute(routesData[0]); // Set first route as selected
+          setSelectedRoute(withOrderedStops(routesData[0]));
+        } else {
+          setSelectedRoute(null);
         }
       } catch (err) {
         console.error("Error fetching routes:", err);
@@ -61,23 +64,42 @@ function DashboardDesktop() {
   // Transform route stops to map-compatible format
   const transformRouteForMap = useCallback((route) => {
     if (!route?.stops) return null;
-    
-    // Transform route data to match what the MapComponent expects
+
+    const originCoords = resolveOriginCoordinates(route);
+    const mapStops = toMapStops(route.stops, originCoords);
+
+    const parsedLongitude = Number.parseFloat(route.location?.longitude);
+    const parsedLatitude = Number.parseFloat(route.location?.latitude);
+
+    const sanitizedLocation = route.location
+      ? {
+          ...route.location,
+          coords: route.location?.coords || originCoords,
+          longitude: Number.isFinite(parsedLongitude)
+            ? parsedLongitude
+            : originCoords[0],
+          latitude: Number.isFinite(parsedLatitude)
+            ? parsedLatitude
+            : originCoords[1],
+          type: route.location?.type || "HQ",
+        }
+      : {
+          coords: originCoords,
+          longitude: originCoords[0],
+          latitude: originCoords[1],
+          type: "HQ",
+        };
+
     return {
       id: route.id,
-      coordinates: route.stops
-        .map((stop) => [
-          stop.longitude || stop.stop?.longitude,
-          stop.latitude || stop.stop?.latitude,
-        ])
-        .filter((coord) => coord[0] && coord[1]), // Filter out invalid coordinates
-      areas: route.stops.map((stop) => {
-        const employee = stop.employee;
-        if (!employee) return "Unassigned Stop";
-        return `${employee.name}\n${employee.location || ""}`;
-      }),
-      // Add employee user IDs to identify current employee's stop
-      employeeUserIds: route.stops.map((stop) => stop.employee?.userId || null),
+      coordinates: mapStops.coordinates,
+      areas: mapStops.areas,
+      employeeUserIds: mapStops.employeeUserIds,
+      dropOffOrder: mapStops.coordinates.map((_, index) => index),
+      stops: mapStops.coordinates.length,
+      passengers: route.stops?.filter((stop) => stop.employee).length || 0,
+      status: route.status,
+      location: sanitizedLocation,
     };
   }, []);
 
@@ -85,6 +107,27 @@ function DashboardDesktop() {
   const mapRouteData = useMemo(() => {
     return transformRouteForMap(selectedRoute);
   }, [selectedRoute, transformRouteForMap]);
+
+  const selectedShuttleInfo = useMemo(() => {
+    if (!selectedRoute) return null;
+
+    const shuttle = selectedRoute.shuttle || selectedRoute.vehicle;
+    if (!shuttle) return null;
+
+    const capacityCandidate = shuttle.capacity ?? shuttle.category?.capacity ?? shuttle.seatingCapacity;
+
+    return {
+      id: String(shuttle.id || shuttle.name || "shuttle"),
+      name: shuttle.name,
+      capacity: Number.isFinite(Number(capacityCandidate)) ? Number(capacityCandidate) : 0,
+      driver:
+        shuttle.driver?.name ||
+        shuttle.driverName ||
+        selectedRoute.driver?.name ||
+        selectedRoute.driverName ||
+        null,
+    };
+  }, [selectedRoute]);
 
   // Handle map refresh when style or selectedRoute changes
   useEffect(() => {
@@ -94,7 +137,7 @@ function DashboardDesktop() {
 
   // Route selection handler
   const handleRouteSelect = useCallback((route) => {
-    setSelectedRoute(route);
+    setSelectedRoute(route ? withOrderedStops(route) : null);
   }, []);
 
   // Toggle details panel
@@ -107,11 +150,12 @@ function DashboardDesktop() {
     try {
       const routesData = await routeService.getAllRoutes();
       setRoutes(routesData);
-      // Update selected route with fresh data
       if (selectedRoute) {
         const updatedRoute = routesData.find(r => r.id === selectedRoute.id);
         if (updatedRoute) {
-          setSelectedRoute(updatedRoute);
+          setSelectedRoute(withOrderedStops(updatedRoute));
+        } else {
+          setSelectedRoute(null);
         }
       }
     } catch (err) {
@@ -208,8 +252,10 @@ function DashboardDesktop() {
             <div className="absolute inset-0 z-0" key={`map-${mapRefreshCounter.current}`}>
               <MapComponent
                 selectedRoute={mapRouteData}
+                selectedShuttle={selectedShuttleInfo}
                 mapStyle={mapStyle}
                 initialZoom={11.5}
+                enableOptimization
                 currentUserId={user?.id}
               />
             </div>

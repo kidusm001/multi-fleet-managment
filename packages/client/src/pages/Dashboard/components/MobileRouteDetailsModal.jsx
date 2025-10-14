@@ -3,9 +3,10 @@ import { motion, AnimatePresence } from "framer-motion";
 import PropTypes from "prop-types";
 import { useTheme } from "@contexts/ThemeContext";
 import { toast } from "sonner";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { routeService } from "@services/routeService";
 import { createPortal } from "react-dom";
+import { sortStopsBySequence } from "../utils/sortStops";
 
 const MobileRouteDetailsModal = ({
   selectedRoute,
@@ -16,6 +17,7 @@ const MobileRouteDetailsModal = ({
   const { theme } = useTheme();
   const isDark = theme === "dark";
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const orderedStops = useMemo(() => sortStopsBySequence(selectedRoute?.stops), [selectedRoute]);
 
   const handleToggleStatus = async () => {
     try {
@@ -118,7 +120,7 @@ const MobileRouteDetailsModal = ({
                       <p className="text-xs font-medium text-blue-600 dark:text-blue-400">Total Stops</p>
                     </div>
                     <p className="text-2xl font-bold text-blue-700 dark:text-blue-300">
-                      {selectedRoute.stops?.length || 0}
+                      {orderedStops.length}
                     </p>
                   </div>
                   <div className="bg-gradient-to-br from-purple-50 to-purple-100/50 dark:from-purple-900/20 dark:to-purple-800/20 rounded-xl p-3 border border-purple-200/50 dark:border-purple-800/50">
@@ -127,7 +129,7 @@ const MobileRouteDetailsModal = ({
                       <p className="text-xs font-medium text-purple-600 dark:text-purple-400">Passengers</p>
                     </div>
                     <p className="text-2xl font-bold text-purple-700 dark:text-purple-300">
-                      {selectedRoute.stops?.filter(stop => stop.employee)?.length || 0}
+                      {orderedStops.filter(stop => stop.employee)?.length || 0}
                     </p>
                   </div>
                 </div>
@@ -150,7 +152,7 @@ const MobileRouteDetailsModal = ({
                 <div>
                   <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
                     <MapPin className="w-4 h-4 text-[#f3684e] dark:text-[#ff965b]" />
-                    Route Stops ({(selectedRoute.stops?.length || 0) + 1})
+                    Route Stops ({orderedStops.length + 1})
                   </h4>
                   <div className="space-y-3 pb-8">
                     {/* HQ/Work Location - Starting Point */}
@@ -191,9 +193,9 @@ const MobileRouteDetailsModal = ({
                     </div>
 
                     {/* Employee Stops */}
-                    {selectedRoute.stops?.map((stop, index) => (
+                    {orderedStops.map((stop, index) => (
                       <div
-                        key={index}
+                        key={stop.id || index}
                         className={`p-3 rounded-xl border transition-colors ${
                           isDark 
                             ? "bg-gray-800/60 border-gray-700/50 hover:bg-gray-800/80" 

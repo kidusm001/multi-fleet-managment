@@ -11,13 +11,19 @@ import { Input } from "@/components/Common/UI/Input";
 import { optimizeRoute } from "@services/routeOptimization";
 
 import styles from "../styles/ShuttlePreview.module.css";
+import { resolveOriginCoordinates } from "../../../../Dashboard/utils/sortStops";
 
 const ShuttlePreview = ({ routeData, onClose, onAccept, show }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [optimizedRoute, setOptimizedRoute] = useState(null);
   const [routeMetrics, setRouteMetrics] = useState(null);
 
-  const { selectedEmployees = [], selectedShift, selectedShuttle } = routeData;
+  const {
+    selectedEmployees = [],
+    selectedShift,
+    selectedShuttle,
+    selectedLocation,
+  } = routeData;
 
   useEffect(() => {
     if (show) {
@@ -47,20 +53,28 @@ const ShuttlePreview = ({ routeData, onClose, onAccept, show }) => {
             throw new Error("No valid employee stops found");
           }
 
-        // Prepare data for optimization including HQ location and employee stops
+        const originCoords =
+          resolveOriginCoordinates({ location: selectedLocation }) ||
+          MAP_CONFIG.HQ_LOCATION.coords;
+        const originLabel = (selectedLocation?.address || "HQ").replace(
+          /, Ethiopia$/i,
+          ""
+        );
+
+        // Prepare data for optimization including branch location and employee stops
         const routeForOptimization = {
           coordinates: [
-            MAP_CONFIG.HQ_LOCATION.coords, // Start at HQ
+            originCoords,
             ...validEmployees.map((emp) => [
               emp.stop.longitude,
               emp.stop.latitude,
             ]),
-            MAP_CONFIG.HQ_LOCATION.coords, // Return to HQ
+            originCoords,
           ],
           areas: [
-            "HQ",
+            originLabel,
             ...validEmployees.map((emp) => (emp.stop?.address || emp.location || "Unknown").replace(', Ethiopia', '')),
-            "HQ",
+            originLabel,
           ],
         };
 
@@ -71,18 +85,24 @@ const ShuttlePreview = ({ routeData, onClose, onAccept, show }) => {
           throw new Error("Failed to optimize route");
         }
 
-        // Create the optimized route data - use original waypoints to avoid excessive markers
+        const dropOffCoordinates = validEmployees.map((emp) => [
+          emp.stop.longitude,
+          emp.stop.latitude,
+        ]);
+
+        // Create the optimized route data - use drop-offs only for marker rendering
         const optimizedRouteData = {
           id: "preview-route",
-          coordinates: optimized.coordinates, // These are the original waypoints
-          areas: optimized.areas,
+          coordinates: dropOffCoordinates,
+          areas: optimized.areas.slice(1, optimized.areas.length > 1 ? optimized.areas.length - 1 : undefined),
           // Create dropOffOrder based on original waypoints
           dropOffOrder: validEmployees.map((_, i) => i),
           stops: validEmployees.length,
           passengers: validEmployees.length,
           status: "preview",
           // We can use the full route geometry for drawing the route line if needed
-          fullRouteGeometry: optimized.fullRouteGeometry
+          fullRouteGeometry: optimized.fullRouteGeometry,
+          location: selectedLocation,
         };
 
         // Use the exact metrics from Mapbox
@@ -102,7 +122,7 @@ const ShuttlePreview = ({ routeData, onClose, onAccept, show }) => {
     };
 
     calculateOptimalRoute();
-    }, [selectedEmployees, show]);
+  }, [selectedEmployees, selectedLocation, show]);
 
   // Get valid employees (with stops)
   const validEmployees = selectedEmployees.filter(

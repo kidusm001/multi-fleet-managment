@@ -109,21 +109,23 @@ function MapComponent({ selectedRoute, selectedShuttle, newStop, mapStyle, initi
         }
 
         // Add route markers using RouteMarkers component
+        const dropoffWaypoints = optimizedRoute.waypoints.slice(1, -1);
+
         const routeMarkers = RouteMarkers({
           map: map.current,
           route: {
             ...selectedRoute,
-            // Use optimized coordinates and original areas for markers
-            coordinates: optimizedRoute.waypoints
-              .slice(1, -1)
-              .map((wp) => wp.location),
-            areas: optimizedRoute.waypoints
-              .slice(1, -1)
-              .map((wp) => selectedRoute.areas[wp.originalIndex]),
+            // Keep the optimized physical order but realign metadata to the original stop indices
+            coordinates: dropoffWaypoints.map((wp) => wp.location),
+            areas: dropoffWaypoints.map((wp) => {
+              const stopIndex = Math.max((wp.originalIndex ?? 1) - 1, 0);
+              return selectedRoute.areas?.[stopIndex] ?? "Unassigned Stop";
+            }),
             // Pass employee user IDs for current user identification
-            employeeUserIds: optimizedRoute.waypoints
-              .slice(1, -1)
-              .map((wp) => selectedRoute.employeeUserIds?.[wp.originalIndex]),
+            employeeUserIds: dropoffWaypoints.map((wp) => {
+              const stopIndex = Math.max((wp.originalIndex ?? 1) - 1, 0);
+              return selectedRoute.employeeUserIds?.[stopIndex] ?? null;
+            }),
           },
           shuttle: selectedShuttle,
           currentUserId: currentUserId,

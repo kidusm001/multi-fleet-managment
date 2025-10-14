@@ -32,6 +32,11 @@ import Pagination from "./components/Pagination";
 import RouteDetailDrawer from "./components/RouteDetailDrawer";
 import RouteTable from "./components/RouteTable";
 import StatsPanel from "./components/StatsPanel";
+import {
+  resolveOriginCoordinates,
+  toMapStops,
+  withOrderedStops
+} from "../../../Dashboard/utils/sortStops";
 
 // Constants for pagination
 const ITEMS_PER_PAGE = {
@@ -159,8 +164,10 @@ function RouteManagementView({ refreshTrigger }) {
         })),
       }));
 
-      setRoutes(enhancedRoutes);
-      setFilteredRoutes(enhancedRoutes);
+  const normalizedRoutes = enhancedRoutes.map((route) => withOrderedStops(route));
+
+  setRoutes(normalizedRoutes);
+  setFilteredRoutes(normalizedRoutes);
       setShuttles(shuttlesData);
       setDepartments(departmentsData);
       setShifts(shiftsData);
@@ -276,7 +283,7 @@ function RouteManagementView({ refreshTrigger }) {
       // Update selected route with fresh data
       if (selectedRoute) {
         const updatedRoute = await routeService.getRouteById(selectedRoute.id);
-        setSelectedRoute(updatedRoute);
+        setSelectedRoute(withOrderedStops(updatedRoute));
       }
     } catch (err) {
       console.error("Error refreshing routes:", err);
@@ -284,19 +291,22 @@ function RouteManagementView({ refreshTrigger }) {
   };
 
   const handleMapPreview = (route) => {
+    const orderedRoute = withOrderedStops(route);
+    const originCoords = resolveOriginCoordinates(orderedRoute);
+    const mapStops = toMapStops(orderedRoute.stops, originCoords);
+
     const routeForMap = {
-      id: route.id,
-      coordinates: route.stops.map((stop) => [stop.longitude, stop.latitude]),
-      areas: route.stops.map((stop) => {
-        const employee = stop.employee;
-        if (!employee) return "Unknown";
-        return `${employee.firstName} ${employee.lastName}\n${employee.location}`;
-      }),
-      dropOffOrder: route.stops.map((_, i) => i),
-      stops: route.stops.length,
-      passengers: route.stops.filter((stop) => stop.employee).length,
-      status: route.status,
+      id: orderedRoute.id,
+      coordinates: mapStops.coordinates,
+      areas: mapStops.areas,
+      employeeUserIds: mapStops.employeeUserIds,
+      dropOffOrder: mapStops.coordinates.map((_, index) => index),
+      stops: mapStops.coordinates.length,
+      passengers: orderedRoute.stops.filter((stop) => stop.employee).length,
+      status: orderedRoute.status,
+      location: orderedRoute.location,
     };
+
     setSelectedRouteForMap(routeForMap);
     setShowMap(true);
   };
@@ -375,7 +385,7 @@ function RouteManagementView({ refreshTrigger }) {
   };
 
   const handleRouteClick = (route) => {
-    setSelectedRoute(route);
+    setSelectedRoute(withOrderedStops(route));
   };
 
   // Loading state

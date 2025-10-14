@@ -49,7 +49,7 @@ export async function addRouteLayer({ map, route, enableOptimization = true }) {
     if (!isMapReady(map)) return null;
 
     // Determine route color based on optimization status
-    const routeColor = optimizedRoute.optimized ? "#4272FF" : "#FFA500"; // Blue for optimized, Orange for fallback
+  const routeColor = optimizedRoute.usingFallback ? "#FFA500" : "#4272FF"; // Blue for API routes, Orange for fallback
 
     // Add the route source and layer
     if (!map.getSource("route")) {
@@ -86,7 +86,7 @@ export async function addRouteLayer({ map, route, enableOptimization = true }) {
     }
 
     // Log optimization status for user feedback
-    if (!optimizedRoute.optimized) {
+    if (optimizedRoute.usingFallback) {
       console.warn("Route optimization failed, showing fallback route. Check Mapbox configuration.");
     }
 
