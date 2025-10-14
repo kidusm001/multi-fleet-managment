@@ -21,6 +21,7 @@ import attendanceRoutes from './attendance';
 import payrollPeriodRoutes from './payroll-periods';
 import cacheRoutes from './cache';
 import invitationRoutes from './invitation';
+import searchRoutes from './search';
 // import shiftRoutes from './shiftRoutes';
 // import employeeRoutes from './employeeRoutes';
 // import routeRoutes from './routeRoutes';
@@ -66,6 +67,7 @@ router.use('/attendance', attendanceRoutes);
 router.use('/payroll-periods', payrollPeriodRoutes);
 router.use('/cache', cacheRoutes);
 router.use('/accept-invitation', invitationRoutes);
+router.use('/search', searchRoutes);
 
 // Register routes
 // router.use('/shifts', shiftRoutes);
