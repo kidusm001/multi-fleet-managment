@@ -119,32 +119,39 @@ function Map({ selectedRoute, showDirections = false }) {
         });
       }
 
-      // Add markers for each stop
+      // Add numbered markers for each stop
       selectedRoute.stops.forEach((stop, idx) => {
         const lat = stop.latitude || stop.stop?.latitude;
         const lng = stop.longitude || stop.stop?.longitude;
         if (!lat || !lng) return;
 
+        // Create numbered marker element
         const el = document.createElement("div");
-        el.className = "marker";
-        el.style.width = "24px";
-        el.style.height = "24px";
-        el.style.backgroundImage =
-          "url(https://docs.mapbox.com/mapbox-gl-js/assets/custom_marker.png)";
-        el.style.backgroundSize = "cover";
-        el.style.borderRadius = "50%";
-        el.style.border = "2px solid #fff";
-        el.style.boxShadow = "0 2px 4px rgba(0,0,0,0.2)";
-        el.style.cursor = "pointer";
+        el.className = "drop-off-order";
+        el.style.cssText = `
+          background-color: #4272FF;
+          color: white;
+          padding: 6px 10px;
+          border-radius: 16px;
+          font-size: 14px;
+          font-weight: bold;
+          border: 3px solid white;
+          box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+          z-index: 1;
+          cursor: pointer;
+        `;
+        el.innerHTML = (idx + 1).toString();
 
-        const marker = new mapboxgl.Marker(el)
+        const marker = new mapboxgl.Marker({
+          element: el,
+          anchor: "center",
+        })
           .setLngLat([lng, lat])
           .setPopup(
-            new mapboxgl.Popup({ offset: 25 }).setHTML(`
+            new mapboxgl.Popup({ offset: 25, closeButton: false, className: "drop-off-popup" }).setHTML(`
               <div class="p-3 min-w-[200px]">
-                <h3 class="font-medium text-base mb-1">${
-                  stop.location || stop.name
-                }</h3>
+                <h3 class="font-medium text-base mb-1">Stop ${idx + 1}</h3>
+                <p class="text-sm mb-1">${stop.location || stop.name}</p>
                 ${
                   idx === 0
                     ? '<span class="text-xs px-2 py-1 bg-primary/10 text-primary rounded-full">Starting Point</span>'
@@ -159,6 +166,12 @@ function Map({ selectedRoute, showDirections = false }) {
             `)
           )
           .addTo(map.current);
+
+        // Handle click event to close other popups
+        el.addEventListener("click", (e) => {
+          e.stopPropagation();
+          document.querySelectorAll(".mapboxgl-popup").forEach((p) => p.remove());
+        });
 
         markersRef.current.push(marker);
       });

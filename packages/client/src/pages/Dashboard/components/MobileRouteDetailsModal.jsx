@@ -146,13 +146,51 @@ const MobileRouteDetailsModal = ({
                   {isUpdatingStatus ? "Updating..." : selectedRoute.status === "ACTIVE" ? "Deactivate Route" : "Activate Route"}
                 </button>
 
-                {/* Drop-off Points */}
+                {/* Route Stops */}
                 <div>
                   <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
                     <MapPin className="w-4 h-4 text-[#f3684e] dark:text-[#ff965b]" />
-                    Drop-off Points ({selectedRoute.stops?.length || 0})
+                    Route Stops ({(selectedRoute.stops?.length || 0) + 1})
                   </h4>
-                  <div className="space-y-3">
+                  <div className="space-y-3 pb-8">
+                    {/* HQ/Work Location - Starting Point */}
+                    <div
+                      className={`p-3 rounded-xl border-2 transition-colors ${
+                        isDark 
+                          ? "bg-emerald-900/20 border-emerald-700/50" 
+                          : "bg-emerald-50 border-emerald-200"
+                      }`}
+                    >
+                      <div className="flex items-start gap-3">
+                        {/* HQ Badge */}
+                        <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                          isDark 
+                            ? "bg-emerald-900/40 text-emerald-400 border border-emerald-700/50" 
+                            : "bg-emerald-100 text-emerald-600 border border-emerald-200"
+                        }`}>
+                          HQ
+                        </div>
+
+                        {/* HQ Details */}
+                        <div className="flex-1 min-w-0">
+                          <div className="mb-2">
+                            <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                              {selectedRoute.location?.type === 'BRANCH' ? 'Branch Office' : 'Head Quarters'}
+                            </p>
+                          </div>
+                          <div className="space-y-1.5">
+                            <div className="flex items-start gap-2 text-xs text-gray-600 dark:text-gray-400">
+                              <MapPin className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                              <span className="break-words flex-1">
+                                {selectedRoute.location?.address || 'Addis Ababa, Ethiopia'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Employee Stops */}
                     {selectedRoute.stops?.map((stop, index) => (
                       <div
                         key={index}
@@ -198,7 +236,7 @@ const MobileRouteDetailsModal = ({
                               <div className="space-y-1.5">
                                 <div className="flex items-start gap-2 text-xs text-gray-600 dark:text-gray-400">
                                   <MapPin className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-                                  <span className="break-words flex-1">{stop.employee.location}</span>
+                                  <span className="break-words flex-1">{stop.address || stop.location || stop.employee.location || 'Address not available'}</span>
                                 </div>
                                 {stop.employee.phone && (
                                   <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
@@ -251,6 +289,10 @@ MobileRouteDetailsModal.propTypes = {
     name: PropTypes.string.isRequired,
     status: PropTypes.string.isRequired,
     nextDeparture: PropTypes.string,
+    location: PropTypes.shape({
+      address: PropTypes.string,
+      type: PropTypes.string,
+    }),
     stops: PropTypes.arrayOf(
       PropTypes.shape({
         employee: PropTypes.shape({

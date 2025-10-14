@@ -152,15 +152,50 @@ const RouteDetails = ({
           {/* Drop-off Points */}
           <div className="flex-1 overflow-hidden">
             <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">
-              Drop-off Points
+              Route Stops
             </h4>
             <div 
               className="space-y-2.5 overflow-y-auto custom-scrollbar pr-2"
               style={{
                 height: "300px",
-                paddingBottom: "24px"
+                paddingBottom: "60px"
               }}
             >
+              {/* HQ/Work Location - Starting Point */}
+              <div
+                className={`p-3 rounded-lg border-2 ${
+                  isDark 
+                    ? "bg-emerald-900/20 border-emerald-700/50" 
+                    : "bg-emerald-50 border-emerald-200"
+                }`}
+              >
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium text-gray-900 dark:text-white flex items-center gap-2">
+                      <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold ${
+                        isDark 
+                          ? "bg-emerald-900/40 text-emerald-400" 
+                          : "bg-emerald-100 text-emerald-600"
+                      }`}>
+                        HQ
+                      </span>
+                      <span className="truncate max-w-[180px]">
+                        {selectedRoute.location?.type === 'BRANCH' ? 'Branch Office' : 'Head Quarters'}
+                      </span>
+                    </p>
+                  </div>
+                  <div className="ml-7 space-y-1.5">
+                    <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+                      <MapPin className="w-3.5 h-3.5 shrink-0" />
+                      <span className="truncate">
+                        {selectedRoute.location?.address || 'Addis Ababa, Ethiopia'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Employee Stops */}
               {selectedRoute.stops?.map((stop, index) => (
                 <div
                   key={index}
@@ -198,7 +233,7 @@ const RouteDetails = ({
                       <div className="ml-7 space-y-1.5">
                         <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
                           <MapPin className="w-3.5 h-3.5 shrink-0" />
-                          <span className="truncate">{stop.employee.location}</span>
+                          <span className="truncate">{stop.address || stop.location || stop.employee.location || 'Address not available'}</span>
                         </div>
                         {stop.employee.phone && (
                           <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
@@ -231,6 +266,10 @@ RouteDetails.propTypes = {
     name: PropTypes.string.isRequired,
     status: PropTypes.string.isRequired,
     nextDeparture: PropTypes.string,
+    location: PropTypes.shape({
+      address: PropTypes.string,
+      type: PropTypes.string,
+    }),
     stops: PropTypes.arrayOf(
       PropTypes.shape({
         employee: PropTypes.shape({

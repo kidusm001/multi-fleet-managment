@@ -127,6 +127,7 @@ function MapComponent({ selectedRoute, selectedShuttle, newStop, mapStyle, initi
           },
           shuttle: selectedShuttle,
           currentUserId: currentUserId,
+          enableHoverHUD: !enableOptimization, // Enable hover HUD for dashboard (non-optimization) view only
         });
         markersRef.current.push(...routeMarkers);
 
@@ -229,7 +230,7 @@ function MapComponent({ selectedRoute, selectedShuttle, newStop, mapStyle, initi
           },
         });
 
-        // Add markers for each stop
+        // Add markers for each stop with hover HUD enabled for dashboard view
         selectedRoute.coordinates.forEach((coord, idx) => {
           // Create marker element
           const el = document.createElement("div");
@@ -245,8 +246,43 @@ function MapComponent({ selectedRoute, selectedShuttle, newStop, mapStyle, initi
             box-shadow: 0 2px 4px rgba(0,0,0,0.2);
             z-index: 1;
             cursor: pointer;
+            transition: transform 0.2s ease;
           `;
           el.innerHTML = (idx + 1).toString();
+
+          // Create HUD element for hover (dashboard view only)
+          const hud = document.createElement("div");
+          hud.className = "marker-hover-hud";
+          hud.style.cssText = `
+            position: absolute;
+            background: rgba(0, 0, 0, 0.85);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            pointer-events: none;
+            z-index: 1000;
+            white-space: nowrap;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            display: none;
+            transform: translateX(-50%) translateY(-110%);
+            left: 50%;
+            bottom: 0;
+          `;
+          
+          // Extract employee info from area string
+          const area = selectedRoute.areas[idx];
+          const lines = area.split('\n');
+          const employeeName = lines[0] || 'Unknown';
+          const location = lines[1] || '';
+          
+          hud.innerHTML = `
+            <div style="font-weight: bold; margin-bottom: 2px;">Stop ${idx + 1}</div>
+            <div style="font-size: 11px;">${employeeName}</div>
+            ${location ? `<div style="font-size: 10px; opacity: 0.8;">${location}</div>` : ''}
+          `;
+          
+          el.appendChild(hud);
 
           // Create popup for marker
           const popup = new mapboxgl.Popup({
@@ -278,6 +314,17 @@ function MapComponent({ selectedRoute, selectedShuttle, newStop, mapStyle, initi
               .querySelectorAll(".mapboxgl-popup")
               .forEach((p) => p.remove());
             popup.addTo(map.current);
+          });
+
+          // Add hover events for HUD (dashboard view only)
+          el.addEventListener("mouseenter", () => {
+            hud.style.display = "block";
+            el.style.transform = 'scale(1.15)';
+          });
+
+          el.addEventListener("mouseleave", () => {
+            hud.style.display = "none";
+            el.style.transform = 'scale(1)';
           });
 
           markersRef.current.push(marker);

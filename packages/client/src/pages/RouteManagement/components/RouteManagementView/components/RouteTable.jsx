@@ -119,7 +119,7 @@ const RouteTable = ({ routes, onRouteClick }) => {
             department: department?.name || "N/A",
             departmentId: department?.id,
             pickupLocation: "HQ",
-            dropOffLocation: stop.employee?.location || "N/A",
+            dropOffLocation: stop.address || stop.location || stop.employee?.location || "N/A",
             driver: {
               name: (route.shuttle?.driver?.name || route.vehicle?.driver?.name) || "Not Assigned",
               phone: (route.shuttle?.driver?.phone || route.vehicle?.driver?.phone) || "N/A",
