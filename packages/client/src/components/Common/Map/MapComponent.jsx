@@ -124,11 +124,21 @@ function MapComponent({ selectedRoute, selectedShuttle, newStop, mapStyle, initi
             // Pass employee user IDs for current user identification
             employeeUserIds: dropoffWaypoints.map((wp) => {
               const stopIndex = Math.max((wp.originalIndex ?? 1) - 1, 0);
-              return selectedRoute.employeeUserIds?.[stopIndex] ?? null;
+              const employeeId = selectedRoute.employeeUserIds?.[stopIndex];
+              return employeeId == null ? null : String(employeeId);
+            }),
+            stopNumbers: dropoffWaypoints.map((wp) => {
+              const stopIndex = Math.max((wp.originalIndex ?? 1) - 1, 0);
+              const stopNumber = selectedRoute.stopNumbers?.[stopIndex];
+              return Number.isFinite(stopNumber) ? stopNumber : stopIndex + 1;
+            }),
+            originalStopIndices: dropoffWaypoints.map((wp) => {
+              const stopIndex = Math.max((wp.originalIndex ?? 1) - 1, 0);
+              return stopIndex;
             }),
           },
           shuttle: selectedShuttle,
-          currentUserId: currentUserId,
+          currentUserId,
           enableHoverHUD: !enableOptimization, // Enable hover HUD for dashboard (non-optimization) view only
         });
         markersRef.current.push(...routeMarkers);
@@ -234,6 +244,7 @@ function MapComponent({ selectedRoute, selectedShuttle, newStop, mapStyle, initi
 
         // Add markers for each stop with hover HUD enabled for dashboard view
         selectedRoute.coordinates.forEach((coord, idx) => {
+          const stopNumber = selectedRoute.stopNumbers?.[idx] ?? idx + 1;
           // Create marker element
           const el = document.createElement("div");
           el.className = "drop-off-order";
@@ -250,7 +261,7 @@ function MapComponent({ selectedRoute, selectedShuttle, newStop, mapStyle, initi
             cursor: pointer;
             transition: transform 0.2s ease;
           `;
-          el.innerHTML = (idx + 1).toString();
+          el.innerHTML = stopNumber.toString();
 
           // Create HUD element for hover (dashboard view only)
           const hud = document.createElement("div");
@@ -279,7 +290,7 @@ function MapComponent({ selectedRoute, selectedShuttle, newStop, mapStyle, initi
           const location = lines[1] || '';
           
           hud.innerHTML = `
-            <div style="font-weight: bold; margin-bottom: 2px;">Stop ${idx + 1}</div>
+            <div style="font-weight: bold; margin-bottom: 2px;">Stop ${stopNumber}</div>
             <div style="font-size: 11px;">${employeeName}</div>
             ${location ? `<div style="font-size: 10px; opacity: 0.8;">${location}</div>` : ''}
           `;
@@ -295,7 +306,7 @@ function MapComponent({ selectedRoute, selectedShuttle, newStop, mapStyle, initi
             anchor: "bottom",
           }).setHTML(`
             <div style="padding: 8px;">
-              <div style="font-weight: bold;">Drop-off Point ${idx + 1}</div>
+              <div style="font-weight: bold;">Drop-off Point ${stopNumber}</div>
               <div>${selectedRoute.areas[idx]}</div>
             </div>
           `);
@@ -708,6 +719,7 @@ MapComponent.propTypes = {
     coordinates: PropTypes.arrayOf(PropTypes.arrayOf(PropTypes.number)),
     areas: PropTypes.arrayOf(PropTypes.string),
     dropOffOrder: PropTypes.arrayOf(PropTypes.number),
+    stopNumbers: PropTypes.arrayOf(PropTypes.number),
     employeeUserIds: PropTypes.arrayOf(PropTypes.string),
   }),
   selectedShuttle: PropTypes.any,

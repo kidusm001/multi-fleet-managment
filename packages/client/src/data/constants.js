@@ -1,16 +1,23 @@
-export const MAP_CONFIG = {
-  HQ_LOCATION: {
-  name: import.meta.env.VITE_HQ_NAME || "Routegna (HQ)",
-    coords: [
-      parseFloat(import.meta.env.VITE_HQ_LONGITUDE),
-      parseFloat(import.meta.env.VITE_HQ_LATITUDE)
-    ]
-  },
-  darkStyle: import.meta.env.VITE_MAPBOX_DARK_STYLE,
-  lightStyle: import.meta.env.VITE_MAPBOX_LIGHT_STYLE
+import { getEnv } from "@/utils/env";
+
+const parseCoordinate = (value) => {
+  const parsed = parseFloat(value);
+  return Number.isFinite(parsed) ? parsed : undefined;
 };
 
-export const MAPBOX_ACCESS_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
+export const MAP_CONFIG = {
+  HQ_LOCATION: {
+    name: getEnv("VITE_HQ_NAME") || "Routegna (HQ)",
+    coords: [
+      parseCoordinate(getEnv("VITE_HQ_LONGITUDE")),
+      parseCoordinate(getEnv("VITE_HQ_LATITUDE"))
+    ]
+  },
+  darkStyle: getEnv("VITE_MAPBOX_DARK_STYLE"),
+  lightStyle: getEnv("VITE_MAPBOX_LIGHT_STYLE")
+};
+
+export const MAPBOX_ACCESS_TOKEN = getEnv("VITE_MAPBOX_ACCESS_TOKEN");
 
 export const ROLES = {
   SUPERADMIN: 'superadmin',

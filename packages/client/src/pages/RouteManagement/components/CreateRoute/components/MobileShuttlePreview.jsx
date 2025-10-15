@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { MAP_CONFIG } from "@data/constants";
 import { Input } from "@/components/Common/UI/Input";
 import { optimizeRoute } from "@services/routeOptimization";
+import { formatDisplayAddress } from "@/utils/address";
 
 const MobileShuttlePreview = ({ routeData, onClose, onAccept, show }) => {
   const [isLoading, setIsLoading] = useState(false);
@@ -57,7 +58,10 @@ const MobileShuttlePreview = ({ routeData, onClose, onAccept, show }) => {
           ],
           areas: [
             "HQ",
-            ...validEmployees.map((emp) => (emp.stop?.address || emp.location || "Unknown").replace(', Ethiopia', '')),
+            ...validEmployees.map((emp) =>
+              formatDisplayAddress(emp.stop?.address || emp.location || "Unknown") ||
+              "Unknown"
+            ),
             "HQ",
           ],
         };
@@ -142,11 +146,14 @@ const MobileShuttlePreview = ({ routeData, onClose, onAccept, show }) => {
 
         if (distance > furthestDistance) {
           furthestDistance = distance;
-          // Use stop address and extract first two parts (excluding Addis Ababa and Ethiopia)
-          let fullAddress = (employee.stop?.address || employee.location || '');
-          // Remove Ethiopia and Addis Ababa
-          fullAddress = fullAddress.replace(/, Ethiopia/g, '').replace(/, Addis Ababa/g, '');
-          const addressParts = fullAddress.split(',').map(part => part.trim()).filter(part => part);
+          // Use stop address and extract first two parts after removing the leading segment
+          const formattedAddress = formatDisplayAddress(
+            employee.stop?.address || employee.location || ''
+          );
+          const addressParts = formattedAddress
+            .split(',')
+            .map(part => part.trim())
+            .filter(part => part);
           // Take first two parts and join them
           furthestArea = addressParts.slice(0, 2).join(' ');
         }
@@ -373,7 +380,11 @@ const MobileShuttlePreview = ({ routeData, onClose, onAccept, show }) => {
                       </div>
                     </div>
                     <Badge variant="secondary" className="text-xs shrink-0">
-                      {(employee.stop?.address || employee.workLocation?.address || 'N/A').replace(', Ethiopia', '')}
+                      {formatDisplayAddress(
+                        employee.stop?.address ||
+                          employee.workLocation?.address ||
+                          'N/A'
+                      ) || 'N/A'}
                     </Badge>
                   </div>
                 ))}

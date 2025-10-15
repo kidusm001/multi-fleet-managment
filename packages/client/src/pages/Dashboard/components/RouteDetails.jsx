@@ -6,7 +6,8 @@ import { useRole } from "@contexts/RoleContext";
 import { toast } from "sonner";
 import { useMemo, useState } from "react";
 import { routeService } from "@services/routeService";
-import { sortStopsBySequence } from "../utils/sortStops";
+import { resolveOriginCoordinates, sortStopsBySequence } from "../utils/sortStops";
+import { formatDisplayAddress } from "@/utils/address";
 
 const RouteDetails = ({
   selectedRoute,
@@ -19,7 +20,38 @@ const RouteDetails = ({
   const isDark = theme === "dark";
   const isEmployee = role === 'employee';
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
-  const orderedStops = useMemo(() => sortStopsBySequence(selectedRoute?.stops), [selectedRoute]);
+
+  const hasValidCoordinates = (stop) => {
+    const longitude = stop?.longitude ?? stop?.stop?.longitude;
+    const latitude = stop?.latitude ?? stop?.stop?.latitude;
+
+    const lon = typeof longitude === "string" ? Number.parseFloat(longitude) : longitude;
+    const lat = typeof latitude === "string" ? Number.parseFloat(latitude) : latitude;
+
+    return Number.isFinite(lon) && Number.isFinite(lat);
+  };
+
+  const { mappedStops, unmappedStops } = useMemo(() => {
+    if (!selectedRoute?.stops) {
+      return { mappedStops: [], unmappedStops: [] };
+    }
+
+    const originCoords = resolveOriginCoordinates(selectedRoute);
+    const sorted = sortStopsBySequence(selectedRoute.stops, originCoords);
+
+    const withCoords = [];
+    const withoutCoords = [];
+
+    sorted.forEach((stop) => {
+      if (hasValidCoordinates(stop)) {
+        withCoords.push(stop);
+      } else {
+        withoutCoords.push(stop);
+      }
+    });
+
+    return { mappedStops: withCoords, unmappedStops: withoutCoords };
+  }, [selectedRoute]);
 
   const handleToggleStatus = async () => {
     try {
@@ -138,7 +170,7 @@ const RouteDetails = ({
             <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-2">
               <p className="text-sm text-gray-500 dark:text-gray-400">Stops</p>
               <p className="text-lg font-semibold text-gray-900 dark:text-white">
-                {orderedStops.length}
+                {mappedStops.length}
               </p>
             </div>
             <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-2">
@@ -146,7 +178,7 @@ const RouteDetails = ({
                 Passengers
               </p>
               <p className="text-lg font-semibold text-gray-900 dark:text-white">
-                {orderedStops.filter(stop => stop.employee)?.length || 0}
+                {mappedStops.filter(stop => stop.employee)?.length || 0}
               </p>
             </div>
           </div>
@@ -190,7 +222,10 @@ const RouteDetails = ({
                     <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
                       <MapPin className="w-3.5 h-3.5 shrink-0" />
                       <span className="truncate">
-                        {selectedRoute.location?.address || 'Addis Ababa, Ethiopia'}
+                        {formatDisplayAddress(
+                          selectedRoute.location?.address ||
+                            'Addis Ababa, Ethiopia'
+                        ) || 'Addis Ababa, Ethiopia'}
                       </span>
                     </div>
                   </div>
@@ -198,7 +233,7 @@ const RouteDetails = ({
               </div>
 
               {/* Employee Stops */}
-              {orderedStops.map((stop, index) => (
+              {mappedStops.map((stop, index) => (
                 <div
                   key={stop.id || index}
                   className={`p-3 rounded-lg ${
@@ -235,7 +270,14 @@ const RouteDetails = ({
                       <div className="ml-7 space-y-1.5">
                         <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
                           <MapPin className="w-3.5 h-3.5 shrink-0" />
-                          <span className="truncate">{stop.address || stop.location || stop.employee.location || 'Address not available'}</span>
+                          <span className="truncate">
+                            {formatDisplayAddress(
+                              stop.address ||
+                                stop.location ||
+                                stop.employee.location ||
+                                'Address not available'
+                            ) || 'Address not available'}
+                          </span>
                         </div>
                         {stop.employee.phone && (
                           <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
@@ -254,6 +296,29 @@ const RouteDetails = ({
                   </div>
                 </div>
               ))}
+
+              {unmappedStops.length > 0 && (
+                <div className="mt-4 space-y-2">
+                  <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                    Stops Needing Location Data
+                  </h4>
+                  {unmappedStops.map((stop, index) => (
+                    <div
+                      key={`unmapped-${stop.id || index}`}
+                      className={`p-3 rounded-lg border ${
+                        isDark ? "border-gray-700 bg-gray-800/60" : "border-gray-200 bg-white"
+                      }`}
+                    >
+                      <p className="text-sm font-medium text-gray-900 dark:text-white">
+                        {stop.employee ? stop.employee.name : "Unassigned Stop"}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                        Location information missing – update employee stop details to include this stop on the map.
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>

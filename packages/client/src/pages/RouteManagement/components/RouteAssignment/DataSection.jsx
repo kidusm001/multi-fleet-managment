@@ -24,6 +24,7 @@ import {
   SelectValue,
 } from "@/components/Common/UI/Select";
 import LoadingAnimation from "@/components/Common/LoadingAnimation";
+import { formatDisplayAddress } from "@/utils/address";
 
 function DataSection({
   selectedShift,
@@ -62,9 +63,9 @@ function DataSection({
     const locSet = new Set(
       availableEmployees
         .map((emp) => {
-          const workLocation = emp.workLocation?.address;
-          const stopAddress = emp.stop?.address;
-          return [workLocation, stopAddress].filter(loc => loc && loc.trim() !== "");
+          const workLocation = formatDisplayAddress(emp.workLocation?.address);
+          const stopAddress = formatDisplayAddress(emp.stop?.address);
+          return [workLocation, stopAddress].filter((loc) => loc && loc.trim() !== "");
         })
         .flat()
     );
@@ -85,8 +86,8 @@ function DataSection({
           ? employee.department.name === selectedDepartment
           : employee.department === selectedDepartment;
 
-      const employeeWorkLocation = employee.workLocation?.address;
-      const employeeStopAddress = employee.stop?.address;
+    const employeeWorkLocation = formatDisplayAddress(employee.workLocation?.address);
+    const employeeStopAddress = formatDisplayAddress(employee.stop?.address);
       const matchesLocation =
         selectedLocation === "all"
           ? true
@@ -393,10 +394,10 @@ function DataSection({
                       </div>
                     </td>
                     <td className="py-2 md:py-4 px-3 md:px-6 text-xs md:text-sm text-gray-500 dark:text-muted-foreground">
-                      {employee.workLocation?.address || "No Work Location"}
+                      {formatDisplayAddress(employee.workLocation?.address) || "No Work Location"}
                     </td>
                     <td className="py-2 md:py-4 px-3 md:px-6 text-xs md:text-sm text-gray-500 dark:text-muted-foreground">
-                      {employee.stop?.address || "No Stop Address"}
+                      {formatDisplayAddress(employee.stop?.address) || "No Stop Address"}
                     </td>
                     <td className="py-2 md:py-4 px-3 md:px-6">
                       <span className="inline-flex items-center px-1.5 md:px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100/50 dark:bg-primary/10 text-indigo-600 dark:text-primary">

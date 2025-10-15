@@ -2,6 +2,7 @@ import { useState } from "react";
 import PropTypes from "prop-types";
 import { ArrowUpDown, Check, AlertCircle, Loader2 } from "lucide-react";
 import { Badge } from "@/components/Common/UI/Badge";
+import { formatDisplayAddress } from "@/utils/address";
 
 import styles from "../styles/SortableEmployeeTable.module.css";
 
@@ -43,8 +44,12 @@ export default function SortableEmployeeTable({
 
     // Special handling for location sorting
     if (sortConfig.key === "location") {
-      aValue = (a.stop?.address || a.workLocation?.address || "").replace(', Ethiopia', '');
-      bValue = (b.stop?.address || b.workLocation?.address || "").replace(', Ethiopia', '');
+      aValue = formatDisplayAddress(
+        a.stop?.address || a.workLocation?.address || ""
+      );
+      bValue = formatDisplayAddress(
+        b.stop?.address || b.workLocation?.address || ""
+      );
     }
 
     // Special handling for status sorting
@@ -188,7 +193,11 @@ export default function SortableEmployeeTable({
                 <td className="font-medium">{employee.name}</td>
                 <td>
                   <Badge variant="outline" className="font-normal">
-                    {(employee.stop?.address || employee.workLocation?.address || 'N/A').replace(', Ethiopia', '')}
+                    {formatDisplayAddress(
+                      employee.stop?.address ||
+                        employee.workLocation?.address ||
+                        "N/A"
+                    ) || "N/A"}
                   </Badge>
                 </td>
                 <td>

@@ -65,6 +65,7 @@ function Map({ route }) {
 
       // Add numbered markers for each stop
       route.coordinates.forEach((coord, idx) => {
+        const stopNumber = route.stopNumbers?.[idx] ?? idx + 1;
         // Create numbered marker element
         const el = document.createElement("div");
         el.className = "drop-off-order";
@@ -80,7 +81,7 @@ function Map({ route }) {
           z-index: 1;
           cursor: pointer;
         `;
-        el.innerHTML = (idx + 1).toString();
+        el.innerHTML = stopNumber.toString();
 
         const marker = new mapboxgl.Marker({
           element: el,
@@ -90,7 +91,7 @@ function Map({ route }) {
           .setPopup(
             new mapboxgl.Popup({ closeButton: false, className: "drop-off-popup" }).setHTML(`
               <div style="padding: 8px;">
-                <div style="font-weight: bold;">Stop ${idx + 1}</div>
+                <div style="font-weight: bold;">Stop ${stopNumber}</div>
                 <div>${route.areas[idx]}</div>
               </div>
             `)
@@ -148,6 +149,7 @@ Map.propTypes = {
       PropTypes.arrayOf(PropTypes.number.isRequired).isRequired
     ).isRequired,
     areas: PropTypes.arrayOf(PropTypes.string.isRequired).isRequired,
+    stopNumbers: PropTypes.arrayOf(PropTypes.number),
   }),
 }
 

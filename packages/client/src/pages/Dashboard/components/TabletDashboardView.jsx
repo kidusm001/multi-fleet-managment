@@ -2,8 +2,11 @@ import React, { useState, useCallback, useMemo, Suspense, useEffect, useRef } fr
 import { MapPin, Users, Bus } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
 import { useTheme } from "@contexts/ThemeContext";
+import { useAuth } from "@contexts/AuthContext";
+import { useRole } from "@contexts/RoleContext";
 import { ErrorBoundary } from "@components/Common/ErrorBoundary";
 import { routeService } from "@services/routeService";
+import { ROLES } from "@data/constants";
 
 import SearchAndFilter from "./SearchAndFilter";
 import RouteList from "./RouteList";
@@ -30,6 +33,8 @@ function TabletDashboardView() {
   const [selectedRoute, setSelectedRoute] = useState(null);
   const [isDetailsExpanded, setIsDetailsExpanded] = useState(false);
   const { theme } = useTheme();
+  const { user } = useAuth();
+  const { role: activeRole, userRole: accountRole } = useRole();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [loading, setLoading] = useState(true);
@@ -72,7 +77,8 @@ function TabletDashboardView() {
       id: route.id,
       coordinates: mapStops.coordinates,
       areas: mapStops.areas,
-      employeeUserIds: mapStops.employeeUserIds,
+      employeeUserIds: mapStops.employeeUserIds.map((id) => (id == null ? null : String(id))),
+      stopNumbers: mapStops.stopNumbers,
       location: route.location,
     };
   }, []);
@@ -81,6 +87,23 @@ function TabletDashboardView() {
   const mapRouteData = useMemo(() => {
     return transformRouteForMap(selectedRoute);
   }, [selectedRoute, transformRouteForMap]);
+
+  const mapCurrentUserId = useMemo(() => {
+    const normalizedRoles = Array.isArray(user?.roles)
+      ? user.roles
+          .map((role) => (typeof role === "string" ? role.trim().toLowerCase() : null))
+          .filter(Boolean)
+      : [];
+
+    const fallbackRole = typeof user?.role === "string" ? user.role.trim().toLowerCase() : null;
+    const calculatedRole = activeRole ?? accountRole ?? normalizedRoles.find(Boolean) ?? fallbackRole;
+
+    if (calculatedRole !== ROLES.EMPLOYEE) {
+      return null;
+    }
+
+    return user?.id != null ? String(user.id) : null;
+  }, [activeRole, accountRole, user?.roles, user?.role, user?.id]);
 
   // Handle map refresh when style or selectedRoute changes
   useEffect(() => {
@@ -204,6 +227,7 @@ function TabletDashboardView() {
                 mapStyle={mapStyle}
                 initialZoom={11.5}
                 enableOptimization={false}
+                currentUserId={mapCurrentUserId}
               />
             </div>
           </Suspense>

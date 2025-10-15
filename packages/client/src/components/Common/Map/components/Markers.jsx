@@ -2,6 +2,7 @@ import PropTypes from "prop-types";
 import mapboxgl from "mapbox-gl";
 
 import { HQ_LOCATION } from "@/config";
+import { formatDisplayAddress } from "@/utils/address";
 
 export function HQMarker({ map, location = null }) {
   // Use provided location or fallback to default HQ
@@ -24,6 +25,11 @@ export function HQMarker({ map, location = null }) {
   `;
   el.innerHTML = markerLocation.type === 'BRANCH' ? "Branch" : "HQ";
 
+  const formattedAddress =
+    formatDisplayAddress(markerLocation.address || "Addis Ababa, Ethiopia") ||
+    markerLocation.address ||
+    "Addis Ababa, Ethiopia";
+
   const popup = new mapboxgl.Popup({
     closeButton: false,
     className: "drop-off-popup",
@@ -33,7 +39,7 @@ export function HQMarker({ map, location = null }) {
   }).setHTML(`
     <div style="padding: 8px; min-width: 150px;">
       <div style="color: #10B981; font-weight: bold; margin-bottom: 4px;">${markerLocation.name || markerLocation.address || 'Location'}</div>
-      <div style="margin: 0; font-size: 12px;">${markerLocation.address || 'Addis Ababa, Ethiopia'}</div>
+      <div style="margin: 0; font-size: 12px;">${formattedAddress}</div>
     </div>
   `);
 
@@ -59,6 +65,7 @@ export function RouteMarkers({ map, route, shuttle, currentUserId = null }) {
     return [];
   }
 
+  const normalizedCurrentUserId = currentUserId == null ? null : String(currentUserId);
   const coordinateGroups = new Map();
 
   route.coordinates.forEach((coords, index) => {
@@ -82,24 +89,48 @@ export function RouteMarkers({ map, route, shuttle, currentUserId = null }) {
   const markers = [];
 
   coordinateGroups.forEach(({ coords, indices }) => {
-    const groupedStops = indices.map((stopIndex) => ({
-      stopIndex,
-      stopNumber: stopIndex + 1,
-      area: route.areas?.[stopIndex] || "Unassigned Stop",
-      employeeUserId: route.employeeUserIds?.[stopIndex] || null,
-    }));
+    const groupedStops = indices.map((stopIndex) => {
+      const originalIndex = Array.isArray(route.originalStopIndices)
+        ? route.originalStopIndices[stopIndex]
+        : stopIndex;
+      const displayNumber = route.stopNumbers?.[stopIndex];
+      return {
+        stopIndex,
+        displayNumber: Number.isFinite(displayNumber) ? displayNumber : stopIndex + 1,
+        area: route.areas?.[stopIndex] || "Unassigned Stop",
+        employeeUserId:
+          route.employeeUserIds?.[stopIndex] == null
+            ? null
+            : String(route.employeeUserIds?.[stopIndex]),
+        originalIndex,
+      };
+    });
 
     const hasCurrentUser = Boolean(
-      currentUserId && groupedStops.some((stop) => stop.employeeUserId === currentUserId)
+      normalizedCurrentUserId &&
+        groupedStops.some((stop) => stop.employeeUserId === normalizedCurrentUserId)
     );
 
-    const labels = groupedStops.map((stop) => stop.stopNumber);
-    const labelText =
-      labels.length === 1
-        ? labels[0].toString()
-        : labels.length <= 3
-        ? labels.join(" & ")
-        : `${labels.length} stops`;
+    const labels = groupedStops
+      .map((stop) => {
+        const displayNumber = route.stopNumbers?.[stop.originalIndex];
+        return Number.isFinite(displayNumber)
+          ? displayNumber
+          : stop.displayNumber;
+      })
+      .sort((a, b) => a - b);
+    const additionalStops = hasCurrentUser
+      ? groupedStops.filter((stop) => stop.employeeUserId !== normalizedCurrentUserId).length
+      : 0;
+    const labelText = hasCurrentUser
+      ? additionalStops > 0
+        ? `Me +${additionalStops}`
+        : "Me"
+      : labels.length === 1
+      ? labels[0].toString()
+      : labels.length <= 3
+      ? labels.join(" & ")
+      : `${labels.length} stops`;
 
     const el = document.createElement("div");
     el.className = "drop-off-order";
@@ -125,11 +156,18 @@ export function RouteMarkers({ map, route, shuttle, currentUserId = null }) {
 
     const stopSections = groupedStops
       .map((stop) => {
+        const displayNumber = Number.isFinite(route.stopNumbers?.[stop.originalIndex])
+          ? route.stopNumbers[stop.originalIndex]
+          : stop.displayNumber;
         const sanitizedArea = stop.area.replace(/\n/g, "<br />");
-        const stopColor = stop.employeeUserId === currentUserId ? "#10B981" : "#1f2937";
+        const isCurrentUser = stop.employeeUserId === normalizedCurrentUserId;
+        const stopColor = isCurrentUser ? "#10B981" : "#1f2937";
+        const title = isCurrentUser
+          ? `You (Stop ${displayNumber})`
+          : `Stop ${displayNumber}`;
         return `
           <div style="margin-bottom: 6px;">
-            <div style="font-weight: 600; color: ${stopColor};">Stop ${stop.stopNumber}</div>
+            <div style="font-weight: 600; color: ${stopColor};">${title}</div>
             <div style="font-size: 12px; color: #4b5563;">${sanitizedArea}</div>
           </div>
         `;
@@ -198,6 +236,7 @@ RouteMarkers.propTypes = {
     ).isRequired,
     areas: PropTypes.arrayOf(PropTypes.string.isRequired).isRequired,
     employeeUserIds: PropTypes.arrayOf(PropTypes.string),
+    stopNumbers: PropTypes.arrayOf(PropTypes.number),
   }).isRequired,
   shuttle: PropTypes.shape({
     id: PropTypes.string.isRequired,

@@ -3,9 +3,11 @@ import { MapPin, Users, Bus } from "lucide-react";
 import { AnimatePresence } from "framer-motion";
 import { useTheme } from "@contexts/ThemeContext";
 import { useAuth } from "@contexts/AuthContext";
+import { useRole } from "@contexts/RoleContext";
 import { ErrorBoundary } from "@components/Common/ErrorBoundary";
 import { routeService } from "@services/routeService";
 import { useViewport } from "@hooks/useViewport";
+import { ROLES } from "@data/constants";
 
 import SearchAndFilter from "./components/SearchAndFilter";
 import RouteList from "./components/RouteList";
@@ -27,6 +29,7 @@ function DashboardDesktop() {
   const [isDetailsExpanded, setIsDetailsExpanded] = useState(false);
   const { theme } = useTheme();
   const { user } = useAuth();
+  const { role: activeRole, userRole: accountRole } = useRole();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [loading, setLoading] = useState(true);
@@ -94,8 +97,9 @@ function DashboardDesktop() {
       id: route.id,
       coordinates: mapStops.coordinates,
       areas: mapStops.areas,
-      employeeUserIds: mapStops.employeeUserIds,
-      dropOffOrder: mapStops.coordinates.map((_, index) => index),
+      employeeUserIds: mapStops.employeeUserIds.map((id) => (id == null ? null : String(id))),
+      stopNumbers: mapStops.stopNumbers,
+      dropOffOrder: mapStops.stopNumbers.map((number) => number - 1),
       stops: mapStops.coordinates.length,
       passengers: route.stops?.filter((stop) => stop.employee).length || 0,
       status: route.status,
@@ -107,6 +111,23 @@ function DashboardDesktop() {
   const mapRouteData = useMemo(() => {
     return transformRouteForMap(selectedRoute);
   }, [selectedRoute, transformRouteForMap]);
+
+  const mapCurrentUserId = useMemo(() => {
+    const normalizedRoles = Array.isArray(user?.roles)
+      ? user.roles
+          .map((role) => (typeof role === "string" ? role.trim().toLowerCase() : null))
+          .filter(Boolean)
+      : [];
+
+    const fallbackRole = typeof user?.role === "string" ? user.role.trim().toLowerCase() : null;
+    const calculatedRole = activeRole ?? accountRole ?? normalizedRoles.find(Boolean) ?? fallbackRole;
+
+    if (calculatedRole !== ROLES.EMPLOYEE) {
+      return null;
+    }
+
+    return user?.id != null ? String(user.id) : null;
+  }, [activeRole, accountRole, user?.roles, user?.role, user?.id]);
 
   const selectedShuttleInfo = useMemo(() => {
     if (!selectedRoute) return null;
@@ -256,7 +277,7 @@ function DashboardDesktop() {
                 mapStyle={mapStyle}
                 initialZoom={11.5}
                 enableOptimization
-                currentUserId={user?.id}
+                currentUserId={mapCurrentUserId}
               />
             </div>
           </Suspense>

@@ -2,6 +2,7 @@ import { Badge } from "@/components/Common/UI/Badge";
 import { Car } from "lucide-react";
 import PropTypes from "prop-types";
 import { cn } from "@utils/cn"; // Add this import
+import { formatDisplayAddress } from "@/utils/address";
 
 import styles from "../styles/RouteList.module.css";
 
@@ -45,7 +46,12 @@ export default function RouteList({ routes }) {
                       variant="secondary"
                       className={styles.areaBadge}
                     >
-                      {(employee.stop?.address || employee.workLocation?.address || employee.location || 'N/A').replace(', Ethiopia', '')}
+                      {formatDisplayAddress(
+                        employee.stop?.address ||
+                          employee.workLocation?.address ||
+                          employee.location ||
+                          'N/A'
+                      ) || 'N/A'}
                     </Badge>
                   ))}
                 </div>

@@ -345,6 +345,13 @@
   font-size: 0.75rem;
 }
 
+.locationNeededBadge {
+  font-size: 0.7rem;
+  border-color: rgba(249, 115, 22, 0.4);
+  color: var(--warning, #f97316);
+  background: rgba(249, 115, 22, 0.15);
+}
+
 .department {
   font-size: 0.75rem;
   color: var(--muted-foreground);

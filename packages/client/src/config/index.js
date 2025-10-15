@@ -1,8 +1,10 @@
-export const MAPBOX_ACCESS_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
+import { getEnv } from "@/utils/env";
+
+export const MAPBOX_ACCESS_TOKEN = getEnv("VITE_MAPBOX_ACCESS_TOKEN", "");
 
 export const MAP_STYLES = {
-    light: import.meta.env.VITE_MAPBOX_LIGHT_STYLE,
-    dark: import.meta.env.VITE_MAPBOX_DARK_STYLE
+    light: getEnv("VITE_MAPBOX_LIGHT_STYLE", "mapbox://styles/mapbox/light-v11"),
+    dark: getEnv("VITE_MAPBOX_DARK_STYLE", "mapbox://styles/mapbox/dark-v11")
 };
 
 export const HQ_LOCATION = {

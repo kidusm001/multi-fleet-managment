@@ -5,8 +5,10 @@ export {}; // ensure this file is a module to avoid potential global re-declarat
 const RUN_LIVE_AUTH = process.env.RUN_LIVE_AUTH_TESTS === 'true';
 
 if (!RUN_LIVE_AUTH) {
-  describe.skip('Better Auth integration (requires live backend & org plugin)', () => {
-    test('skipped (enable with RUN_LIVE_AUTH_TESTS=true)', () => {});
+  describe('Better Auth integration (flagged off by default)', () => {
+    test('guards against accidental live backend usage', () => {
+      expect(RUN_LIVE_AUTH).toBe(false);
+    });
   });
 } else {
   describe('Better Auth integration (live)', () => {

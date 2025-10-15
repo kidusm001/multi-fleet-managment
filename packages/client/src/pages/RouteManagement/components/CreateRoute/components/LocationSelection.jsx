@@ -11,6 +11,7 @@ import {
 } from "@components/Common/UI/Select";
 import { Badge } from "@/components/Common/UI/Badge";
 import styles from "../styles/LocationSelection.module.css";
+import { formatDisplayAddress } from "@/utils/address";
 
 export default function LocationSelection({
   selectedLocation,
@@ -91,7 +92,9 @@ export default function LocationSelection({
                 {selectedLocationData ? (
                   <div className="flex items-center gap-2">
                     {getLocationIcon(selectedLocationData.type)}
-                    <span>{selectedLocationData.address || 'Unnamed Location'}</span>
+                    <span>
+                      {formatDisplayAddress(selectedLocationData.address) || 'Unnamed Location'}
+                    </span>
                     <Badge variant="secondary" className="text-xs">
                       {getLocationTypeLabel(selectedLocationData.type)}
                     </Badge>
@@ -116,7 +119,9 @@ export default function LocationSelection({
                      <div className="flex items-center gap-2">
                        {getLocationIcon(location.type)}
                        <div className="flex flex-col">
-                         <span>{location.address || 'Unnamed Location'}</span>
+                         <span>
+                           {formatDisplayAddress(location.address) || 'Unnamed Location'}
+                         </span>
                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
                            <Badge variant="outline" className="text-xs">
                              {getLocationTypeLabel(location.type)}
@@ -139,14 +144,16 @@ export default function LocationSelection({
             <div className={styles.selectedLocationInfo}>
               <div className="flex items-center gap-2 text-sm">
                 {getLocationIcon(selectedLocationData.type)}
-                <span className="font-medium">{selectedLocationData.address || 'Unnamed Location'}</span>
+                <span className="font-medium">
+                  {formatDisplayAddress(selectedLocationData.address) || 'Unnamed Location'}
+                </span>
                 <Badge variant="secondary" className="text-xs">
                   {getLocationTypeLabel(selectedLocationData.type)}
                 </Badge>
               </div>
               {selectedLocationData.address && (
                 <div className="text-xs text-muted-foreground mt-1">
-                  {selectedLocationData.address}
+                  {formatDisplayAddress(selectedLocationData.address) || selectedLocationData.address}
                 </div>
               )}
               {selectedLocationData._count && (

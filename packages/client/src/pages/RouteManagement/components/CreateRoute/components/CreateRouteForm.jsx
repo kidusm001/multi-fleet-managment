@@ -11,6 +11,7 @@ import LoadingWrapper from "@components/Common/LoadingAnimation/LoadingWrapper";
 import { clusterService } from "@services/clusterService";
 import { shuttleAvailabilityService } from "@services/shuttleAvailabilityService";
 import { getRoutesByShift } from "@services/api";
+import { formatDisplayAddress } from "@/utils/address";
 
 // Styles
 import styles from "../styles/CreateRouteForm.module.css";
@@ -362,11 +363,14 @@ export default function CreateRouteForm({
         
         if (distance > furthestDistance) {
           furthestDistance = distance;
-          // Use stop location and extract first two parts (excluding Addis Ababa and Ethiopia)
-          let fullAddress = (employee.stop?.address || employee.location || '');
-          // Remove Ethiopia and Addis Ababa
-          fullAddress = fullAddress.replace(/, Ethiopia/g, '').replace(/, Addis Ababa/g, '');
-          const addressParts = fullAddress.split(',').map(part => part.trim()).filter(part => part);
+          // Use stop location and extract first two parts after removing the leading segment
+          const formattedAddress = formatDisplayAddress(
+            employee.stop?.address || employee.location || ''
+          );
+          const addressParts = formattedAddress
+            .split(',')
+            .map(part => part.trim())
+            .filter(part => part);
           // Take first two parts and join them
           furthestArea = addressParts.slice(0, 2).join(' ');
         }
@@ -618,7 +622,7 @@ export default function CreateRouteForm({
               <div className={styles.locationInfo}>
                 <span className={styles.locationLabel}>Location</span>
                 <span className={styles.locationValue}>
-                  {routeData?.selectedLocation?.address || 'No location selected'}
+                  {formatDisplayAddress(routeData?.selectedLocation?.address) || 'No location selected'}
                 </span>
                 {formErrors.location && (
                   <span className={styles.errorText}>{formErrors.location}</span>

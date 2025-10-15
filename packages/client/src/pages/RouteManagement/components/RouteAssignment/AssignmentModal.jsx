@@ -10,22 +10,19 @@ import { toast } from "sonner";
 import { MAP_CONFIG } from "@/data/constants";
 import { optimizeRoute } from "@/services/routeOptimization";
 import { cn } from "@/lib/utils";
+import { formatDisplayAddress } from "@/utils/address";
 import {
   resolveOriginCoordinates,
+  sortStopsBySequence,
   toMapStops,
   withOrderedStops,
 } from "../../../Dashboard/utils/sortStops";
 
 import styles from "./AssignmentModal.module.css";
 
-const formatAddress = (address) => {
-  if (!address || typeof address !== "string") return "";
-  return address.replace(/,?\s*Ethiopia$/i, "").trim();
-};
-
 const buildStopDisplayName = (stop) => {
   if (!stop) return "";
-  const primary = formatAddress(
+  const primary = formatDisplayAddress(
     stop.employee?.stop?.address || stop.employee?.area || stop.location || stop.area
   );
   const employeeName = stop.employee?.name;
@@ -37,6 +34,20 @@ const buildStopDisplayName = (stop) => {
   return primary || "";
 };
 
+const getStopCoordinates = (stop) => {
+  const longitude = stop?.longitude ?? stop?.stop?.longitude;
+  const latitude = stop?.latitude ?? stop?.stop?.latitude;
+
+  const lon = typeof longitude === "string" ? Number.parseFloat(longitude) : longitude;
+  const lat = typeof latitude === "string" ? Number.parseFloat(latitude) : latitude;
+
+  if (!Number.isFinite(lon) || !Number.isFinite(lat)) {
+    return null;
+  }
+
+  return [lon, lat];
+};
+
 const AssignmentModal = ({ employee, routes, onClose, onAssign, show }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [selectedRoute, setSelectedRoute] = useState(null);
@@ -44,11 +55,11 @@ const AssignmentModal = ({ employee, routes, onClose, onAssign, show }) => {
   const [routeMetrics, setRouteMetrics] = useState(null);
   const [isStopsExpanded, setIsStopsExpanded] = useState(false);
 
-  const employeeStopAddress = formatAddress(
+  const employeeStopAddress = formatDisplayAddress(
     employee.stop?.address || employee.area || employee.location
   );
-  const employeeWorkAddress = formatAddress(employee.workLocation?.address);
-  const employeeFallbackLocation = formatAddress(employee.location);
+  const employeeWorkAddress = formatDisplayAddress(employee.workLocation?.address);
+  const employeeFallbackLocation = formatDisplayAddress(employee.location);
   const displayStopAddress = employeeStopAddress || employeeFallbackLocation;
   const displayWorkAddress = employeeWorkAddress || employeeFallbackLocation;
   const { employeeStopForOptimization, mapNewStop, mapCenter } = useMemo(() => {
@@ -115,6 +126,21 @@ const AssignmentModal = ({ employee, routes, onClose, onAssign, show }) => {
   const primaryLocationLabel =
     displayStopAddress || displayWorkAddress || employeeFallbackLocation || "Location unavailable";
 
+  const fallbackStops = useMemo(() => {
+    if (!selectedRoute?.stops) {
+      return [];
+    }
+
+    return selectedRoute.stops.map((stop, index) => ({
+      stop,
+      stopNumber: index + 1,
+      isNew: false,
+      displayLabel:
+        buildStopDisplayName(stop) ||
+  formatDisplayAddress(stop.location || stop.area || stop.displayName),
+    }));
+  }, [selectedRoute]);
+
   useEffect(() => {
     if (show) {
       document.body.classList.add("modal-open");
@@ -138,7 +164,7 @@ const AssignmentModal = ({ employee, routes, onClose, onAssign, show }) => {
 
         const existingStops = (selectedRoute.stops || []).map((stop) => {
             const displayName = buildStopDisplayName(stop);
-            const normalizedLocation = formatAddress(
+            const normalizedLocation = formatDisplayAddress(
               stop.location || stop.area || stop.employee?.area
             );
 
@@ -180,7 +206,7 @@ const AssignmentModal = ({ employee, routes, onClose, onAssign, show }) => {
         }
 
         const originCoords = resolveOriginCoordinates(selectedRoute);
-        const routeLocationLabel = formatAddress(
+        const routeLocationLabel = formatDisplayAddress(
           selectedRoute?.location?.address || selectedRoute?.location?.name
         ) || "HQ";
 
@@ -209,14 +235,47 @@ const AssignmentModal = ({ employee, routes, onClose, onAssign, show }) => {
         const optimized = await optimizeRoute(routeForOptimization);
 
         const mapStops = toMapStops(allStops, originCoords);
+        const sortedStops = sortStopsBySequence(allStops, originCoords);
+
+        const mappedStopsWithNumbers = [];
+        const unmappedStops = [];
+
+        sortedStops.forEach((stop) => {
+          const coordinates = getStopCoordinates(stop);
+          const displayLabel =
+            buildStopDisplayName(stop) ||
+            formatDisplayAddress(stop.location || stop.area || stop.displayName);
+
+          if (coordinates) {
+            const mapIndex = mappedStopsWithNumbers.length;
+            const stopNumber =
+              mapStops.stopNumbers?.[mapIndex] ?? mapIndex + 1;
+            mappedStopsWithNumbers.push({
+              stop,
+              stopNumber,
+              isNew: Boolean(stop.isNew),
+              displayLabel,
+            });
+          } else {
+            unmappedStops.push({
+              stop,
+              displayLabel,
+              isNew: Boolean(stop.isNew),
+              stopNumber: null,
+            });
+          }
+        });
 
         const optimizedRouteData = {
           id: selectedRoute.id,
           coordinates: mapStops.coordinates,
           areas: mapStops.areas,
           employeeUserIds: mapStops.employeeUserIds,
-          stops: validStops,
-          passengers: validStops.filter((stop) => stop.employee).length,
+          stopNumbers: mapStops.stopNumbers,
+          orderedStops: mappedStopsWithNumbers,
+          unmappedStops,
+          stops: mappedStopsWithNumbers.map((entry) => entry.stop),
+          passengers: mappedStopsWithNumbers.filter((entry) => entry.stop.employee).length,
           status: "preview",
           location: selectedRoute.location,
         };
@@ -271,6 +330,23 @@ const AssignmentModal = ({ employee, routes, onClose, onAssign, show }) => {
   };
 
   if (!show) return null;
+
+  const previewStops = optimizedRoute?.orderedStops ?? [];
+  const previewUnmappedStops = optimizedRoute?.unmappedStops ?? [];
+  const hasPreviewStops = previewStops.length > 0 || previewUnmappedStops.length > 0;
+  const displayStops = hasPreviewStops ? previewStops : fallbackStops;
+  const displayUnmappedStops = hasPreviewStops ? previewUnmappedStops : [];
+  const fallbackNewStopLabel = hasPreviewStops
+    ? null
+    : employeeStopForOptimization
+    ? employeeStopForOptimization.displayName ||
+      employeeStopForOptimization.location ||
+      `${employee.name} (Work Location)`
+    : null;
+  const totalRouteStopCount =
+    displayStops.length +
+    displayUnmappedStops.length +
+    (fallbackNewStopLabel ? 1 : 0);
 
   // Filter out routes that are at full capacity
   const availableRoutes = routes.filter(route => 
@@ -336,7 +412,10 @@ const AssignmentModal = ({ employee, routes, onClose, onAssign, show }) => {
                         id: optimizedRoute.id,
                         coordinates: optimizedRoute.coordinates,
                         areas: optimizedRoute.areas,
-                        dropOffOrder: optimizedRoute.stops.map((_, i) => i),
+                        stopNumbers: optimizedRoute.stopNumbers,
+                        dropOffOrder: Array.isArray(optimizedRoute.stopNumbers)
+                          ? optimizedRoute.stopNumbers.map((number) => number - 1)
+                          : optimizedRoute.coordinates.map((_, index) => index),
                         stops: optimizedRoute.stops.length,
                         passengers: optimizedRoute.stops.filter((stop) => stop.employee).length,
                         employeeUserIds: optimizedRoute.employeeUserIds,
@@ -415,7 +494,7 @@ const AssignmentModal = ({ employee, routes, onClose, onAssign, show }) => {
                         <MapPin className="w-4 h-4 text-orange-500" />
                         <span className="font-medium">Route Stops</span>
                         <Badge className="bg-orange-100 text-orange-500">
-                          {selectedRoute.stops.length + 1}
+                          {totalRouteStopCount}
                         </Badge>
                       </div>
                       <ChevronDown
@@ -428,27 +507,56 @@ const AssignmentModal = ({ employee, routes, onClose, onAssign, show }) => {
                     {isStopsExpanded && (
                       <div className={styles.stopsList}>
                         <div className={styles.stopsGrid}>
-                          {selectedRoute.stops.map((stop, index) => (
-                            <div key={stop.id} className={styles.stopItem}>
+                          {displayStops.map((entry, index) => (
+                            <div
+                              key={entry.stop?.id || `ordered-${index}`}
+                              className={styles.stopItem}
+                            >
                               <span className={styles.stopNumber}>
-                                {index + 1}
+                                {entry.stopNumber ?? index + 1}
                               </span>
-                              <span className={styles.stopLocation}>
-                                {buildStopDisplayName(stop) ||
-                                  formatAddress(stop.location || stop.area)}
-                              </span>
+                              <div className="flex w-full items-center justify-between gap-2">
+                                <span className={styles.stopLocation}>
+                                  {entry.displayLabel || "Location unavailable"}
+                                </span>
+                                {entry.isNew && (
+                                  <Badge className={styles.newBadge}>New</Badge>
+                                )}
+                              </div>
                             </div>
                           ))}
-                          <div className={styles.newStop}>
-                            <span className={styles.newStopIcon}>
-                              <Plus className="w-3 h-3" />
-                            </span>
-                            <span className={styles.stopLocation}>
-                              {employeeStopForOptimization?.displayName ||
-                                `${employee.name} (Work Location)`}
-                            </span>
-                            <Badge className={styles.newBadge}>New</Badge>
-                          </div>
+
+                          {displayUnmappedStops.map((entry, index) => (
+                            <div
+                              key={entry.stop?.id || `unmapped-${index}`}
+                              className={styles.stopItem}
+                            >
+                              <span className={styles.stopNumber}>—</span>
+                              <div className="flex w-full items-center justify-between gap-2">
+                                <span className={styles.stopLocation}>
+                                  {entry.displayLabel || "Location needs update"}
+                                </span>
+                                <Badge
+                                  variant="outline"
+                                  className="border-orange-200 text-orange-500"
+                                >
+                                  Location Needed
+                                </Badge>
+                              </div>
+                            </div>
+                          ))}
+
+                          {fallbackNewStopLabel && (
+                            <div className={styles.newStop}>
+                              <span className={styles.newStopIcon}>
+                                <Plus className="w-3 h-3" />
+                              </span>
+                              <span className={styles.stopLocation}>
+                                {fallbackNewStopLabel}
+                              </span>
+                              <Badge className={styles.newBadge}>New</Badge>
+                            </div>
+                          )}
                         </div>
                       </div>
                     )}

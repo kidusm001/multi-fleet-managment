@@ -25,6 +25,7 @@ import { departmentService } from "@services/departmentService";
 import Pagination from "./Pagination";
 import ExportPopup from "@components/ExportPopup";
 import { downloadExcel } from "@utils/exportUtils";
+import { formatDisplayAddress } from "@/utils/address";
 
 const RouteTable = ({ routes, onRouteClick }) => {
   const [sortColumn, setSortColumn] = useState("routeName");
@@ -119,7 +120,10 @@ const RouteTable = ({ routes, onRouteClick }) => {
             department: department?.name || "N/A",
             departmentId: department?.id,
             pickupLocation: "HQ",
-            dropOffLocation: stop.address || stop.location || stop.employee?.location || "N/A",
+            dropOffLocation:
+              formatDisplayAddress(
+                stop.address || stop.location || stop.employee?.location || ""
+              ) || "N/A",
             driver: {
               name: (route.shuttle?.driver?.name || route.vehicle?.driver?.name) || "Not Assigned",
               phone: (route.shuttle?.driver?.phone || route.vehicle?.driver?.phone) || "N/A",

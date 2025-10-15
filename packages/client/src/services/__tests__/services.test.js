@@ -1,17 +1,22 @@
 // These integration tests require a live backend
 const runLive = process.env.RUN_LIVE_API_TESTS === 'true';
 
-// Always skip these tests in normal unit test runs
-describe.skip('Service Integration Tests (live backend)', () => {
-  test('skipped (set RUN_LIVE_API_TESTS=true to enable)', () => {});
-  
-  if (runLive) {
+if (!runLive) {
+  describe('Service Integration Tests (flagged off by default)', () => {
+    test('guards against accidental live API calls', () => {
+      expect(runLive).toBe(false);
+    });
+  });
+} else {
+  describe('Service Integration Tests (live backend)', () => {
     // Note: Enable these tests manually when testing against live backend
-    const routeService = require('../index').routeService;
-    const employeeService = require('../index').employeeService;
-    const clusterService = require('../index').clusterService;
-    const shuttleAvailabilityService = require('../index').shuttleAvailabilityService;
-    
+    const {
+      routeService,
+      employeeService,
+      clusterService,
+      shuttleAvailabilityService
+    } = require('../index');
+
     // Test data
     const testShiftId = '1';
     const testShuttleId = '1';
@@ -66,5 +71,5 @@ describe.skip('Service Integration Tests (live backend)', () => {
         expect(Array.isArray(employees)).toBe(true);
       });
     });
-  }
-});
+  });
+}

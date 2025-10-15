@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import PropTypes from "prop-types";
 import { X, CheckCircle2, XCircle, MapPin, Clock, Users, Wand2 } from "lucide-react";
 import { Badge } from "@/components/Common/UI/Badge";
@@ -9,9 +9,14 @@ import { toast } from "sonner";
 import { MAP_CONFIG } from "@data/constants";
 import { Input } from "@/components/Common/UI/Input";
 import { optimizeRoute } from "@services/routeOptimization";
+import { formatDisplayAddress } from "@/utils/address";
 
 import styles from "../styles/ShuttlePreview.module.css";
-import { resolveOriginCoordinates } from "../../../../Dashboard/utils/sortStops";
+import {
+  resolveOriginCoordinates,
+  sortStopsBySequence,
+  toMapStops,
+} from "../../../../Dashboard/utils/sortStops";
 
 const ShuttlePreview = ({ routeData, onClose, onAccept, show }) => {
   const [isLoading, setIsLoading] = useState(false);
@@ -25,6 +30,88 @@ const ShuttlePreview = ({ routeData, onClose, onAccept, show }) => {
     selectedLocation,
   } = routeData;
 
+  const { employeesWithCoordinates, employeesWithoutCoordinates } = useMemo(() => {
+    const withCoords = [];
+    const withoutCoords = [];
+
+    selectedEmployees.forEach((employee) => {
+      const latitude = employee?.stop?.latitude;
+      const longitude = employee?.stop?.longitude;
+      if (typeof latitude === "number" && typeof longitude === "number") {
+        withCoords.push(employee);
+      } else {
+        withoutCoords.push(employee);
+      }
+    });
+
+    return {
+      employeesWithCoordinates: withCoords,
+      employeesWithoutCoordinates: withoutCoords,
+    };
+  }, [selectedEmployees]);
+
+  const employeeStops = useMemo(
+    () =>
+      employeesWithCoordinates.map((employee) => {
+        const locationLabel = formatDisplayAddress(
+          employee.stop?.address || employee.location || ""
+        );
+
+        return {
+          ...employee.stop,
+          location: locationLabel,
+          area: locationLabel,
+          displayName: locationLabel
+            ? `${employee.name} (${locationLabel})`
+            : employee.name,
+          employee: {
+            ...employee,
+            userId: employee.userId || employee.id,
+            location: locationLabel,
+          },
+        };
+      }),
+    [employeesWithCoordinates]
+  );
+
+  const fallbackOrderedEmployees = useMemo(() => {
+    if (!employeeStops.length) {
+      return [];
+    }
+
+    const originCoords =
+      resolveOriginCoordinates({ location: selectedLocation }) ||
+      MAP_CONFIG.HQ_LOCATION.coords;
+
+    const sortedStops = sortStopsBySequence(employeeStops, originCoords);
+    const mapStops = toMapStops(employeeStops, originCoords);
+
+    return sortedStops.map((stop, index) => ({
+      employee: stop.employee,
+      stop,
+      stopNumber: mapStops.stopNumbers?.[index] ?? index + 1,
+      locationLabel:
+        formatDisplayAddress(stop.location || stop.area || stop.employee?.location) ||
+        "N/A",
+    }));
+  }, [employeeStops, selectedLocation]);
+
+  const fallbackUnmappedEmployees = useMemo(
+    () =>
+      employeesWithoutCoordinates.map((employee) => ({
+        employee,
+        stop: employee.stop || null,
+        stopNumber: null,
+        locationLabel:
+          formatDisplayAddress(
+            employee.workLocation?.address ||
+              employee.location ||
+              ""
+          ) || "Location information missing",
+      })),
+    [employeesWithoutCoordinates]
+  );
+
   useEffect(() => {
     if (show) {
       document.body.classList.add("modal-open");
@@ -35,7 +122,7 @@ const ShuttlePreview = ({ routeData, onClose, onAccept, show }) => {
   }, [show]);
 
   useEffect(() => {
-    if (!show || !selectedEmployees.length) return;
+  if (!show || !employeeStops.length) return;
 
     /**
      * Calculate optimal route using Mapbox Directions API
@@ -44,36 +131,26 @@ const ShuttlePreview = ({ routeData, onClose, onAccept, show }) => {
     const calculateOptimalRoute = async () => {
       setIsLoading(true);
       try {
-        // Filter out employees without valid stops
-        const validEmployees = selectedEmployees.filter(
-          (emp) => emp.stop && emp.stop.latitude && emp.stop.longitude
-        );
-
-          if (validEmployees.length === 0) {
-            throw new Error("No valid employee stops found");
-          }
-
         const originCoords =
           resolveOriginCoordinates({ location: selectedLocation }) ||
           MAP_CONFIG.HQ_LOCATION.coords;
-        const originLabel = (selectedLocation?.address || "HQ").replace(
-          /, Ethiopia$/i,
-          ""
-        );
+        const originLabel =
+          formatDisplayAddress(selectedLocation?.address || selectedLocation?.name) ||
+          "HQ";
 
         // Prepare data for optimization including branch location and employee stops
         const routeForOptimization = {
           coordinates: [
             originCoords,
-            ...validEmployees.map((emp) => [
-              emp.stop.longitude,
-              emp.stop.latitude,
+            ...employeeStops.map((stop) => [
+              stop.longitude,
+              stop.latitude,
             ]),
             originCoords,
           ],
           areas: [
             originLabel,
-            ...validEmployees.map((emp) => (emp.stop?.address || emp.location || "Unknown").replace(', Ethiopia', '')),
+            ...employeeStops.map((stop) => stop.location || "Unknown"),
             originLabel,
           ],
         };
@@ -84,21 +161,32 @@ const ShuttlePreview = ({ routeData, onClose, onAccept, show }) => {
         if (!optimized || !optimized.coordinates || !optimized.metrics) {
           throw new Error("Failed to optimize route");
         }
+    const sortedStops = sortStopsBySequence(employeeStops, originCoords);
+    const mapStops = toMapStops(employeeStops, originCoords);
 
-        const dropOffCoordinates = validEmployees.map((emp) => [
-          emp.stop.longitude,
-          emp.stop.latitude,
-        ]);
+        const orderedStopEntries = sortedStops.map((stop, index) => {
+          const stopNumber = mapStops.stopNumbers?.[index] ?? index + 1;
+          return {
+            stop,
+            stopNumber,
+            employee: stop.employee,
+            locationLabel:
+              formatDisplayAddress(stop.location || stop.area || stop.employee?.location) ||
+              "N/A",
+          };
+        });
 
         // Create the optimized route data - use drop-offs only for marker rendering
         const optimizedRouteData = {
           id: "preview-route",
-          coordinates: dropOffCoordinates,
-          areas: optimized.areas.slice(1, optimized.areas.length > 1 ? optimized.areas.length - 1 : undefined),
-          // Create dropOffOrder based on original waypoints
-          dropOffOrder: validEmployees.map((_, i) => i),
-          stops: validEmployees.length,
-          passengers: validEmployees.length,
+          coordinates: mapStops.coordinates,
+          areas: mapStops.areas,
+          employeeUserIds: mapStops.employeeUserIds,
+          stopNumbers: mapStops.stopNumbers,
+          dropOffOrder: mapStops.stopNumbers.map((number) => number - 1),
+          orderedStops: orderedStopEntries,
+          stops: orderedStopEntries.map((entry) => entry.stop),
+          passengers: orderedStopEntries.filter((entry) => entry.employee).length,
           status: "preview",
           // We can use the full route geometry for drawing the route line if needed
           fullRouteGeometry: optimized.fullRouteGeometry,
@@ -122,17 +210,19 @@ const ShuttlePreview = ({ routeData, onClose, onAccept, show }) => {
     };
 
     calculateOptimalRoute();
-  }, [selectedEmployees, selectedLocation, show]);
-
-  // Get valid employees (with stops)
-  const validEmployees = selectedEmployees.filter(
-    (emp) => emp.stop && emp.stop.latitude && emp.stop.longitude
-  );
+  }, [employeeStops, selectedLocation, show]);
 
   // Early return if no valid data
-  if (!show || !selectedShuttle || !validEmployees.length) {
+  if (!show || !selectedShuttle || !employeesWithCoordinates.length) {
     return null;
   }
+
+  const orderedPreviewStops = optimizedRoute?.orderedStops ?? [];
+  const employeeListEntries = orderedPreviewStops.length
+    ? orderedPreviewStops
+    : fallbackOrderedEmployees;
+  const unmappedEmployeeEntries = fallbackUnmappedEmployees;
+  const passengerCount = optimizedRoute?.passengers ?? employeeListEntries.length;
 
   // Function to generate suggested route name based on furthest location
   const getSuggestedRouteName = () => {
@@ -164,11 +254,14 @@ const ShuttlePreview = ({ routeData, onClose, onAccept, show }) => {
         
         if (distance > furthestDistance) {
           furthestDistance = distance;
-          // Use stop address and extract first two parts (excluding Addis Ababa and Ethiopia)
-          let fullAddress = (employee.stop?.address || employee.location || '');
-          // Remove Ethiopia and Addis Ababa
-          fullAddress = fullAddress.replace(/, Ethiopia/g, '').replace(/, Addis Ababa/g, '');
-          const addressParts = fullAddress.split(',').map(part => part.trim()).filter(part => part);
+          // Use stop address and extract first two parts after removing the leading segment
+          const formattedAddress = formatDisplayAddress(
+            employee.stop?.address || employee.location || ''
+          );
+          const addressParts = formattedAddress
+            .split(',')
+            .map(part => part.trim())
+            .filter(part => part);
           // Take first two parts and join them
           furthestArea = addressParts.slice(0, 2).join(' ');
         }
@@ -214,7 +307,7 @@ const ShuttlePreview = ({ routeData, onClose, onAccept, show }) => {
     if (!routeMetrics) {
       validationErrors.push("Missing route metrics");
     }
-    if (!validEmployees.length) {
+    if (!employeesWithCoordinates.length) {
       validationErrors.push("No valid employees selected");
     }
 
@@ -231,7 +324,7 @@ const ShuttlePreview = ({ routeData, onClose, onAccept, show }) => {
       console.log('selectedShuttle:', selectedShuttle);
       console.log('selectedShuttle.id:', selectedShuttle?.id);
       console.log('routeData.selectedLocation:', routeData.selectedLocation);
-      console.log('validEmployees:', validEmployees);
+  console.log('employeesWithCoordinates:', employeesWithCoordinates);
       
       // Create base date for tomorrow at start of day in ISO format
       const baseDate = new Date();
@@ -248,7 +341,7 @@ const ShuttlePreview = ({ routeData, onClose, onAccept, show }) => {
         // Use precise Mapbox metrics for distance and time
         totalDistance: parseFloat(routeMetrics.totalDistance.toFixed(2)),
         totalTime: Math.round(routeMetrics.totalTime),
-        employees: validEmployees.map((employee) => ({
+        employees: employeesWithCoordinates.map((employee) => ({
           employeeId: employee.id,
           stopId: employee.stop.id,
         })),
@@ -277,26 +370,72 @@ const ShuttlePreview = ({ routeData, onClose, onAccept, show }) => {
 
   // Render employee list safely
   const renderEmployeeList = () => {
-    if (!validEmployees.length) {
+    if (!employeeListEntries.length && !unmappedEmployeeEntries.length) {
       return <div className={styles.noData}>No valid employees to display</div>;
     }
 
-    return validEmployees.map((employee, index) => (
-      <div key={employee.id} className={styles.employeeItem}>
-        <div className={styles.orderNumber}>{index + 1}</div>
-        <div className={styles.employeeDetails}>
-          <div className={styles.employeeName}>{employee.name}</div>
-          <div className={styles.employeeLocation}>
-            <Badge variant="secondary" className={styles.locationBadge}>
-              {(employee.stop?.address || employee.workLocation?.address || 'N/A').replace(', Ethiopia', '')}
-            </Badge>
-            <span className={styles.department}>
-              {employee.department.name}
-            </span>
+    return employeeListEntries.map((entry, index) => {
+      const employee = entry.employee;
+      if (!employee) {
+        return null;
+      }
+
+        const locationLabel = entry.locationLabel ||
+        formatDisplayAddress(
+          employee.stop?.address ||
+            employee.workLocation?.address ||
+            employee.location ||
+            ""
+        ) || "N/A";
+
+      const key = entry.stop?.id || employee.id || `employee-${index}`;
+
+      return (
+        <div key={key} className={styles.employeeItem}>
+          <div className={styles.orderNumber}>{entry.stopNumber ?? index + 1}</div>
+          <div className={styles.employeeDetails}>
+            <div className={styles.employeeName}>{employee.name}</div>
+            <div className={styles.employeeLocation}>
+              <Badge variant="secondary" className={styles.locationBadge}>
+                {locationLabel}
+              </Badge>
+              <span className={styles.department}>
+                {employee.department.name}
+              </span>
+            </div>
           </div>
         </div>
-      </div>
-    ));
+      );
+    }).concat(
+      unmappedEmployeeEntries.map((entry, index) => {
+        const employee = entry.employee;
+        if (!employee) {
+          return null;
+        }
+
+        const key = entry.stop?.id || employee.id || `unmapped-${index}`;
+
+        return (
+          <div key={key} className={styles.employeeItem}>
+            <div className={styles.orderNumber}>—</div>
+            <div className={styles.employeeDetails}>
+              <div className={styles.employeeName}>{employee.name}</div>
+              <div className={styles.employeeLocation}>
+                <Badge variant="secondary" className={styles.locationBadge}>
+                  {entry.locationLabel || "Location information missing"}
+                </Badge>
+                <Badge variant="outline" className={styles.locationNeededBadge}>
+                  Location Needed
+                </Badge>
+                <span className={styles.department}>
+                  {employee.department.name}
+                </span>
+              </div>
+            </div>
+          </div>
+        );
+      })
+    );
   };
 
   return (
@@ -391,7 +530,7 @@ const ShuttlePreview = ({ routeData, onClose, onAccept, show }) => {
                         </span>
                         <div className={styles.metricContent}>
                           <span className={styles.metricValue}>
-                            {validEmployees.length} /{" "}
+                            {passengerCount} /{" "}
                             {selectedShuttle.category.capacity}
                           </span>
                           <span className={styles.metricLabel}>Passengers</span>
@@ -406,7 +545,7 @@ const ShuttlePreview = ({ routeData, onClose, onAccept, show }) => {
                   <div className={styles.employeeHeader}>
                     <h5 className={styles.employeeTitle}>Assigned Employees</h5>
                     <span className={styles.employeeCount}>
-                      {validEmployees.length} employees
+                            {selectedEmployees.length} employees
                     </span>
                   </div>
                   <div className={styles.employeeListContainer}>
@@ -449,7 +588,7 @@ const ShuttlePreview = ({ routeData, onClose, onAccept, show }) => {
                 disabled={
                   isLoading ||
                   routeMetrics?.totalTime > 90 ||
-                  !validEmployees.length ||
+                  !employeeListEntries.length ||
                   !routeData.name.trim()
                 }
                 className={styles.createButton}

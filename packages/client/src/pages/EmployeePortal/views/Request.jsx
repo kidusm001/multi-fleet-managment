@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import axios from 'axios';
 import { cn } from '@/lib/utils';
 import { employeeService } from '@/services/employeeService';
+import { formatDisplayAddress } from '@/utils/address';
 
 /**
  * Request View - Employee Shuttle Request
@@ -62,7 +63,12 @@ export default function RequestView() {
       setLoadingRequests(true);
       const response = await axios.get('/api/shuttle-requests-employee/my-requests');
       const requests = response.data?.data || response.data || [];
-      setMyRequests(requests);
+      const normalizedRequests = requests.map((request) => ({
+        ...request,
+        pickupLocation:
+          formatDisplayAddress(request.pickupLocation) || request.pickupLocation || 'N/A',
+      }));
+      setMyRequests(normalizedRequests);
       
       // Check if employee can make a new request (cooldown period)
       checkRequestCooldown(requests);
@@ -156,7 +162,7 @@ export default function RequestView() {
     
     return {
       stopName: stop?.name || 'N/A',
-      stopAddress: stop?.address || 'N/A',
+  stopAddress: formatDisplayAddress(stop?.address) || 'N/A',
       routeName: route?.name || 'N/A',
       vehicleName: vehicle?.name || 'N/A',
       vehiclePlate: vehicle?.plateNumber || 'N/A',

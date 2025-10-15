@@ -1,7 +1,5 @@
 import { HQ_LOCATION } from "@/config";
 
-const DEFAULT_STOP_ORDER = Number.MAX_SAFE_INTEGER;
-
 function parseCoordinate(value) {
   if (typeof value === "string") {
     const parsed = Number.parseFloat(value);
@@ -67,68 +65,12 @@ export function resolveOriginCoordinates(route) {
   return HQ_LOCATION.coords;
 }
 
-export function resolveStopOrder(stop) {
-  if (typeof stop?.sequence === "number" && !Number.isNaN(stop.sequence)) {
-    return stop.sequence;
-  }
-
-  if (typeof stop?.order === "number" && !Number.isNaN(stop.order)) {
-    return stop.order;
-  }
-
-  if (typeof stop?.position === "number" && !Number.isNaN(stop.position)) {
-    return stop.position;
-  }
-
-  if (typeof stop?.dropOffOrder === "number" && !Number.isNaN(stop.dropOffOrder)) {
-    return stop.dropOffOrder;
-  }
-
-  return DEFAULT_STOP_ORDER;
-}
-
 export function sortStopsBySequence(stops, originCoords = null) {
   if (!Array.isArray(stops) || stops.length === 0) {
     return [];
   }
 
-  const entries = stops.map((stop, index) => {
-    const order = resolveStopOrder(stop);
-    const coords = extractCoordinates(stop);
-    const distance = originCoords
-      ? calculateDistance(originCoords, coords)
-      : Number.POSITIVE_INFINITY;
-
-    return {
-      stop,
-      index,
-      order,
-      coords,
-      distance,
-    };
-  });
-
-  const hasExplicitOrder = entries.some((entry) => entry.order !== DEFAULT_STOP_ORDER);
-
-  if (!hasExplicitOrder) {
-    return buildGreedyStopOrder(stops, originCoords);
-  }
-
-  return entries
-    .sort((a, b) => {
-      if (a.order !== b.order) {
-        return a.order - b.order;
-      }
-
-      if (a.order === DEFAULT_STOP_ORDER && b.order === DEFAULT_STOP_ORDER) {
-        if (a.distance !== b.distance) {
-          return a.distance - b.distance;
-        }
-      }
-
-      return a.index - b.index;
-    })
-    .map((entry) => entry.stop);
+  return buildGreedyStopOrder(stops, originCoords);
 }
 
 export function withOrderedStops(route) {
@@ -163,7 +105,8 @@ export function toMapStops(stops, originCoords = null) {
   const orderedStops = sortStopsBySequence(stops, originCoords);
 
   return orderedStops.reduce(
-    (acc, stop) => {
+    (acc, stop, index) => {
+      const displayNumber = index + 1;
       const coords = extractCoordinates(stop);
       if (!coords) {
         return acc;
@@ -174,10 +117,12 @@ export function toMapStops(stops, originCoords = null) {
         ? `${stop.employee.name}\n${stop.employee.location || ""}`
         : "Unassigned Stop";
       acc.areas.push(area);
-      acc.employeeUserIds.push(stop.employee?.userId || null);
+      const employeeId = stop.employee?.userId;
+      acc.employeeUserIds.push(employeeId == null ? null : String(employeeId));
+      acc.stopNumbers.push(displayNumber);
       return acc;
     },
-    { coordinates: [], areas: [], employeeUserIds: [] }
+    { coordinates: [], areas: [], employeeUserIds: [], stopNumbers: [] }
   );
 }
 

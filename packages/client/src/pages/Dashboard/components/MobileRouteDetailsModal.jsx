@@ -7,6 +7,7 @@ import { useMemo, useState } from "react";
 import { routeService } from "@services/routeService";
 import { createPortal } from "react-dom";
 import { sortStopsBySequence } from "../utils/sortStops";
+import { formatDisplayAddress } from "@/utils/address";
 
 const MobileRouteDetailsModal = ({
   selectedRoute,
@@ -184,7 +185,10 @@ const MobileRouteDetailsModal = ({
                             <div className="flex items-start gap-2 text-xs text-gray-600 dark:text-gray-400">
                               <MapPin className="w-3.5 h-3.5 shrink-0 mt-0.5" />
                               <span className="break-words flex-1">
-                                {selectedRoute.location?.address || 'Addis Ababa, Ethiopia'}
+                                {formatDisplayAddress(
+                                  selectedRoute.location?.address ||
+                                    'Addis Ababa, Ethiopia'
+                                ) || 'Addis Ababa, Ethiopia'}
                               </span>
                             </div>
                           </div>
@@ -238,7 +242,14 @@ const MobileRouteDetailsModal = ({
                               <div className="space-y-1.5">
                                 <div className="flex items-start gap-2 text-xs text-gray-600 dark:text-gray-400">
                                   <MapPin className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-                                  <span className="break-words flex-1">{stop.address || stop.location || stop.employee.location || 'Address not available'}</span>
+                                  <span className="break-words flex-1">
+                                    {formatDisplayAddress(
+                                      stop.address ||
+                                        stop.location ||
+                                        stop.employee.location ||
+                                        'Address not available'
+                                    ) || 'Address not available'}
+                                  </span>
                                 </div>
                                 {stop.employee.phone && (
                                   <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">

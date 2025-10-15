@@ -7,6 +7,7 @@ import {
   TableRow,
 } from "@/components/Common/UI/Table";
 import { Badge } from "@/components/Common/UI/Badge";
+import { formatDisplayAddress } from "@/utils/address";
 import PropTypes from "prop-types";
 
 import styles from "../styles/Table.module.css";
@@ -27,7 +28,13 @@ export default function EmployeeTable({ data }) {
           {data?.map((employee) => (
             <TableRow key={employee.id} className={styles.staticRow}>
               <TableCell>{employee.name}</TableCell>
-              <TableCell>{(employee.stop?.address || employee.workLocation?.address || 'N/A').replace(', Ethiopia', '')}</TableCell>
+              <TableCell>
+                {formatDisplayAddress(
+                  employee.stop?.address ||
+                    employee.workLocation?.address ||
+                    "N/A"
+                ) || "N/A"}
+              </TableCell>
               <TableCell>{employee.department.name}</TableCell>
               <TableCell>
                 <Badge 

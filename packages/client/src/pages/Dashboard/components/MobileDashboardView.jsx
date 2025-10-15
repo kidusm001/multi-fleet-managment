@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, Suspense, useRef } from 'react';
 import { useTheme } from '@contexts/ThemeContext';
+import { useAuth } from '@contexts/AuthContext';
+import { useRole } from '@contexts/RoleContext';
 import { routeService } from '@services/routeService';
 import { ErrorBoundary } from '@components/Common/ErrorBoundary';
 import { MapPin, Users, Bus, Info } from 'lucide-react';
@@ -8,6 +10,7 @@ import RouteList from './RouteList';
 import StatsCards from './StatsCards';
 import MobileRouteDetailsModal from './MobileRouteDetailsModal';
 import { resolveOriginCoordinates, toMapStops, withOrderedStops } from '../utils/sortStops';
+import { ROLES } from '@data/constants';
 
 // Lazy load the map component
 const MapComponent = React.lazy(() =>
@@ -21,6 +24,8 @@ const MapComponent = React.lazy(() =>
  */
 function MobileDashboardView() {
   const { theme } = useTheme();
+  const { user } = useAuth();
+  const { role: activeRole, userRole: accountRole } = useRole();
   
   const [routes, setRoutes] = useState([]);
   const [selectedRoute, setSelectedRoute] = useState(null);
@@ -65,7 +70,8 @@ function MobileDashboardView() {
       id: route.id,
       coordinates: mapStops.coordinates,
       areas: mapStops.areas,
-      employeeUserIds: mapStops.employeeUserIds,
+      employeeUserIds: mapStops.employeeUserIds.map((id) => (id == null ? null : String(id))),
+      stopNumbers: mapStops.stopNumbers,
       location: route.location,
     };
   }, []);
@@ -74,6 +80,23 @@ function MobileDashboardView() {
   const mapRouteData = useMemo(() => {
     return transformRouteForMap(selectedRoute);
   }, [selectedRoute, transformRouteForMap]);
+
+  const mapCurrentUserId = useMemo(() => {
+    const normalizedRoles = Array.isArray(user?.roles)
+      ? user.roles
+          .map((role) => (typeof role === 'string' ? role.trim().toLowerCase() : null))
+          .filter(Boolean)
+      : [];
+
+    const fallbackRole = typeof user?.role === 'string' ? user.role.trim().toLowerCase() : null;
+    const calculatedRole = activeRole ?? accountRole ?? normalizedRoles.find(Boolean) ?? fallbackRole;
+
+    if (calculatedRole !== ROLES.EMPLOYEE) {
+      return null;
+    }
+
+    return user?.id != null ? String(user.id) : null;
+  }, [activeRole, accountRole, user?.roles, user?.role, user?.id]);
 
   // Handle map refresh when theme or route changes
   useEffect(() => {
@@ -184,7 +207,8 @@ function MobileDashboardView() {
                 selectedRoute={mapRouteData}
                 mapStyle={mapStyle}
                 initialZoom={11.5}
-                enableOptimization={false}
+                currentUserId={mapCurrentUserId}
+                enableOptimization
               />
             </div>
           </Suspense>
@@ -209,8 +233,7 @@ function MobileDashboardView() {
         )}
       </div>
 
-      {/* Route List Container - Fixed size, no scroll on container */}
-            {/* Route List Container - Fixed 20rem */}
+  {/* Route List Container - Fixed size, no scroll on container */}
       <div className="bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-800 p-4 h-full">
         <SearchAndFilter
           searchQuery={searchQuery}
