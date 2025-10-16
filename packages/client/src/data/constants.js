@@ -46,6 +46,7 @@ export const ROUTES = {
   EMPLOYEES: '/employees',
   DRIVERS: '/driver-management',
   PAYROLL: '/payroll',
+  ATTENDANCE: '/attendance',
   ORGANIZATIONS: '/organizations',
   ORGANIZATION_MANAGEMENT: '/organization-management',
   NOTIFICATIONS: '/notifications',

@@ -1068,7 +1068,14 @@ router.patch('/me/routes/:routeId/status', requireAuth, async (req: Request, res
                         plateNumber: true,
                         make: true,
                         model: true,
-                        capacity: true
+                        capacity: true,
+                        driver: {
+                            select: {
+                                id: true,
+                                name: true,
+                                email: true
+                            }
+                        }
                     }
                 },
                 stops: {

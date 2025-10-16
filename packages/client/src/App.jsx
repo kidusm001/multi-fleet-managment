@@ -15,6 +15,7 @@ const RouteManagement = lazy(() => import('@pages/RouteManagement'));
 const VehicleManagement = lazy(() => import('@pages/ShuttleManagement'));
 const EmployeeManagement = lazy(() => import('@pages/EmployeeManagement'));
 const Payroll = lazy(() => import('@pages/Payroll'));
+const Attendance = lazy(() => import('@pages/Attendance'));
 const Settings = lazy(() => import('@pages/Settings'));
 const OrganizationManagement = lazy(() => import('@pages/OrganizationManagement'));
 const Login = lazy(() => import('@pages/Auth/Login'));
@@ -413,6 +414,14 @@ function AppContent() {
                 }
               />
               <Route
+                path="attendance"
+                element={
+                  <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
+                    <Suspense fallback={<div />}> <Attendance /> </Suspense>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
                 path="organization-management"
                 element={
                   <ProtectedRoute allowedRoles={[ROLES.ADMIN]}>
@@ -470,6 +479,14 @@ function AppContent() {
                 element={
                   <ProtectedRoute allowedRoles={[ROLES.SUPERADMIN, ROLES.OWNER]}>
                     <Suspense fallback={<div>Loading...</div>}> <Payroll /> </Suspense>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="attendance"
+                element={
+                  <ProtectedRoute allowedRoles={[ROLES.SUPERADMIN, ROLES.OWNER]}>
+                    <Suspense fallback={<div />}> <Attendance /> </Suspense>
                   </ProtectedRoute>
                 }
               />

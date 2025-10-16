@@ -1,9 +1,19 @@
 // EnhancedShuttlePayrollDashboard.jsx
-import { Download } from "lucide-react";
+import { 
+  Download, 
+  DollarSign, 
+  Users, 
+  TrendingUp, 
+  Calendar,
+  Clock,
+  CheckCircle,
+  AlertCircle,
+  RefreshCw,
+  FileText
+} from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { useTheme } from "@contexts/ThemeContext";
 import { payrollService } from "@/services/payrollService";
-// removed unused formatters
 import { toast } from 'sonner';
 
 import { Badge } from "@/components/Common/UI/Badge";
@@ -15,17 +25,7 @@ import {
   CardTitle,
 } from "@/components/Common/UI/Card";
 
-// removed unused dashboard components
 import { MonthlyPayrollChart } from "./components/MonthlyPayrollChart";
-import { PayrollDistributionChart } from "./components/PayrollDistributionChart";
-import { PayrollFilters } from "./components/PayrollFilters";
-import {
-  TotalPayrollCard,
-  PayrollPeriodCard,
-  QuickStatsCard,
-} from "./components/PayrollOverview";
-import { PayrollProjectionsChart } from "./components/PayrollProjectionsChart";
-import { ShuttleAnalysis } from "./components/ShuttleAnalysis";
 import { ShuttleTable } from "./components/ShuttleTable";
 
 export default function EnhancedShuttlePayrollDashboard() {
@@ -37,8 +37,7 @@ export default function EnhancedShuttlePayrollDashboard() {
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState("All");
   const [modelFilter, setModelFilter] = useState("All");
-  const [costRangeFilter, setCostRangeFilter] = useState([2000, 4000]); // Updated to realistic ETB range
-  const [payrollDistributionData, setPayrollDistributionData] = useState([]);
+  const [costRangeFilter, setCostRangeFilter] = useState([0, 100000]); // Wide range to show all data by default
   const [monthlyPayrollData, setMonthlyPayrollData] = useState([]);
   const [_performanceMetrics, setPerformanceMetrics] = useState({
     efficiency: 0,
@@ -48,6 +47,8 @@ export default function EnhancedShuttlePayrollDashboard() {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [currentPeriod, setCurrentPeriod] = useState(null);
+  const [isGeneratingPayroll, setIsGeneratingPayroll] = useState(false);
 
   // Sample shuttle data for fallback
   const sampleShuttleData = useMemo(() => [
@@ -99,27 +100,56 @@ export default function EnhancedShuttlePayrollDashboard() {
         
         setSelectedMonth(currentMonth);
         
-        // Get current month's payroll data
+        // Get or create current month's payroll period
+        let period = null;
+        try {
+          period = await payrollService.getCurrentMonthPeriod();
+          setCurrentPeriod(period);
+          
+          // If period exists but has no entries, suggest generating them
+          if (period && (!period.payrollEntries || period.payrollEntries.length === 0)) {
+            toast('Payroll period exists but has no entries. Click "Generate Payroll" to calculate entries.', {
+              duration: 5000,
+            });
+          }
+        } catch (err) {
+          console.error("Error getting current period:", err);
+        }
+        
+        // Get shuttle data from payroll entries
         let shuttleDataTemp = [];
         try {
-          const payrolls = await payrollService.getAllMonthlyPayrolls(currentMonth, currentYear);
-          
-          // Transform API response into expected format
-          if (payrolls && Array.isArray(payrolls)) {
-            shuttleDataTemp = payrolls.map(payroll => {
-              // First try to get data from the nested shuttle object
-              const shuttleData = payroll.shuttle || {};
-              return {
-                // Ensure ID is always a string
-                id: String(shuttleData.id || payroll.id || `SH${Math.random().toString(36).substr(2, 5)}`),
-                type: (shuttleData.type === 'in-house' || payroll.type === 'in-house') ? 'Owned' : 'Outsourced',
-                model: shuttleData.model || payroll.model || 'Unknown Model',
-                usageDays: parseInt(payroll.workedDays || shuttleData.workedDays || 0),
-                costPerDay: parseFloat(payroll.dailyRate || shuttleData.dailyRate || 0),
-                status: payroll.status || shuttleData.status || 'PENDING',
-                efficiency: parseInt(payroll.efficiency || shuttleData.efficiency || 75)
-              };
-            });
+          if (period && period.payrollEntries && period.payrollEntries.length > 0) {
+            // Transform payroll entries to shuttle format
+            shuttleDataTemp = period.payrollEntries.map(entry => ({
+              id: entry.vehicle?.id || entry.id,
+              type: entry.driver ? 'Owned' : 'Outsourced',
+              model: entry.vehicle?.model || 'Unknown',
+              usageDays: entry.daysWorked || 0,
+              costPerDay: entry.daysWorked > 0 ? Number(entry.amount) / entry.daysWorked : 0,
+              status: entry.status || 'PENDING',
+              efficiency: 85, // Placeholder
+              totalAmount: Number(entry.netPay || 0),
+              driver: entry.driver,
+              serviceProvider: entry.serviceProvider
+            }));
+          } else {
+            // Fallback to old API for backwards compatibility
+            const payrolls = await payrollService.getAllMonthlyPayrolls(currentMonth, currentYear);
+            if (payrolls && Array.isArray(payrolls)) {
+              shuttleDataTemp = payrolls.map(payroll => {
+                const shuttleData = payroll.shuttle || {};
+                return {
+                  id: String(shuttleData.id || payroll.id || `SH${Math.random().toString(36).substr(2, 5)}`),
+                  type: (shuttleData.type === 'in-house' || payroll.type === 'in-house') ? 'Owned' : 'Outsourced',
+                  model: shuttleData.model || payroll.model || 'Unknown Model',
+                  usageDays: parseInt(payroll.workedDays || shuttleData.workedDays || 0),
+                  costPerDay: parseFloat(payroll.dailyRate || shuttleData.dailyRate || 0),
+                  status: payroll.status || shuttleData.status || 'PENDING',
+                  efficiency: parseInt(payroll.efficiency || shuttleData.efficiency || 75)
+                };
+              });
+            }
           }
         } catch (error) {
           console.error("Error loading payroll data:", error);
@@ -127,73 +157,60 @@ export default function EnhancedShuttlePayrollDashboard() {
 
         // If no data was loaded, use sample data
         if (!shuttleDataTemp || shuttleDataTemp.length === 0) {
+          console.log("No payroll data found, using sample data");
           shuttleDataTemp = sampleShuttleData;
-        }
-
-        // Get payroll distribution data or calculate it from sample data
-        let distributionData;
-        try {
-          const distribution = await payrollService.getPayrollDistribution(currentMonth, currentYear);
-          distributionData = [
-            { name: "Owned Shuttles", value: Number(distribution.ownedShuttles || 0) },
-            { name: "Outsourced Shuttles", value: Number(distribution.outsourcedShuttles || 0) },
-            { name: "Maintenance", value: Number(distribution.maintenance || 0) },
-            { name: "Other Expenses", value: Number(distribution.other || 0) }
-          ];
-        } catch (error) {
-          console.error("Error fetching distribution data:", error);
-          // Calculate from sample data
-          const ownedCost = shuttleDataTemp
-            .filter(s => s.type === 'Owned')
-            .reduce((sum, s) => sum + (s.costPerDay * s.usageDays), 0);
-          
-          const outsourcedCost = shuttleDataTemp
-            .filter(s => s.type === 'Outsourced')
-            .reduce((sum, s) => sum + (s.costPerDay * s.usageDays), 0);
-          
-          const maintenanceCost = shuttleDataTemp.reduce((sum, s) => {
-            const dailyMaintenance = s.type === 'Owned' ? 15 : 20;
-            return sum + (dailyMaintenance * s.usageDays);
-          }, 0);
-          
-          const otherExpenses = shuttleDataTemp.reduce((sum, s) => {
-            const insurance = s.type === 'Owned' ? 200 : 250;
-            const other = s.usageDays * 10;
-            return sum + insurance + other;
-          }, 0);
-          
-          distributionData = [
-            { name: "Owned Shuttles", value: ownedCost },
-            { name: "Outsourced Shuttles", value: outsourcedCost },
-            { name: "Maintenance", value: maintenanceCost },
-            { name: "Other Expenses", value: otherExpenses }
-          ];
+        } else {
+          console.log("Loaded payroll data:", shuttleDataTemp.length, "entries");
         }
 
         // Get historical data or generate sample data
         let monthlyData;
         try {
           const historicalData = await payrollService.getHistoricalPayrollData();
-          monthlyData = historicalData.map(data => ({
-            month: data.month.split(' ')[0],
-            amount: data.totalExpenses
-          }));
+          if (historicalData && historicalData.length > 0) {
+            monthlyData = historicalData.map(data => ({
+              month: data.month.split(' ')[0],
+              amount: Number(data.totalExpenses || 0),
+              estimated: false // Real historical data
+            }));
+            console.log("Loaded historical payroll data:", monthlyData.length, "months");
+          } else {
+            throw new Error("No historical data");
+          }
         } catch (error) {
           console.error("Error fetching historical data:", error);
-          // Generate sample monthly data
+          
+          // Calculate current month total from actual data
+          const currentTotal = shuttleDataTemp.reduce((sum, entry) => {
+            return sum + (Number(entry.totalAmount) || (Number(entry.usageDays || 0) * Number(entry.costPerDay || 0)));
+          }, 0);
+          
+          // Generate last 6 months of data with current month being real
           const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
           const currentMonthIndex = months.indexOf(currentMonth);
           
           monthlyData = Array.from({length: 6}, (_, i) => {
             const monthIndex = (currentMonthIndex - 5 + i + 12) % 12;
-            const baseAmount = 50000 + (Math.random() * 10000);
-            const trendFactor = 1 + (i * 0.05); // Increasing trend
             
-            return {
-              month: months[monthIndex],
-              amount: baseAmount * trendFactor
-            };
+            // Last month (current) uses real data, others are estimated
+            if (i === 5) {
+              return {
+                month: months[monthIndex],
+                amount: currentTotal,
+                estimated: false // Current month is actual data
+              };
+            } else {
+              // Generate decreasing trend toward current month
+              const variance = 0.85 + (Math.random() * 0.3); // 85-115% of current
+              return {
+                month: months[monthIndex],
+                amount: currentTotal * variance,
+                estimated: true // Previous months are estimated
+              };
+            }
           });
+          
+          console.log("Generated monthly data with current month total:", currentTotal);
         }
 
         // Calculate performance metrics
@@ -204,8 +221,8 @@ export default function EnhancedShuttlePayrollDashboard() {
           compliance: 100 // Assuming full compliance
         };
         
+        console.log("Setting shuttle data:", shuttleDataTemp);
         setShuttleData(shuttleDataTemp);
-        setPayrollDistributionData(distributionData);
         setMonthlyPayrollData(monthlyData);
         setPerformanceMetrics(metrics);
         setIsLoading(false);
@@ -263,17 +280,40 @@ export default function EnhancedShuttlePayrollDashboard() {
     try {
       const currentYear = new Date().getFullYear();
       await payrollService.generateReport(selectedMonth, currentYear);
-      toast({
-        title: "Success",
-        description: "Report generated and downloaded successfully",
-      });
+      toast('Report generated and downloaded successfully');
     } catch (error) {
       console.error("Error generating report:", error);
-      toast({
-        title: "Error",
-        description: "Failed to generate report. Please try again.",
-        variant: "destructive"
+      toast('Failed to generate report. Please try again.', {
+        type: 'error'
       });
+    }
+  };
+
+  const handleGeneratePayroll = async () => {
+    if (!currentPeriod) {
+      toast('No payroll period found. Creating one now...', {
+        type: 'error'
+      });
+      return;
+    }
+
+    try {
+      setIsGeneratingPayroll(true);
+      toast('Generating payroll entries from attendance records...');
+      
+      await payrollService.generatePayrollEntries(currentPeriod.id);
+      
+      toast('Payroll entries generated successfully! Reloading data...');
+      
+      // Reload the page data
+      window.location.reload();
+    } catch (error) {
+      console.error("Error generating payroll:", error);
+      toast('Failed to generate payroll entries. Please try again.', {
+        type: 'error'
+      });
+    } finally {
+      setIsGeneratingPayroll(false);
     }
   };
 
@@ -287,24 +327,53 @@ export default function EnhancedShuttlePayrollDashboard() {
     return str.toLowerCase().includes(searchStr.toLowerCase());
   };
 
-  const filteredShuttleData = shuttleData.filter((shuttle) => {
-    const matchesSearch = searchTerm
-      ? safeStringIncludes(shuttle.id, searchTerm) ||
-        safeStringIncludes(shuttle.model, searchTerm)
-      : true;
-    const matchesType = typeFilter === "All" || shuttle.type === typeFilter;
-    const matchesModel = modelFilter === "All" || shuttle.model === modelFilter;
-    const matchesCostRange =
-      shuttle.costPerDay >= costRangeFilter[0] &&
-      shuttle.costPerDay <= costRangeFilter[1];
-    return matchesSearch && matchesType && matchesModel && matchesCostRange;
-  }).map(shuttle => ({
-    ...shuttle,
-    // Ensure ID is always a string for the ShuttleTable component
-    id: String(shuttle.id)
-  }));
+  const filteredShuttleData = useMemo(() => {
+    const filtered = shuttleData.filter((shuttle) => {
+      const matchesSearch = searchTerm
+        ? safeStringIncludes(shuttle.id, searchTerm) ||
+          safeStringIncludes(shuttle.model, searchTerm)
+        : true;
+      const matchesType = typeFilter === "All" || shuttle.type === typeFilter;
+      const matchesModel = modelFilter === "All" || shuttle.model === modelFilter;
+      
+      // Handle cost range filter - allow entries with no costPerDay or 0
+      const costPerDay = Number(shuttle.costPerDay || 0);
+      const matchesCostRange = costPerDay >= costRangeFilter[0] && costPerDay <= costRangeFilter[1];
+      
+      return matchesSearch && matchesType && matchesModel && matchesCostRange;
+    }).map(shuttle => ({
+      ...shuttle,
+      // Ensure ID is always a string for the ShuttleTable component
+      id: String(shuttle.id)
+    }));
+    
+    console.log("Filtered shuttle data:", filtered.length, "entries", "from", shuttleData.length, "total");
+    return filtered;
+  }, [shuttleData, searchTerm, typeFilter, modelFilter, costRangeFilter]);
 
   const uniqueModels = [...new Set(shuttleData.map((shuttle) => shuttle.model))];
+
+  // Calculate metrics (must be before early returns to maintain hook order)
+  const totalPayroll = useMemo(() => {
+    const total = filteredShuttleData.reduce((sum, entry) => {
+      const amount = Number(entry.totalAmount) || (Number(entry.usageDays || 0) * Number(entry.costPerDay || 0));
+      return sum + amount;
+    }, 0);
+    console.log("Total payroll calculated:", total);
+    return total;
+  }, [filteredShuttleData]);
+
+  const processedCount = useMemo(() => {
+    const count = filteredShuttleData.filter(s => s.status === 'PROCESSED' || s.status === 'FINALIZED').length;
+    console.log("Processed count:", count);
+    return count;
+  }, [filteredShuttleData]);
+
+  const pendingCount = useMemo(() => {
+    const count = filteredShuttleData.filter(s => s.status === 'PENDING' || s.status === 'DRAFT').length;
+    console.log("Pending count:", count);
+    return count;
+  }, [filteredShuttleData]);
 
   if (isLoading) {
     return (
@@ -326,126 +395,256 @@ export default function EnhancedShuttlePayrollDashboard() {
   }
 
   return (
-    <div className={`min-h-screen ${
-      isDark ? 'bg-slate-900/50' : 'bg-gray-50/50'
-    } transition-colors duration-300`}>
-      <main className="mx-auto max-w-7xl p-8">
-        <div className="mb-8 flex items-center justify-between">
+    <div className="p-6 space-y-6">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className={`p-2 rounded-lg ${
+            isDark ? 'bg-green-900/20' : 'bg-green-50'
+          }`}>
+            <DollarSign className={`h-6 w-6 ${
+              isDark ? 'text-green-400' : 'text-green-600'
+            }`} />
+          </div>
           <div>
+            <h1 className="text-2xl font-bold text-[var(--text-primary)]">
+              Payroll Management
+            </h1>
             <div className="flex items-center gap-2">
-              <h1 className={`text-3xl font-bold ${
-                isDark ? 'text-white' : 'text-gray-900'
-              }`}>Shuttle Payroll Overview</h1>
-              <Badge variant={isDark ? 'default' : 'secondary'} 
-                className={isDark ? 'bg-blue-500/20 text-blue-300' : 'bg-blue-100 text-blue-800'}>
-                HRD Private Access
-              </Badge>
+              <p className="text-sm text-[var(--text-secondary)]">
+                {currentPeriod ? (
+                  <>
+                    {new Date(currentPeriod.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - {new Date(currentPeriod.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                  </>
+                ) : (
+                  'Manage driver and vehicle payroll'
+                )}
+              </p>
+              {currentPeriod?.status && (
+                <Badge variant={currentPeriod.status === 'FINALIZED' ? 'secondary' : 'outline'}>
+                  {currentPeriod.status}
+                </Badge>
+              )}
             </div>
-            <p className={`mt-2 ${
-              isDark ? 'text-gray-400' : 'text-gray-600'
-            }`}>
-              Financial period: {selectedMonth} 1 - {selectedMonth} 30, {new Date().getFullYear()}
-            </p>
-          </div>
-          <div>
-            <Button
-              className={`gap-2 ${
-                isDark 
-                  ? 'bg-blue-500/80 hover:bg-blue-600/80' 
-                  : 'bg-blue-500 hover:bg-blue-600'
-              } text-white`}
-              onClick={generateReport}
-            >
-              <Download className="h-4 w-4" />
-              Generate Report
-            </Button>
           </div>
         </div>
-
-        <div className="grid gap-6 lg:grid-cols-3">
-          <Card className={`${
-            isDark ? 'bg-gray-800/50 border-gray-700' : 'bg-white'
-          } backdrop-blur-sm`}>
-            <TotalPayrollCard
-              selectedMonth={selectedMonth}
-              setSelectedMonth={setSelectedMonth}
-              monthlyPayrollData={monthlyPayrollData}
-            />
-          </Card>
-          <Card className={`${
-            isDark ? 'bg-gray-800/50 border-gray-700' : 'bg-white'
-          } backdrop-blur-sm`}>
-            <PayrollPeriodCard selectedMonth={selectedMonth} shuttleData={shuttleData} />
-          </Card>
-          <Card className={`${
-            isDark ? 'bg-gray-800/50 border-gray-700' : 'bg-white'
-          } backdrop-blur-sm`}>
-            <QuickStatsCard shuttleData={shuttleData} />
-          </Card>
-        </div>
-
-        <div className="mt-6 grid gap-6 lg:grid-cols-3">
-          <Card className={`${
-            isDark ? 'bg-gray-800/50 border-gray-700' : 'bg-white'
-          } backdrop-blur-sm col-span-2`}>
-            <MonthlyPayrollChart data={monthlyPayrollData} />
-          </Card>
-          <Card className={`${
-            isDark ? 'bg-gray-800/50 border-gray-700' : 'bg-white'
-          } backdrop-blur-sm`}>
-            <PayrollDistributionChart data={payrollDistributionData} />
-          </Card>
-        </div>
-
-        <div className="mt-6">
-          <PayrollProjectionsChart />
-        </div>
-
-        <Card className={`mt-6 ${
-          isDark ? 'bg-gray-800/50 border-gray-700' : 'bg-white'
-        } backdrop-blur-sm`}>
-          <CardHeader>
-            <CardTitle>Shuttle Payroll Details</CardTitle>
-            <PayrollFilters
-              searchTerm={searchTerm}
-              setSearchTerm={setSearchTerm}
-              typeFilter={typeFilter}
-              setTypeFilter={setTypeFilter}
-              modelFilter={modelFilter}
-              setModelFilter={setModelFilter}
-              costRangeFilter={costRangeFilter}
-              setCostRangeFilter={setCostRangeFilter}
-              uniqueModels={uniqueModels}
-            />
-          </CardHeader>
-          <CardContent>
-            {filteredShuttleData && filteredShuttleData.length > 0 ? (
-              <ShuttleTable
-                filteredShuttleData={filteredShuttleData}
-                handleShuttleSelect={setSelectedShuttle}
-                calculateMonthlyCost={calculateMonthlyCost}
-                selectedShuttle={selectedShuttle}
-              />
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={() => window.location.reload()}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
+          <Button
+            className="bg-green-600 hover:bg-green-700 text-white"
+            onClick={handleGeneratePayroll}
+            disabled={isGeneratingPayroll || !currentPeriod}
+          >
+            {isGeneratingPayroll ? (
+              <>
+                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                Generating...
+              </>
             ) : (
-              <div className="text-center py-8">
-                <p className="text-gray-500">
-                  {searchTerm || typeFilter !== "All" || modelFilter !== "All"
-                    ? "No shuttle data matches your filters"
-                    : "No shuttle data available"}
+              <>
+                <CheckCircle className="h-4 w-4 mr-2" />
+                Generate Payroll
+              </>
+            )}
+          </Button>
+          <Button onClick={generateReport}>
+            <Download className="h-4 w-4 mr-2" />
+            Export Report
+          </Button>
+        </div>
+      </div>
+
+      {/* Key Metrics */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card className={`overflow-hidden ${
+          isDark ? 'bg-gradient-to-br from-blue-900/20 to-blue-800/10 border-blue-800/30' : 'bg-gradient-to-br from-blue-50 to-blue-100/50 border-blue-200'
+        }`}>
+          <CardContent className="pt-6">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className={`text-sm font-medium mb-2 ${
+                  isDark ? 'text-blue-400' : 'text-blue-600'
+                }`}>
+                  Total Payroll
+                </p>
+                <div className={`text-3xl font-bold ${
+                  isDark ? 'text-white' : 'text-gray-900'
+                }`}>
+                  ETB {totalPayroll.toLocaleString()}
+                </div>
+                <p className={`text-xs mt-1 ${
+                  isDark ? 'text-gray-400' : 'text-gray-600'
+                }`}>
+                  Current period
                 </p>
               </div>
-            )}
+              <div className={`p-3 rounded-lg ${
+                isDark ? 'bg-blue-900/30' : 'bg-blue-100'
+              }`}>
+                <DollarSign className={`h-6 w-6 ${
+                  isDark ? 'text-blue-400' : 'text-blue-600'
+                }`} />
+              </div>
+            </div>
           </CardContent>
         </Card>
 
-        {selectedShuttle && (
-          <ShuttleAnalysis
-            selectedShuttle={selectedShuttle}
-            calculateMonthlyCost={calculateMonthlyCost}
-            onClose={() => setSelectedShuttle(null)}
-          />
-        )}
-      </main>
+        <Card className={`overflow-hidden ${
+          isDark ? 'bg-gradient-to-br from-purple-900/20 to-purple-800/10 border-purple-800/30' : 'bg-gradient-to-br from-purple-50 to-purple-100/50 border-purple-200'
+        }`}>
+          <CardContent className="pt-6">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className={`text-sm font-medium mb-2 ${
+                  isDark ? 'text-purple-400' : 'text-purple-600'
+                }`}>
+                  Total Entries
+                </p>
+                <div className={`text-3xl font-bold ${
+                  isDark ? 'text-white' : 'text-gray-900'
+                }`}>
+                  {filteredShuttleData.length}
+                </div>
+                <p className={`text-xs mt-1 ${
+                  isDark ? 'text-gray-400' : 'text-gray-600'
+                }`}>
+                  Drivers & vehicles
+                </p>
+              </div>
+              <div className={`p-3 rounded-lg ${
+                isDark ? 'bg-purple-900/30' : 'bg-purple-100'
+              }`}>
+                <Users className={`h-6 w-6 ${
+                  isDark ? 'text-purple-400' : 'text-purple-600'
+                }`} />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className={`overflow-hidden ${
+          isDark ? 'bg-gradient-to-br from-green-900/20 to-green-800/10 border-green-800/30' : 'bg-gradient-to-br from-green-50 to-green-100/50 border-green-200'
+        }`}>
+          <CardContent className="pt-6">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className={`text-sm font-medium mb-2 ${
+                  isDark ? 'text-green-400' : 'text-green-600'
+                }`}>
+                  Processed
+                </p>
+                <div className={`text-3xl font-bold ${
+                  isDark ? 'text-white' : 'text-gray-900'
+                }`}>
+                  {processedCount}
+                </div>
+                <p className={`text-xs mt-1 ${
+                  isDark ? 'text-gray-400' : 'text-gray-600'
+                }`}>
+                  {filteredShuttleData.length > 0 ? Math.round((processedCount / filteredShuttleData.length) * 100) : 0}% complete
+                </p>
+              </div>
+              <div className={`p-3 rounded-lg ${
+                isDark ? 'bg-green-900/30' : 'bg-green-100'
+              }`}>
+                <CheckCircle className={`h-6 w-6 ${
+                  isDark ? 'text-green-400' : 'text-green-600'
+                }`} />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className={`overflow-hidden ${
+          isDark ? 'bg-gradient-to-br from-orange-900/20 to-orange-800/10 border-orange-800/30' : 'bg-gradient-to-br from-orange-50 to-orange-100/50 border-orange-200'
+        }`}>
+          <CardContent className="pt-6">
+            <div className="flex items-start justify-between">
+              <div>
+                <p className={`text-sm font-medium mb-2 ${
+                  isDark ? 'text-orange-400' : 'text-orange-600'
+                }`}>
+                  Pending
+                </p>
+                <div className={`text-3xl font-bold ${
+                  isDark ? 'text-white' : 'text-gray-900'
+                }`}>
+                  {pendingCount}
+                </div>
+                <p className={`text-xs mt-1 ${
+                  isDark ? 'text-gray-400' : 'text-gray-600'
+                }`}>
+                  Awaiting processing
+                </p>
+              </div>
+              <div className={`p-3 rounded-lg ${
+                isDark ? 'bg-orange-900/30' : 'bg-orange-100'
+              }`}>
+                <Clock className={`h-6 w-6 ${
+                  isDark ? 'text-orange-400' : 'text-orange-600'
+                }`} />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Monthly Chart */}
+      <Card>
+        <MonthlyPayrollChart data={monthlyPayrollData} />
+      </Card>
+
+      {/* Payroll Entries Table */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Payroll Entries
+              </CardTitle>
+              <p className="text-sm text-[var(--text-secondary)] mt-1">
+                Detailed breakdown of all payroll entries for this period
+              </p>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {filteredShuttleData && filteredShuttleData.length > 0 ? (
+            <ShuttleTable
+              filteredShuttleData={filteredShuttleData}
+              handleShuttleSelect={setSelectedShuttle}
+              calculateMonthlyCost={calculateMonthlyCost}
+              selectedShuttle={selectedShuttle}
+            />
+          ) : (
+            <div className="text-center py-16">
+              <div className={`inline-flex items-center justify-center w-16 h-16 rounded-full mb-4 ${
+                isDark ? 'bg-gray-800' : 'bg-gray-100'
+              }`}>
+                <AlertCircle className={`h-8 w-8 ${isDark ? 'text-gray-600' : 'text-gray-400'}`} />
+              </div>
+              <h3 className={`text-lg font-medium mb-2 ${isDark ? 'text-gray-300' : 'text-gray-900'}`}>
+                No Payroll Entries
+              </h3>
+              <p className={`text-sm mb-4 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                {currentPeriod 
+                  ? 'Click "Generate Payroll" to calculate entries from attendance records.'
+                  : 'No payroll period found. Please ensure attendance records exist.'}
+              </p>
+              {currentPeriod && (
+                <Button onClick={handleGeneratePayroll} disabled={isGeneratingPayroll}>
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Generate Payroll Now
+                </Button>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

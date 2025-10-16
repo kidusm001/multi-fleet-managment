@@ -171,6 +171,12 @@ export default function DriverFormDialog({
         licenseNumber: formData.licenseNumber,
         phoneNumber: formData.phoneNumber,
         experienceYears: formData.experience || 0, // Backend expects experienceYears, not experience
+        status: formData.status || 'ACTIVE',
+        baseSalary: formData.baseSalary ? parseFloat(formData.baseSalary) : null,
+        hourlyRate: formData.hourlyRate ? parseFloat(formData.hourlyRate) : null,
+        overtimeRate: formData.overtimeRate ? parseFloat(formData.overtimeRate) : 1.5,
+        bankAccountNumber: formData.bankAccountNumber || null,
+        bankName: formData.bankName || null,
         userId: formData.userId,
       };
       
@@ -356,6 +362,134 @@ export default function DriverFormDialog({
               required
               disabled={!editMode && !selectedMember}
             />
+          </div>
+
+          <div className="space-y-2">
+            <label className={`text-sm font-medium ${labelClass}`}>
+              Status
+            </label>
+            <Select
+              value={formData.status || "ACTIVE"}
+              onValueChange={(value) => setFormData({ ...formData, status: value })}
+              disabled={!editMode && !selectedMember}
+            >
+              <SelectTrigger className={inputClass}>
+                <SelectValue placeholder="Select driver status" />
+              </SelectTrigger>
+              <SelectContent className={isDark ? "bg-gray-800 border-gray-700 text-gray-200" : ""}>
+                <SelectItem value="ACTIVE" className={isDark ? "focus:bg-gray-700 focus:text-gray-200" : ""}>
+                  Active
+                </SelectItem>
+                <SelectItem value="OFF_DUTY" className={isDark ? "focus:bg-gray-700 focus:text-gray-200" : ""}>
+                  Off Duty
+                </SelectItem>
+                <SelectItem value="ON_BREAK" className={isDark ? "focus:bg-gray-700 focus:text-gray-200" : ""}>
+                  On Break
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Payroll Information */}
+          <div className="space-y-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+            <h3 className={`text-sm font-semibold ${labelClass}`}>
+              Payroll Information
+            </h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className={`text-sm font-medium ${labelClass}`}>
+                  Base Salary (ETB)
+                </label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={formData.baseSalary || ""}
+                  onChange={(e) => setFormData({ ...formData, baseSalary: e.target.value })}
+                  className={inputClass}
+                  placeholder="e.g., 8000.00"
+                  disabled={!editMode && !selectedMember}
+                />
+                <p className={`text-xs ${isDark ? "text-gray-400" : "text-gray-500"}`}>
+                  Monthly base salary
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <label className={`text-sm font-medium ${labelClass}`}>
+                  Hourly Rate (ETB)
+                </label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={formData.hourlyRate || ""}
+                  onChange={(e) => setFormData({ ...formData, hourlyRate: e.target.value })}
+                  className={inputClass}
+                  placeholder="e.g., 50.00"
+                  disabled={!editMode && !selectedMember}
+                />
+                <p className={`text-xs ${isDark ? "text-gray-400" : "text-gray-500"}`}>
+                  Used if base salary is not set
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className={`text-sm font-medium ${labelClass}`}>
+                Overtime Rate Multiplier
+              </label>
+              <Input
+                type="number"
+                step="0.1"
+                min="1"
+                max="3"
+                value={formData.overtimeRate || "1.5"}
+                onChange={(e) => setFormData({ ...formData, overtimeRate: e.target.value })}
+                className={inputClass}
+                placeholder="e.g., 1.5"
+                disabled={!editMode && !selectedMember}
+              />
+              <p className={`text-xs ${isDark ? "text-gray-400" : "text-gray-500"}`}>
+                Default: 1.5x (time and a half)
+              </p>
+            </div>
+          </div>
+
+          {/* Bank Information */}
+          <div className="space-y-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+            <h3 className={`text-sm font-semibold ${labelClass}`}>
+              Bank Information (Optional)
+            </h3>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <label className={`text-sm font-medium ${labelClass}`}>
+                  Bank Name
+                </label>
+                <Input
+                  value={formData.bankName || ""}
+                  onChange={(e) => setFormData({ ...formData, bankName: e.target.value })}
+                  className={inputClass}
+                  placeholder="e.g., Commercial Bank of Ethiopia"
+                  disabled={!editMode && !selectedMember}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className={`text-sm font-medium ${labelClass}`}>
+                  Account Number
+                </label>
+                <Input
+                  value={formData.bankAccountNumber || ""}
+                  onChange={(e) => setFormData({ ...formData, bankAccountNumber: e.target.value })}
+                  className={inputClass}
+                  placeholder="Enter account number"
+                  disabled={!editMode && !selectedMember}
+                />
+              </div>
+            </div>
           </div>
 
           <div className="space-y-2">
