@@ -26,7 +26,6 @@ import {
 } from "@/components/Common/UI/Card";
 
 import { MonthlyPayrollChart } from "./components/MonthlyPayrollChart";
-import { PayrollDistributionChart } from "./components/PayrollDistributionChart";
 import { ShuttleTable } from "./components/ShuttleTable";
 
 export default function EnhancedShuttlePayrollDashboard() {
@@ -39,7 +38,6 @@ export default function EnhancedShuttlePayrollDashboard() {
   const [typeFilter, setTypeFilter] = useState("All");
   const [modelFilter, setModelFilter] = useState("All");
   const [costRangeFilter, setCostRangeFilter] = useState([0, 100000]); // Wide range to show all data by default
-  const [payrollDistributionData, setPayrollDistributionData] = useState([]);
   const [monthlyPayrollData, setMonthlyPayrollData] = useState([]);
   const [_performanceMetrics, setPerformanceMetrics] = useState({
     efficiency: 0,
@@ -165,64 +163,54 @@ export default function EnhancedShuttlePayrollDashboard() {
           console.log("Loaded payroll data:", shuttleDataTemp.length, "entries");
         }
 
-        // Calculate real payroll distribution from actual data
-        let distributionData;
-        
-        // Calculate actual costs by category
-        const driverPayroll = shuttleDataTemp
-          .filter(s => s.driver)
-          .reduce((sum, s) => sum + (Number(s.totalAmount) || (Number(s.usageDays || 0) * Number(s.costPerDay || 0))), 0);
-        
-        const serviceProviderPayroll = shuttleDataTemp
-          .filter(s => s.serviceProvider)
-          .reduce((sum, s) => sum + (Number(s.totalAmount) || (Number(s.usageDays || 0) * Number(s.costPerDay || 0))), 0);
-        
-        // Count entries by type for better insight
-        const driverCount = shuttleDataTemp.filter(s => s.driver).length;
-        const serviceProviderCount = shuttleDataTemp.filter(s => s.serviceProvider).length;
-        
-        console.log("Distribution:", {
-          drivers: driverPayroll,
-          serviceProviders: serviceProviderPayroll,
-          driverCount,
-          serviceProviderCount
-        });
-        
-        distributionData = [
-          { 
-            name: `Driver Payroll (${driverCount})`, 
-            value: driverPayroll 
-          },
-          { 
-            name: `Service Providers (${serviceProviderCount})`, 
-            value: serviceProviderPayroll 
-          }
-        ].filter(item => item.value > 0); // Only show categories with actual values
-
         // Get historical data or generate sample data
         let monthlyData;
         try {
           const historicalData = await payrollService.getHistoricalPayrollData();
-          monthlyData = historicalData.map(data => ({
-            month: data.month.split(' ')[0],
-            amount: data.totalExpenses
-          }));
+          if (historicalData && historicalData.length > 0) {
+            monthlyData = historicalData.map(data => ({
+              month: data.month.split(' ')[0],
+              amount: Number(data.totalExpenses || 0),
+              estimated: false // Real historical data
+            }));
+            console.log("Loaded historical payroll data:", monthlyData.length, "months");
+          } else {
+            throw new Error("No historical data");
+          }
         } catch (error) {
           console.error("Error fetching historical data:", error);
-          // Generate sample monthly data
+          
+          // Calculate current month total from actual data
+          const currentTotal = shuttleDataTemp.reduce((sum, entry) => {
+            return sum + (Number(entry.totalAmount) || (Number(entry.usageDays || 0) * Number(entry.costPerDay || 0)));
+          }, 0);
+          
+          // Generate last 6 months of data with current month being real
           const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
           const currentMonthIndex = months.indexOf(currentMonth);
           
           monthlyData = Array.from({length: 6}, (_, i) => {
             const monthIndex = (currentMonthIndex - 5 + i + 12) % 12;
-            const baseAmount = 50000 + (Math.random() * 10000);
-            const trendFactor = 1 + (i * 0.05); // Increasing trend
             
-            return {
-              month: months[monthIndex],
-              amount: baseAmount * trendFactor
-            };
+            // Last month (current) uses real data, others are estimated
+            if (i === 5) {
+              return {
+                month: months[monthIndex],
+                amount: currentTotal,
+                estimated: false // Current month is actual data
+              };
+            } else {
+              // Generate decreasing trend toward current month
+              const variance = 0.85 + (Math.random() * 0.3); // 85-115% of current
+              return {
+                month: months[monthIndex],
+                amount: currentTotal * variance,
+                estimated: true // Previous months are estimated
+              };
+            }
           });
+          
+          console.log("Generated monthly data with current month total:", currentTotal);
         }
 
         // Calculate performance metrics
@@ -235,7 +223,6 @@ export default function EnhancedShuttlePayrollDashboard() {
         
         console.log("Setting shuttle data:", shuttleDataTemp);
         setShuttleData(shuttleDataTemp);
-        setPayrollDistributionData(distributionData);
         setMonthlyPayrollData(monthlyData);
         setPerformanceMetrics(metrics);
         setIsLoading(false);
@@ -605,15 +592,10 @@ export default function EnhancedShuttlePayrollDashboard() {
         </Card>
       </div>
 
-      {/* Charts */}
-      <div className="grid gap-6 lg:grid-cols-3">
-        <Card className="col-span-2">
-          <MonthlyPayrollChart data={monthlyPayrollData} />
-        </Card>
-        <Card>
-          <PayrollDistributionChart data={payrollDistributionData} />
-        </Card>
-      </div>
+      {/* Monthly Chart */}
+      <Card>
+        <MonthlyPayrollChart data={monthlyPayrollData} />
+      </Card>
 
       {/* Payroll Entries Table */}
       <Card>

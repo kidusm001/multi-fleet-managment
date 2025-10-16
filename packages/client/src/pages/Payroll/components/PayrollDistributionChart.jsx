@@ -36,12 +36,37 @@ CustomTooltip.propTypes = {
 };
 
 export function PayrollDistributionChart({ data }) {
+  console.log("PayrollDistributionChart received data:", data);
+  
+  // Ensure data is valid
+  if (!data || !Array.isArray(data) || data.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Payroll Distribution</CardTitle>
+          <p className="text-sm text-[var(--text-secondary)] mt-1">
+            Breakdown by payment category
+          </p>
+        </CardHeader>
+        <CardContent>
+          <div className="h-[300px] flex items-center justify-center">
+            <p className="text-gray-500 dark:text-gray-400 text-sm">
+              No payroll data to display
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+  
   // Calculate percentages and total
-  const total = data.reduce((sum, item) => sum + item.value, 0);
+  const total = data.reduce((sum, item) => sum + (Number(item.value) || 0), 0);
   const dataWithPercentages = data.map(item => ({
     ...item,
     percentage: total > 0 ? ((item.value / total) * 100).toFixed(1) : 0
   }));
+  
+  console.log("Chart total:", total, "data with percentages:", dataWithPercentages);
 
   return (
     <Card>
@@ -81,7 +106,7 @@ export function PayrollDistributionChart({ data }) {
         ) : (
           <div className="h-[300px] flex items-center justify-center">
             <p className="text-gray-500 dark:text-gray-400 text-sm">
-              No payroll data to display
+              No payroll amounts calculated yet
             </p>
           </div>
         )}
