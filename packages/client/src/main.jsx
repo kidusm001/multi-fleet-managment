@@ -5,6 +5,7 @@ import mapboxgl from 'mapbox-gl';
 
 // Internal dependencies
 import App from './App';
+import { HQLocationProvider } from './contexts/HQLocationContext';
 import ErrorBoundary from './components/Common/ErrorBoundary';
 import './styles/index.css';
 
@@ -23,7 +24,9 @@ const enableStrict = import.meta.env.PROD || import.meta.env.VITE_ENABLE_STRICT_
 
 const AppTree = (
   <ErrorBoundary>
-    <App />
+    <HQLocationProvider>
+      <App />
+    </HQLocationProvider>
   </ErrorBoundary>
 );
 

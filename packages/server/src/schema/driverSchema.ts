@@ -20,6 +20,7 @@ export const CreateDriverSchema = z.object({
     // Banking details
     bankAccountNumber: z.string().max(255).nullable().optional(),
     bankName: z.string().max(255).nullable().optional(),
+    vehicleId: z.cuid('Invalid vehicle ID format').nullable().optional(),
 });
 
 export const UpdateDriverSchema = z.object({
@@ -38,6 +39,7 @@ export const UpdateDriverSchema = z.object({
     // Banking details
     bankAccountNumber: z.string().max(255).nullable().optional(),
     bankName: z.string().max(255).nullable().optional(),
+    vehicleId: z.cuid('Invalid vehicle ID format').nullable().optional(),
 });
 
 export type CreateDriver = z.infer<typeof CreateDriverSchema>;

@@ -36,6 +36,7 @@ import { AuthProvider } from "@contexts/AuthContext";
 import { Toaster } from 'sonner';
 import { NotificationProvider } from "@contexts/NotificationContext";
 import { ToastProvider } from '@contexts/ToastContext';
+import { HQLocationProvider } from '@contexts/HQLocationContext';
 import Unauthorized from "@pages/Unauthorized";
 import { NotificationSound } from "@components/Common/Notifications/NotificationSound";
 import { useViewport } from "@hooks/useViewport";
@@ -547,16 +548,20 @@ function App() {
           <ToastProvider>
             {orgsEnabled() ? (
               <OrganizationProvider>
+                <HQLocationProvider>
+                  <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+                    <AppContent />
+                    <Toaster />
+                  </Router>
+                </HQLocationProvider>
+              </OrganizationProvider>
+            ) : (
+              <HQLocationProvider>
                 <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
                   <AppContent />
                   <Toaster />
                 </Router>
-              </OrganizationProvider>
-            ) : (
-              <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-                <AppContent />
-                <Toaster />
-              </Router>
+              </HQLocationProvider>
             )}
           </ToastProvider>
         </RoleProvider>

@@ -12,11 +12,7 @@ import { optimizeRoute } from "@services/routeOptimization";
 import { formatDisplayAddress } from "@/utils/address";
 
 import styles from "../styles/ShuttlePreview.module.css";
-import {
-  resolveOriginCoordinates,
-  sortStopsBySequence,
-  toMapStops,
-} from "../../../../Dashboard/utils/sortStops";
+import { sortStopsBySequence, toMapStops } from "../../../../Dashboard/utils/sortStops";
 
 const ShuttlePreview = ({ routeData, onClose, onAccept, show }) => {
   const [isLoading, setIsLoading] = useState(false);
@@ -29,6 +25,45 @@ const ShuttlePreview = ({ routeData, onClose, onAccept, show }) => {
     selectedShuttle,
     selectedLocation,
   } = routeData;
+
+  const parseCapacityValue = (value) =>
+    typeof value === "number" && Number.isFinite(value) ? value : null;
+  const selectedShuttleCapacity =
+    parseCapacityValue(selectedShuttle?.category?.capacity) ??
+    parseCapacityValue(selectedShuttle?.capacity) ??
+    0;
+  const maxDurationLimitMinutes = selectedShuttleCapacity >= 12 ? 120 : 90;
+
+  const branchCoordinates = useMemo(() => {
+    const parseCandidate = (candidate) => {
+      if (candidate == null) {
+        return null;
+      }
+      const parsed = typeof candidate === "string" ? Number.parseFloat(candidate) : candidate;
+      return Number.isFinite(parsed) ? parsed : null;
+    };
+
+    const latCandidate = [selectedLocation?.latitude, selectedLocation?.lat, selectedLocation?.coords?.[1]]
+      .map(parseCandidate)
+      .find((value) => value != null);
+    const lngCandidate = [selectedLocation?.longitude, selectedLocation?.lng, selectedLocation?.coords?.[0]]
+      .map(parseCandidate)
+      .find((value) => value != null);
+
+    const fallbackCoords = MAP_CONFIG?.HQ_LOCATION?.coords || [];
+    const fallbackLng = parseCandidate(fallbackCoords[0]) ?? 38.76856893855111;
+    const fallbackLat = parseCandidate(fallbackCoords[1]) ?? 9.016465390275195;
+
+    return {
+      lat: latCandidate ?? fallbackLat,
+      lng: lngCandidate ?? fallbackLng,
+    };
+  }, [selectedLocation]);
+
+  const branchLngLat = useMemo(
+    () => [branchCoordinates.lng, branchCoordinates.lat],
+    [branchCoordinates]
+  );
 
   const { employeesWithCoordinates, employeesWithoutCoordinates } = useMemo(() => {
     const withCoords = [];
@@ -79,12 +114,8 @@ const ShuttlePreview = ({ routeData, onClose, onAccept, show }) => {
       return [];
     }
 
-    const originCoords =
-      resolveOriginCoordinates({ location: selectedLocation }) ||
-      MAP_CONFIG.HQ_LOCATION.coords;
-
-    const sortedStops = sortStopsBySequence(employeeStops, originCoords);
-    const mapStops = toMapStops(employeeStops, originCoords);
+    const sortedStops = sortStopsBySequence(employeeStops, branchLngLat);
+    const mapStops = toMapStops(employeeStops, branchLngLat);
 
     return sortedStops.map((stop, index) => ({
       employee: stop.employee,
@@ -94,7 +125,7 @@ const ShuttlePreview = ({ routeData, onClose, onAccept, show }) => {
         formatDisplayAddress(stop.location || stop.area || stop.employee?.location) ||
         "N/A",
     }));
-  }, [employeeStops, selectedLocation]);
+  }, [employeeStops, branchLngLat]);
 
   const fallbackUnmappedEmployees = useMemo(
     () =>
@@ -131,12 +162,10 @@ const ShuttlePreview = ({ routeData, onClose, onAccept, show }) => {
     const calculateOptimalRoute = async () => {
       setIsLoading(true);
       try {
-        const originCoords =
-          resolveOriginCoordinates({ location: selectedLocation }) ||
-          MAP_CONFIG.HQ_LOCATION.coords;
+        const originCoords = branchLngLat;
         const originLabel =
           formatDisplayAddress(selectedLocation?.address || selectedLocation?.name) ||
-          "HQ";
+          "Branch";
 
         // Prepare data for optimization including branch location and employee stops
         const routeForOptimization = {
@@ -210,7 +239,7 @@ const ShuttlePreview = ({ routeData, onClose, onAccept, show }) => {
     };
 
     calculateOptimalRoute();
-  }, [employeeStops, selectedLocation, show]);
+  }, [employeeStops, branchLngLat, selectedLocation, show]);
 
   // Early return if no valid data
   if (!show || !selectedShuttle || !employeesWithCoordinates.length) {
@@ -227,24 +256,21 @@ const ShuttlePreview = ({ routeData, onClose, onAccept, show }) => {
   // Function to generate suggested route name based on furthest location
   const getSuggestedRouteName = () => {
     if (!routeData.selectedEmployees?.length) return "";
-    
-    // Use company HQ location from environment variables
-    const HQ_LOCATION = { 
-      lat: parseFloat(import.meta.env.VITE_HQ_LATITUDE || "9.016465390275195"), 
-      lng: parseFloat(import.meta.env.VITE_HQ_LONGITUDE || "38.76856893855111")
-    };
-    
+
+    const originLat = branchCoordinates.lat;
+    const originLng = branchCoordinates.lng;
+
     let furthestDistance = 0;
     let furthestArea = '';
-    
-    // Find the furthest employee from HQ using Haversine formula
+
+    // Find the furthest employee from the selected branch using Haversine formula
     routeData.selectedEmployees.forEach(employee => {
       if (employee.stop?.latitude && employee.stop?.longitude) {
         const R = 6371; // Earth's radius in km
-        const lat1 = HQ_LOCATION.lat * Math.PI / 180;
+        const lat1 = originLat * Math.PI / 180;
         const lat2 = employee.stop.latitude * Math.PI / 180;
         const dLat = lat2 - lat1;
-        const dLon = (employee.stop.longitude - HQ_LOCATION.lng) * Math.PI / 180;
+        const dLon = (employee.stop.longitude - originLng) * Math.PI / 180;
         
         const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
                 Math.cos(lat1) * Math.cos(lat2) * 
@@ -568,7 +594,7 @@ const ShuttlePreview = ({ routeData, onClose, onAccept, show }) => {
                     name: selectedShuttle.name,
                     capacity: selectedShuttle.category.capacity,
                   }}
-                  center={MAP_CONFIG.HQ_LOCATION.coords}
+                  center={branchLngLat}
                   zoom={11}
                   showDirections={true}
                   isLoading={isLoading}
@@ -587,7 +613,7 @@ const ShuttlePreview = ({ routeData, onClose, onAccept, show }) => {
                 onClick={handleCreateRoute}
                 disabled={
                   isLoading ||
-                  routeMetrics?.totalTime > 90 ||
+                  routeMetrics?.totalTime > maxDurationLimitMinutes ||
                   !employeeListEntries.length ||
                   !routeData.name.trim()
                 }
@@ -597,9 +623,9 @@ const ShuttlePreview = ({ routeData, onClose, onAccept, show }) => {
                 <span>Create Route</span>
               </button>
             </div>
-            {routeMetrics?.totalTime > 90 && (
+            {routeMetrics?.totalTime > maxDurationLimitMinutes && (
               <div className={styles.error}>
-                Route duration exceeds 90 minutes limit
+                Route duration exceeds {maxDurationLimitMinutes} minutes limit
               </div>
             )}
           </div>

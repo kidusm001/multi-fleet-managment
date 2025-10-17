@@ -156,6 +156,11 @@ async function main() {
     );
 
     await runCommand(
+      'npx tsx src/script/assignDriversToVehicles.ts',
+      'Step 4.5: Link drivers with shuttle vehicles'
+    );
+
+    await runCommand(
       'npx tsx src/script/createLocationsForEmployees.ts',
       'Step 5: Create locations for employees'
     );

@@ -648,82 +648,10 @@ async function createVehiclesForOrg(org: any, categories: any[], drivers: any[])
 }
 
 async function createRoutesAndStops(org: any, vehicles: any[], shifts: any[]) {
-  console.log(`   🗺️  Creating routes and stops for ${org.name}...`)
-
-  // Load location data from CSV for consistent coordinates
-  const locationData = loadLocationData()
-
-  // Realistic route data for different organization types using Addis Ababa coordinates
-  const routeTemplates = [
-    {
-      name: 'Downtown Express',
-      description: 'Main downtown business route',
-      stops: [
-        { name: 'Central Station', address: 'Downtown Central, Main St, Addis Ababa', lat: locationData[0]?.latitude || 9.0300, lng: locationData[0]?.longitude || 38.7400 },
-        { name: 'Business District', address: 'Business Hub, Commerce Ave, Addis Ababa', lat: locationData[1]?.latitude || 9.0320, lng: locationData[1]?.longitude || 38.7420 },
-        { name: 'Shopping Center', address: 'City Mall, Retail Blvd, Addis Ababa', lat: locationData[2]?.latitude || 9.0340, lng: locationData[2]?.longitude || 38.7440 },
-      ]
-    },
-    {
-      name: 'Airport Shuttle',
-      description: 'Direct airport connection service',
-      stops: [
-        { name: 'Airport Terminal', address: 'International Airport, Terminal 1, Addis Ababa', lat: locationData[3]?.latitude || 8.9800, lng: locationData[3]?.longitude || 38.8000 },
-        { name: 'Hotel District', address: 'Grand Plaza Hotel Area, Addis Ababa', lat: locationData[4]?.latitude || 9.0360, lng: locationData[4]?.longitude || 38.7460 },
-        { name: 'Convention Center', address: 'Metro Convention Center, Addis Ababa', lat: locationData[5]?.latitude || 9.0380, lng: locationData[5]?.longitude || 38.7480 },
-      ]
-    }
-  ]
-
+  console.log(`   🗺️  Skipping route creation (create your own routes)...`)
+  
+  // No longer creating fake seed routes - users should create their own
   const createdRoutes: any[] = []
-  for (let i = 0; i < routeTemplates.length && i < vehicles.length; i++) {
-    const template = routeTemplates[i]
-    const vehicle = vehicles[i]
-    const shift = getRandomElement(shifts)
-    
-    const today = getToday()
-    const routeStartTime = new Date(today)
-    routeStartTime.setHours(8 + i * 2, 0, 0, 0)
-    const routeEndTime = new Date(today)
-    routeEndTime.setHours(16 + i * 2, 0, 0, 0)
-
-    try {
-      const route = await prisma.route.create({
-        data: { 
-          name: template.name, 
-          description: template.description, 
-          vehicleId: vehicle.id, 
-          shiftId: shift.id, 
-          date: today, 
-          startTime: routeStartTime, 
-          endTime: routeEndTime, 
-          isActive: true, 
-          status: RouteStatus.ACTIVE, 
-          organizationId: org.id 
-        },
-      })
-
-      // Create stops for this route
-      for (let j = 0; j < template.stops.length; j++) {
-        const stopData = template.stops[j]
-        await prisma.stop.create({
-          data: { 
-            name: stopData.name, 
-            address: stopData.address, 
-            latitude: stopData.lat, 
-            longitude: stopData.lng, 
-            order: j, 
-            routeId: route.id, 
-            organizationId: org.id 
-          },
-        })
-      }
-
-      createdRoutes.push(route)
-    } catch (error) {
-      console.log(`     ⚠️  Could not create route ${template.name}: ${error}`)
-    }
-  }
   
   console.log(`   ✅ Created ${createdRoutes.length} routes with stops`)
   return createdRoutes

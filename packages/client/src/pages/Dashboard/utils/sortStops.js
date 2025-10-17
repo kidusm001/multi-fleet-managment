@@ -1,4 +1,4 @@
-import { HQ_LOCATION } from "@/config";
+import { getCachedHQLocation } from "@/services/hqLocationService";
 
 function parseCoordinate(value) {
   if (typeof value === "string") {
@@ -43,7 +43,7 @@ function calculateDistance(origin, destination) {
 
 export function resolveOriginCoordinates(route) {
   if (!route) {
-    return HQ_LOCATION.coords;
+    return getCachedHQLocation()?.coords ?? null;
   }
 
   const location = route?.location;
@@ -62,7 +62,7 @@ export function resolveOriginCoordinates(route) {
     return [lon, lat];
   }
 
-  return HQ_LOCATION.coords;
+  return getCachedHQLocation()?.coords ?? null;
 }
 
 export function sortStopsBySequence(stops, originCoords = null) {

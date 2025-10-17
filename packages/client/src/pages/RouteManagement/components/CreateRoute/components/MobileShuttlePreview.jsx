@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import PropTypes from "prop-types";
 import { CheckCircle2, XCircle, MapPin, Clock, Users, Wand2, ArrowLeft } from "lucide-react";
 import { Badge } from "@/components/Common/UI/Badge";
@@ -16,7 +16,38 @@ const MobileShuttlePreview = ({ routeData, onClose, onAccept, show }) => {
   const [optimizedRoute, setOptimizedRoute] = useState(null);
   const [routeMetrics, setRouteMetrics] = useState(null);
 
-  const { selectedEmployees = [], selectedShift, selectedShuttle } = routeData;
+  const { selectedEmployees = [], selectedShift, selectedShuttle, selectedLocation } = routeData;
+
+  const branchCoordinates = useMemo(() => {
+    const parseCandidate = (candidate) => {
+      if (candidate == null) {
+        return null;
+      }
+      const parsed = typeof candidate === "string" ? Number.parseFloat(candidate) : candidate;
+      return Number.isFinite(parsed) ? parsed : null;
+    };
+
+    const latCandidate = [selectedLocation?.latitude, selectedLocation?.lat, selectedLocation?.coords?.[1]]
+      .map(parseCandidate)
+      .find((value) => value != null);
+    const lngCandidate = [selectedLocation?.longitude, selectedLocation?.lng, selectedLocation?.coords?.[0]]
+      .map(parseCandidate)
+      .find((value) => value != null);
+
+    const fallbackCoords = MAP_CONFIG?.HQ_LOCATION?.coords || [];
+    const fallbackLng = parseCandidate(fallbackCoords[0]) ?? 38.76856893855111;
+    const fallbackLat = parseCandidate(fallbackCoords[1]) ?? 9.016465390275195;
+
+    return {
+      lat: latCandidate ?? fallbackLat,
+      lng: lngCandidate ?? fallbackLng,
+    };
+  }, [selectedLocation]);
+
+  const branchLngLat = useMemo(
+    () => [branchCoordinates.lng, branchCoordinates.lat],
+    [branchCoordinates]
+  );
 
   useEffect(() => {
     if (show) {
@@ -27,84 +58,90 @@ const MobileShuttlePreview = ({ routeData, onClose, onAccept, show }) => {
     };
   }, [show]);
 
+  const parseCapacityValue = (value) =>
+    typeof value === "number" && Number.isFinite(value) ? value : null;
+  const selectedShuttleCapacity =
+    parseCapacityValue(selectedShuttle?.category?.capacity) ??
+    parseCapacityValue(selectedShuttle?.capacity) ??
+    0;
+  const maxDurationLimitMinutes = selectedShuttleCapacity >= 12 ? 120 : 90;
+
   useEffect(() => {
-    if (!show || !selectedEmployees.length) return;
+    if (!show || !selectedEmployees.length) {
+      return;
+    }
 
     /**
-     * Calculate optimal route using Mapbox Directions API
-     * This provides exact travel time and distance metrics
+     * Calculate optimal route using Mapbox Directions API to get precise metrics.
      */
     const calculateOptimalRoute = async () => {
       setIsLoading(true);
       try {
-        // Filter out employees without valid stops
         const validEmployees = selectedEmployees.filter(
           (emp) => emp.stop && emp.stop.latitude && emp.stop.longitude
         );
 
-          if (validEmployees.length === 0) {
-            throw new Error("No valid employee stops found");
-          }
+        if (validEmployees.length === 0) {
+          throw new Error("No valid employee stops found");
+        }
 
-        // Prepare data for optimization including HQ location and employee stops
+        const originCoords = branchLngLat;
+        const originLabel =
+          formatDisplayAddress(selectedLocation?.address || selectedLocation?.name) ||
+          "Branch";
+
         const routeForOptimization = {
           coordinates: [
-            MAP_CONFIG.HQ_LOCATION.coords, // Start at HQ
+            originCoords,
             ...validEmployees.map((emp) => [
               emp.stop.longitude,
               emp.stop.latitude,
             ]),
-            MAP_CONFIG.HQ_LOCATION.coords, // Return to HQ
+            originCoords,
           ],
           areas: [
-            "HQ",
+            originLabel,
             ...validEmployees.map((emp) =>
               formatDisplayAddress(emp.stop?.address || emp.location || "Unknown") ||
               "Unknown"
             ),
-            "HQ",
+            originLabel,
           ],
         };
 
-        // Get optimized route with exact Mapbox metrics
         const optimized = await optimizeRoute(routeForOptimization);
 
         if (!optimized || !optimized.coordinates || !optimized.metrics) {
           throw new Error("Failed to optimize route");
         }
 
-        // Create the optimized route data - use original waypoints to avoid excessive markers
         const optimizedRouteData = {
           id: "preview-route",
-          coordinates: optimized.coordinates, // These are the original waypoints
+          coordinates: optimized.coordinates,
           areas: optimized.areas,
-          // Create dropOffOrder based on original waypoints
           dropOffOrder: validEmployees.map((_, i) => i),
           stops: validEmployees.length,
           passengers: validEmployees.length,
           status: "preview",
-          // We can use the full route geometry for drawing the route line if needed
-          fullRouteGeometry: optimized.fullRouteGeometry
+          fullRouteGeometry: optimized.fullRouteGeometry,
         };
 
-        // Use the exact metrics from Mapbox
         setRouteMetrics({
           totalDistance: optimized.metrics.totalDistance,
           totalTime: optimized.metrics.totalTime,
-          // Store raw data for potential future use
-          raw: optimized.metrics.rawData
+          raw: optimized.metrics.rawData,
         });
 
         setOptimizedRoute(optimizedRouteData);
       } catch (error) {
-          toast.error("Failed to create route preview: " + error.message);
+        toast.error("Failed to create route preview: " + error.message);
       } finally {
         setIsLoading(false);
       }
     };
 
     calculateOptimalRoute();
-    }, [selectedEmployees, show]);
+  }, [branchLngLat, selectedEmployees, selectedLocation, show]);
 
   // Get valid employees (with stops)
   const validEmployees = selectedEmployees.filter(
@@ -120,23 +157,20 @@ const MobileShuttlePreview = ({ routeData, onClose, onAccept, show }) => {
   const getSuggestedRouteName = () => {
     if (!routeData.selectedEmployees?.length) return "";
 
-    // Use company HQ location from environment variables
-    const HQ_LOCATION = {
-      lat: parseFloat(import.meta.env.VITE_HQ_LATITUDE || "9.016465390275195"),
-      lng: parseFloat(import.meta.env.VITE_HQ_LONGITUDE || "38.76856893855111")
-    };
+    const originLat = branchCoordinates.lat;
+    const originLng = branchCoordinates.lng;
 
     let furthestDistance = 0;
     let furthestArea = '';
 
-    // Find the furthest employee from HQ using Haversine formula
+    // Find the furthest employee from the selected branch using Haversine formula
     routeData.selectedEmployees.forEach(employee => {
       if (employee.stop?.latitude && employee.stop?.longitude) {
         const R = 6371; // Earth's radius in km
-        const lat1 = HQ_LOCATION.lat * Math.PI / 180;
+        const lat1 = originLat * Math.PI / 180;
         const lat2 = employee.stop.latitude * Math.PI / 180;
         const dLat = lat2 - lat1;
-        const dLon = (employee.stop.longitude - HQ_LOCATION.lng) * Math.PI / 180;
+        const dLon = (employee.stop.longitude - originLng) * Math.PI / 180;
 
         const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
                 Math.cos(lat1) * Math.cos(lat2) *
@@ -403,7 +437,7 @@ const MobileShuttlePreview = ({ routeData, onClose, onAccept, show }) => {
                   name: selectedShuttle.name,
                   capacity: selectedShuttle.category.capacity,
                 }}
-                center={MAP_CONFIG.HQ_LOCATION.coords}
+                center={branchLngLat}
                 zoom={11}
                 showDirections={true}
                 isLoading={isLoading}
@@ -425,7 +459,7 @@ const MobileShuttlePreview = ({ routeData, onClose, onAccept, show }) => {
                 onClick={handleCreateRoute}
                 disabled={
                   isLoading ||
-                  routeMetrics?.totalTime > 90 ||
+                  routeMetrics?.totalTime > maxDurationLimitMinutes ||
                   !validEmployees.length ||
                   !routeData.name.trim()
                 }
@@ -436,10 +470,10 @@ const MobileShuttlePreview = ({ routeData, onClose, onAccept, show }) => {
               </button>
             </div>
 
-            {routeMetrics?.totalTime > 90 && (
+            {routeMetrics?.totalTime > maxDurationLimitMinutes && (
               <div className="mt-3 p-2 bg-red-50 dark:bg-red-900/20 rounded-lg">
                 <p className="text-sm text-red-700 dark:text-red-300 text-center">
-                  Route duration exceeds 90 minutes limit
+                  Route duration exceeds {maxDurationLimitMinutes} minutes limit
                 </p>
               </div>
             )}

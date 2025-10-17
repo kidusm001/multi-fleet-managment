@@ -13,9 +13,12 @@ interface CheckVehicleAvailabilityParams {
 export interface GetAvailableVehiclesParams {
   shiftId: string;
   organizationId?: string;
+  date?: Date;
+  startTime?: Date;
+  endTime?: Date;
 }
 
-export async function getAvailableVehicles({ shiftId, organizationId }: GetAvailableVehiclesParams) {
+export async function getAvailableVehicles({ shiftId, organizationId, date, startTime, endTime }: GetAvailableVehiclesParams) {
   try {
     // 1. Get the shift details
     const shift = await prisma.shift.findUnique({
@@ -36,25 +39,73 @@ export async function getAvailableVehicles({ shiftId, organizationId }: GetAvail
     // Use organization from shift if not provided
     const targetOrgId = organizationId || shift.organizationId;
 
-    // 2. Get all available vehicles that don't have conflicting routes during this shift
+    // Build the route conflict condition
+    // If date/time provided, check for time-based conflicts
+    // Otherwise, fall back to shift-based check
+    const routeConflictCondition = date && startTime && endTime ? {
+      // Time-based conflict check (more precise)
+      routes: {
+        some: {
+          date: date,
+          deleted: false,
+          status: {
+            not: RouteStatus.CANCELLED
+          },
+          OR: [
+            // Route starts during proposed time
+            {
+              startTime: {
+                gte: startTime,
+                lte: endTime,
+              },
+            },
+            // Route ends during proposed time
+            {
+              endTime: {
+                gte: startTime,
+                lte: endTime,
+              },
+            },
+            // Route encompasses proposed time
+            {
+              AND: [
+                {
+                  startTime: {
+                    lte: startTime,
+                  },
+                },
+                {
+                  endTime: {
+                    gte: endTime,
+                  },
+                },
+              ],
+            },
+          ],
+        }
+      }
+    } : {
+      // Shift-based check (legacy, less precise)
+      routes: {
+        some: {
+          shiftId: shiftId,
+          status: {
+            not: RouteStatus.CANCELLED
+          },
+          deleted: false,
+        }
+      }
+    };
+
+    // 2. Get all available vehicles that don't have conflicting routes
     const availableVehicles = await prisma.vehicle.findMany({
       where: {
         organizationId: targetOrgId,
         status: VehicleStatus.AVAILABLE,
         deleted: false,
         isActive: true,
-        // Exclude vehicles that have routes during this shift time
-        NOT: {
-          routes: {
-            some: {
-              shiftId: shiftId,
-              status: {
-                not: RouteStatus.CANCELLED
-              },
-              deleted: false,
-            }
-          }
-        },
+        // Exclude vehicles that have conflicting routes
+        NOT: routeConflictCondition,
       },
       select: {
         id: true,

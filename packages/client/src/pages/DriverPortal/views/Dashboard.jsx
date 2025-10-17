@@ -6,6 +6,12 @@ import { cn } from '@lib/utils';
 import { driverService } from '@services/driverService';
 import ActiveRouteCard from '../components/ActiveRouteCard';
 import { Calendar, Clock, MapPin, TrendingUp } from 'lucide-react';
+import {
+  groupRoutesByEffectiveStatus,
+  sortRoutesByStartTime,
+  findNextUpcomingRoute,
+  getRouteStartTime
+} from '../utils/routeStatus';
 
 /**
  * Driver Dashboard View
@@ -18,6 +24,7 @@ function DashboardView() {
   const isDark = theme === 'dark';
 
   const [activeRoute, setActiveRoute] = useState(null);
+  const [nextRoute, setNextRoute] = useState(null);
   const [stats, setStats] = useState({
     stopsCompleted: 0,
     totalStops: 0,
@@ -27,47 +34,97 @@ function DashboardView() {
   });
   const [upcomingShifts, setUpcomingShifts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [startingRoute, setStartingRoute] = useState(false);
 
   const loadDashboardData = React.useCallback(async () => {
     try {
       setLoading(true);
-      
-      // Get today's date in the correct format
-      const today = new Date().toISOString().split('T')[0];
-      
-      // Fetch active route (today's routes with ACTIVE status)
-      const routes = await driverService.getMyRoutes({ date: today, status: 'ACTIVE' });
-      const route = routes && routes.length > 0 ? routes[0] : null;
-      setActiveRoute(route);
+      const now = new Date();
+      const rangeStart = new Date(now);
+      rangeStart.setDate(rangeStart.getDate() - 1);
+      rangeStart.setHours(0, 0, 0, 0);
 
-      // Calculate stats if route exists
-      if (route) {
-        const completed = route.stops?.filter(s => s.completed).length || 0;
-        const total = route.stops?.length || 0;
-        
+      const rangeEnd = new Date(now);
+      rangeEnd.setDate(rangeEnd.getDate() + 30);
+      rangeEnd.setHours(23, 59, 59, 999);
+
+      const routes = await driverService.getMyRoutes({
+        from: rangeStart.toISOString(),
+        to: rangeEnd.toISOString(),
+        limit: 200
+      });
+
+      const grouped = groupRoutesByEffectiveStatus(routes || [], now);
+      const activeRoutes = sortRoutesByStartTime(grouped.IN_PROGRESS || []);
+      const pendingRoutes = sortRoutesByStartTime(grouped.PENDING || []);
+
+      const activeRouteData = activeRoutes[0] || null;
+      const nextCandidate = findNextUpcomingRoute(pendingRoutes, now);
+      const fallbackUpcoming = pendingRoutes.find((route) => route.id !== activeRouteData?.id) || null;
+
+      setActiveRoute(activeRouteData);
+      setNextRoute(activeRouteData ? fallbackUpcoming : nextCandidate);
+      setUpcomingShifts(pendingRoutes.slice(0, 3));
+
+      if (activeRouteData) {
+        const completed = activeRouteData.stops?.filter(s => s.completed).length || 0;
+        const total = activeRouteData.stops?.length || 0;
+
         setStats({
           stopsCompleted: completed,
           totalStops: total,
-          timeElapsed: calculateElapsedTime(route.startedAt),
-          distance: `${route.totalDistance || 0} km`,
+          timeElapsed: calculateElapsedTime(activeRouteData.startedAt || getRouteStartTime(activeRouteData)),
+          distance: `${activeRouteData.totalDistance || 0} km`,
           pickups: completed
         });
+      } else {
+        setStats({
+          stopsCompleted: 0,
+          totalStops: 0,
+          timeElapsed: '0 min',
+          distance: '0 km',
+          pickups: 0
+        });
       }
-
-      // Fetch all routes for upcoming shifts
-      const allRoutes = await driverService.getMyRoutes({ status: 'ACTIVE' });
-      const shifts = allRoutes?.slice(0, 3) || [];
-      setUpcomingShifts(shifts);
 
     } catch (error) {
       console.error('Failed to load dashboard:', error);
       // Set empty state on error
       setActiveRoute(null);
+      setNextRoute(null);
       setUpcomingShifts([]);
+      setStats({
+        stopsCompleted: 0,
+        totalStops: 0,
+        timeElapsed: '0 min',
+        distance: '0 km',
+        pickups: 0
+      });
     } finally {
       setLoading(false);
     }
   }, []);
+
+  const handleStartTracking = async () => {
+    if (!nextRoute) return;
+    
+    try {
+      setStartingRoute(true);
+      // Update route status to IN_PROGRESS
+      await driverService.updateRouteStatus(nextRoute.id, 'IN_PROGRESS');
+      // Refresh dashboard data before navigation to reflect new state
+      await loadDashboardData();
+
+      // Navigate to navigation view - need to get first stop
+      const routeDetails = await driverService.getRoute(nextRoute.id);
+      const firstStopId = routeDetails.stops?.[0]?.id || '';
+      navigate(`/driver/navigate/${nextRoute.id}/${firstStopId}`);
+    } catch (error) {
+      console.error('Failed to start tracking:', error);
+    } finally {
+      setStartingRoute(false);
+    }
+  };
 
   useEffect(() => {
     loadDashboardData();
@@ -139,9 +196,108 @@ function DashboardView() {
         {activeRoute ? (
           <ActiveRouteCard
             route={activeRoute}
-            onNavigate={() => navigate(`/driver/navigate/${activeRoute.id}/${activeRoute.nextStopId}`)}
+            onNavigate={() => {
+              const firstStopId = activeRoute.stops?.[0]?.id || '';
+              navigate(`/driver/navigate/${activeRoute.id}/${firstStopId}`);
+            }}
             onComplete={() => navigate(`/driver/route/${activeRoute.id}`)}
           />
+        ) : nextRoute ? (
+          // Show next upcoming route with Start Tracking button
+          <div className={cn(
+            "rounded-2xl border p-6",
+            isDark
+              ? "bg-gradient-to-br from-blue-900/30 to-blue-800/20 border-blue-700/50"
+              : "bg-gradient-to-br from-blue-50 to-blue-100/50 border-blue-200"
+          )}>
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="p-2 rounded-lg bg-blue-500/10">
+                    <MapPin className="w-5 h-5 text-blue-500" />
+                  </div>
+                  <div>
+                    <h3 className={cn(
+                      "text-lg font-semibold",
+                      isDark ? "text-white" : "text-gray-900"
+                    )}>
+                      Next Route
+                    </h3>
+                    <p className={cn(
+                      "text-sm",
+                      isDark ? "text-gray-400" : "text-gray-600"
+                    )}>
+                      Ready to start
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="mt-4 space-y-2">
+                  <h4 className={cn(
+                    "font-medium",
+                    isDark ? "text-white" : "text-gray-900"
+                  )}>
+                    {nextRoute.name || `Route ${nextRoute.id.slice(0, 8)}`}
+                  </h4>
+                  <div className="flex flex-wrap items-center gap-4 text-sm">
+                    {nextRoute.shift && (
+                      <div className="flex items-center gap-1.5">
+                        <Clock className={cn(
+                          "w-4 h-4",
+                          isDark ? "text-gray-400" : "text-gray-500"
+                        )} />
+                        <span className={cn(
+                          isDark ? "text-gray-300" : "text-gray-700"
+                        )}>
+                          {new Date(nextRoute.shift.startTime).toLocaleTimeString('en-US', { 
+                            hour: 'numeric', 
+                            minute: '2-digit' 
+                          })}
+                        </span>
+                      </div>
+                    )}
+                    {nextRoute.vehicle && (
+                      <div className="flex items-center gap-1.5">
+                        <MapPin className={cn(
+                          "w-4 h-4",
+                          isDark ? "text-gray-400" : "text-gray-500"
+                        )} />
+                        <span className={cn(
+                          isDark ? "text-gray-300" : "text-gray-700"
+                        )}>
+                          {nextRoute.vehicle.plateNumber}
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex items-center gap-1.5">
+                      <Calendar className={cn(
+                        "w-4 h-4",
+                        isDark ? "text-gray-400" : "text-gray-500"
+                      )} />
+                      <span className={cn(
+                        isDark ? "text-gray-300" : "text-gray-700"
+                      )}>
+                        {nextRoute.stops?.length || 0} stops
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <button
+                onClick={handleStartTracking}
+                disabled={startingRoute}
+                className={cn(
+                  "px-6 py-3 rounded-xl font-medium transition-all shadow-lg",
+                  "bg-[#f3684e] hover:bg-[#e55739] text-white",
+                  "disabled:opacity-50 disabled:cursor-not-allowed",
+                  startingRoute && "animate-pulse"
+                )}
+              >
+                {startingRoute ? 'Starting...' : 'Start Tracking'}
+              </button>
+            </div>
+          </div>
         ) : (
           <div className={cn(
             "rounded-2xl border p-8 text-center",
@@ -162,7 +318,7 @@ function DashboardView() {
               "text-sm",
               isDark ? "text-gray-400" : "text-gray-600"
             )}>
-              You don&apos;t have any active routes at the moment. Check back later for assignments.
+              You don&apos;t have any routes scheduled at the moment.
             </p>
           </div>
         )}

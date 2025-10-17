@@ -1,5 +1,5 @@
 import mapboxgl from "mapbox-gl";
-import { HQ_LOCATION, MAP_CONFIG } from "../config";
+import { MAP_CONFIG } from "../config";
 
 /**
  * Configuration options for map controls
@@ -186,7 +186,7 @@ function getThemeStyles(isDark) {
  * @param {Object} map - Mapbox GL JS map instance
  * @param {Object} currentRoute - Current route data
  */
-function handleCenterClick(map, currentRoute) {
+function handleCenterClick(map, currentRoute, hqLocation) {
   if (!map || !map.loaded()) return;
 
   try {
@@ -194,11 +194,17 @@ function handleCenterClick(map, currentRoute) {
     const bounds = new mapboxgl.LngLatBounds();
     let hasValidBounds = false;
 
+    const hqCoords = Array.isArray(hqLocation?.coords)
+      ? hqLocation.coords
+      : Number.isFinite(hqLocation?.longitude) && Number.isFinite(hqLocation?.latitude)
+      ? [hqLocation.longitude, hqLocation.latitude]
+      : null;
+
     // Center on route coordinates if available
     if (currentRoute?.coordinates?.length) {
       // Add HQ location first (if available)
-      if (HQ_LOCATION?.coords) {
-        bounds.extend(HQ_LOCATION.coords);
+      if (hqCoords) {
+        bounds.extend(hqCoords);
         hasValidBounds = true;
       }
 
@@ -220,7 +226,7 @@ function handleCenterClick(map, currentRoute) {
 
     // Default view if no valid route coordinates
     map.flyTo({
-      center: MAP_CONFIG.addisAbaba.center,
+      center: hqCoords || MAP_CONFIG.addisAbaba.center,
       zoom: MAP_CONFIG.initialZoom - 0.5,
       duration: 1000,
       essential: true,
@@ -237,7 +243,7 @@ function handleCenterClick(map, currentRoute) {
  * @param {Object} map - Mapbox GL JS map instance
  * @param {HTMLElement} button - The button element for visual feedback
  */
-function handle3DViewToggle(map, button) {
+function handle3DViewToggle(map, button, hqLocation) {
   if (!map || !map.loaded()) return;
   
   try {
@@ -270,9 +276,20 @@ function handle3DViewToggle(map, button) {
     } else {
       // Switch to 3D view focused on HQ
       button.classList.add('in-3d-mode');
+
+      const hqCoords = Array.isArray(hqLocation?.coords)
+        ? hqLocation.coords
+        : Number.isFinite(hqLocation?.longitude) && Number.isFinite(hqLocation?.latitude)
+        ? [hqLocation.longitude, hqLocation.latitude]
+        : null;
+
+      if (!hqCoords) {
+        console.warn('3D view requires HQ coordinates, but none were provided.');
+        return;
+      }
       
       map.flyTo({
-        center: HQ_LOCATION.coords,
+        center: hqCoords,
         ...CONTROL_OPTIONS.threeDView
       });
       
@@ -524,7 +541,7 @@ export function addFullscreenControl(map, position = "bottom-left") {
  * @param {boolean} isDark - Whether dark mode is enabled
  * @returns {Object} The added control
  */
-export function addCenterControl(map, currentRoute, position = "bottom-left", _isDark = false) {
+export function addCenterControl(map, currentRoute, hqLocation, position = "bottom-left", _isDark = false) {
   if (!map) return;
 
   class CustomCenterControl {
@@ -559,7 +576,7 @@ export function addCenterControl(map, currentRoute, position = "bottom-left", _i
         clearTimeout(this._clickTimeout);
         this._clickTimeout = setTimeout(() => {
           this._button.classList.add('active');
-          handleCenterClick(map, currentRoute);
+          handleCenterClick(map, currentRoute, hqLocation);
           
           // Remove active state after a short delay
           setTimeout(() => this._button.classList.remove('active'), 500);
@@ -596,7 +613,7 @@ export function addCenterControl(map, currentRoute, position = "bottom-left", _i
  * @param {boolean} isDark - Whether dark mode is enabled
  * @returns {Object} The added control
  */
-export function add3DViewControl(map, position = "bottom-left", _isDark = false) {
+export function add3DViewControl(map, hqLocation, position = "bottom-left", _isDark = false) {
   if (!map) return;
 
   class Custom3DViewControl {
@@ -644,7 +661,7 @@ export function add3DViewControl(map, position = "bottom-left", _isDark = false)
         }
         
         // Toggle 3D view
-        handle3DViewToggle(map, this._button);
+        handle3DViewToggle(map, this._button, hqLocation);
         
         // Reset after animation completes
         setTimeout(() => {

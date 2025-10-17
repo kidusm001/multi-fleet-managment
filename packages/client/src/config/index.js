@@ -7,11 +7,6 @@ export const MAP_STYLES = {
     dark: getEnv("VITE_MAPBOX_DARK_STYLE", "mapbox://styles/mapbox/dark-v11")
 };
 
-export const HQ_LOCATION = {
-    name: "Routegna HQ (Addis)",
-    coords: [38.76856893855111, 9.016465390275195]
-};
-
 export const MAP_CONFIG = {
     initialZoom: 12,
     maxZoom: 16,

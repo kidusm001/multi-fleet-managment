@@ -1,14 +1,13 @@
 import PropTypes from "prop-types";
 
 import { optimizeRoute } from "../services/routeOptimization";
-import { HQ_LOCATION } from "@/config";
 
 // Helper function to check if map is ready
 function isMapReady(map) {
   return map && map.getCanvas() && map.isStyleLoaded();
 }
 
-export async function addRouteLayer({ map, route, enableOptimization = true }) {
+export async function addRouteLayer({ map, route, enableOptimization = true, hqLocation = null }) {
   if (!route?.coordinates?.length || !map) return null;
 
   try {
@@ -35,7 +34,14 @@ export async function addRouteLayer({ map, route, enableOptimization = true }) {
     // Get route's location coordinates (HQ or branch), fallback to default HQ if not available
     const startLocation = route.location?.longitude && route.location?.latitude
       ? [route.location.longitude, route.location.latitude]
-      : HQ_LOCATION.coords;
+      : Array.isArray(hqLocation?.coords)
+      ? hqLocation.coords
+      : null;
+
+    if (!startLocation) {
+      console.warn("addRouteLayer: No HQ or location coordinates available; skipping route layer.");
+      return null;
+    }
 
     // Get optimized route including start location
     const optimizedRoute = await optimizeRoute([

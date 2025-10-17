@@ -1546,6 +1546,7 @@ router.patch('/:id/maintenance-status', requireAuth, validateSchema(VehicleIdPar
 router.get('/shuttle-availability/shift/:shiftId/available', requireAuth, async (req: Request, res: Response) => {
     try {
         const { shiftId } = req.params;
+        const { date, startTime, endTime } = req.query;
         const activeOrgId = req.session?.session?.activeOrganizationId;
         
         if (!activeOrgId) {
@@ -1564,10 +1565,20 @@ router.get('/shuttle-availability/shift/:shiftId/available', requireAuth, async 
             return res.status(403).json({ message: 'Unauthorized' });
         }
 
-        const result = await getAvailableVehicles({
+        // Build parameters with optional date/time for precise conflict detection
+        const params: any = {
             shiftId,
             organizationId: activeOrgId
-        });
+        };
+
+        // Add date/time parameters if provided for time-based conflict checking
+        if (date && startTime && endTime) {
+            params.date = new Date(date as string);
+            params.startTime = new Date(startTime as string);
+            params.endTime = new Date(endTime as string);
+        }
+
+        const result = await getAvailableVehicles(params);
 
         res.status(200).json(result);
     } catch (error) {

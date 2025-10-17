@@ -2,12 +2,31 @@ import api from './api';
 
 export const shuttleAvailabilityService = {
   // Get available shuttles for a shift
-  getAvailableShuttlesForShift: async (shiftId) => {
+  // Options can include: date, startTime, endTime for time-based conflict detection
+  getAvailableShuttlesForShift: async (shiftId, options = {}) => {
     try {
-      const response = await api.get(`/shuttles/shuttle-availability/shift/${shiftId}/available`);
+      const params = new URLSearchParams();
+      
+      // Add optional date/time parameters for precise availability checking
+      if (options.date) {
+        params.append('date', String(options.date));
+      }
+      if (options.startTime) {
+        params.append('startTime', String(options.startTime));
+      }
+      if (options.endTime) {
+        params.append('endTime', String(options.endTime));
+      }
+      
+      const queryString = params.toString();
+      const url = `/shuttles/shuttle-availability/shift/${shiftId}/available${queryString ? `?${queryString}` : ''}`;
+      
+      console.log('Fetching shuttles with URL:', url);
+      
+      const response = await api.get(url);
       return response.data;
     } catch (error) {
-      console.error('Error getting available shuttles:', error);
+      console.error('Error getting available shuttles:', error.response?.data || error.message);
       throw error;
     }
   },

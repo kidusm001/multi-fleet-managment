@@ -36,7 +36,15 @@ export const driverService = {
   getActiveRoute: AsyncHandler(async () => {
     const today = new Date().toISOString().split('T')[0];
     const response = await api.get('/drivers/me/routes', {
-      params: { date: today, status: 'ACTIVE' }
+      params: { date: today, status: 'IN_PROGRESS' }
+    });
+    return response.data[0] || null;
+  }),
+
+  getUpcomingRoute: AsyncHandler(async () => {
+    const today = new Date().toISOString().split('T')[0];
+    const response = await api.get('/drivers/me/routes', {
+      params: { from: today, status: 'PENDING', limit: 1 }
     });
     return response.data[0] || null;
   }),
@@ -52,17 +60,17 @@ export const driverService = {
   }),
 
   getRoute: AsyncHandler(async (routeId) => {
-    const response = await api.get(`/routes/${routeId}/driver-view`);
+    const response = await api.get(`/drivers/me/routes/${routeId}`);
     return response.data;
   }),
 
   updateRouteStatus: AsyncHandler(async (routeId, status) => {
-    const response = await api.patch(`/routes/${routeId}/status`, { status });
+    const response = await api.patch(`/drivers/me/routes/${routeId}/status`, { status });
     return response.data;
   }),
 
   markStopCompleted: AsyncHandler(async (routeId, stopId, data) => {
-    const response = await api.post(`/routes/${routeId}/stops/${stopId}/checkin`, {
+    const response = await api.post(`/drivers/me/routes/${routeId}/stops/${stopId}/checkin`, {
       pickedUp: true,
       timestamp: new Date(),
       ...data
@@ -80,7 +88,7 @@ export const driverService = {
     const response = await api.get('/drivers/me/routes', {
       params: { from: today, status: 'PENDING', limit }
     });
-    return response.data;
+    return response.data || [];
   }),
 
   updateLocation: AsyncHandler(async (locationData) => {

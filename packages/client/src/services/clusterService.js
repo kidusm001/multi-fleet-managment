@@ -141,6 +141,13 @@ export const clusterService = {
         };
       }
 
+        const meta = {
+          cacheKey: options.timestamp || Date.now(),
+          shuttleOrder: validShuttles.map((shuttle) =>
+            String(shuttle.id ?? shuttle.vehicleId ?? shuttle.name ?? "")
+          ),
+        };
+
       const requestData = {
         locations: {
           HQ: location && location.longitude && location.latitude
@@ -155,7 +162,8 @@ export const clusterService = {
         shuttles: validShuttles.map(shuttle => ({
           id: shuttle.id,
           capacity: shuttle.capacity || shuttle.category?.capacity || 0
-        }))
+        })),
+        meta,
       };
 
       try {
@@ -230,17 +238,39 @@ function handleClusterResponse(response, employees, shuttles) {
     const clustersByShuttle = {};
 
     // Initialize empty arrays for all shuttles
+    const shuttleIdMap = new Map();
+
     shuttles.forEach(shuttle => {
-      clustersByShuttle[shuttle.id] = [];
+      const primaryKey = String(shuttle.id);
+      clustersByShuttle[primaryKey] = [];
+      shuttleIdMap.set(primaryKey, primaryKey);
+
+      const fallbackKeys = [
+        shuttle.vehicleId,
+        shuttle.shuttleId,
+        shuttle.name,
+        shuttle.slug,
+      ]
+        .map((value) => (value == null ? null : String(value)))
+        .filter(Boolean);
+
+      fallbackKeys.forEach((key) => {
+        if (!shuttleIdMap.has(key)) {
+          shuttleIdMap.set(key, primaryKey);
+        }
+      });
     });
 
     // Populate assigned employees for each shuttle
     response.data.routes.forEach(route => {
       const shuttleId = route.shuttle_id;
+      const normalizedKey = shuttleIdMap.get(String(shuttleId)) || String(shuttleId);
+
       const assignedEmployees = employees.filter(emp =>
         route.employees.includes(emp.id.toString())
       );
-      clustersByShuttle[shuttleId] = assignedEmployees;
+
+      clustersByShuttle[normalizedKey] = assignedEmployees;
     });
 
     return clustersByShuttle;

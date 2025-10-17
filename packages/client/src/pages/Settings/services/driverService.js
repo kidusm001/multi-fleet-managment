@@ -80,7 +80,7 @@ class DriverService {
    * @returns {Promise<Object>} Updated driver data
    */
   updateDriver = AsyncHandler(async (driverId, updates) => {
-    const response = await api.patch(`/drivers/${driverId}`, updates);
+  const response = await api.put(`/drivers/${driverId}`, updates);
 
     // Update cache if it exists
     if (this.cache.drivers) {

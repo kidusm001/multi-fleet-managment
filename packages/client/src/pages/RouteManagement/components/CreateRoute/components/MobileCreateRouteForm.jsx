@@ -12,6 +12,7 @@ import { clusterService } from "@services/clusterService";
 import { shuttleAvailabilityService } from "@services/shuttleAvailabilityService";
 import { getRoutesByShift } from "@services/api";
 import { formatDisplayAddress } from "@/utils/address";
+import { MAP_CONFIG } from "@data/constants";
 
 // Local components
 import SortableEmployeeTable from "./SortableEmployeeTable";
@@ -38,6 +39,7 @@ export default function MobileCreateRouteForm({
     direction: "ascending",
   });
   const [availableShuttles, setAvailableShuttles] = useState([]);
+  const lastFetchedActiveShuttles = useRef([]);
   const [isLoadingShuttles, setIsLoadingShuttles] = useState(false);
   const [totalCapacity, setTotalCapacity] = useState(0);
   const [totalEmployees, setTotalEmployees] = useState(0);
@@ -65,6 +67,33 @@ export default function MobileCreateRouteForm({
     console.log('MobileCreateRouteForm mounted/updated with routeData:', routeData);
     console.log('  - selectedLocation:', routeData?.selectedLocation);
   }, [routeData]);
+
+  const branchCoordinates = useMemo(() => {
+    const parseCandidate = (candidate) => {
+      if (candidate == null) {
+        return null;
+      }
+      const parsed = typeof candidate === "string" ? Number.parseFloat(candidate) : candidate;
+      return Number.isFinite(parsed) ? parsed : null;
+    };
+
+    const location = routeData?.selectedLocation;
+    const latCandidate = [location?.latitude, location?.lat, location?.coords?.[1]]
+      .map(parseCandidate)
+      .find((value) => value != null);
+    const lngCandidate = [location?.longitude, location?.lng, location?.coords?.[0]]
+      .map(parseCandidate)
+      .find((value) => value != null);
+
+    const fallbackCoords = MAP_CONFIG?.HQ_LOCATION?.coords || [];
+    const fallbackLng = parseCandidate(fallbackCoords[0]) ?? 38.76856893855111;
+    const fallbackLat = parseCandidate(fallbackCoords[1]) ?? 9.016465390275195;
+
+    return {
+      lat: latCandidate ?? fallbackLat,
+      lng: lngCandidate ?? fallbackLng,
+    };
+  }, [routeData?.selectedLocation]);
 
   // Get shift ID whether it's passed as an object or number
   const getShiftId = useCallback(() => {
@@ -138,7 +167,15 @@ export default function MobileCreateRouteForm({
         const shiftId =
           typeof selectedShift === "object" ? selectedShift.id : selectedShift;
         const response = await getRoutesByShift(shiftId);
-        setExistingRoutes(response.data || []);
+        const routes = response.data || [];
+        setExistingRoutes(routes);
+
+        // Re-apply shuttle filtering with the newly fetched existing routes
+        if (lastFetchedActiveShuttles.current && lastFetchedActiveShuttles.current.length) {
+          const assignedShuttleIds = new Set(routes.map(r => r.vehicleId).filter(Boolean));
+          const filtered = lastFetchedActiveShuttles.current.filter(s => !assignedShuttleIds.has(s.id));
+          setAvailableShuttles(filtered);
+        }
       } catch (error) {
         console.error("Error fetching existing routes:", error);
         toast.error("Failed to fetch existing routes");
@@ -161,10 +198,70 @@ export default function MobileCreateRouteForm({
       try {
         // Add timestamp to force fresh data
         const timestamp = new Date().getTime();
+        
+        const availabilityOptions = { cache: false, timestamp };
+
+        try {
+          // Calculate date and time window for precise availability checking
+          const routeDate = new Date();
+          routeDate.setDate(routeDate.getDate() + 1); // Tomorrow
+          routeDate.setHours(0, 0, 0, 0);
+
+          // Get shift details to calculate time window
+          const shift = typeof selectedShift === 'object'
+            ? selectedShift
+            : _shifts?.find((s) => s.id === selectedShift);
+
+          if (shift?.endTime) {
+            let parsedShiftEnd = new Date(shift.endTime);
+
+            if (Number.isNaN(parsedShiftEnd.getTime()) && typeof shift.endTime === 'string') {
+              const timeParts = shift.endTime.split(':');
+              if (timeParts.length >= 2) {
+                parsedShiftEnd = new Date(routeDate);
+                const hours = Number.parseInt(timeParts[0], 10);
+                const minutes = Number.parseInt(timeParts[1], 10);
+                const seconds = timeParts.length >= 3 ? Number.parseInt(timeParts[2], 10) : 0;
+
+                if (!Number.isNaN(hours) && !Number.isNaN(minutes)) {
+                  parsedShiftEnd.setHours(
+                    hours,
+                    minutes,
+                    Number.isNaN(seconds) ? 0 : seconds,
+                    0
+                  );
+                }
+              }
+            }
+
+            if (!Number.isNaN(parsedShiftEnd.getTime())) {
+              const startTime = new Date(routeDate);
+              startTime.setHours(
+                parsedShiftEnd.getHours(),
+                parsedShiftEnd.getMinutes(),
+                parsedShiftEnd.getSeconds(),
+                0
+              );
+
+              // Use 90 min as conservative estimate for initial vehicle filtering
+              const endTime = new Date(startTime);
+              endTime.setMinutes(endTime.getMinutes() + 90);
+
+              availabilityOptions.date = routeDate.toISOString();
+              availabilityOptions.startTime = startTime.toISOString();
+              availabilityOptions.endTime = endTime.toISOString();
+            } else {
+              console.warn('Shift endTime is not parseable for availability check:', shift.endTime);
+            }
+          }
+        } catch (timeParseError) {
+          console.warn('Could not calculate time window for availability check:', timeParseError);
+        }
+        
         const result =
           await shuttleAvailabilityService.getAvailableShuttlesForShift(
             shiftId,
-            { cache: false, timestamp }
+            availabilityOptions
           );
 
         // Filter out non-available shuttles - API returns "vehicles" array with "AVAILABLE" status
@@ -179,11 +276,20 @@ export default function MobileCreateRouteForm({
           });
         }
 
-        setAvailableShuttles(activeShuttles);
+        // Remember the raw active shuttles so we can re-filter when existing routes arrive/refresh
+        lastFetchedActiveShuttles.current = activeShuttles;
 
-        // Calculate total capacity
-        const capacity = activeShuttles.reduce(
-          (sum, shuttle) => sum + (shuttle.category?.capacity || 0),
+        // Filter out shuttles already assigned to existing routes for this shift
+        const assignedShuttleIds = new Set((_existingRoutes || []).map(r => r.vehicleId).filter(Boolean));
+        const filteredShuttles = activeShuttles.filter((shuttle) => {
+          const shuttleId = shuttle.id;
+          return shuttleId && !assignedShuttleIds.has(shuttleId);
+        });
+        setAvailableShuttles(filteredShuttles);
+
+        // Calculate total capacity using only shuttles that remain available
+        const capacity = filteredShuttles.reduce(
+          (sum, shuttle) => sum + (shuttle.category?.capacity || shuttle.capacity || 0),
           0
         );
         setTotalCapacity(capacity);
@@ -191,12 +297,12 @@ export default function MobileCreateRouteForm({
 
         // Only proceed with clustering if we have shuttles and employees
         const unassignedEmployees = employees.filter((emp) => !emp.assigned);
-        if (activeShuttles.length && unassignedEmployees.length) {
+        if (filteredShuttles.length && unassignedEmployees.length) {
           try {
             // Force fresh cluster data with timestamp
             const clusters = await clusterService.optimizeClusters(
               unassignedEmployees,
-              activeShuttles,
+              filteredShuttles,
               {
                 cache: false,
                 timestamp,
@@ -218,7 +324,12 @@ export default function MobileCreateRouteForm({
           }
         }
       } catch (error) {
-        toast.error("Failed to fetch available shuttles");
+        console.error('Error in fetchShuttlesAndClusters:', {
+          message: error.message,
+          response: error.response?.data,
+          status: error.response?.status
+        });
+        toast.error('Failed to fetch available shuttles');
         setHasClusterResults(false);
       } finally {
         // Always reset loading states regardless of success or failure
@@ -229,7 +340,7 @@ export default function MobileCreateRouteForm({
     };
 
     fetchShuttlesAndClusters();
-  }, [selectedShift, getShiftId, employees, routeData.selectedLocation]);
+  }, [selectedShift, getShiftId, employees, routeData.selectedLocation, _shifts, _existingRoutes]);
 
   // Get current shuttle's cluster
   const getCurrentShuttleCluster = useCallback(() => {
@@ -331,24 +442,20 @@ export default function MobileCreateRouteForm({
   // Generate suggested route name
   const getSuggestedRouteName = useCallback(() => {
     if (!routeData.selectedEmployees.length) return "";
-
-    // Use company HQ location from environment variables
-    const HQ_LOCATION = {
-      lat: parseFloat(import.meta.env.VITE_HQ_LATITUDE || "9.016465390275195"),
-      lng: parseFloat(import.meta.env.VITE_HQ_LONGITUDE || "38.76856893855111")
-    };
+    const originLat = branchCoordinates.lat;
+    const originLng = branchCoordinates.lng;
 
     let furthestDistance = 0;
     let furthestArea = '';
 
-    // Find the furthest employee from HQ using Haversine formula
+    // Find the furthest employee from the selected branch using Haversine formula
     routeData.selectedEmployees.forEach(employee => {
       if (employee.stop?.latitude && employee.stop?.longitude) {
         const R = 6371; // Earth's radius in km
-        const lat1 = HQ_LOCATION.lat * Math.PI / 180;
+        const lat1 = originLat * Math.PI / 180;
         const lat2 = employee.stop.latitude * Math.PI / 180;
         const dLat = lat2 - lat1;
-        const dLon = (employee.stop.longitude - HQ_LOCATION.lng) * Math.PI / 180;
+        const dLon = (employee.stop.longitude - originLng) * Math.PI / 180;
 
         const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
                 Math.cos(lat1) * Math.cos(lat2) *
@@ -378,7 +485,7 @@ export default function MobileCreateRouteForm({
       : '';
 
     return `${furthestArea}${shiftTime}`;
-  }, [routeData.selectedEmployees, shiftEndTime]);
+  }, [routeData.selectedEmployees, shiftEndTime, branchCoordinates]);
 
   // Handle route name suggestion
   const handleNameSuggestion = useCallback(() => {
@@ -514,22 +621,63 @@ export default function MobileCreateRouteForm({
 
         // Get fresh data without using cache
         const timestamp = new Date().getTime();
+        
+        // Calculate date and time window for availability checking
+        const routeDate = new Date();
+        routeDate.setDate(routeDate.getDate() + 1);
+        routeDate.setHours(0, 0, 0, 0);
+        
+        const shift = typeof selectedShift === 'object' ? selectedShift : 
+          _shifts?.find(s => s.id === selectedShift);
+        
+        const availabilityOptions = { cache: false, timestamp };
+        
+        if (shift?.endTime) {
+          const shiftEndTime = new Date(shift.endTime);
+          const startTime = new Date(routeDate);
+          startTime.setHours(shiftEndTime.getHours(), shiftEndTime.getMinutes(), 0, 0);
+          
+          // Conservative 90-minute estimate for availability check
+          const endTime = new Date(startTime);
+          endTime.setMinutes(endTime.getMinutes() + 90);
+          
+          availabilityOptions.date = routeDate.toISOString();
+          availabilityOptions.startTime = startTime.toISOString();
+          availabilityOptions.endTime = endTime.toISOString();
+        }
+        
         const result = await shuttleAvailabilityService.getAvailableShuttlesForShift(
           shiftId,
-          { cache: false, timestamp }
+          availabilityOptions
         );
 
         const activeShuttles = result.vehicles?.filter(
           shuttle => shuttle.status?.toLowerCase() === "available"
         ) || [];
 
+        lastFetchedActiveShuttles.current = activeShuttles;
+
+        const assignedShuttleIds = new Set((_existingRoutes || []).map(r => r.vehicleId).filter(Boolean));
+        const filteredShuttles = activeShuttles.filter((shuttle) => {
+          const shuttleId = shuttle.id;
+          return shuttleId && !assignedShuttleIds.has(shuttleId);
+        });
+
+        setAvailableShuttles(filteredShuttles);
+
+        const capacity = filteredShuttles.reduce(
+          (sum, shuttle) => sum + (shuttle.category?.capacity || shuttle.capacity || 0),
+          0
+        );
+        setTotalCapacity(capacity);
+
         const unassignedEmployees = employees.filter(emp => !emp.assigned);
 
-        if (activeShuttles.length && unassignedEmployees.length) {
+        if (filteredShuttles.length && unassignedEmployees.length) {
           // Get fresh clusters
           const clusters = await clusterService.optimizeClusters(
             unassignedEmployees,
-            activeShuttles,
+            filteredShuttles,
             { cache: false, timestamp }
           );
 
@@ -538,7 +686,7 @@ export default function MobileCreateRouteForm({
           setOriginalClusters(JSON.parse(JSON.stringify(clusters)));
 
           // Re-select shuttle if it still exists
-          const shuttle = activeShuttles.find(s => s.id === currentShuttleId);
+          const shuttle = filteredShuttles.find(s => s.id === currentShuttleId);
           if (shuttle) {
             setSelectedShuttle(shuttle);
           }
@@ -554,7 +702,7 @@ export default function MobileCreateRouteForm({
         setIsLoading(false);
       }
     }, 50);
-  }, [selectedShuttle, getShiftId, employees]);
+  }, [selectedShuttle, getShiftId, employees, _shifts, selectedShift, _existingRoutes]);
 
   // Replace the old handleRefreshHighlights with the new one
   const handleRefreshHighlights = useCallback((e) => {

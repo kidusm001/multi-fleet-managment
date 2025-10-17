@@ -19,7 +19,8 @@ model Location {
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   employees    Employee[]   @relation("EmployeeLocation")
-  routes       Route[]
+  routes       Route[]      @relation("RouteLocation")
+  sourceRoutes Route[]      @relation("RouteSource")
 
   @@map("locations")
 }
@@ -243,6 +244,7 @@ model Route {
   isActive       Boolean     @default(true)
   organizationId String
   locationId     String?
+  sourceId       String?
   deleted        Boolean     @default(false)
   deletedAt      DateTime?
 
@@ -253,7 +255,8 @@ model Route {
   organization        Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   vehicle             Vehicle?              @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
   shift               Shift?                @relation(fields: [shiftId], references: [id], onDelete: SetNull)
-  location            Location?             @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  source              Location?             @relation("RouteSource", fields: [sourceId], references: [id], onDelete: SetNull)
+  location            Location?             @relation("RouteLocation", fields: [locationId], references: [id], onDelete: SetNull)
   stops               Stop[]
   vehicleAvailability VehicleAvailability[]
 
@@ -262,6 +265,7 @@ model Route {
   @@index([vehicleId])
   @@index([shiftId])
   @@index([locationId])
+  @@index([sourceId])
   @@map("routes")
 }
 
@@ -276,6 +280,8 @@ model Stop {
   routeId              String?
   organizationId       String
   estimatedArrivalTime DateTime?
+  completedAt          DateTime?
+  notes                String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -816,7 +822,10 @@ enum NotificationStatus {
 }
 
 enum RouteStatus {
+  PENDING
   ACTIVE
+  IN_PROGRESS
+  COMPLETED
   INACTIVE
   CANCELLED
 }

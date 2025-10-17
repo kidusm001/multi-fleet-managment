@@ -5,30 +5,66 @@ import { cn } from '@lib/utils';
 import { driverService } from '@services/driverService';
 import RouteListCard from '../components/RouteListCard';
 import { ListFilter, RefreshCw } from 'lucide-react';
+import { groupRoutesByEffectiveStatus, sortRoutesByStartTime } from '../utils/routeStatus';
+
+const buildQueryWindow = () => {
+  const now = new Date();
+  const start = new Date(now);
+  start.setDate(start.getDate() - 14);
+  start.setHours(0, 0, 0, 0);
+
+  const end = new Date(now);
+  end.setDate(end.getDate() + 45);
+  end.setHours(23, 59, 59, 999);
+
+  return {
+    from: start.toISOString(),
+    to: end.toISOString(),
+    limit: 200
+  };
+};
 
 function RoutesListView() {
   const { theme } = useTheme();
   const navigate = useNavigate();
   const isDark = theme === 'dark';
 
-  const [routes, setRoutes] = useState([]);
-  const [filter, setFilter] = useState('ACTIVE');
+  const [groupedRoutes, setGroupedRoutes] = useState({
+    IN_PROGRESS: [],
+    PENDING: [],
+    COMPLETED: [],
+    CANCELLED: [],
+  });
+  const [filter, setFilter] = useState('IN_PROGRESS');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   const loadRoutes = React.useCallback(async () => {
     try {
       setLoading(true);
-      const data = await driverService.getMyRoutes({ status: filter });
-      setRoutes(data || []);
+      const params = buildQueryWindow();
+      const data = await driverService.getMyRoutes(params);
+      const grouped = groupRoutesByEffectiveStatus(data || [], new Date());
+
+      setGroupedRoutes({
+        IN_PROGRESS: sortRoutesByStartTime(grouped.IN_PROGRESS || []),
+        PENDING: sortRoutesByStartTime(grouped.PENDING || []),
+        COMPLETED: sortRoutesByStartTime(grouped.COMPLETED || []),
+        CANCELLED: sortRoutesByStartTime(grouped.CANCELLED || []),
+      });
     } catch (error) {
       console.error('Failed to load routes:', error);
-      setRoutes([]);
+      setGroupedRoutes({
+        IN_PROGRESS: [],
+        PENDING: [],
+        COMPLETED: [],
+        CANCELLED: [],
+      });
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [filter]);
+  }, []);
 
   useEffect(() => {
     loadRoutes();
@@ -40,10 +76,12 @@ function RoutesListView() {
   };
 
   const tabs = [
-    { id: 'ACTIVE', label: 'Active', color: 'green' },
-    { id: 'PENDING', label: 'Upcoming', color: 'blue' },
-    { id: 'COMPLETED', label: 'Completed', color: 'gray' }
+    { id: 'IN_PROGRESS', label: 'Active' },
+    { id: 'PENDING', label: 'Upcoming' },
+    { id: 'COMPLETED', label: 'Completed' }
   ];
+
+  const routesForFilter = groupedRoutes[filter] || [];
 
   if (loading) {
     return (
@@ -79,7 +117,7 @@ function RoutesListView() {
                 "text-sm",
                 isDark ? "text-gray-400" : "text-gray-600"
               )}>
-                {routes.length} {filter.toLowerCase()} {routes.length === 1 ? 'route' : 'routes'}
+                {routesForFilter.length} {filter.toLowerCase()} {routesForFilter.length === 1 ? 'route' : 'routes'}
               </p>
             </div>
           </div>
@@ -120,15 +158,29 @@ function RoutesListView() {
                   : "text-gray-600 hover:bg-gray-100"
               )}
             >
-              {tab.label}
+              <span className="inline-flex items-center justify-center gap-2">
+                <span>{tab.label}</span>
+                <span className={cn(
+                  "text-xs font-semibold px-2 py-0.5 rounded-full",
+                  filter === tab.id
+                    ? "bg-white/20"
+                    : isDark
+                    ? "bg-gray-700 text-gray-300"
+                    : "bg-gray-100 text-gray-600"
+                )}>
+                  {routesForFilter.length && tab.id === filter
+                    ? routesForFilter.length
+                    : (groupedRoutes[tab.id] || []).length}
+                </span>
+              </span>
             </button>
           ))}
         </div>
 
         {/* Routes List */}
-        {routes.length > 0 ? (
+        {routesForFilter.length > 0 ? (
           <div className="space-y-3">
-            {routes.map((route) => (
+            {routesForFilter.map((route) => (
               <RouteListCard
                 key={route.id}
                 route={route}
@@ -156,7 +208,7 @@ function RoutesListView() {
               "text-sm",
               isDark ? "text-gray-400" : "text-gray-600"
             )}>
-              {filter === 'ACTIVE' && "You don't have any active routes at the moment."}
+              {filter === 'IN_PROGRESS' && "You don't have any active routes at the moment."}
               {filter === 'PENDING' && "No upcoming routes scheduled."}
               {filter === 'COMPLETED' && "No completed routes to display."}
             </p>

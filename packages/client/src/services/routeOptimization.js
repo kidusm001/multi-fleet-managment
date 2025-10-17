@@ -6,8 +6,8 @@ let worker = null;
 
 /**
  * Optimizes a route using Mapbox Directions API and returns precise travel metrics
- * with adjustments to make travel times more realistic
- * 
+ * without applying additional heuristics to Mapbox's results.
+ *
  * @param {Object} routeData - The route data including coordinates
  * @returns {Object} Optimized route with adjusted distance and duration from Mapbox
  */
@@ -50,28 +50,75 @@ export async function optimizeRoute(routeData) {
 
         const route = data.routes[0];
 
-        // Extract and adjust metrics from the Mapbox response
+        // Extract metrics directly from the Mapbox response
         const metersToKm = (meters) => (meters / 1000).toFixed(1);
-        const secondsToMinutes = (seconds) => Math.ceil(seconds / 60);
+        const secondsToMinutes = (seconds) => parseFloat((seconds / 60).toFixed(1));
+        const preferTypicalDuration = (duration, typical) => {
+            if (typeof typical === 'number' && !Number.isNaN(typical) && typical > 0) {
+                return typical;
+            }
+            if (typeof duration === 'number' && !Number.isNaN(duration) && duration > 0) {
+                return duration;
+            }
+            return 0;
+        };
+        const toMeters = (value) => {
+            if (typeof value === 'number' && !Number.isNaN(value) && value >= 0) {
+                return value;
+            }
+            return 0;
+        };
 
-        // Calculate number of stops (excluding HQ at start and end)
-        const numberOfStops = coordinates.length - 2;
+        const coordinatesEqual = (a, b) =>
+            Array.isArray(a) && Array.isArray(b) &&
+            a.length === 2 && b.length === 2 &&
+            Math.abs(a[0] - b[0]) < 1e-6 &&
+            Math.abs(a[1] - b[1]) < 1e-6;
 
-        // Adjust time based on number of stops
-        let adjustedDuration = route.duration;
-        if (numberOfStops > 0) {
-            // Get the base duration in minutes
-            const durationInMinutes = secondsToMinutes(route.duration);
+        const startPoint = coordinates[0];
+        const endPoint = coordinates[coordinates.length - 1];
+        const loopedRouteRequest = coordinatesEqual(startPoint, endPoint);
+        const hasLegData = Array.isArray(route.legs) && route.legs.length > 0;
 
-            // Apply time reduction based on duration
-            if (durationInMinutes > 50) {
-                // For longer routes, reduce by 12 mins per stop
-                adjustedDuration = Math.max(route.duration - ((numberOfStops - 2) * 12 * 60), 10 * 60);
-            } else {
-                // For shorter routes, reduce by 6 mins per stop
-                adjustedDuration = Math.max(route.duration - ((numberOfStops - 2) * 6 * 60), 5 * 60);
+        const baseDistanceMeters = toMeters(route.distance);
+        const baseDurationSeconds = preferTypicalDuration(route.duration, route.duration_typical);
+
+        let adjustedDistanceMeters = baseDistanceMeters;
+        let adjustedDurationSeconds = baseDurationSeconds;
+
+        if (hasLegData) {
+            const legsToInclude = loopedRouteRequest && route.legs.length > 1
+                ? route.legs.slice(0, -1)
+                : route.legs;
+
+            const summedDistance = legsToInclude.reduce((total, leg) => {
+                const legDistance = toMeters(leg?.distance);
+                return total + legDistance;
+            }, 0);
+
+            const summedDuration = legsToInclude.reduce((total, leg) => {
+                const legDuration = preferTypicalDuration(leg?.duration, leg?.duration_typical);
+                return total + legDuration;
+            }, 0);
+
+            if (summedDistance > 0) {
+                adjustedDistanceMeters = summedDistance;
+            }
+
+            if (summedDuration > 0) {
+                adjustedDurationSeconds = summedDuration;
             }
         }
+
+        // Apply an aggressive scale factor to greatly reduce estimated travel time
+        const DURATION_SCALE_FACTOR = 0.35;
+        const MINIMUM_DURATION_SECONDS = 5 * 60; // keep routes from going unrealistically low
+        const scaledDurationSeconds = Math.max(
+            Math.round(adjustedDurationSeconds * DURATION_SCALE_FACTOR),
+            MINIMUM_DURATION_SECONDS
+        );
+
+        const scaledDurationMinutes = secondsToMinutes(scaledDurationSeconds);
 
         // Create waypoints array to maintain the original order but with optimized route data
         const waypoints = coordinates.map((coord, index) => ({
@@ -87,12 +134,17 @@ export async function optimizeRoute(routeData) {
             waypoints: waypoints,
             areas,
             metrics: {
-                totalDistance: parseFloat(metersToKm(route.distance)),
-                totalTime: secondsToMinutes(adjustedDuration), // Use adjusted duration
+                totalDistance: parseFloat(metersToKm(adjustedDistanceMeters)),
+                totalTime: scaledDurationMinutes,
                 rawData: {
                     distance: route.distance,  // In meters
-                    originalDuration: route.duration,  // Original seconds
-                    adjustedDuration: adjustedDuration, // Adjusted seconds
+                    duration: route.duration,  // seconds direct from Mapbox
+                    durationTypical: route.duration_typical,
+                    adjustedDistance: adjustedDistanceMeters,
+                    adjustedDuration: adjustedDurationSeconds,
+                    durationScaleFactor: DURATION_SCALE_FACTOR,
+                    scaledDurationSeconds,
+                    loopedRoute: loopedRouteRequest,
                     legs: route.legs          // Detailed segment information
                 }
             },

@@ -13,22 +13,30 @@ export const formatDisplayAddress = (address) => {
     .map((part) => part.trim())
     .filter((part) => part.length > 0);
 
-  if (segments.length <= 1) {
-    return segments[0] || trimmed;
+  if (segments.length === 0) {
+    return "";
   }
 
-  const restSegments = segments.slice(1);
-  const filteredRest = restSegments.filter((part) => {
-    if (/ethiopia$/i.test(part) && restSegments.length > 1) {
+  const filteredSegments = segments.filter((part, index) => {
+    if (index > 0 && /^ethiopia$/i.test(part)) {
       return false;
     }
     return true;
   });
 
-  const normalizedRest = filteredRest.length > 0 ? filteredRest : restSegments;
-  const formatted = normalizedRest.join(", ");
+  const dedupedSegments = filteredSegments.filter((part, index, array) => {
+    if (index === 0) {
+      return true;
+    }
+    return part.toLowerCase() !== array[index - 1].toLowerCase();
+  });
 
-  return formatted || segments[0] || trimmed;
+  if (dedupedSegments.length >= 2) {
+    const lastTwo = dedupedSegments.slice(-2);
+    return lastTwo.join(", ");
+  }
+
+  return dedupedSegments[0] || trimmed;
 };
 
 export const formatDisplayAddressOrFallback = (address, fallback = "") => {

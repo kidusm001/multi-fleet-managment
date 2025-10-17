@@ -1,12 +1,24 @@
 import PropTypes from "prop-types";
 import mapboxgl from "mapbox-gl";
 
-import { HQ_LOCATION } from "@/config";
 import { formatDisplayAddress } from "@/utils/address";
 
 export function HQMarker({ map, location = null }) {
-  // Use provided location or fallback to default HQ
-  const markerLocation = location || HQ_LOCATION;
+  if (!map) {
+    return null;
+  }
+
+  const markerLocation = location;
+  const fallbackCoords = Array.isArray(markerLocation?.coords)
+    ? markerLocation.coords
+    : Number.isFinite(markerLocation?.longitude) && Number.isFinite(markerLocation?.latitude)
+    ? [markerLocation.longitude, markerLocation.latitude]
+    : null;
+
+  if (!fallbackCoords) {
+    console.warn("HQMarker: Skipping HQ marker because no HQ coordinates are available.");
+    return null;
+  }
   
   // Create HQ marker element
   const el = document.createElement("div");
@@ -23,11 +35,11 @@ export function HQMarker({ map, location = null }) {
     z-index: 2;
     cursor: pointer;
   `;
-  el.innerHTML = markerLocation.type === 'BRANCH' ? "Branch" : "HQ";
+  el.innerHTML = markerLocation?.type === 'BRANCH' ? "Branch" : "HQ";
 
   const formattedAddress =
     formatDisplayAddress(markerLocation.address || "Addis Ababa, Ethiopia") ||
-    markerLocation.address ||
+    markerLocation?.address ||
     "Addis Ababa, Ethiopia";
 
   const popup = new mapboxgl.Popup({
@@ -37,8 +49,8 @@ export function HQMarker({ map, location = null }) {
     anchor: "bottom",
     focusAfterOpen: false,
   }).setHTML(`
-    <div style="padding: 8px; min-width: 150px;">
-      <div style="color: #10B981; font-weight: bold; margin-bottom: 4px;">${markerLocation.name || markerLocation.address || 'Location'}</div>
+      <div style="padding: 8px; min-width: 150px;">
+      <div style="color: #10B981; font-weight: bold; margin-bottom: 4px;">${markerLocation?.name || markerLocation?.address || 'Location'}</div>
       <div style="margin: 0; font-size: 12px;">${formattedAddress}</div>
     </div>
   `);
@@ -47,7 +59,7 @@ export function HQMarker({ map, location = null }) {
     element: el,
     anchor: "center",
   })
-    .setLngLat(markerLocation.coords || [markerLocation.longitude, markerLocation.latitude])
+    .setLngLat(fallbackCoords)
     .setPopup(popup)
     .addTo(map);
 

@@ -7,20 +7,41 @@ import prisma from '../../db';
 import { auth } from '../../lib/auth';
 import * as authMiddleware from '../../middleware/auth';
 
-vi.mock('../../db', () => ({
-  default: {
-    driver: {
-      findMany: vi.fn(),
-      findUnique: vi.fn(),
-      findFirst: vi.fn(),
-      create: vi.fn(),
-      update: vi.fn(),
-    },
-    organization: {
-      findUnique: vi.fn(),
-    },
-  },
-}));
+vi.mock('../../db', () => {
+  const driver = {
+    findMany: vi.fn(),
+    findUnique: vi.fn(),
+    findFirst: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+  };
+
+  const organization = {
+    findUnique: vi.fn(),
+  };
+
+  const vehicle = {
+    updateMany: vi.fn(),
+    findFirst: vi.fn(),
+    update: vi.fn(),
+  };
+
+  const prismaMock = {
+    driver,
+    organization,
+    vehicle,
+    $transaction: vi.fn(),
+  };
+
+  prismaMock.$transaction.mockImplementation(async (callback: any) => callback({
+    driver,
+    vehicle,
+  }));
+
+  return {
+    default: prismaMock,
+  };
+});
 
 vi.mock('../../middleware/auth', () => ({
   requireAuth: vi.fn((req: Request, _res: Response, next: NextFunction) => {
@@ -63,11 +84,18 @@ const mockPrisma = prisma as unknown as {
   organization: {
     findUnique: Mock;
   };
+  vehicle: {
+    updateMany: Mock;
+    findFirst: Mock;
+    update: Mock;
+  };
+  $transaction: Mock;
 };
 
 const requireAuthMock = authMiddleware.requireAuth as unknown as Mock;
 const permissionMock = auth.api.hasPermission as unknown as Mock;
 const organizationMock = mockPrisma.organization.findUnique;
+const vehicleMock = mockPrisma.vehicle;
 
 const app = express();
 app.use(express.json());
@@ -124,6 +152,21 @@ const resetMocks = () => {
 
   mockPrisma.driver.update.mockReset();
   mockPrisma.driver.update.mockResolvedValue(baseDriver);
+
+  vehicleMock.updateMany.mockReset();
+  vehicleMock.updateMany.mockResolvedValue({ count: 0 });
+
+  vehicleMock.findFirst.mockReset();
+  vehicleMock.findFirst.mockResolvedValue(null);
+
+  vehicleMock.update.mockReset();
+  vehicleMock.update.mockResolvedValue(null);
+
+  mockPrisma.$transaction.mockReset();
+  mockPrisma.$transaction.mockImplementation(async (callback: any) => callback({
+    driver: mockPrisma.driver,
+    vehicle: mockPrisma.vehicle,
+  }));
 };
 
 describe('Drivers Routes', () => {
@@ -500,12 +543,20 @@ describe('Drivers Routes', () => {
   describe('User routes', () => {
     describe('GET /drivers', () => {
       it('returns drivers for active org', async () => {
-        mockPrisma.driver.findMany.mockResolvedValueOnce([baseDriver]);
+        mockPrisma.driver.findMany.mockResolvedValueOnce([{ ...baseDriver, assignedVehicles: [] }]);
 
         const res = await request(app).get('/drivers');
 
+        const { assignedVehicles: _ignoredVehicles, ...driverWithoutVehicles } = baseDriver;
+
         expect(res.status).toBe(200);
-        expect(res.body).toEqual([baseDriver]);
+        expect(res.body).toEqual([
+          {
+            ...driverWithoutVehicles,
+            shuttleId: null,
+            shuttle: null,
+          },
+        ]);
       });
 
       it('handles missing organization, permission denied, and errors', async () => {
@@ -679,6 +730,82 @@ describe('Drivers Routes', () => {
 
         expect(res.status).toBe(200);
         expect(res.body.name).toBe('Updated');
+      });
+
+      it('assigns selected vehicle to the driver when vehicleId is provided', async () => {
+        mockPrisma.driver.findFirst.mockResolvedValueOnce(baseDriver);
+        mockPrisma.driver.findFirst.mockResolvedValueOnce(null);
+        mockPrisma.driver.update.mockResolvedValueOnce(baseDriver);
+
+        vehicleMock.updateMany.mockResolvedValueOnce({ count: 1 });
+        vehicleMock.findFirst.mockResolvedValueOnce({ id: 'vehicle1' });
+        vehicleMock.update.mockResolvedValueOnce({ id: 'vehicle1', driverId: 'driver1' });
+
+        const driverWithVehicle = {
+          ...baseDriver,
+          assignedVehicles: [
+            {
+              id: 'vehicle1',
+              name: 'Shuttle 1',
+              plateNumber: 'ABC-123',
+              status: 'AVAILABLE',
+              capacity: 20,
+            },
+          ],
+        };
+
+        mockPrisma.driver.findUnique.mockResolvedValueOnce(driverWithVehicle);
+
+        const res = await request(app)
+          .put('/drivers/driver1')
+          .send({ vehicleId: 'vehicle1' });
+
+        expect(res.status).toBe(200);
+        expect(vehicleMock.updateMany).toHaveBeenCalledWith({
+          where: {
+            organizationId: 'org_test_123',
+            driverId: 'driver1',
+            id: { not: 'vehicle1' },
+          },
+          data: { driverId: null },
+        });
+        expect(vehicleMock.findFirst).toHaveBeenCalledWith({
+          where: {
+            id: 'vehicle1',
+            organizationId: 'org_test_123',
+            deleted: false,
+          },
+          select: { id: true },
+        });
+        expect(vehicleMock.update).toHaveBeenCalledWith({
+          where: { id: 'vehicle1' },
+          data: { driverId: 'driver1' },
+        });
+        expect(res.body.shuttleId).toBe('vehicle1');
+        expect(res.body.shuttle).toEqual({
+          id: 'vehicle1',
+          name: 'Shuttle 1',
+          licensePlate: 'ABC-123',
+          plateNumber: 'ABC-123',
+          status: 'AVAILABLE',
+          capacity: 20,
+        });
+      });
+
+      it('returns 404 when the selected vehicle cannot be found', async () => {
+        mockPrisma.driver.findFirst.mockResolvedValueOnce(baseDriver);
+        mockPrisma.driver.findFirst.mockResolvedValueOnce(null);
+        mockPrisma.driver.update.mockResolvedValueOnce(baseDriver);
+
+        vehicleMock.updateMany.mockResolvedValueOnce({ count: 0 });
+        vehicleMock.findFirst.mockResolvedValueOnce(null);
+
+        const res = await request(app)
+          .put('/drivers/driver1')
+          .send({ vehicleId: 'missing_vehicle' });
+
+        expect(res.status).toBe(404);
+        expect(vehicleMock.update).not.toHaveBeenCalled();
       });
 
       it('handles org missing, permission, not found, conflicts, and errors', async () => {

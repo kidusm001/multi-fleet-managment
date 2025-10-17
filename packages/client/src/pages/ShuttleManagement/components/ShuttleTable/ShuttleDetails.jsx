@@ -95,6 +95,16 @@ export default function ShuttleDetails({
   const [error, setError] = useState(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const { role } = useRole(); // Get user role to determine permissions
+
+  const primaryDriverRef = React.useMemo(() => {
+    if (!shuttle?.driver) {
+      return null;
+    }
+    if (Array.isArray(shuttle.driver)) {
+      return shuttle.driver[0] ?? null;
+    }
+    return shuttle.driver;
+  }, [shuttle?.driver]);
   
   // Check if user is a manager (or similar role with limited permissions)
   const isManager = role === "fleetManager" || role === "manager";
@@ -111,8 +121,8 @@ export default function ShuttleDetails({
       }
 
       // Fetch driver only if assigned and changed
-      if (shuttle.driver?.[0]?.id && (!driver || driver.id !== shuttle.driver[0].id)) {
-        const driverData = await driverService.getDriver(shuttle.driver[0].id);
+      if (primaryDriverRef?.id && (!driver || driver.id !== primaryDriverRef.id)) {
+        const driverData = await driverService.getDriver(primaryDriverRef.id);
         // Normalize status to lowercase
         const normalizedDriver = {
           ...driverData,
@@ -123,7 +133,7 @@ export default function ShuttleDetails({
     } catch (error) {
       console.error("Error fetching data:", error);
     }
-  }, [shuttle.driver, driver, categories.length]);
+  }, [primaryDriverRef, driver, categories.length]);
 
   useEffect(() => {
     fetchData();
@@ -616,7 +626,21 @@ ShuttleDetails.propTypes = {
     nextMaintenance: PropTypes.string,
     vendor: PropTypes.string,
     mileage: PropTypes.number,
-    driver: PropTypes.array,
+    driver: PropTypes.oneOfType([
+      PropTypes.arrayOf(
+        PropTypes.shape({
+          id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+          name: PropTypes.string,
+          status: PropTypes.string,
+        })
+      ),
+      PropTypes.shape({
+        id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
+        name: PropTypes.string,
+        status: PropTypes.string,
+      }),
+      PropTypes.oneOf([null])
+    ]),
     category: PropTypes.shape({
       name: PropTypes.string,
       capacity: PropTypes.number,

@@ -1,11 +1,14 @@
 import { z } from 'zod';
-import { RouteStatus } from '@prisma/client';
+
+// Define route status enum that matches Prisma schema
+const RouteStatusEnum = z.enum(['PENDING', 'ACTIVE', 'IN_PROGRESS', 'COMPLETED', 'INACTIVE', 'CANCELLED']);
 
 // Base Route schema for validation
 const BaseRouteSchema = z.object({
     name: z.string().min(1, 'Route name is required').max(255, 'Route name must be less than 255 characters'),
     description: z.string().max(1000, 'Description must be less than 1000 characters').optional().nullable(),
     locationId: z.cuid('Location ID must be a valid CUID'),
+    sourceId: z.cuid('Source ID must be a valid CUID').optional().nullable(),
     vehicleId: z.cuid('Vehicle ID must be a valid CUID').optional().nullable(),
     shiftId: z.cuid('Shift ID must be a valid CUID').optional().nullable(),
     date: z.iso.datetime('Invalid date format').optional().nullable(),
@@ -13,7 +16,7 @@ const BaseRouteSchema = z.object({
     endTime: z.iso.datetime('Invalid end time format').optional().nullable(),
     totalDistance: z.number().min(0, 'Total distance must be non-negative').optional().nullable(),
     totalTime: z.number().min(0, 'Total time must be non-negative').max(180, 'Total time cannot exceed 180 minutes').optional().nullable(),
-    status: z.enum(RouteStatus, { message: 'Invalid route status' }).optional(),
+    status: RouteStatusEnum.optional(),
     isActive: z.boolean().optional(),
 });
 
@@ -33,15 +36,23 @@ export const CreateRouteSchema = BaseRouteSchema.extend({
 });
 
 // Update Route schema (all fields optional except constraints)
-export const UpdateRouteSchema = BaseRouteSchema.partial().refine((data) => {
+export const UpdateRouteSchema = BaseRouteSchema.partial().superRefine((data, ctx) => {
     // If locationId is provided, it must be a valid CUID (not null/undefined)
-    if (data.locationId !== undefined) {
-        return data.locationId !== null && data.locationId.length > 0;
+    if (data.locationId !== undefined && (data.locationId === null || data.locationId.length === 0)) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Location ID must be provided and cannot be null',
+            path: ['locationId']
+        });
     }
-    return true;
-}, {
-    message: 'Location ID must be provided and cannot be null',
-    path: ['locationId']
+
+    if (data.sourceId !== undefined && (data.sourceId === null || data.sourceId.length === 0)) {
+        ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: 'Source ID must be provided and cannot be null',
+            path: ['sourceId']
+        });
+    }
 });
 
 // Route ID parameter schema
@@ -51,7 +62,7 @@ export const RouteIdParamSchema = z.object({
 
 // Route status update schema
 export const UpdateRouteStatusSchema = z.object({
-    status: z.enum(RouteStatus, { message: 'Invalid route status' }),
+    status: RouteStatusEnum,
 });
 
 // Employee assignment schemas for routes

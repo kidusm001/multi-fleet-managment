@@ -7,14 +7,19 @@ function RouteListCard({ route, onClick }) {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
+  const status = (route?.effectiveStatus || route?.status || '').toUpperCase();
+
   const getStatusColor = (status) => {
     switch (status) {
+      case 'IN_PROGRESS':
       case 'ACTIVE':
         return 'border-green-500/50 bg-green-900/10';
       case 'PENDING':
         return 'border-blue-500/50 bg-blue-900/10';
       case 'COMPLETED':
         return 'border-gray-500/50 bg-gray-900/10';
+      case 'CANCELLED':
+        return 'border-red-500/40 bg-red-900/10';
       default:
         return 'border-gray-500/50 bg-gray-900/10';
     }
@@ -22,12 +27,15 @@ function RouteListCard({ route, onClick }) {
 
   const getStatusBadge = (status) => {
     switch (status) {
+      case 'IN_PROGRESS':
       case 'ACTIVE':
         return <span className="text-xs font-semibold text-green-500">🟢 ACTIVE</span>;
       case 'PENDING':
         return <span className="text-xs font-semibold text-blue-500">🔵 UPCOMING</span>;
       case 'COMPLETED':
         return <span className="text-xs font-semibold text-gray-500">⚪ COMPLETED</span>;
+      case 'CANCELLED':
+        return <span className="text-xs font-semibold text-red-500">🔴 CANCELLED</span>;
       default:
         return null;
     }
@@ -42,7 +50,7 @@ function RouteListCard({ route, onClick }) {
       onClick={onClick}
       className={cn(
         "rounded-lg border p-4 cursor-pointer transition-all",
-        getStatusColor(route.status),
+        getStatusColor(status),
         isDark ? "hover:bg-gray-800/50" : "hover:shadow-md"
       )}
     >
@@ -50,7 +58,7 @@ function RouteListCard({ route, onClick }) {
         {/* Header */}
         <div className="flex items-start justify-between">
           <div className="flex-1">
-            {getStatusBadge(route.status)}
+            {getStatusBadge(status)}
             <h3 className={cn(
               "text-lg font-bold mt-1",
               isDark ? "text-gray-100" : "text-gray-900"
@@ -78,7 +86,7 @@ function RouteListCard({ route, onClick }) {
           <div className="flex items-center gap-2">
             <Clock className="w-4 h-4 text-gray-500" />
             <span className={isDark ? "text-gray-300" : "text-gray-700"}>
-              {route.status === 'ACTIVE' ? 'Started' : route.startTime || 'TBD'}
+              {status === 'IN_PROGRESS' ? 'Started' : route.startTime || 'TBD'}
             </span>
           </div>
 
@@ -100,7 +108,7 @@ function RouteListCard({ route, onClick }) {
         </div>
 
         {/* Progress Bar (for active routes) */}
-        {route.status === 'ACTIVE' && (
+        {status === 'IN_PROGRESS' && (
           <div className="space-y-1">
             <div className="flex justify-between text-xs">
               <span className={isDark ? "text-gray-400" : "text-gray-600"}>
@@ -122,13 +130,13 @@ function RouteListCard({ route, onClick }) {
         {/* CTA Button */}
         <button className={cn(
           "w-full py-2 px-4 rounded-lg font-medium transition-colors",
-          route.status === 'ACTIVE'
+          status === 'IN_PROGRESS'
             ? "bg-[#f3684e] hover:bg-[#e55a28] text-white"
             : isDark
             ? "bg-gray-700 hover:bg-gray-600 text-gray-200"
             : "bg-gray-200 hover:bg-gray-300 text-gray-800"
         )}>
-          {route.status === 'ACTIVE' ? 'Continue →' : 'View Details →'}
+          {status === 'IN_PROGRESS' ? 'Continue →' : 'View Details →'}
         </button>
       </div>
     </div>

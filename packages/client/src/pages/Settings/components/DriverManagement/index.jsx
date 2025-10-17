@@ -34,10 +34,12 @@ export default function DriverManagement() {
   const [isEditMode, setIsEditMode] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
+    email: "",
     licenseNumber: "",
     phoneNumber: "",
     experience: 0,
-    shuttleId: null
+    shuttleId: null,
+    userId: null
   });
 
   // Load drivers and shuttles when component mounts
@@ -66,7 +68,15 @@ export default function DriverManagement() {
   const loadShuttles = async () => {
     try {
       const data = await shuttleService.getShuttles();
-      setShuttles(data.filter(shuttle => shuttle.status === 'active'));
+      setShuttles(
+        data.filter((shuttle) => {
+          if (!shuttle?.status) {
+            return false;
+          }
+          const normalizedStatus = shuttle.status.toString().toLowerCase();
+          return normalizedStatus === 'active' || normalizedStatus === 'available' || normalizedStatus === 'in_use';
+        })
+      );
     } catch (err) {
       console.error("Failed to load shuttles:", err);
       toast.error("Could not load shuttles");
@@ -77,10 +87,12 @@ export default function DriverManagement() {
   const handleAdd = () => {
     setFormData({
       name: "",
+      email: "",
       licenseNumber: "",
       phoneNumber: "",
       experience: 0,
-      shuttleId: null
+      shuttleId: null,
+      userId: null
     });
     setIsEditMode(false);
     setShowAddModal(true);
@@ -90,10 +102,12 @@ export default function DriverManagement() {
   const handleEdit = (driver) => {
     setFormData({
       name: driver.name,
+      email: driver.email || "",
       licenseNumber: driver.licenseNumber,
-      phoneNumber: driver.phoneNumber,
-      experience: driver.experience,
-      shuttleId: driver.shuttleId
+      phoneNumber: driver.phoneNumber || "",
+      experience: driver.experienceYears ?? driver.experience ?? 0,
+      shuttleId: driver.shuttleId ?? driver.vehicleId ?? null,
+      userId: driver.userId ?? null
     });
     setSelectedDriver(driver);
     setIsEditMode(true);
@@ -242,6 +256,7 @@ export default function DriverManagement() {
         formData={formData}
         setFormData={setFormData}
         shuttles={shuttles}
+        existingDrivers={drivers}
         onSubmit={handleSubmit}
         onCancel={() => setShowAddModal(false)}
       />

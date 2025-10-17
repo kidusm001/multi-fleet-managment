@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Truck, AlertCircle, User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Button from "@/components/Common/UI/Button";
@@ -10,6 +10,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  SelectSeparator,
 } from "@/components/Common/UI/Select";
 import {
   Dialog,
@@ -37,6 +38,7 @@ export default function DriverFormDialog({
   formData,
   setFormData,
   shuttles,
+  existingDrivers = [],
   onSubmit,
   onCancel,
 }) {
@@ -49,6 +51,19 @@ export default function DriverFormDialog({
   const [members, setMembers] = useState([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
   const [selectedMember, setSelectedMember] = useState(null);
+
+  const availableMembers = useMemo(
+    () => members.filter((member) => !member.isExistingDriver),
+    [members]
+  );
+
+  const existingDriverMembers = useMemo(
+    () => members.filter((member) => member.isExistingDriver),
+    [members]
+  );
+
+  const normalizePhone = (phone) =>
+    typeof phone === "string" ? phone.replace(/\D+/g, "") : "";
 
   // Load organization members
   const loadMembers = useCallback(async () => {
@@ -81,23 +96,70 @@ export default function DriverFormDialog({
         membersList = fullOrgData?.members || [];
       }
 
-      // Filter to show only members who have the "driver" role
-      const availableMembers = membersList.filter(member => {
-        const role = member.role?.toLowerCase() || '';
-        // Only show members with driver role
-        return role === 'driver';
-      });
+      const driverEmails = new Set(
+        existingDrivers
+          .map((driver) => driver.email?.toLowerCase())
+          .filter(Boolean)
+      );
 
-      console.log('Loaded members:', membersList.length, 'Available:', availableMembers.length);
-      console.log('Member roles:', membersList.map(m => ({ name: m.user?.name, role: m.role })));
-      setMembers(availableMembers);
+      const driverPhones = new Set(
+        existingDrivers
+          .map((driver) => normalizePhone(driver.phoneNumber))
+          .filter((value) => value.length > 0)
+      );
+
+      const normalizedMembers = membersList
+        .map((member) => {
+          const selectId = member.userId || member.id;
+          const roles = Array.isArray(member.roles)
+            ? member.roles
+            : member.role
+              ? [member.role]
+              : [];
+          const hasDriverRole = roles.some(
+            (role) => typeof role === "string" && role.toLowerCase().includes("driver")
+          );
+
+          if (!selectId || !hasDriverRole) {
+            return null;
+          }
+
+          const email = member.user?.email?.toLowerCase() || member.email?.toLowerCase() || "";
+          const phone = normalizePhone(
+            member.user?.phone ||
+              member.user?.phoneNumber ||
+              member.phone ||
+              member.phoneNumber ||
+              ""
+          );
+
+          const isExistingDriver =
+            (email && driverEmails.has(email)) || (phone && driverPhones.has(phone));
+
+          return {
+            ...member,
+            selectId: String(selectId),
+            displayName: member.user?.name || member.user?.email || selectId,
+            displayEmail: member.user?.email || member.email || "",
+            isExistingDriver,
+          };
+        })
+        .filter(Boolean)
+        .sort((a, b) => {
+          if (a.isExistingDriver !== b.isExistingDriver) {
+            return a.isExistingDriver ? 1 : -1;
+          }
+          return a.displayName.localeCompare(b.displayName);
+        });
+
+      setMembers(normalizedMembers);
     } catch (err) {
       console.error('Error loading members:', err);
       setError('Failed to load organization members. Please try again.');
     } finally {
       setLoadingMembers(false);
     }
-  }, [activeOrganization?.id]);
+  }, [activeOrganization?.id, existingDrivers]);
 
   // Load organization members when dialog opens
   useEffect(() => {
@@ -106,25 +168,35 @@ export default function DriverFormDialog({
     }
   }, [isOpen, activeOrganization?.id, editMode, loadMembers]);
 
+  useEffect(() => {
+    if (!isOpen) {
+      setSelectedMember(null);
+      setPhoneError(false);
+      setError(null);
+    }
+  }, [isOpen]);
+
   // Handle member selection
   const handleMemberSelect = (memberId) => {
-    const member = members.find(m => m.userId === memberId || m.id === memberId);
+    const member = members.find((m) => m.selectId === memberId);
     if (member) {
       setSelectedMember(member);
       // Auto-fill form data from member info
-      const userName = member.user?.name || member.user?.email?.split('@')[0] || '';
-      const userPhone = member.user?.phone || member.user?.phoneNumber || '';
-      const userEmail = member.user?.email || '';
-      
-      console.log('Selected member:', member);
-      console.log('Auto-filling: name=', userName, 'email=', userEmail, 'phone=', userPhone);
-      
+      const userName = member.user?.name || member.displayName || "";
+      const userPhone =
+        member.user?.phone ||
+        member.user?.phoneNumber ||
+        member.phone ||
+        member.phoneNumber ||
+        "";
+      const userEmail = member.user?.email || member.displayEmail || "";
+
       setFormData({
         ...formData,
         name: userName,
         email: userEmail,
         phoneNumber: userPhone,
-        userId: member.userId || member.id,
+        userId: member.selectId,
       });
     }
   };
@@ -185,7 +257,6 @@ export default function DriverFormDialog({
         submitData.vehicleId = formData.shuttleId;
       }
       
-      console.log('Submitting driver data:', submitData);
       const success = await onSubmit(submitData, editMode);
       if (success) {
         onCancel();
@@ -231,7 +302,7 @@ export default function DriverFormDialog({
                 Select Organization Member*
               </label>
               <Select
-                value={selectedMember?.userId || selectedMember?.id || ""}
+                value={selectedMember?.selectId || ""}
                 onValueChange={handleMemberSelect}
                 disabled={loadingMembers}
               >
@@ -240,7 +311,14 @@ export default function DriverFormDialog({
                     {selectedMember && (
                       <div className="flex items-center gap-2">
                         <User className="h-4 w-4" />
-                        <span>{selectedMember.user?.name || selectedMember.user?.email || 'Selected Member'}</span>
+                        <div className="flex flex-col">
+                          <span>{selectedMember.displayName}</span>
+                          {selectedMember.displayEmail && (
+                            <span className="text-xs text-muted-foreground">
+                              {selectedMember.displayEmail}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     )}
                   </SelectValue>
@@ -250,33 +328,64 @@ export default function DriverFormDialog({
                     <div className={`px-2 py-1.5 text-sm ${isDark ? "text-gray-400" : "text-gray-500"}`}>
                       Loading members...
                     </div>
-                  ) : members.length === 0 ? (
+                  ) : availableMembers.length === 0 && existingDriverMembers.length === 0 ? (
                     <div className={`px-2 py-1.5 text-sm ${isDark ? "text-gray-400" : "text-gray-500"}`}>
-                      No available members found
+                      No members with a driver role found
                     </div>
                   ) : (
-                    members.map((member) => {
-                      const memberId = member.userId || member.id;
-                      const memberName = member.user?.name || member.user?.email || memberId;
-                      return (
-                        <SelectItem 
-                          key={memberId} 
-                          value={memberId}
+                    <div className="max-h-64 overflow-y-auto">
+                      {availableMembers.map((member) => (
+                        <SelectItem
+                          key={member.selectId}
+                          value={member.selectId}
                           className={isDark ? "focus:bg-gray-700 focus:text-gray-200" : ""}
                         >
-                          <div className="flex items-center gap-2">
-                            <User className="h-4 w-4" />
-                            <span>{memberName}</span>
+                          <div className="flex flex-col">
+                            <span>{member.displayName}</span>
+                            {member.displayEmail && (
+                              <span className={`text-xs ${isDark ? "text-gray-400" : "text-gray-500"}`}>
+                                {member.displayEmail}
+                              </span>
+                            )}
                           </div>
                         </SelectItem>
-                      );
-                    })
+                      ))}
+
+                      {existingDriverMembers.length > 0 && (
+                        <div>
+                          <SelectSeparator />
+                          <div className={`px-2 py-1 text-xs uppercase tracking-wide ${isDark ? "text-gray-400" : "text-gray-500"}`}>
+                            Already added
+                          </div>
+                          {existingDriverMembers.map((member) => (
+                            <SelectItem
+                              key={member.selectId}
+                              value={member.selectId}
+                              disabled
+                              className="opacity-70"
+                            >
+                              <div className="flex flex-col">
+                                <span>{member.displayName}</span>
+                                {member.displayEmail && (
+                                  <span className={`text-xs ${isDark ? "text-gray-500" : "text-gray-400"}`}>
+                                    {member.displayEmail}
+                                  </span>
+                                )}
+                                <span className={`text-xs ${isDark ? "text-amber-400" : "text-amber-600"}`}>
+                                  Driver profile already exists
+                                </span>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   )}
                 </SelectContent>
               </Select>
-              {!loadingMembers && members.length === 0 && !error && (
+              {!loadingMembers && availableMembers.length === 0 && existingDriverMembers.length > 0 && !error && (
                 <p className={`text-xs ${isDark ? "text-amber-400" : "text-amber-600"}`}>
-                  All organization members are already assigned roles. Please invite new members first.
+                  All members with a driver role already have driver profiles. Invite or assign a new driver member to add more drivers.
                 </p>
               )}
               {error && !loadingMembers && (

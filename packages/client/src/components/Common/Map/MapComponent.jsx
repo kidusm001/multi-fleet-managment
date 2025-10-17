@@ -4,6 +4,7 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import PropTypes from "prop-types";
 import { useTheme } from "@contexts/ThemeContext";
 import debounce from "lodash/debounce";
+import { useHQLocation } from "@/contexts/HQLocationContext";
 
 import {
   MAP_CONFIG,
@@ -56,6 +57,7 @@ function MapComponent({ selectedRoute, selectedShuttle, newStop, mapStyle, initi
   const [mapInitialized, setMapInitialized] = useState(false);
   const [mapError, setMapError] = useState(null);
   const { theme } = useTheme();
+  const { location: hqLocation } = useHQLocation();
   const isDark = useMemo(() => theme === 'dark', [theme]);
   const debouncedUpdateRoute = useRef(null);
   const hqMarkerRef = useRef(null);
@@ -66,6 +68,38 @@ function MapComponent({ selectedRoute, selectedShuttle, newStop, mapStyle, initi
     threeD: null,
     nextStop: null, // Add reference for next stop control
   });
+
+  const removeUnsupportedSources = useCallback(() => {
+    const incidentSources = [
+      'mapbox-incidents',
+      'mapbox-incidents-v1',
+      'mapbox.mapbox-incidents-v1',
+      'incidents',
+    ];
+
+    try {
+      if (!map.current) return;
+
+      const style = map.current.getStyle();
+      if (style?.layers?.length) {
+        style.layers
+          .filter((layer) => incidentSources.includes(layer.source))
+          .forEach((layer) => {
+            if (map.current?.getLayer(layer.id)) {
+              map.current.removeLayer(layer.id);
+            }
+          });
+      }
+
+      incidentSources.forEach((sourceId) => {
+        if (map.current?.getSource(sourceId)) {
+          map.current.removeSource(sourceId);
+        }
+      });
+    } catch (error) {
+      console.warn('Failed to remove unsupported Mapbox layers', error);
+    }
+  }, []);
 
   // Define updateRoute first since it's used in other functions
   const updateRoute = useCallback(async () => {
@@ -92,6 +126,7 @@ function MapComponent({ selectedRoute, selectedShuttle, newStop, mapStyle, initi
         route: selectedRoute,
         shuttle: selectedShuttle,
         enableOptimization,
+        hqLocation,
       });
 
       // Check map is still valid after async operation
@@ -100,11 +135,10 @@ function MapComponent({ selectedRoute, selectedShuttle, newStop, mapStyle, initi
       if (optimizedRoute) {
         // Add location marker (HQ or Branch) if not exists
         if (!hqMarkerRef.current && map.current) {
-          // Pass the route's location if available
-          const location = selectedRoute?.location;
+          const location = selectedRoute?.location || hqLocation;
           hqMarkerRef.current = HQMarker({ 
             map: map.current,
-            location: location
+            location
           });
         }
 
@@ -460,7 +494,7 @@ function MapComponent({ selectedRoute, selectedShuttle, newStop, mapStyle, initi
       console.error("Error updating route:", error);
       setMapError("Failed to update route");
     }
-  }, [selectedRoute, selectedShuttle, mapInitialized, newStop, showDirections, isDark, enableOptimization, currentUserId]);
+  }, [selectedRoute, selectedShuttle, mapInitialized, newStop, showDirections, isDark, enableOptimization, currentUserId, hqLocation]);
 
   // Add function to clean up controls
   const cleanupControls = useCallback(() => {
@@ -489,12 +523,12 @@ function MapComponent({ selectedRoute, selectedShuttle, newStop, mapStyle, initi
     // Pass isDark to controls that need theme information
     controlsRef.current.navigation = addNavigationControl(map.current, "bottom-left", isDark);
     controlsRef.current.fullscreen = addFullscreenControl(map.current, "bottom-left");
-    controlsRef.current.center = addCenterControl(map.current, selectedRoute, "bottom-left", isDark);
-    controlsRef.current.threeD = add3DViewControl(map.current, "bottom-left", isDark);
+    controlsRef.current.center = addCenterControl(map.current, selectedRoute, hqLocation, "bottom-left", isDark);
+    controlsRef.current.threeD = add3DViewControl(map.current, hqLocation, "bottom-left", isDark);
     
     // Add next stop control for 3D navigation
     controlsRef.current.nextStop = addNextStopControl(map.current, selectedRoute, "bottom-left");
-  }, [cleanupControls, selectedRoute, isDark]);
+  }, [cleanupControls, selectedRoute, isDark, hqLocation]);
 
   // Function to handle style changes
   const handleNewStyle = useCallback(
@@ -523,7 +557,7 @@ function MapComponent({ selectedRoute, selectedShuttle, newStop, mapStyle, initi
         }
       });
     },
-    [setupControls, selectedRoute, updateRoute]
+  [setupControls, selectedRoute, updateRoute]
   );
 
   // Performance optimized map initialization with proper style and terrain handling
@@ -579,6 +613,8 @@ function MapComponent({ selectedRoute, selectedShuttle, newStop, mapStyle, initi
           map: map.current,
           location: location
         });
+
+        removeUnsupportedSources();
         
         // Preconnect to Mapbox resources to improve performance
         const linkEl = document.createElement('link');
@@ -624,7 +660,7 @@ function MapComponent({ selectedRoute, selectedShuttle, newStop, mapStyle, initi
         setMapError("Failed to initialize map. Please refresh the page.");
       }
     }
-  }, [isDark, selectedRoute, updateRoute, setupControls, mapStyle, initialZoom]);
+  }, [isDark, selectedRoute, updateRoute, setupControls, removeUnsupportedSources, mapStyle, initialZoom]);
 
   // Initialize map
   useEffect(() => {
@@ -666,12 +702,13 @@ function MapComponent({ selectedRoute, selectedShuttle, newStop, mapStyle, initi
         map.current.setCenter(center);
         map.current.setZoom(zoom);
         setupControls();
+        removeUnsupportedSources();
         if (selectedRoute && map.current) {
           updateRoute();
         }
       });
     }
-  }, [isDark, mapInitialized, setupControls, selectedRoute, updateRoute, mapStyle]);
+  }, [isDark, mapInitialized, setupControls, selectedRoute, updateRoute, mapStyle, removeUnsupportedSources]);
 
   // Handle custom mapStyle changes
   useEffect(() => {
@@ -682,7 +719,8 @@ function MapComponent({ selectedRoute, selectedShuttle, newStop, mapStyle, initi
     
     map.current.setStyle(mapStyle);
     handleNewStyle(center, zoom);
-  }, [mapStyle, mapInitialized, handleNewStyle]);
+    removeUnsupportedSources();
+  }, [mapStyle, mapInitialized, handleNewStyle, removeUnsupportedSources]);
 
   // Update route when selected route changes - use debouncing for performance
   useEffect(() => {

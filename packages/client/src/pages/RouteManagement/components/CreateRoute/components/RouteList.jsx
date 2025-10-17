@@ -19,11 +19,21 @@ export default function RouteList({ routes }) {
   return (
     <div className={styles.routeList}>
       {routes.map((route) => {
-        // Get all unique employees from all stops, filtering out nulls
-        const employees = route.stops?.flatMap((stop) => stop.employee).filter(Boolean) || [];
-        const uniqueEmployees = [
-          ...new Set(employees.filter(emp => emp && emp.id).map((emp) => emp.id)),
-        ].map((id) => employees.find((emp) => emp && emp.id === id)).filter(Boolean);
+        const stops = Array.isArray(route.stops) ? route.stops : [];
+        const uniqueStopsMap = new Map();
+
+        stops.forEach((stop) => {
+          if (!stop) {
+            return;
+          }
+
+          const stopId = stop.id ?? stop.stopId ?? `${stop.employee?.id ?? "unknown"}-${stop.address ?? stop.location ?? "unknown"}`;
+          if (!uniqueStopsMap.has(stopId)) {
+            uniqueStopsMap.set(stopId, stop);
+          }
+        });
+
+        const uniqueStops = Array.from(uniqueStopsMap.values());
 
         return (
           <div key={route.id} className={styles.routeCard}>
@@ -40,20 +50,29 @@ export default function RouteList({ routes }) {
                   <span>{route.stops?.length || 0} stops</span>
                 </div>
                 <div className={cn(styles.areaList, "flex flex-wrap gap-1 mt-2")}>
-                  {uniqueEmployees.map((employee) => (
+                  {uniqueStops.map((stopEntry) => {
+                    const stopLabel = formatDisplayAddress(
+                      stopEntry.address ||
+                        stopEntry.location ||
+                        stopEntry.area ||
+                        stopEntry.displayName ||
+                        stopEntry.employee?.stop?.address ||
+                        stopEntry.employee?.stop?.location ||
+                        stopEntry.employee?.location ||
+                        stopEntry.employee?.workLocation?.address ||
+                        "N/A"
+                    ) || "N/A";
+
+                    return (
                     <Badge
-                      key={employee.id}
+                        key={stopEntry.id ?? stopEntry.stopId ?? stopLabel}
                       variant="secondary"
                       className={styles.areaBadge}
                     >
-                      {formatDisplayAddress(
-                        employee.stop?.address ||
-                          employee.workLocation?.address ||
-                          employee.location ||
-                          'N/A'
-                      ) || 'N/A'}
+                        {stopLabel}
                     </Badge>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             </div>

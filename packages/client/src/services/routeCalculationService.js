@@ -1,5 +1,5 @@
 import { optimizeRoute } from './routeOptimization';
-import { HQ_LOCATION } from '@/config';
+import { fetchHQLocation } from './hqLocationService';
 
 /**
  * Calculate route metrics using route optimization
@@ -14,13 +14,21 @@ export async function calculateRouteMetrics(coordinates, startLocation = null) {
 
     try {
         // Use provided start location or fall back to HQ
-        const start = startLocation || HQ_LOCATION.coords;
+        let fallbackStart = startLocation;
+        if (!fallbackStart) {
+            const hqLocation = await fetchHQLocation();
+            fallbackStart = hqLocation?.coords || null;
+        }
+
+        if (!Array.isArray(fallbackStart) || fallbackStart.length !== 2) {
+            throw new Error('HQ location is not configured. Please add an HQ location in the admin portal.');
+        }
         
         // Add start location as start and end point
         const routeCoordinates = [
-            start,
+            fallbackStart,
             ...coordinates,
-            start
+            fallbackStart
         ];
 
         // Optimize the route

@@ -14,7 +14,17 @@ jest.mock('@contexts/AuthContext', () => ({
 }));
 
 jest.mock('@contexts/RoleContext', () => ({
-  useRole: jest.fn(() => ({ role: 'admin' })),
+  useRole: jest.fn(() => ({ role: 'admin', userRole: 'admin' })),
+}));
+
+jest.mock('@contexts/HQLocationContext', () => ({
+  useHQLocation: jest.fn(() => ({
+    location: {
+      latitude: 9.0320,
+      longitude: 38.7469,
+      coords: [38.7469, 9.0320]
+    }
+  })),
 }));
 
 jest.mock('@services/routeService', () => ({
@@ -42,11 +52,17 @@ const mockRoutes = [
   {
     id: 'route1',
     name: 'Morning Route A',
-    status: 'ACTIVE',
+    status: 'active',
     totalDistance: 25.5,
     totalTime: 45,
     shift: { id: 'shift1', name: 'Morning Shift' },
     shuttle: { id: 'shuttle1', licensePlate: 'ABC-123' },
+    location: {
+      latitude: 9.0320,
+      longitude: 38.7469,
+      coords: [38.7469, 9.0320],
+      type: 'HQ'
+    },
     stops: [
       {
         id: 'stop1',
@@ -77,11 +93,17 @@ const mockRoutes = [
   {
     id: 'route2',
     name: 'Evening Route B',
-    status: 'INACTIVE',
+    status: 'inactive',
     totalDistance: 30.2,
     totalTime: 55,
     shift: { id: 'shift2', name: 'Evening Shift' },
     shuttle: { id: 'shuttle2', licensePlate: 'XYZ-789' },
+    location: {
+      latitude: 9.0320,
+      longitude: 38.7469,
+      coords: [38.7469, 9.0320],
+      type: 'HQ'
+    },
     stops: [
       {
         id: 'stop3',

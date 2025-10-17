@@ -1,11 +1,3 @@
-export const HQ_LOCATION = {
-    name: import.meta.env.VITE_HQ_NAME,
-    coords: [
-        parseFloat(import.meta.env.VITE_HQ_LONGITUDE),
-        parseFloat(import.meta.env.VITE_HQ_LATITUDE)
-    ]
-};
-
 export const MAP_STYLES = {
     light: import.meta.env.VITE_MAPBOX_LIGHT_STYLE,
     dark: import.meta.env.VITE_MAPBOX_DARK_STYLE

@@ -1,5 +1,5 @@
 import express, { Request, Response } from 'express';
-import { Route, RouteStatus } from '@prisma/client';
+import { Prisma, Route, RouteStatus } from '@prisma/client';
 import { requireAuth, requireRole } from '../middleware/auth';
 import { fromNodeHeaders } from 'better-auth/node';
 import { auth } from '../lib/auth';
@@ -44,18 +44,19 @@ router.get('/superadmin', requireAuth, requireRole(["superadmin"]), async (req: 
             where: {
                 ...(includeDeleted !== 'true' && { deleted: false })
             },
-            include: {
+            include: Prisma.validator<Prisma.RouteInclude>()({
                 organization: true,
                 vehicle: true,
                 shift: true,
                 location: true,
+                source: true,
                 stops: {
                     orderBy: {
                         sequence: 'asc'
                     }
                 },
                 vehicleAvailability: true
-            },
+            }),
             orderBy: {
                 createdAt: 'desc'
             }
@@ -80,18 +81,19 @@ router.get('/superadmin/:id', requireAuth, requireRole(["superadmin"]), async (r
         }
         const route = await prisma.route.findUnique({
             where: { id },
-            include: {
+            include: Prisma.validator<Prisma.RouteInclude>()({
                 organization: true,
                 vehicle: true,
                 shift: true,
                 location: true,
+                source: true,
                 stops: {
                     orderBy: {
                         sequence: 'asc'
                     }
                 },
                 vehicleAvailability: true
-            }
+            })
         });
         if (!route) {
             return res.status(404).json({ message: 'Route not found' });
@@ -120,13 +122,14 @@ router.get('/superadmin/by-organization/:organizationId', requireAuth, requireRo
                 organizationId,
                 ...(includeDeleted !== 'true' && { deleted: false })
             },
-            include: {
+            include: Prisma.validator<Prisma.RouteInclude>()({
                 organization: true,
                 vehicle: true,
                 shift: true,
                 location: true,
+                source: true,
                 stops: true
-            },
+            }),
             orderBy: {
                 name: 'asc'
             }
@@ -151,6 +154,7 @@ router.post('/superadmin', requireAuth, requireRole(["superadmin"]), async (req:
             vehicleId,
             shiftId,
             locationId,
+            sourceId,
             date,
             startTime,
             endTime,
@@ -185,6 +189,16 @@ router.post('/superadmin', requireAuth, requireRole(["superadmin"]), async (req:
             return res.status(400).json({ message: 'Location not found or does not belong to the organization' });
         }
 
+        if (sourceId) {
+            const sourceLocation = await prisma.location.findFirst({
+                where: { id: sourceId, organizationId }
+            });
+
+            if (!sourceLocation) {
+                return res.status(400).json({ message: 'Source location not found or does not belong to the organization' });
+            }
+        }
+
         if (vehicleId) {
             const vehicle = await prisma.vehicle.findUnique({ where: { id: vehicleId } });
             if (!vehicle || vehicle.organizationId !== organizationId) {
@@ -206,22 +220,24 @@ router.post('/superadmin', requireAuth, requireRole(["superadmin"]), async (req:
                 vehicleId,
                 shiftId,
                 locationId,
+                sourceId: sourceId ?? null,
                 date: date ? new Date(date) : null,
                 startTime: startTime ? new Date(startTime) : null,
                 endTime: endTime ? new Date(endTime) : null,
                 totalDistance,
                 totalTime,
-                status: status || RouteStatus.ACTIVE,
+                status: status || 'PENDING',
                 isActive: isActive !== undefined ? isActive : true,
                 organizationId
             },
-            include: {
+            include: Prisma.validator<Prisma.RouteInclude>()({
                 organization: true,
                 vehicle: true,
                 shift: true,
                 location: true,
+                source: true,
                 stops: true
-            }
+            })
         });
 
         res.status(201).json(newRoute);
@@ -245,6 +261,7 @@ router.put('/superadmin/:id', requireAuth, requireRole(["superadmin"]), async (r
             vehicleId,
             shiftId,
             locationId,
+            sourceId,
             date,
             startTime,
             endTime,
@@ -266,6 +283,15 @@ router.put('/superadmin/:id', requireAuth, requireRole(["superadmin"]), async (r
             });
             if (!location) {
                 return res.status(400).json({ message: 'Location not found or does not belong to the organization' });
+            }
+        }
+
+        if (sourceId) {
+            const sourceLocation = await prisma.location.findFirst({
+                where: { id: sourceId, organizationId: existingRoute.organizationId }
+            });
+            if (!sourceLocation) {
+                return res.status(400).json({ message: 'Source location not found or does not belong to the organization' });
             }
         }
 
@@ -291,6 +317,7 @@ router.put('/superadmin/:id', requireAuth, requireRole(["superadmin"]), async (r
                 vehicleId,
                 shiftId,
                 locationId,
+                sourceId,
                 date: date ? new Date(date) : undefined,
                 startTime: startTime ? new Date(startTime) : undefined,
                 endTime: endTime ? new Date(endTime) : undefined,
@@ -299,13 +326,14 @@ router.put('/superadmin/:id', requireAuth, requireRole(["superadmin"]), async (r
                 status,
                 isActive
             },
-            include: {
+            include: Prisma.validator<Prisma.RouteInclude>()({
                 organization: true,
                 vehicle: true,
                 shift: true,
                 location: true,
+                source: true,
                 stops: true
-            }
+            })
         });
 
         res.json(updatedRoute);
@@ -338,7 +366,7 @@ router.delete('/superadmin/:id', requireAuth, requireRole(["superadmin"]), async
                 deleted: true,
                 deletedAt: new Date(),
                 isActive: false,
-                status: RouteStatus.INACTIVE
+                status: 'INACTIVE'
             }
         });
 
@@ -372,15 +400,16 @@ router.patch('/superadmin/:id/restore', requireAuth, requireRole(["superadmin"])
                 deleted: false,
                 deletedAt: null,
                 isActive: true,
-                status: RouteStatus.ACTIVE
+                status: 'ACTIVE'
             },
-            include: {
+            include: Prisma.validator<Prisma.RouteInclude>()({
                 organization: true,
                 vehicle: true,
                 shift: true,
                 location: true,
+                source: true,
                 stops: true
-            }
+            })
         });
 
         res.json({ message: 'Route restored successfully', route: restoredRoute });
@@ -471,29 +500,31 @@ router.get('/', requireAuth, async (req: Request, res: Response) => {
                         }
                     }
                 },
-                include: {
+                include: Prisma.validator<Prisma.RouteInclude>()({
                     vehicle: true,
                     shift: true,
                     location: true,
+                    source: true,
                     stops: {
                         orderBy: { sequence: 'asc' },
                         include: { employee: true }
                     },
                     vehicleAvailability: true
-                },
+                }),
                 orderBy: { createdAt: 'desc' }
             });
             return res.json(personalRoutes);
         }
         const routes = await prisma.route.findMany({
             where: { organizationId: activeOrgId, deleted: false },
-            include: {
+            include: Prisma.validator<Prisma.RouteInclude>()({
                 vehicle: true,
                 shift: true,
                 location: true,
+                source: true,
                 stops: { orderBy: { sequence: 'asc' }, include: { employee: true } },
                 vehicleAvailability: true
-            },
+            }),
             orderBy: { createdAt: 'desc' }
         });
         res.json(routes);
@@ -562,13 +593,14 @@ router.get('/:id', requireAuth, validateSchema(RouteIdParamSchema, 'params'), as
         const orgRole = req.organizationRole?.toLowerCase();
         const route = await prisma.route.findFirst({
             where: { id, organizationId: activeOrgId, deleted: false },
-            include: {
+            include: Prisma.validator<Prisma.RouteInclude>()({
                 vehicle: true,
                 shift: true,
                 location: true,
+                source: true,
                 stops: { orderBy: { sequence: 'asc' }, include: { employee: true } },
                 vehicleAvailability: true
-            }
+            })
         });
         if (!route) return res.status(404).json({ message: 'Route not found' });
         if (orgRole === 'employee') {
@@ -604,13 +636,14 @@ router.get('/shift/:shiftId', requireAuth, validateSchema(RoutesByShiftParamSche
         if (!hasPermission.success) return res.status(403).json({ message: 'Unauthorized' });
         const routes = await prisma.route.findMany({
             where: { shiftId, organizationId: activeOrgId, deleted: false },
-            include: {
+            include: Prisma.validator<Prisma.RouteInclude>()({
                 vehicle: true,
                 shift: true,
                 location: true,
+                source: true,
                 stops: { orderBy: { sequence: 'asc' }, include: { employee: true } },
                 vehicleAvailability: true
-            }
+            })
         });
         res.json(routes);
     } catch (error) {
@@ -641,13 +674,14 @@ router.get('/location/:locationId', requireAuth, validateSchema(RoutesByLocation
 
         const routes = await prisma.route.findMany({
             where: { locationId, organizationId: activeOrgId, deleted: false },
-            include: {
+            include: Prisma.validator<Prisma.RouteInclude>()({
                 vehicle: true,
                 shift: true,
                 location: true,
+                source: true,
                 stops: { orderBy: { sequence: 'asc' }, include: { employee: true } },
                 vehicleAvailability: true
-            }
+            })
         });
         res.json(routes);
     } catch (error) {
@@ -702,6 +736,7 @@ router.post('/', requireAuth, validateSchema(CreateRouteSchema, 'body'), async (
             totalTime,
             employees,
             locationId,
+            sourceId,
         } = req.body as CreateRouteInput;
 
         const activeOrgId = req.session?.session?.activeOrganizationId;
@@ -736,6 +771,16 @@ router.post('/', requireAuth, validateSchema(CreateRouteSchema, 'body'), async (
         });
         if (!location) {
             return res.status(400).json({ message: 'Location not found or does not belong to the organization' });
+        }
+
+        if (sourceId) {
+            const sourceLocation = await prisma.location.findFirst({
+                where: { id: sourceId, organizationId: activeOrgId }
+            });
+
+            if (!sourceLocation) {
+                return res.status(400).json({ message: 'Source location not found or does not belong to the organization' });
+            }
         }
 
         // Validate totalTime does not exceed 90 minutes
@@ -838,6 +883,7 @@ router.post('/', requireAuth, validateSchema(CreateRouteSchema, 'body'), async (
                     status: 'ACTIVE',
                     organizationId: activeOrgId,
                     locationId,
+                    sourceId,
                 },
             });
 
@@ -947,6 +993,7 @@ router.put('/:id', requireAuth, validateMultiple([{ schema: RouteIdParamSchema, 
             totalDistance,
             totalTime,
             locationId,
+            sourceId,
         } = req.body as UpdateRouteInput;
 
         const activeOrgId = req.session?.session?.activeOrganizationId;
@@ -968,6 +1015,16 @@ router.put('/:id', requireAuth, validateMultiple([{ schema: RouteIdParamSchema, 
             });
             if (!location) {
                 return res.status(400).json({ message: 'Location not found or does not belong to the organization' });
+            }
+        }
+
+        if (sourceId) {
+            const sourceLocation = await prisma.location.findFirst({
+                where: { id: sourceId, organizationId: activeOrgId }
+            });
+
+            if (!sourceLocation) {
+                return res.status(400).json({ message: 'Source location not found or does not belong to the organization' });
             }
         }
 
@@ -1011,6 +1068,7 @@ router.put('/:id', requireAuth, validateMultiple([{ schema: RouteIdParamSchema, 
                 vehicleId,
                 shiftId,
                 locationId,
+                sourceId,
                 date: date ? new Date(date) : undefined,
                 startTime,
                 endTime,
@@ -1018,7 +1076,7 @@ router.put('/:id', requireAuth, validateMultiple([{ schema: RouteIdParamSchema, 
                 totalTime,
                 status: 'ACTIVE',
             },
-            include: { vehicle: true, shift: true, location: true, stops: true }
+            include: Prisma.validator<Prisma.RouteInclude>()({ vehicle: true, shift: true, location: true, source: true, stops: true })
         });
 
         if (vehicleId && shiftId && date) {
@@ -1116,7 +1174,7 @@ router.delete('/:id', requireAuth, validateSchema(RouteIdParamSchema, 'params'),
 
             await prisma.route.update({
                 where: { id },
-                data: { deleted: true, deletedAt: new Date(), isActive: false, status: RouteStatus.INACTIVE }
+                data: { deleted: true, deletedAt: new Date(), isActive: false, status: 'INACTIVE' }
             });
 
             // Send notifications
@@ -1157,7 +1215,7 @@ router.patch('/:id/restore', requireAuth, validateSchema(RouteIdParamSchema, 'pa
         if (!existingRoute.deleted) return res.status(400).json({ message: 'Route is not deleted' });
         const restoredRoute = await prisma.route.update({
             where: { id },
-            data: { deleted: false, deletedAt: null, isActive: true, status: RouteStatus.ACTIVE },
+            data: { deleted: false, deletedAt: null, isActive: true, status: 'ACTIVE' },
             include: { vehicle: true, shift: true, stops: true }
         });
         res.json({ message: 'Route restored successfully', route: restoredRoute });
@@ -1469,7 +1527,7 @@ router.patch('/:id/status', requireAuth, validateMultiple([{ schema: RouteIdPara
         });
         if (!route) return res.status(404).json({ message: 'Route not found' });
         
-        await prisma.route.update({ where: { id }, data: { status } });
+        await prisma.route.update({ where: { id }, data: { status: status as RouteStatus } });
 
         // Send status change notifications
         if (status === 'ACTIVE') {

@@ -1,18 +1,6 @@
 import { getEnv } from "@/utils/env";
 
-const parseCoordinate = (value) => {
-  const parsed = parseFloat(value);
-  return Number.isFinite(parsed) ? parsed : undefined;
-};
-
 export const MAP_CONFIG = {
-  HQ_LOCATION: {
-    name: getEnv("VITE_HQ_NAME") || "Routegna (HQ)",
-    coords: [
-      parseCoordinate(getEnv("VITE_HQ_LONGITUDE")),
-      parseCoordinate(getEnv("VITE_HQ_LATITUDE"))
-    ]
-  },
   darkStyle: getEnv("VITE_MAPBOX_DARK_STYLE"),
   lightStyle: getEnv("VITE_MAPBOX_LIGHT_STYLE")
 };
