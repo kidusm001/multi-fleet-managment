@@ -23,7 +23,22 @@ describe('routeService', () => {
       expect(api.get).toHaveBeenCalledWith('/routes', {
         params: { include: 'shuttle,shift,location,stops.employee.department' }
       });
-      expect(result).toEqual(mockRoutes);
+      expect(result).toEqual([
+        {
+          id: '1',
+          name: 'Route A',
+          status: 'active',
+          driverStatus: 'active',
+          managementStatus: 'ACTIVE',
+        },
+        {
+          id: '2',
+          name: 'Route B',
+          status: 'inactive',
+          driverStatus: 'inactive',
+          managementStatus: 'INACTIVE',
+        },
+      ]);
     });
 
     it('should use cached data when available and useCache is true', async () => {
@@ -31,13 +46,22 @@ describe('routeService', () => {
       api.get.mockResolvedValue({ data: mockRoutes });
 
       // First call - should hit API
-      await routeService.getAllRoutes(true);
+      const firstResult = await routeService.getAllRoutes(true);
       expect(api.get).toHaveBeenCalledTimes(1);
 
       // Second call - should use cache
       const result = await routeService.getAllRoutes(true);
       expect(api.get).toHaveBeenCalledTimes(1); // Still 1, not called again
-      expect(result).toEqual(mockRoutes);
+      expect(result).toEqual(firstResult);
+      expect(result).toEqual([
+        {
+          id: '1',
+          name: 'Route A',
+          status: 'INACTIVE',
+          driverStatus: 'inactive',
+          managementStatus: 'INACTIVE',
+        },
+      ]);
     });
 
     it('should bypass cache when useCache is false', async () => {
@@ -80,7 +104,13 @@ describe('routeService', () => {
       expect(api.get).toHaveBeenCalledWith('/routes/1', {
         params: { include: 'shuttle,shift,location,stops.employee.department' }
       });
-      expect(result).toEqual(mockRoute);
+      expect(result).toEqual({
+        id: '1',
+        name: 'Route A',
+        status: 'active',
+        driverStatus: 'active',
+        managementStatus: 'ACTIVE',
+      });
     });
 
     it('should cache individual route data', async () => {
@@ -88,13 +118,20 @@ describe('routeService', () => {
       api.get.mockResolvedValue({ data: mockRoute });
 
       // First call
-      await routeService.getRouteById('1');
+      const firstResult = await routeService.getRouteById('1');
       expect(api.get).toHaveBeenCalledTimes(1);
 
       // Second call should use cache
       const result = await routeService.getRouteById('1');
       expect(api.get).toHaveBeenCalledTimes(1);
-      expect(result).toEqual(mockRoute);
+      expect(result).toEqual(firstResult);
+      expect(result).toEqual({
+        id: '1',
+        name: 'Route A',
+        status: 'INACTIVE',
+        driverStatus: 'inactive',
+        managementStatus: 'INACTIVE',
+      });
     });
 
     it('should refresh individual route cache when it expires', async () => {
@@ -128,7 +165,24 @@ describe('routeService', () => {
       expect(api.get).toHaveBeenCalledWith('/routes/shift/1', {
         params: { include: 'shuttle,location,stops.employee' }
       });
-      expect(result).toEqual(mockRoutes);
+      expect(result).toEqual([
+        {
+          id: '1',
+          shiftId: 1,
+          name: 'Morning Route',
+          status: 'INACTIVE',
+          driverStatus: 'inactive',
+          managementStatus: 'INACTIVE',
+        },
+        {
+          id: '2',
+          shiftId: 1,
+          name: 'Evening Route',
+          status: 'INACTIVE',
+          driverStatus: 'inactive',
+          managementStatus: 'INACTIVE',
+        },
+      ]);
     });
   });
 
@@ -141,7 +195,13 @@ describe('routeService', () => {
       const result = await routeService.createRoute(newRoute);
 
       expect(api.post).toHaveBeenCalledWith('/routes', newRoute);
-      expect(result).toEqual(createdRoute);
+      expect(result).toEqual({
+        id: '3',
+        name: 'Route C',
+        status: 'active',
+        driverStatus: 'active',
+        managementStatus: 'ACTIVE',
+      });
     });
 
     it('should clear cache after creating route', async () => {
@@ -181,7 +241,15 @@ describe('routeService', () => {
         totalDistance: 15.57,
         totalTime: 46
       });
-      expect(result).toEqual(updatedRoute);
+      expect(result).toEqual({
+        id: '1',
+        name: 'Updated Route',
+        totalDistance: 15.57,
+        totalTime: 46,
+        status: 'INACTIVE',
+        driverStatus: 'inactive',
+        managementStatus: 'INACTIVE',
+      });
     });
 
     it('should round totalTime and fix totalDistance precision', async () => {
@@ -320,7 +388,22 @@ describe('routeService', () => {
       const result = await routeService.getRoutesWithUniqueLocations();
 
       expect(api.get).toHaveBeenCalledWith('/routes/unique-locations');
-      expect(result).toEqual(mockRoutes);
+      expect(result).toEqual([
+        {
+          id: '1',
+          locations: ['Location A', 'Location B'],
+          status: 'INACTIVE',
+          driverStatus: 'inactive',
+          managementStatus: 'INACTIVE',
+        },
+        {
+          id: '2',
+          locations: ['Location C'],
+          status: 'INACTIVE',
+          driverStatus: 'inactive',
+          managementStatus: 'INACTIVE',
+        },
+      ]);
     });
   });
 

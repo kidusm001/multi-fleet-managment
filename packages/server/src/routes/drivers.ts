@@ -1,5 +1,5 @@
 import express, { Request, Response } from 'express';
-import { Driver, Prisma } from '@prisma/client';
+import { Driver, Prisma, RouteStatus } from '@prisma/client';
 import { requireAuth, requireRole } from '../middleware/auth';
 import { CreateDriver, CreateDriverSchema, DriverIdParam, UpdateDriverSchema } from '../schema/driverSchema';
 import { validateSchema, validateMultiple } from '../middleware/zodValidation';
@@ -8,6 +8,13 @@ import { auth } from '../lib/auth';
 import prisma from '../db';
 import { driverNotifications } from '../lib/notificationHelpers';
 import { broadcastNotification } from '../lib/notificationBroadcaster';
+import {
+    AnnotatedRoute,
+    annotateRouteWithStatuses,
+    DriverFacingStatus,
+    resolveRouteStartTime,
+    SchedulableRoute,
+} from '../utils/routeStatus';
 
 const router = express.Router();
 
@@ -255,7 +262,7 @@ const combineDateAndTime = (datePart: Date, timeSource: Date | null | undefined)
     return result;
 };
 
-const resolveRouteDate = (route: RouteForSchedule): Date | null => {
+const resolveRouteDate = (route: SchedulableRoute): Date | null => {
     if (route.date) {
         return new Date(route.date);
     }
@@ -268,16 +275,6 @@ const resolveRouteDate = (route: RouteForSchedule): Date | null => {
         return startOfDay(new Date(route.shift.startTime));
     }
 
-    return null;
-};
-
-const resolveRouteStartTime = (route: RouteForSchedule): Date | null => {
-    if (route.startTime) {
-        return new Date(route.startTime);
-    }
-    if (route.shift?.startTime) {
-        return new Date(route.shift.startTime);
-    }
     return null;
 };
 
@@ -322,6 +319,196 @@ const sortRoutesForSchedule = (routes: RouteForSchedule[]): RouteForSchedule[] =
         const startB = resolveRouteStartTime(b)?.getTime() ?? 0;
         return startA - startB;
     });
+};
+
+type ScheduleWindow = {
+    driverProfile: Driver;
+    startDate: Date;
+    endDate: Date;
+};
+
+const buildDriverSchedule = async ({
+    driverProfile,
+    startDate,
+    endDate,
+}: ScheduleWindow): Promise<AnnotatedRoute<RouteForSchedule>[]> => {
+    const templateWindowStart = addDays(startDate, -28);
+
+    const driverRoutes = await prisma.route.findMany({
+        where: {
+            organizationId: driverProfile.organizationId,
+            deleted: false,
+            vehicle: {
+                driverId: driverProfile.id,
+            },
+            OR: [
+                {
+                    date: {
+                        gte: templateWindowStart,
+                        lte: endDate,
+                    },
+                },
+                {
+                    AND: [
+                        { date: null },
+                        {
+                            startTime: {
+                                gte: templateWindowStart,
+                                lte: endDate,
+                            },
+                        },
+                    ],
+                },
+            ],
+        },
+        include: scheduleRouteInclude,
+        orderBy: [
+            { date: 'asc' },
+            { startTime: 'asc' },
+            { createdAt: 'asc' },
+        ],
+    });
+
+    const activeRouteDefinitions = await prisma.route.findMany({
+        where: {
+            organizationId: driverProfile.organizationId,
+            deleted: false,
+            isActive: true,
+            vehicle: {
+                driverId: driverProfile.id,
+            },
+        },
+        include: scheduleRouteInclude,
+    });
+
+    const recurringTemplateMap = new Map<string, RouteForSchedule>();
+
+    activeRouteDefinitions.forEach((route) => {
+        recurringTemplateMap.set(route.id, route);
+    });
+
+    driverRoutes.forEach((route) => {
+        if (recurringTemplateMap.has(route.id)) {
+            recurringTemplateMap.set(route.id, route);
+        }
+    });
+
+    const recurringTemplates = Array.from(recurringTemplateMap.values());
+
+    const unavailableBlocks = await prisma.vehicleAvailability.findMany({
+        where: {
+            organizationId: driverProfile.organizationId,
+            driverId: driverProfile.id,
+            available: false,
+            date: {
+                gte: startDate,
+                lte: endDate,
+            },
+        },
+        select: {
+            date: true,
+            routeId: true,
+            shiftId: true,
+        },
+    });
+
+    const holidaySet = new Set<string>(
+        unavailableBlocks
+            .filter((entry) => !entry.routeId && !entry.shiftId)
+            .map((entry) => formatDateKey(startOfDay(new Date(entry.date)))),
+    );
+
+    const scheduleByDate = new Map<string, RouteForSchedule[]>();
+    const templatesByWeekday = new Map<number, RouteForSchedule[]>();
+
+    for (const route of driverRoutes) {
+        const routeDate = resolveRouteDate(route);
+        if (!routeDate) {
+            continue;
+        }
+
+        const weekday = routeDate.getDay();
+        if (!templatesByWeekday.has(weekday)) {
+            templatesByWeekday.set(weekday, []);
+        }
+        templatesByWeekday.get(weekday)!.push(route);
+
+        if (routeDate >= startDate && routeDate <= endDate) {
+            const dateKey = formatDateKey(routeDate);
+            if (!scheduleByDate.has(dateKey)) {
+                scheduleByDate.set(dateKey, []);
+            }
+            scheduleByDate.get(dateKey)!.push(route);
+        }
+    }
+
+    templatesByWeekday.forEach((list, index) => {
+        templatesByWeekday.set(index, sortRoutesForSchedule(list));
+    });
+
+    scheduleByDate.forEach((list, key) => {
+        scheduleByDate.set(key, sortRoutesForSchedule(list));
+    });
+
+    const synthesizedSchedule: RouteForSchedule[] = [];
+    const dayCount = Math.floor((endDate.getTime() - startDate.getTime()) / (24 * 60 * 60 * 1000)) + 1;
+
+    for (let offset = 0; offset < dayCount; offset += 1) {
+        const currentDate = addDays(startDate, offset);
+        const dateKey = formatDateKey(currentDate);
+        const actualRoutesForDay = scheduleByDate.get(dateKey) ?? [];
+
+        if (actualRoutesForDay.length > 0) {
+            synthesizedSchedule.push(...actualRoutesForDay);
+        }
+
+        if (isWeekend(currentDate) || holidaySet.has(dateKey)) {
+            continue;
+        }
+
+        const existingRouteIds = new Set<string>();
+        actualRoutesForDay.forEach((route) => {
+            existingRouteIds.add(route.originalRouteId ?? route.id);
+        });
+
+        const candidateTemplates: RouteForSchedule[] = [];
+        const candidateIds = new Set<string>();
+
+        const weekdayTemplates = templatesByWeekday.get(currentDate.getDay());
+        if (weekdayTemplates) {
+            weekdayTemplates.forEach((template) => {
+                if (!candidateIds.has(template.id)) {
+                    candidateTemplates.push(template);
+                    candidateIds.add(template.id);
+                }
+            });
+        }
+
+        recurringTemplates.forEach((template) => {
+            if (!candidateIds.has(template.id)) {
+                candidateTemplates.push(template);
+                candidateIds.add(template.id);
+            }
+        });
+
+        candidateTemplates.sort((a, b) => {
+            const startA = resolveRouteStartTime(a)?.getTime() ?? 0;
+            const startB = resolveRouteStartTime(b)?.getTime() ?? 0;
+            return startA - startB;
+        });
+
+        candidateTemplates.forEach((template, templateIndex) => {
+            if (existingRouteIds.has(template.id)) {
+                return;
+            }
+
+            synthesizedSchedule.push(createVirtualRoute(template, currentDate, templateIndex));
+        });
+    }
+
+    const now = new Date();
+    const sortedSchedule = sortRoutesForSchedule([...synthesizedSchedule]);
+    return sortedSchedule.map((route) => annotateRouteWithStatuses(route, now));
 };
 
 /**
@@ -1266,27 +1453,23 @@ router.get('/me/routes', requireAuth, async (req: Request, res: Response) => {
         // Get filters from query params
         const { date, status, from, to, limit } = req.query;
 
-        const allowedStatuses = new Set(['ACTIVE', 'INACTIVE', 'CANCELLED']);
-        const extendedStatuses = new Set(['PENDING', 'IN_PROGRESS', 'COMPLETED']);
+        const legacyStatusMap: Record<string, DriverFacingStatus> = {
+            PENDING: 'UPCOMING',
+            IN_PROGRESS: 'ACTIVE',
+        };
 
-        let requestedStatus: string | undefined;
+        const validStatusFilters = new Set<string>(['UPCOMING', 'ACTIVE', 'COMPLETED', 'CANCELLED', 'INACTIVE']);
+
+        let normalizedStatus: string | undefined;
 
         if (typeof status === 'string' && status.trim()) {
-            requestedStatus = status.trim().toUpperCase();
+            const requested = status.trim().toUpperCase();
+            normalizedStatus = legacyStatusMap[requested] ?? requested;
 
-            if (!allowedStatuses.has(requestedStatus) && !extendedStatuses.has(requestedStatus)) {
+            if (!validStatusFilters.has(normalizedStatus)) {
                 return res.status(400).json({ message: 'Invalid status filter' });
             }
         }
-
-        // Build where clause - filter by vehicle's driverId since Route doesn't have driverId
-        const where: any = {
-            organizationId: driverProfile.organizationId,
-            deleted: false,
-            vehicle: {
-                driverId: driverProfile.id
-            }
-        };
 
         const dateFilters: Prisma.DateTimeFilter = {};
 
@@ -1325,174 +1508,44 @@ router.get('/me/routes', requireAuth, async (req: Request, res: Response) => {
             }
         }
 
-        if (Object.keys(dateFilters).length > 0) {
-            where.date = dateFilters;
-        }
-
-        // Apply direct status filters only for native enum values
-        if (requestedStatus && allowedStatuses.has(requestedStatus)) {
-            where.status = requestedStatus;
-        }
-
-        // Fetch routes with all necessary relations
-        const queryOptions: Prisma.RouteFindManyArgs = {
-            where,
-            include: Prisma.validator<Prisma.RouteInclude>()({
-                location: {
-                    select: {
-                        id: true,
-                        address: true,
-                        type: true,
-                        longitude: true,
-                        latitude: true
-                    }
-                },
-                source: {
-                    select: {
-                        id: true,
-                        address: true,
-                        type: true,
-                        longitude: true,
-                        latitude: true
-                    }
-                },
-                vehicle: {
-                    select: {
-                        id: true,
-                        plateNumber: true,
-                        make: true,
-                        model: true,
-                        capacity: true,
-                        driver: {
-                            select: {
-                                id: true,
-                                name: true,
-                                email: true
-                            }
-                        }
-                    }
-                },
-                stops: {
-                    include: {
-                        employee: {
-                            select: {
-                                id: true,
-                                name: true
-                            }
-                        }
-                    },
-                    orderBy: {
-                        order: 'asc'
-                    }
-                }
-            }),
-            orderBy: [
-                { date: 'asc' },
-                { startTime: 'asc' }
-            ]
-        };
-
         const parsedLimit = typeof limit === 'string' ? parseInt(limit, 10) : undefined;
-        if (parsedLimit && Number.isInteger(parsedLimit) && parsedLimit > 0) {
-            queryOptions.take = parsedLimit;
+        const today = startOfDay(new Date());
+
+        let startDate = dateFilters.gte instanceof Date ? startOfDay(new Date(dateFilters.gte)) : today;
+        if (Number.isNaN(startDate.getTime())) {
+            startDate = today;
         }
 
-        const routes = await prisma.route.findMany(queryOptions);
-
-        if (!requestedStatus || allowedStatuses.has(requestedStatus)) {
-            return res.json(routes);
+        let endDate = dateFilters.lte instanceof Date ? endOfDay(new Date(dateFilters.lte)) : endOfDay(addDays(startDate, 60));
+        if (Number.isNaN(endDate.getTime())) {
+            endDate = endOfDay(addDays(startDate, 60));
         }
 
-        const now = new Date();
+        if (endDate < startDate) {
+            const aligned = startOfDay(endDate);
+            startDate = aligned;
+            endDate = endOfDay(aligned);
+        }
 
-        const parseDate = (value: Date | string | null | undefined) => {
-            if (!value) {
-                return null;
-            }
-
-            if (value instanceof Date) {
-                return value;
-            }
-
-            const parsed = new Date(value);
-            return Number.isNaN(parsed.getTime()) ? null : parsed;
-        };
-
-        const filteredRoutes = routes.filter((route) => {
-            const start = parseDate(route.startTime ?? route.date);
-            const end = parseDate(route.endTime);
-
-            if (requestedStatus === 'IN_PROGRESS') {
-                // IN_PROGRESS means the route has been started by the driver
-                if (route.status === 'CANCELLED' || route.status === 'INACTIVE') {
-                    return false;
-                }
-                // Check if route has been started (should have startedAt or be ACTIVE)
-                return route.status === 'ACTIVE' || (start && start <= now && (!end || now <= end));
-            }
-
-            if (requestedStatus === 'PENDING') {
-                // Don't show cancelled or inactive routes as pending
-                if (route.status === 'CANCELLED' || route.status === 'INACTIVE') {
-                    return false;
-                }
-
-                // Only show routes that haven't started yet
-                // If the route is explicitly ACTIVE, it's already in progress, not pending
-                if (route.status === 'ACTIVE') {
-                    return false;
-                }
-
-                if (start) {
-                    return start.getTime() > now.getTime();
-                }
-
-                // If we cannot determine the start time, treat routes scheduled for future dates as pending
-                if (route.date) {
-                    const routeDate = parseDate(route.date);
-                    if (routeDate) {
-                        // Only pending if it's a future date
-                        const routeDateStart = new Date(routeDate);
-                        routeDateStart.setHours(0, 0, 0, 0);
-                        const todayStart = new Date(now);
-                        todayStart.setHours(0, 0, 0, 0);
-                        return routeDateStart.getTime() > todayStart.getTime();
-                    }
-                }
-
-                return false;
-            }
-
-            if (requestedStatus === 'COMPLETED') {
-                // Routes marked as INACTIVE or CANCELLED are considered completed
-                if (route.status === 'INACTIVE' || route.status === 'CANCELLED') {
-                    return true;
-                }
-
-                // Don't show routes that are currently active
-                if (route.status === 'ACTIVE' && start && start.getTime() <= now.getTime()) {
-                    // This route is currently in progress, not completed
-                    if (!end || end.getTime() >= now.getTime()) {
-                        return false;
-                    }
-                }
-
-                // A route is completed if its end time has passed
-                if (end) {
-                    return end.getTime() < now.getTime();
-                }
-
-                // If no end time but has start time, consider completed if started more than 12 hours ago
-                if (start) {
-                    const twelveHoursAgo = now.getTime() - (12 * 60 * 60 * 1000);
-                    return start.getTime() < twelveHoursAgo;
-                }
-
-                return false;
-            }
-
-            return true;
+        const scheduleRoutes = await buildDriverSchedule({
+            driverProfile,
+            startDate,
+            endDate,
         });
+
+        let filteredRoutes = scheduleRoutes;
+
+        if (normalizedStatus === 'CANCELLED') {
+            filteredRoutes = scheduleRoutes.filter((route) => (route.status ?? '').toUpperCase() === 'CANCELLED');
+        } else if (normalizedStatus === 'INACTIVE') {
+            filteredRoutes = scheduleRoutes.filter((route) => route.managementStatus === 'INACTIVE');
+        } else if (normalizedStatus) {
+            filteredRoutes = scheduleRoutes.filter((route) => route.driverStatus === normalizedStatus);
+        }
+
+        if (parsedLimit && Number.isInteger(parsedLimit) && parsedLimit > 0) {
+            filteredRoutes = filteredRoutes.slice(0, parsedLimit);
+        }
 
         return res.json(filteredRoutes);
     } catch (error) {
@@ -1582,7 +1635,9 @@ router.get('/me/routes/:routeId', requireAuth, async (req: Request, res: Respons
             return res.status(404).json({ message: 'Route not found' });
         }
 
-        res.json(route);
+        const enrichedRoute = annotateRouteWithStatuses(route, new Date());
+
+        res.json(enrichedRoute);
     } catch (error) {
         console.error('Error fetching route:', error);
         res.status(500).json({ 
@@ -1611,11 +1666,22 @@ router.patch('/me/routes/:routeId/status', requireAuth, async (req: Request, res
             return res.status(400).json({ message: 'Status is required' });
         }
 
-        // Validate status is one of the allowed values
-        const validStatuses = ['PENDING', 'ACTIVE', 'IN_PROGRESS', 'COMPLETED', 'INACTIVE', 'CANCELLED'];
-        if (!validStatuses.includes(status)) {
-            return res.status(400).json({ message: `Invalid status. Allowed values: ${validStatuses.join(', ')}` });
+        const requestedStatus = String(status).toUpperCase();
+        const statusRemap: Partial<Record<string, RouteStatus>> = {
+            IN_PROGRESS: 'ACTIVE',
+            PENDING: 'ACTIVE',
+        };
+
+        const targetStatus = statusRemap[requestedStatus] ?? requestedStatus;
+        const allowedTargetStatuses: RouteStatus[] = ['ACTIVE', 'COMPLETED', 'CANCELLED', 'INACTIVE'];
+
+        if (!allowedTargetStatuses.includes(targetStatus as RouteStatus)) {
+            return res.status(400).json({
+                message: `Invalid status. Allowed values: ${allowedTargetStatuses.join(', ')}`
+            });
         }
+
+        const normalizedTargetStatus = targetStatus as RouteStatus;
 
         // Verify the route belongs to this driver
         const route = await prisma.route.findFirst({
@@ -1636,7 +1702,7 @@ router.patch('/me/routes/:routeId/status', requireAuth, async (req: Request, res
         // Update the route status
         const updatedRoute = await prisma.route.update({
             where: { id: routeId },
-            data: { status },
+            data: { status: normalizedTargetStatus },
             include: Prisma.validator<Prisma.RouteInclude>()({
                 vehicleAvailability: {
                     include: {
@@ -1681,7 +1747,9 @@ router.patch('/me/routes/:routeId/status', requireAuth, async (req: Request, res
             })
         });
 
-    res.json(updatedRoute);
+        const enrichedRoute = annotateRouteWithStatuses(updatedRoute, new Date());
+
+        res.json(enrichedRoute);
     } catch (error) {
         console.error('Error updating route status:', error);
         res.status(500).json({ 
@@ -1821,129 +1889,13 @@ router.get('/me/schedule', requireAuth, async (req: Request, res: Response) => {
             endDate = endOfDay(swap);
         }
 
-        // Expand look-back window to learn recurring patterns from previous routes
-        const templateWindowStart = addDays(startDate, -28);
-
-        const driverRoutes = await prisma.route.findMany({
-            where: {
-                organizationId: driverProfile.organizationId,
-                deleted: false,
-                vehicle: {
-                    driverId: driverProfile.id,
-                },
-                OR: [
-                    {
-                        date: {
-                            gte: templateWindowStart,
-                            lte: endDate,
-                        },
-                    },
-                    {
-                        AND: [
-                            { date: null },
-                            {
-                                startTime: {
-                                    gte: templateWindowStart,
-                                    lte: endDate,
-                                },
-                            },
-                        ],
-                    },
-                ],
-            },
-            include: scheduleRouteInclude,
-            orderBy: [
-                { date: 'asc' },
-                { startTime: 'asc' },
-                { createdAt: 'asc' },
-            ],
+        const scheduleRoutes = await buildDriverSchedule({
+            driverProfile,
+            startDate,
+            endDate,
         });
 
-        const unavailableBlocks = await prisma.vehicleAvailability.findMany({
-            where: {
-                organizationId: driverProfile.organizationId,
-                driverId: driverProfile.id,
-                available: false,
-                date: {
-                    gte: startDate,
-                    lte: endDate,
-                },
-            },
-            select: {
-                date: true,
-                routeId: true,
-                shiftId: true,
-            },
-        });
-
-        const holidaySet = new Set<string>(
-            unavailableBlocks
-                .filter((entry) => !entry.routeId && !entry.shiftId)
-                .map((entry) => formatDateKey(startOfDay(new Date(entry.date))))
-        );
-
-        const scheduleByDate = new Map<string, RouteForSchedule[]>();
-        const templatesByWeekday = new Map<number, RouteForSchedule[]>();
-
-        for (const route of driverRoutes) {
-            const routeDate = resolveRouteDate(route);
-            if (!routeDate) {
-                continue;
-            }
-
-            const weekday = routeDate.getDay();
-            if (!templatesByWeekday.has(weekday)) {
-                templatesByWeekday.set(weekday, []);
-            }
-            templatesByWeekday.get(weekday)!.push(route);
-
-            if (routeDate >= startDate && routeDate <= endDate) {
-                const dateKey = formatDateKey(routeDate);
-                if (!scheduleByDate.has(dateKey)) {
-                    scheduleByDate.set(dateKey, []);
-                }
-                scheduleByDate.get(dateKey)!.push(route);
-            }
-        }
-
-        templatesByWeekday.forEach((list) => {
-            sortRoutesForSchedule(list);
-        });
-
-        scheduleByDate.forEach((list, key) => {
-            scheduleByDate.set(key, sortRoutesForSchedule(list));
-        });
-
-        const synthesizedSchedule: RouteForSchedule[] = [];
-        const dayCount = Math.floor((endDate.getTime() - startDate.getTime()) / (24 * 60 * 60 * 1000)) + 1;
-
-        for (let offset = 0; offset < dayCount; offset += 1) {
-            const currentDate = addDays(startDate, offset);
-            const dateKey = formatDateKey(currentDate);
-            const actualRoutesForDay = scheduleByDate.get(dateKey);
-
-            if (actualRoutesForDay && actualRoutesForDay.length > 0) {
-                synthesizedSchedule.push(...actualRoutesForDay);
-                continue;
-            }
-
-            if (isWeekend(currentDate) || holidaySet.has(dateKey)) {
-                continue;
-            }
-
-            const templates = templatesByWeekday.get(currentDate.getDay());
-            if (!templates || templates.length === 0) {
-                continue;
-            }
-
-            templates.forEach((template, templateIndex) => {
-                synthesizedSchedule.push(createVirtualRoute(template, currentDate, templateIndex));
-            });
-        }
-
-        const responsePayload = sortRoutesForSchedule(synthesizedSchedule);
-
-        res.json(responsePayload);
+        res.json(scheduleRoutes);
     } catch (error) {
         console.error('Error fetching schedule:', error);
         res.status(500).json({ 

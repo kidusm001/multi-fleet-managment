@@ -27,6 +27,7 @@ import {
 } from '../schema/routeSchemas';
 import { routeNotifications, employeeNotifications } from '../lib/notificationHelpers';
 import { broadcastNotification } from '../lib/notificationBroadcaster';
+import { formatRouteForManagement, formatRoutesForManagement } from '../utils/routeStatus';
 
 const router = express.Router();
 
@@ -61,7 +62,8 @@ router.get('/superadmin', requireAuth, requireRole(["superadmin"]), async (req: 
                 createdAt: 'desc'
             }
         });
-        res.json(routes);
+        const now = new Date();
+        res.json(formatRoutesForManagement(routes, now));
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Internal Server Error' });
@@ -98,7 +100,7 @@ router.get('/superadmin/:id', requireAuth, requireRole(["superadmin"]), async (r
         if (!route) {
             return res.status(404).json({ message: 'Route not found' });
         }
-        res.json(route);
+        res.json(formatRouteForManagement(route, new Date()));
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Internal Server Error' });
@@ -134,7 +136,7 @@ router.get('/superadmin/by-organization/:organizationId', requireAuth, requireRo
                 name: 'asc'
             }
         });
-        res.json(routes);
+        res.json(formatRoutesForManagement(routes, new Date()));
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Internal Server Error' });
@@ -240,7 +242,7 @@ router.post('/superadmin', requireAuth, requireRole(["superadmin"]), async (req:
             })
         });
 
-        res.status(201).json(newRoute);
+        res.status(201).json(formatRouteForManagement(newRoute, new Date()));
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Internal Server Error' });
@@ -309,6 +311,7 @@ router.put('/superadmin/:id', requireAuth, requireRole(["superadmin"]), async (r
             }
         }
 
+        const now = new Date();
         const updatedRoute = await prisma.route.update({
             where: { id },
             data: {
@@ -336,7 +339,7 @@ router.put('/superadmin/:id', requireAuth, requireRole(["superadmin"]), async (r
             })
         });
 
-        res.json(updatedRoute);
+        res.json(formatRouteForManagement(updatedRoute, now));
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Internal Server Error' });
@@ -412,7 +415,7 @@ router.patch('/superadmin/:id/restore', requireAuth, requireRole(["superadmin"])
             })
         });
 
-        res.json({ message: 'Route restored successfully', route: restoredRoute });
+        res.json({ message: 'Route restored successfully', route: formatRouteForManagement(restoredRoute, new Date()) });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Internal Server Error' });
@@ -513,7 +516,7 @@ router.get('/', requireAuth, async (req: Request, res: Response) => {
                 }),
                 orderBy: { createdAt: 'desc' }
             });
-            return res.json(personalRoutes);
+            return res.json(formatRoutesForManagement(personalRoutes, new Date()));
         }
         const routes = await prisma.route.findMany({
             where: { organizationId: activeOrgId, deleted: false },
@@ -527,7 +530,7 @@ router.get('/', requireAuth, async (req: Request, res: Response) => {
             }),
             orderBy: { createdAt: 'desc' }
         });
-        res.json(routes);
+        res.json(formatRoutesForManagement(routes, new Date()));
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Internal Server Error' });
@@ -557,6 +560,8 @@ router.get('/unique-locations', requireAuth, async (req: Request, res: Response)
                 stops: { include: { employee: true } }
             }
         });
+        const now = new Date();
+        const annotatedRoutes = formatRoutesForManagement(routes, now);
         const extractUniqueLocations = (stops: any[]) => {
             const locationSet = new Set<string>();
             stops.forEach(stop => {
@@ -564,7 +569,7 @@ router.get('/unique-locations', requireAuth, async (req: Request, res: Response)
             });
             return Array.from(locationSet);
         };
-        const routesWithUniqueLocations = routes.map(route => ({
+        const routesWithUniqueLocations = annotatedRoutes.map(route => ({
             ...route,
             uniqueLocations: extractUniqueLocations(route.stops)
         }));
@@ -609,7 +614,7 @@ router.get('/:id', requireAuth, validateSchema(RouteIdParamSchema, 'params'), as
                 return res.status(403).json({ message: 'Employees can only access their assigned route' });
             }
         }
-        res.json(route);
+        res.json(formatRouteForManagement(route, new Date()));
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Internal Server Error' });
@@ -645,7 +650,7 @@ router.get('/shift/:shiftId', requireAuth, validateSchema(RoutesByShiftParamSche
                 vehicleAvailability: true
             })
         });
-        res.json(routes);
+        res.json(formatRoutesForManagement(routes, new Date()));
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Internal Server Error' });
@@ -683,7 +688,7 @@ router.get('/location/:locationId', requireAuth, validateSchema(RoutesByLocation
                 vehicleAvailability: true
             })
         });
-        res.json(routes);
+        res.json(formatRoutesForManagement(routes, new Date()));
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Internal Server Error' });
@@ -965,7 +970,7 @@ router.post('/', requireAuth, validateSchema(CreateRouteSchema, 'body'), async (
             const notification = routeNotifications.created(activeOrgId, newRoute);
             await broadcastNotification(notification);
 
-            res.status(201).json(newRoute);
+            res.status(201).json(formatRouteForManagement(newRoute, new Date()));
         });
 
     } catch (error) {
@@ -1078,7 +1083,8 @@ router.put('/:id', requireAuth, validateMultiple([{ schema: RouteIdParamSchema, 
             },
             include: Prisma.validator<Prisma.RouteInclude>()({ vehicle: true, shift: true, location: true, source: true, stops: true })
         });
-
+        const responseTimestamp = new Date();
+        const formattedRoute = formatRouteForManagement(updatedRoute, responseTimestamp);
         if (vehicleId && shiftId && date) {
             await prisma.vehicleAvailability.update({
                 where: {
@@ -1098,7 +1104,7 @@ router.put('/:id', requireAuth, validateMultiple([{ schema: RouteIdParamSchema, 
         const notification = routeNotifications.updated(activeOrgId, updatedRoute);
         await broadcastNotification(notification);
 
-        res.json(updatedRoute);
+    return res.json(formattedRoute);
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Internal Server Error' });
@@ -1526,37 +1532,36 @@ router.patch('/:id/status', requireAuth, validateMultiple([{ schema: RouteIdPara
             }
         });
         if (!route) return res.status(404).json({ message: 'Route not found' });
-        
-        await prisma.route.update({ where: { id }, data: { status: status as RouteStatus } });
+
+        const isActiveStatus = status === 'ACTIVE';
+
+        const updatedRoute = await prisma.route.update({
+            where: { id },
+            data: {
+                status: status as RouteStatus,
+                isActive: isActiveStatus,
+            },
+            include: {
+                vehicle: true,
+                shift: true,
+                stops: { include: { employee: true } },
+            },
+        });
 
         // Send status change notifications
         if (status === 'ACTIVE') {
-            const notifications = routeNotifications.activated(activeOrgId, route);
+            const notifications = routeNotifications.activated(activeOrgId, updatedRoute);
             for (const notif of notifications) {
                 await broadcastNotification(notif);
             }
-        } else if (status === 'INACTIVE') {
-            const notifications = routeNotifications.deactivated(activeOrgId, route);
-            for (const notif of notifications) {
-                await broadcastNotification(notif);
-            }
-        } else if (status === 'CANCELLED') {
-            const employeeIds = route.stops
-                .filter((stop: any) => stop.employee)
-                .map((stop: any) => stop.employee.id);
-            
-            const notifications = routeNotifications.cancelled(
-                activeOrgId, 
-                route, 
-                route.date?.toISOString() || new Date().toISOString(),
-                employeeIds.length > 0 ? employeeIds : undefined
-            );
+        } else {
+            const notifications = routeNotifications.deactivated(activeOrgId, updatedRoute);
             for (const notif of notifications) {
                 await broadcastNotification(notif);
             }
         }
         
-        res.json({ message: `Route status updated to ${status}` });
+        res.json({ message: `Route status updated to ${status}`, isActive: isActiveStatus });
     } catch (error) {
         console.error(error);
         res.status(500).json({ message: 'Internal Server Error' });

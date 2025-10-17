@@ -9,7 +9,9 @@ import {
   CheckCircle,
   AlertCircle,
   RefreshCw,
-  FileText
+  FileText,
+  Filter,
+  Search
 } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { useTheme } from "@contexts/ThemeContext";
@@ -18,6 +20,14 @@ import { toast } from 'sonner';
 
 import { Badge } from "@/components/Common/UI/Badge";
 import { Button } from "@/components/Common/UI/Button";
+import { Input } from "@/components/Common/UI/Input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/Common/UI/Select";
 import {
   Card,
   CardContent,
@@ -37,7 +47,7 @@ export default function EnhancedShuttlePayrollDashboard() {
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState("All");
   const [modelFilter, setModelFilter] = useState("All");
-  const [costRangeFilter, setCostRangeFilter] = useState([0, 100000]); // Wide range to show all data by default
+  const [costRangeFilter, setCostRangeFilter] = useState({ min: 0, max: 100000 });
   const [monthlyPayrollData, setMonthlyPayrollData] = useState([]);
   const [_performanceMetrics, setPerformanceMetrics] = useState({
     efficiency: 0,
@@ -49,6 +59,36 @@ export default function EnhancedShuttlePayrollDashboard() {
   const [error, setError] = useState(null);
   const [currentPeriod, setCurrentPeriod] = useState(null);
   const [isGeneratingPayroll, setIsGeneratingPayroll] = useState(false);
+
+  const handleSearchChange = (event) => {
+    setSearchTerm(event.target.value);
+  };
+
+  const handleTypeFilterChange = (value) => {
+    setTypeFilter(value);
+  };
+
+  const handleModelFilterChange = (value) => {
+    setModelFilter(value);
+  };
+
+  const handleCostRangeChange = (key, value) => {
+    setCostRangeFilter((prev) => {
+      const numeric = Number(value);
+      const fallback = key === 'min' ? 0 : 100000;
+      return {
+        ...prev,
+        [key]: Number.isFinite(numeric) ? numeric : fallback,
+      };
+    });
+  };
+
+  const resetFilters = () => {
+    setSearchTerm("");
+    setTypeFilter("All");
+    setModelFilter("All");
+    setCostRangeFilter({ min: 0, max: 100000 });
+  };
 
   // Sample shuttle data for fallback
   const sampleShuttleData = useMemo(() => [
@@ -335,10 +375,11 @@ export default function EnhancedShuttlePayrollDashboard() {
         : true;
       const matchesType = typeFilter === "All" || shuttle.type === typeFilter;
       const matchesModel = modelFilter === "All" || shuttle.model === modelFilter;
-      
-      // Handle cost range filter - allow entries with no costPerDay or 0
+
       const costPerDay = Number(shuttle.costPerDay || 0);
-      const matchesCostRange = costPerDay >= costRangeFilter[0] && costPerDay <= costRangeFilter[1];
+      const lowerBound = Math.min(costRangeFilter.min, costRangeFilter.max);
+      const upperBound = Math.max(costRangeFilter.min, costRangeFilter.max);
+      const matchesCostRange = costPerDay >= lowerBound && costPerDay <= upperBound;
       
       return matchesSearch && matchesType && matchesModel && matchesCostRange;
     }).map(shuttle => ({
@@ -351,7 +392,10 @@ export default function EnhancedShuttlePayrollDashboard() {
     return filtered;
   }, [shuttleData, searchTerm, typeFilter, modelFilter, costRangeFilter]);
 
-  const uniqueModels = [...new Set(shuttleData.map((shuttle) => shuttle.model))];
+  const uniqueModels = useMemo(
+    () => [...new Set(shuttleData.map((shuttle) => shuttle.model).filter(Boolean))],
+    [shuttleData]
+  );
 
   // Calculate metrics (must be before early returns to maintain hook order)
   const totalPayroll = useMemo(() => {
@@ -374,6 +418,10 @@ export default function EnhancedShuttlePayrollDashboard() {
     console.log("Pending count:", count);
     return count;
   }, [filteredShuttleData]);
+
+  const processedPercentage = filteredShuttleData.length > 0
+    ? Math.round((processedCount / filteredShuttleData.length) * 100)
+    : 0;
 
   if (isLoading) {
     return (
@@ -411,6 +459,7 @@ export default function EnhancedShuttlePayrollDashboard() {
               Payroll Management
             </h1>
             <div className="flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-[var(--text-secondary)]" />
               <p className="text-sm text-[var(--text-secondary)]">
                 {currentPeriod ? (
                   <>
@@ -456,6 +505,70 @@ export default function EnhancedShuttlePayrollDashboard() {
           </Button>
         </div>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Filter className="h-5 w-5" />
+            Filters
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
+            <div className="relative md:col-span-2">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <Input
+                value={searchTerm}
+                onChange={handleSearchChange}
+                placeholder="Search shuttles, models, or entries"
+                className="pl-9"
+              />
+            </div>
+            <Select value={typeFilter} onValueChange={handleTypeFilterChange}>
+              <SelectTrigger>
+                <SelectValue placeholder="All vehicle types" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="All">All vehicle types</SelectItem>
+                <SelectItem value="Owned">Owned</SelectItem>
+                <SelectItem value="Outsourced">Outsourced</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={modelFilter} onValueChange={handleModelFilterChange}>
+              <SelectTrigger>
+                <SelectValue placeholder="All models" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="All">All models</SelectItem>
+                {uniqueModels.map((model) => (
+                  <SelectItem key={model} value={model}>
+                    {model}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="grid grid-cols-2 gap-2 md:col-span-2">
+              <Input
+                type="number"
+                value={costRangeFilter.min}
+                onChange={(event) => handleCostRangeChange('min', event.target.value)}
+                placeholder="Min daily cost"
+              />
+              <Input
+                type="number"
+                value={costRangeFilter.max}
+                onChange={(event) => handleCostRangeChange('max', event.target.value)}
+                placeholder="Max daily cost"
+              />
+            </div>
+          </div>
+          <div className="mt-4 flex flex-wrap gap-2">
+            <Button variant="ghost" size="sm" onClick={resetFilters}>
+              Clear filters
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -541,11 +654,14 @@ export default function EnhancedShuttlePayrollDashboard() {
                 }`}>
                   {processedCount}
                 </div>
-                <p className={`text-xs mt-1 ${
+                <div className={`flex items-center gap-1 text-xs mt-1 ${
                   isDark ? 'text-gray-400' : 'text-gray-600'
                 }`}>
-                  {filteredShuttleData.length > 0 ? Math.round((processedCount / filteredShuttleData.length) * 100) : 0}% complete
-                </p>
+                  <TrendingUp className={`h-3 w-3 ${
+                    isDark ? 'text-green-400' : 'text-green-600'
+                  }`} />
+                  <span>{processedPercentage}% complete</span>
+                </div>
               </div>
               <div className={`p-3 rounded-lg ${
                 isDark ? 'bg-green-900/30' : 'bg-green-100'

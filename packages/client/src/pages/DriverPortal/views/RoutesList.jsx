@@ -5,7 +5,13 @@ import { cn } from '@lib/utils';
 import { driverService } from '@services/driverService';
 import RouteListCard from '../components/RouteListCard';
 import { ListFilter, RefreshCw } from 'lucide-react';
-import { groupRoutesByEffectiveStatus, sortRoutesByStartTime } from '../utils/routeStatus';
+import {
+  groupRoutesByEffectiveStatus,
+  sortRoutesByStartTime,
+  sortRoutesByEndTime,
+  filterUpcomingDisplayWindow,
+  filterRecentCompletedWindow
+} from '../utils/routeStatus';
 
 const buildQueryWindow = () => {
   const now = new Date();
@@ -30,12 +36,12 @@ function RoutesListView() {
   const isDark = theme === 'dark';
 
   const [groupedRoutes, setGroupedRoutes] = useState({
-    IN_PROGRESS: [],
-    PENDING: [],
+    ACTIVE: [],
+    UPCOMING: [],
     COMPLETED: [],
     CANCELLED: [],
   });
-  const [filter, setFilter] = useState('IN_PROGRESS');
+  const [filter, setFilter] = useState('ACTIVE');
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -44,19 +50,36 @@ function RoutesListView() {
       setLoading(true);
       const params = buildQueryWindow();
       const data = await driverService.getMyRoutes(params);
-      const grouped = groupRoutesByEffectiveStatus(data || [], new Date());
+      const now = new Date();
+      const grouped = groupRoutesByEffectiveStatus(data || [], now);
+
+      const activeRoutes = sortRoutesByStartTime(grouped.ACTIVE || []);
+
+      const upcomingRaw = sortRoutesByStartTime(grouped.UPCOMING || []);
+      const upcomingWindow = sortRoutesByStartTime(
+        filterUpcomingDisplayWindow(grouped.UPCOMING || [], now)
+      );
+      const upcomingRoutes = upcomingWindow.length > 0
+        ? upcomingWindow
+        : upcomingRaw.slice(0, 3);
+
+      const completedFiltered = filterRecentCompletedWindow(grouped.COMPLETED || [], now);
+      const completedSorted = sortRoutesByEndTime(completedFiltered);
+      const completedFallback = sortRoutesByEndTime(grouped.COMPLETED || []);
+      const completedRoutes = (completedSorted.length > 0 ? completedSorted : completedFallback.slice(-3))
+        .reverse();
 
       setGroupedRoutes({
-        IN_PROGRESS: sortRoutesByStartTime(grouped.IN_PROGRESS || []),
-        PENDING: sortRoutesByStartTime(grouped.PENDING || []),
-        COMPLETED: sortRoutesByStartTime(grouped.COMPLETED || []),
+        ACTIVE: activeRoutes,
+        UPCOMING: upcomingRoutes,
+        COMPLETED: completedRoutes,
         CANCELLED: sortRoutesByStartTime(grouped.CANCELLED || []),
       });
     } catch (error) {
       console.error('Failed to load routes:', error);
       setGroupedRoutes({
-        IN_PROGRESS: [],
-        PENDING: [],
+        ACTIVE: [],
+        UPCOMING: [],
         COMPLETED: [],
         CANCELLED: [],
       });
@@ -76,8 +99,8 @@ function RoutesListView() {
   };
 
   const tabs = [
-    { id: 'IN_PROGRESS', label: 'Active' },
-    { id: 'PENDING', label: 'Upcoming' },
+    { id: 'ACTIVE', label: 'Active' },
+    { id: 'UPCOMING', label: 'Upcoming' },
     { id: 'COMPLETED', label: 'Completed' }
   ];
 
@@ -184,7 +207,9 @@ function RoutesListView() {
               <RouteListCard
                 key={route.id}
                 route={route}
-                onClick={() => navigate(`/driver/route/${route.id}`)}
+                onClick={() => navigate(`/driver/route/${route.id}`, {
+                  state: { route }
+                })}
               />
             ))}
           </div>
@@ -208,8 +233,8 @@ function RoutesListView() {
               "text-sm",
               isDark ? "text-gray-400" : "text-gray-600"
             )}>
-              {filter === 'IN_PROGRESS' && "You don't have any active routes at the moment."}
-              {filter === 'PENDING' && "No upcoming routes scheduled."}
+              {filter === 'ACTIVE' && "You don't have any active routes at the moment."}
+              {filter === 'UPCOMING' && "No upcoming routes scheduled."}
               {filter === 'COMPLETED' && "No completed routes to display."}
             </p>
           </div>

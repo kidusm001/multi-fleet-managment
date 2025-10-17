@@ -10,7 +10,8 @@ import {
   groupRoutesByEffectiveStatus,
   sortRoutesByStartTime,
   findNextUpcomingRoute,
-  getRouteStartTime
+  getRouteStartTime,
+  filterUpcomingDisplayWindow
 } from '../utils/routeStatus';
 
 /**
@@ -55,16 +56,20 @@ function DashboardView() {
       });
 
       const grouped = groupRoutesByEffectiveStatus(routes || [], now);
-      const activeRoutes = sortRoutesByStartTime(grouped.IN_PROGRESS || []);
-      const pendingRoutes = sortRoutesByStartTime(grouped.PENDING || []);
+      const activeRoutes = sortRoutesByStartTime(grouped.ACTIVE || []);
+      const upcomingFiltered = sortRoutesByStartTime(
+        filterUpcomingDisplayWindow(grouped.UPCOMING || [], now)
+      );
+      const upcomingRaw = sortRoutesByStartTime(grouped.UPCOMING || []);
+      const upcomingWindow = upcomingFiltered.length > 0 ? upcomingFiltered : upcomingRaw;
 
       const activeRouteData = activeRoutes[0] || null;
-      const nextCandidate = findNextUpcomingRoute(pendingRoutes, now);
-      const fallbackUpcoming = pendingRoutes.find((route) => route.id !== activeRouteData?.id) || null;
+      const nextCandidate = findNextUpcomingRoute(upcomingWindow, now);
+      const fallbackUpcoming = upcomingWindow.find((route) => route.id !== activeRouteData?.id) || null;
 
       setActiveRoute(activeRouteData);
       setNextRoute(activeRouteData ? fallbackUpcoming : nextCandidate);
-      setUpcomingShifts(pendingRoutes.slice(0, 3));
+      setUpcomingShifts(upcomingWindow.slice(0, 3));
 
       if (activeRouteData) {
         const completed = activeRouteData.stops?.filter(s => s.completed).length || 0;
@@ -108,17 +113,23 @@ function DashboardView() {
   const handleStartTracking = async () => {
     if (!nextRoute) return;
     
+    const targetRouteId = nextRoute.isVirtual && nextRoute.originalRouteId
+      ? nextRoute.originalRouteId
+      : nextRoute.id;
+
     try {
       setStartingRoute(true);
       // Update route status to IN_PROGRESS
-      await driverService.updateRouteStatus(nextRoute.id, 'IN_PROGRESS');
+      await driverService.updateRouteStatus(targetRouteId, 'ACTIVE');
       // Refresh dashboard data before navigation to reflect new state
       await loadDashboardData();
 
       // Navigate to navigation view - need to get first stop
-      const routeDetails = await driverService.getRoute(nextRoute.id);
+      const routeDetails = await driverService.getRoute(targetRouteId);
       const firstStopId = routeDetails.stops?.[0]?.id || '';
-      navigate(`/driver/navigate/${nextRoute.id}/${firstStopId}`);
+      navigate(`/driver/navigate/${targetRouteId}/${firstStopId}`, {
+        state: { route: routeDetails }
+      });
     } catch (error) {
       console.error('Failed to start tracking:', error);
     } finally {
@@ -198,9 +209,13 @@ function DashboardView() {
             route={activeRoute}
             onNavigate={() => {
               const firstStopId = activeRoute.stops?.[0]?.id || '';
-              navigate(`/driver/navigate/${activeRoute.id}/${firstStopId}`);
+              navigate(`/driver/navigate/${activeRoute.id}/${firstStopId}`, {
+                state: { route: activeRoute }
+              });
             }}
-            onComplete={() => navigate(`/driver/route/${activeRoute.id}`)}
+            onComplete={() => navigate(`/driver/route/${activeRoute.id}`, {
+              state: { route: activeRoute }
+            })}
           />
         ) : nextRoute ? (
           // Show next upcoming route with Start Tracking button
@@ -428,7 +443,9 @@ function DashboardView() {
                       ? "bg-gray-700/50 border-gray-600 hover:bg-gray-700"
                       : "bg-gray-50 border-gray-200 hover:bg-gray-100"
                   )}
-                  onClick={() => navigate(`/driver/route/${shift.id}`)}
+                  onClick={() => navigate(`/driver/route/${shift.id}`, {
+                    state: { route: shift }
+                  })}
                 >
                   <div className="flex items-center justify-between">
                     <div>

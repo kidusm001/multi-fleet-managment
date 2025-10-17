@@ -1,5 +1,5 @@
 import React, { Suspense, useEffect, useMemo, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { 
   Loader2, 
   MapPin, 
@@ -23,6 +23,7 @@ const MapComponent = React.lazy(() => import('@components/Common/Map/MapComponen
 function RouteDetailView() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { theme } = useTheme();
   const { session } = useAuth();
   const isDark = theme === 'dark';
@@ -34,9 +35,11 @@ function RouteDetailView() {
     return isDark ? 'mapbox://styles/mapbox/dark-v11' : 'mapbox://styles/mapbox/light-v11';
   }, [isDark]);
 
-  const [route, setRoute] = useState(null);
+  const locationRoute = location.state?.route || null;
+
+  const [route, setRoute] = useState(locationRoute || null);
   const [routes, setRoutes] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => (id ? !locationRoute : true));
   const [error, setError] = useState(null);
 
   // If no ID, load today's routes
@@ -44,6 +47,17 @@ function RouteDetailView() {
     if (id) {
       // Load specific route
       let isMounted = true;
+
+      if (locationRoute) {
+        setRoute(locationRoute);
+        if (locationRoute.isVirtual) {
+          setLoading(false);
+          setError(null);
+          return () => {
+            isMounted = false;
+          };
+        }
+      }
 
       const loadRoute = async () => {
         try {
@@ -65,8 +79,13 @@ function RouteDetailView() {
         } catch (err) {
           console.error('Failed to load route:', err);
           if (isMounted) {
-            setError('Unable to load route details.');
-            setRoute(null);
+            if (locationRoute) {
+              setRoute(locationRoute);
+              setError(null);
+            } else {
+              setError('Unable to load route details.');
+              setRoute(null);
+            }
           }
         } finally {
           if (isMounted) {
@@ -121,7 +140,7 @@ function RouteDetailView() {
         isMounted = false;
       };
     }
-  }, [id]);
+  }, [id, locationRoute]);
 
   const stops = useMemo(() => {
     if (!route?.stops) {
@@ -173,6 +192,8 @@ function RouteDetailView() {
       window.open(url, '_blank', 'noopener,noreferrer');
     }
   };
+  const isVirtualRoute = Boolean(route?.isVirtual);
+
 
   const completedStops = stops.filter(stop => stop.completedAt || stop.pickedUp).length;
   const totalStops = stops.length;
@@ -253,7 +274,9 @@ function RouteDetailView() {
                 return (
                   <button
                     key={r.id}
-                    onClick={() => navigate(`/driver/route/${r.id}`)}
+                    onClick={() => navigate(`/driver/route/${r.id}`, {
+                      state: { route: r }
+                    })}
                     className={cn(
                       "w-full rounded-2xl border p-5 text-left transition-all hover:shadow-lg",
                       isDark
@@ -377,8 +400,19 @@ function RouteDetailView() {
         {/* Action Buttons */}
         <div className="flex gap-3">
           <button
-            onClick={() => navigate(`/driver/navigate/${route.id}/${stops[0]?.id || ''}`)}
-            className="flex-1 bg-[#f3684e] hover:bg-[#e55a28] text-white font-semibold py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2"
+            onClick={() => {
+              if (isVirtualRoute) {
+                return;
+              }
+              navigate(`/driver/navigate/${route.id}/${stops[0]?.id || ''}`, {
+                state: { route }
+              });
+            }}
+            disabled={isVirtualRoute}
+            className={cn(
+              "flex-1 bg-[#f3684e] hover:bg-[#e55a28] text-white font-semibold py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-2",
+              "disabled:opacity-60 disabled:cursor-not-allowed"
+            )}
           >
             <NavigationIcon className="h-4 w-4" />
             Navigate

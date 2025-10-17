@@ -50,7 +50,7 @@ export default function AttendanceTable({
           No Attendance Records
         </h3>
         <p className={`text-sm ${isDark ? "text-gray-400" : "text-gray-600"}`}>
-          No attendance records found. Click "Add Attendance" to create one.
+          No attendance records found. Click the Add Attendance button to create one.
         </p>
       </div>
     );

@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 // Define route status enum that matches Prisma schema
 const RouteStatusEnum = z.enum(['PENDING', 'ACTIVE', 'IN_PROGRESS', 'COMPLETED', 'INACTIVE', 'CANCELLED']);
+const ManagerRouteStatusEnum = z.enum(['ACTIVE', 'INACTIVE']);
 
 // Base Route schema for validation
 const BaseRouteSchema = z.object({
@@ -62,7 +63,7 @@ export const RouteIdParamSchema = z.object({
 
 // Route status update schema
 export const UpdateRouteStatusSchema = z.object({
-    status: RouteStatusEnum,
+    status: ManagerRouteStatusEnum,
 });
 
 // Employee assignment schemas for routes

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { attendanceService } from "@/services/attendanceService";
 import { driverService } from "@/services/driverService";
@@ -65,17 +65,7 @@ export default function AttendanceManagement() {
     tollCost: "",
   });
 
-  // Load initial data
-  useEffect(() => {
-    loadData();
-  }, [currentPage]);
-
-  // Apply filters
-  useEffect(() => {
-    applyFilters();
-  }, [searchTerm, dateFilter, vehicleFilter, driverFilter, attendanceRecords]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
@@ -108,9 +98,14 @@ export default function AttendanceManagement() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [currentPage]);
 
-  const applyFilters = () => {
+  // Load initial data
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  const applyFilters = useCallback(() => {
     let filtered = [...attendanceRecords];
 
     // Search filter (vehicle or driver name)
@@ -146,7 +141,12 @@ export default function AttendanceManagement() {
     }
 
     setFilteredRecords(filtered);
-  };
+  }, [attendanceRecords, searchTerm, dateFilter, vehicleFilter, driverFilter]);
+
+  // Apply filters whenever dependencies change
+  useEffect(() => {
+    applyFilters();
+  }, [applyFilters]);
 
   const resetForm = () => {
     setFormData({

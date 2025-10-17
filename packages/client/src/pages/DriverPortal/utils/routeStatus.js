@@ -1,6 +1,6 @@
 // Utilities to normalize driver portal route timelines and statuses
 
-const DRIVER_ACTIVATED_STATUSES = new Set(['IN_PROGRESS', 'ACTIVE']);
+const DRIVER_ACTIVATED_STATUSES = new Set(['ACTIVE', 'IN_PROGRESS']);
 const COMPLETED_STATUSES = new Set(['COMPLETED', 'INACTIVE']);
 const CANCELLED_STATUSES = new Set(['CANCELLED']);
 const AUTO_ACTIVATION_WINDOW_MS = 2 * 60 * 60 * 1000; // two hours
@@ -9,6 +9,30 @@ const ensureDate = (value) => {
   if (!value) return null;
   const parsed = value instanceof Date ? value : new Date(value);
   return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+const startOfDay = (input) => {
+  const base = ensureDate(input || new Date());
+  if (!base) return null;
+  const date = new Date(base);
+  date.setHours(0, 0, 0, 0);
+  return date;
+};
+
+const endOfDay = (input) => {
+  const base = ensureDate(input || new Date());
+  if (!base) return null;
+  const date = new Date(base);
+  date.setHours(23, 59, 59, 999);
+  return date;
+};
+
+const addDays = (input, days) => {
+  const base = ensureDate(input || new Date());
+  if (!base) return null;
+  const date = new Date(base);
+  date.setDate(date.getDate() + days);
+  return date;
 };
 
 const combineDateAndTime = (dateValue, timeValue) => {
@@ -30,6 +54,13 @@ const combineDateAndTime = (dateValue, timeValue) => {
   const combined = new Date(datePart);
   combined.setHours(timePart.getHours(), timePart.getMinutes(), timePart.getSeconds(), timePart.getMilliseconds());
   return combined;
+};
+
+export const isVirtualRoute = (route) => {
+  if (!route) return false;
+  if (route.isVirtual) return true;
+  const identifier = typeof route.id === 'string' ? route.id : '';
+  return identifier.startsWith('virtual-');
 };
 
 export const getRouteStartTime = (route) => {
@@ -54,9 +85,15 @@ export const getRouteEndTime = (route) => {
 };
 
 export const getEffectiveRouteStatus = (route, now = new Date()) => {
-  if (!route) return 'PENDING';
+  if (!route) return 'UPCOMING';
 
-  const status = typeof route.status === 'string' ? route.status.toUpperCase() : '';
+  const driverStatus = typeof route.driverStatus === 'string' ? route.driverStatus.toUpperCase() : '';
+  if (driverStatus === 'UPCOMING' || driverStatus === 'ACTIVE' || driverStatus === 'COMPLETED') {
+    return driverStatus;
+  }
+
+  const statusRaw = typeof route.status === 'string' ? route.status.toUpperCase() : '';
+  const status = statusRaw === 'IN_PROGRESS' ? 'ACTIVE' : statusRaw;
   const start = getRouteStartTime(route);
   const end = getRouteEndTime(route);
   const driverActivated = DRIVER_ACTIVATED_STATUSES.has(status) || Boolean(route.startedAt);
@@ -73,7 +110,7 @@ export const getEffectiveRouteStatus = (route, now = new Date()) => {
     if (end && end <= now) {
       return 'COMPLETED';
     }
-    return 'IN_PROGRESS';
+    return 'ACTIVE';
   }
 
   if (end && end <= now) {
@@ -81,16 +118,16 @@ export const getEffectiveRouteStatus = (route, now = new Date()) => {
   }
 
   if (!start) {
-    return 'PENDING';
+    return 'UPCOMING';
   }
 
   if (now < start) {
-    return 'PENDING';
+    return 'UPCOMING';
   }
 
   const autoWindowEnd = new Date(start.getTime() + AUTO_ACTIVATION_WINDOW_MS);
   if (now <= autoWindowEnd) {
-    return 'IN_PROGRESS';
+    return 'ACTIVE';
   }
 
   return 'COMPLETED';
@@ -137,8 +174,51 @@ export const sortRoutesByEndTime = (routes = []) => {
   });
 };
 
+export const filterUpcomingDisplayWindow = (routes = [], now = new Date()) => {
+  const windowStart = startOfDay(now);
+  const windowEnd = endOfDay(addDays(now, 1));
+
+  if (!windowStart || !windowEnd) {
+    return routes;
+  }
+
+  return routes.filter((route) => {
+    const start = getRouteStartTime(route) || ensureDate(route?.date);
+    if (!start) return false;
+    return start >= windowStart && start <= windowEnd;
+  });
+};
+
+export const filterRecentCompletedWindow = (routes = [], now = new Date()) => {
+  const windowStart = startOfDay(addDays(now, -1));
+  const windowEnd = endOfDay(now);
+
+  if (!windowStart || !windowEnd) {
+    return routes;
+  }
+
+  return routes.filter((route) => {
+    const end = getRouteEndTime(route) || getRouteStartTime(route) || ensureDate(route?.date);
+    if (!end) return false;
+    return end >= windowStart && end <= windowEnd;
+  });
+};
+
 export const findNextUpcomingRoute = (routes = [], now = new Date()) => {
   const upcoming = sortRoutesByStartTime(routes);
+  const nextRealRoute = upcoming.find((route) => {
+    if (isVirtualRoute(route)) {
+      return false;
+    }
+    const start = getRouteStartTime(route);
+    if (!start) return false;
+    return start.getTime() >= now.getTime();
+  });
+
+  if (nextRealRoute) {
+    return nextRealRoute;
+  }
+
   return upcoming.find((route) => {
     const start = getRouteStartTime(route);
     if (!start) return false;

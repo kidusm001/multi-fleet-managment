@@ -136,9 +136,16 @@ function NavigationView() {
     return transformRouteForMap({ ...route, stops });
   }, [route, stops]);
 
-  const isRouteActive = route?.status === 'ACTIVE';
-  const isRouteCompleted = route?.status === 'COMPLETED';
-  const statusLabel = isRouteCompleted ? 'Completed' : isRouteActive ? 'In Progress' : 'Scheduled';
+  const driverStatus = (route?.driverStatus || route?.status || '').toUpperCase();
+  const isRouteActive = driverStatus === 'ACTIVE';
+  const isRouteCompleted = driverStatus === 'COMPLETED';
+  const statusLabel = isRouteCompleted
+    ? 'Completed'
+    : isRouteActive
+    ? 'In Progress'
+    : driverStatus === 'CANCELLED'
+    ? 'Cancelled'
+    : 'Scheduled';
   const StatusIcon = isRouteCompleted ? CheckCircle2 : isRouteActive ? NavigationIcon : RouteIcon;
 
   const driverLocationMarker = driverLocation
@@ -235,9 +242,10 @@ function NavigationView() {
     try {
       setGpsError(null);
 
-      // Transition from PENDING to IN_PROGRESS when tracking starts
-      if (route.status === 'PENDING' || route.status === 'ACTIVE') {
-        const updatedRoute = await driverService.updateRouteStatus(route.id, 'IN_PROGRESS');
+      // Ensure the route is marked as active for the driver when tracking begins
+      const currentStatus = (route.driverStatus || route.status || '').toUpperCase();
+      if (currentStatus !== 'ACTIVE') {
+        const updatedRoute = await driverService.updateRouteStatus(route.id, 'ACTIVE');
         setRoute(updatedRoute);
       }
 
@@ -292,8 +300,8 @@ function NavigationView() {
     if (!route) return;
 
     try {
-      await driverService.updateRouteStatus(route.id, 'COMPLETED');
-      setRoute((prev) => (prev ? { ...prev, status: 'COMPLETED' } : prev));
+      const updatedRoute = await driverService.updateRouteStatus(route.id, 'COMPLETED');
+      setRoute(updatedRoute);
       handleStopTracking();
     } catch (completeError) {
       console.error('Failed to complete route:', completeError);

@@ -2,6 +2,29 @@ import { AsyncHandler } from '../utils/asyncHandler';
 
 import api from './api';
 
+const normalizeRouteForManagement = (route) => {
+  if (!route) return route;
+
+  const originalStatus = route.status;
+  const normalizedManagerStatus = route.managementStatus
+    ?? (typeof originalStatus === 'string' ? originalStatus.toUpperCase() : undefined)
+    ?? (typeof route.isActive === 'boolean' ? (route.isActive ? 'ACTIVE' : 'INACTIVE') : undefined);
+
+  const driverStatus = route.driverStatus
+    ?? (typeof originalStatus === 'string' ? originalStatus : undefined)
+    ?? (typeof normalizedManagerStatus === 'string' ? normalizedManagerStatus.toLowerCase() : undefined)
+    ?? 'inactive';
+
+  return {
+    ...route,
+    status: originalStatus ?? normalizedManagerStatus ?? 'INACTIVE',
+    driverStatus,
+    managementStatus: normalizedManagerStatus ?? (typeof originalStatus === 'string' ? originalStatus.toUpperCase() : 'INACTIVE'),
+  };
+};
+
+const normalizeRouteCollection = (routes = []) => routes.map(normalizeRouteForManagement);
+
 class RouteService {
   constructor() {
     // In-memory cache for routes
@@ -33,11 +56,13 @@ class RouteService {
       },
     });
 
+    const normalizedRoutes = normalizeRouteCollection(response.data);
+
     // Update cache
-    this.cache.routes = response.data;
+    this.cache.routes = normalizedRoutes;
     this.cache.lastFetched = Date.now();
 
-    return response.data;
+    return normalizedRoutes;
   });
 
   /**
@@ -51,7 +76,7 @@ class RouteService {
         include: 'shuttle,location,stops.employee',
       },
     });
-    return response.data;
+    return normalizeRouteCollection(response.data);
   });
 
   /**
@@ -74,13 +99,15 @@ class RouteService {
       },
     });
 
+    const normalizedRoute = normalizeRouteForManagement(response.data);
+
     // Update cache
     this.cache.routeDetails.set(cacheKey, {
-      route: response.data,
+      route: normalizedRoute,
       timestamp: Date.now(),
     });
 
-    return response.data;
+    return normalizedRoute;
   });
 
   /**
@@ -94,7 +121,7 @@ class RouteService {
     // Invalidate cache
     this.clearCache();
 
-    return response.data;
+    return normalizeRouteForManagement(response.data);
   });
 
   /**
@@ -110,15 +137,17 @@ class RouteService {
       totalTime: Math.round(updates.totalTime),
     });
 
+    const normalizedRoute = normalizeRouteForManagement(response.data);
+
     // Update cache if it exists
     if (this.cache.routes) {
       this.cache.routes = this.cache.routes.map(route =>
-        route.id === id ? { ...route, ...response.data } : route
+        route.id === id ? { ...route, ...normalizedRoute } : route
       );
     }
     this.cache.routeDetails.delete(`route_${id}`);
 
-    return response.data;
+    return normalizedRoute;
   });
 
   /**
@@ -133,7 +162,14 @@ class RouteService {
     // Update cache if it exists
     if (this.cache.routes) {
       this.cache.routes = this.cache.routes.map(route =>
-        route.id === id ? { ...route, status } : route
+        route.id === id
+          ? {
+              ...route,
+              status,
+              isActive: status === 'ACTIVE',
+              managementStatus: status,
+            }
+          : route
       );
     }
     this.cache.routeDetails.delete(`route_${id}`);
@@ -199,7 +235,7 @@ class RouteService {
    */
   getRoutesWithUniqueLocations = AsyncHandler(async () => {
     const response = await api.get('/routes/unique-locations');
-    return response.data;
+    return normalizeRouteCollection(response.data);
   });
 
   /**

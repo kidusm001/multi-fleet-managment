@@ -1,6 +1,32 @@
 import api from './api';
 import { AsyncHandler } from '../utils/asyncHandler';
 
+const VIRTUAL_PREFIX = 'virtual-';
+const DATE_SUFFIX_PATTERN = /-\d{4}-\d{2}-\d{2}$/;
+
+const devirtualizeRouteId = (routeId) => {
+  if (typeof routeId !== 'string') {
+    return routeId;
+  }
+
+  if (!routeId.startsWith(VIRTUAL_PREFIX)) {
+    return routeId;
+  }
+
+  const trimmed = routeId.slice(VIRTUAL_PREFIX.length);
+  const lastDashIndex = trimmed.lastIndexOf('-');
+  if (lastDashIndex === -1) {
+    return routeId;
+  }
+
+  const withoutIndex = trimmed.slice(0, lastDashIndex);
+  if (!DATE_SUFFIX_PATTERN.test(withoutIndex.slice(-11))) {
+    return routeId;
+  }
+
+  return withoutIndex.slice(0, -11) || routeId;
+};
+
 export const driverService = {
   getDrivers: AsyncHandler(async () => {
     const response = await api.get('/drivers');
@@ -36,15 +62,19 @@ export const driverService = {
   getActiveRoute: AsyncHandler(async () => {
     const today = new Date().toISOString().split('T')[0];
     const response = await api.get('/drivers/me/routes', {
-      params: { date: today, status: 'IN_PROGRESS' }
+      params: { date: today, status: 'ACTIVE' }
     });
     return response.data[0] || null;
   }),
 
   getUpcomingRoute: AsyncHandler(async () => {
-    const today = new Date().toISOString().split('T')[0];
+    const now = new Date();
+    const today = now.toISOString().split('T')[0];
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowIso = tomorrow.toISOString().split('T')[0];
     const response = await api.get('/drivers/me/routes', {
-      params: { from: today, status: 'PENDING', limit: 1 }
+      params: { from: today, to: tomorrowIso, status: 'UPCOMING', limit: 1 }
     });
     return response.data[0] || null;
   }),
@@ -60,17 +90,20 @@ export const driverService = {
   }),
 
   getRoute: AsyncHandler(async (routeId) => {
-    const response = await api.get(`/drivers/me/routes/${routeId}`);
+    const resolvedId = devirtualizeRouteId(routeId);
+    const response = await api.get(`/drivers/me/routes/${resolvedId}`);
     return response.data;
   }),
 
   updateRouteStatus: AsyncHandler(async (routeId, status) => {
-    const response = await api.patch(`/drivers/me/routes/${routeId}/status`, { status });
+    const resolvedId = devirtualizeRouteId(routeId);
+    const response = await api.patch(`/drivers/me/routes/${resolvedId}/status`, { status });
     return response.data;
   }),
 
   markStopCompleted: AsyncHandler(async (routeId, stopId, data) => {
-    const response = await api.post(`/drivers/me/routes/${routeId}/stops/${stopId}/checkin`, {
+    const resolvedId = devirtualizeRouteId(routeId);
+    const response = await api.post(`/drivers/me/routes/${resolvedId}/stops/${stopId}/checkin`, {
       pickedUp: true,
       timestamp: new Date(),
       ...data
@@ -84,9 +117,13 @@ export const driverService = {
   }),
 
   getUpcomingShifts: AsyncHandler(async (limit = 5) => {
-    const today = new Date().toISOString().split('T')[0];
+    const now = new Date();
+    const today = now.toISOString().split('T')[0];
+    const tomorrow = new Date(now);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tomorrowIso = tomorrow.toISOString().split('T')[0];
     const response = await api.get('/drivers/me/routes', {
-      params: { from: today, status: 'PENDING', limit }
+      params: { from: today, to: tomorrowIso, status: 'UPCOMING', limit }
     });
     return response.data || [];
   }),

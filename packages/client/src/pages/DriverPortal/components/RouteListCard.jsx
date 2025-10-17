@@ -7,14 +7,13 @@ function RouteListCard({ route, onClick }) {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
-  const status = (route?.effectiveStatus || route?.status || '').toUpperCase();
+  const status = (route?.driverStatus || route?.effectiveStatus || route?.status || '').toUpperCase();
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'IN_PROGRESS':
       case 'ACTIVE':
         return 'border-green-500/50 bg-green-900/10';
-      case 'PENDING':
+      case 'UPCOMING':
         return 'border-blue-500/50 bg-blue-900/10';
       case 'COMPLETED':
         return 'border-gray-500/50 bg-gray-900/10';
@@ -27,10 +26,9 @@ function RouteListCard({ route, onClick }) {
 
   const getStatusBadge = (status) => {
     switch (status) {
-      case 'IN_PROGRESS':
       case 'ACTIVE':
         return <span className="text-xs font-semibold text-green-500">🟢 ACTIVE</span>;
-      case 'PENDING':
+      case 'UPCOMING':
         return <span className="text-xs font-semibold text-blue-500">🔵 UPCOMING</span>;
       case 'COMPLETED':
         return <span className="text-xs font-semibold text-gray-500">⚪ COMPLETED</span>;
@@ -86,7 +84,7 @@ function RouteListCard({ route, onClick }) {
           <div className="flex items-center gap-2">
             <Clock className="w-4 h-4 text-gray-500" />
             <span className={isDark ? "text-gray-300" : "text-gray-700"}>
-              {status === 'IN_PROGRESS' ? 'Started' : route.startTime || 'TBD'}
+              {status === 'ACTIVE' ? 'Started' : route.startTime || 'TBD'}
             </span>
           </div>
 
@@ -97,7 +95,7 @@ function RouteListCard({ route, onClick }) {
             </span>
           </div>
 
-          {route.status === 'ACTIVE' && (
+          {status === 'ACTIVE' && (
             <div className="flex items-center gap-2">
               <TrendingUp className="w-4 h-4 text-gray-500" />
               <span className={isDark ? "text-gray-300" : "text-gray-700"}>
@@ -108,7 +106,7 @@ function RouteListCard({ route, onClick }) {
         </div>
 
         {/* Progress Bar (for active routes) */}
-        {status === 'IN_PROGRESS' && (
+        {status === 'ACTIVE' && (
           <div className="space-y-1">
             <div className="flex justify-between text-xs">
               <span className={isDark ? "text-gray-400" : "text-gray-600"}>
@@ -130,13 +128,13 @@ function RouteListCard({ route, onClick }) {
         {/* CTA Button */}
         <button className={cn(
           "w-full py-2 px-4 rounded-lg font-medium transition-colors",
-          status === 'IN_PROGRESS'
+          status === 'ACTIVE'
             ? "bg-[#f3684e] hover:bg-[#e55a28] text-white"
             : isDark
             ? "bg-gray-700 hover:bg-gray-600 text-gray-200"
             : "bg-gray-200 hover:bg-gray-300 text-gray-800"
         )}>
-          {status === 'IN_PROGRESS' ? 'Continue →' : 'View Details →'}
+          {status === 'ACTIVE' ? 'Continue →' : 'View Details →'}
         </button>
       </div>
     </div>
