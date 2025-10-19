@@ -19,7 +19,6 @@ import {
 import { Button } from "@/components/ui/button";
 import {
   ChatBubble,
-  ChatBubbleAvatar,
   ChatBubbleMessage,
 } from "@/components/ui/chat-bubble";
 import { ChatMessageList } from "@/components/ui/chat-message-list";
@@ -44,6 +43,8 @@ interface AIChatProps {
   isOpen: boolean;
   onClose: () => void;
   userRole?: string;
+  isAbovePanel?: boolean;
+  isPanelExpanded?: boolean;
 }
 
 type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognitionInstance;
@@ -203,36 +204,36 @@ const ROLE_SUGGESTIONS: Record<string, { label: string; prompt: string }[]> = {
 
 const markdownComponents = {
   p: ({ children }: { children: React.ReactNode }) => (
-    <p className="mb-3 last:mb-0 text-sm leading-relaxed text-muted-foreground dark:text-muted-foreground/90">
+    <p className="mb-3 last:mb-0 text-sm leading-relaxed text-gray-900 dark:text-white">
       {children}
     </p>
   ),
   ul: ({ children }: { children: React.ReactNode }) => (
-    <ul className="list-disc pl-5 text-sm text-muted-foreground dark:text-muted-foreground/90">
+    <ul className="list-disc pl-5 text-sm text-gray-900 dark:text-white">
       {children}
     </ul>
   ),
   ol: ({ children }: { children: React.ReactNode }) => (
-    <ol className="list-decimal pl-5 text-sm text-muted-foreground dark:text-muted-foreground/90">
+    <ol className="list-decimal pl-5 text-sm text-gray-900 dark:text-white">
       {children}
     </ol>
   ),
   li: ({ children }: { children: React.ReactNode }) => (
-    <li className="leading-relaxed">{children}</li>
+    <li className="leading-relaxed text-gray-900 dark:text-white">{children}</li>
   ),
   strong: ({ children }: { children: React.ReactNode }) => (
-    <strong className="font-semibold text-foreground">{children}</strong>
+    <strong className="font-semibold text-gray-900 dark:text-white">{children}</strong>
   ),
   em: ({ children }: { children: React.ReactNode }) => (
-    <em className="italic text-muted-foreground">{children}</em>
+    <em className="italic text-gray-900 dark:text-white">{children}</em>
   ),
   code: ({ children, inline }: { children: React.ReactNode; inline?: boolean }) =>
     inline ? (
-      <code className="rounded bg-muted px-1.5 py-0.5 text-xs text-foreground">
+      <code className="rounded bg-gray-200 dark:bg-white/20 px-1.5 py-0.5 text-xs text-gray-900 dark:text-white">
         {children}
       </code>
     ) : (
-      <pre className="overflow-x-auto rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">
+      <pre className="overflow-x-auto rounded-lg bg-gray-200 dark:bg-white/10 px-3 py-2 text-xs text-gray-900 dark:text-white">
         <code>{children}</code>
       </pre>
     ),
@@ -241,14 +242,14 @@ const markdownComponents = {
       href={href}
       target="_blank"
       rel="noreferrer"
-      className="font-medium text-primary underline-offset-4 hover:underline"
+      className="font-medium text-blue-600 dark:text-white underline-offset-4 hover:underline"
     >
       {children}
     </a>
   ),
 };
 
-const AIChat: React.FC<AIChatProps> = ({ isOpen, onClose, userRole = "user" }) => {
+const AIChat: React.FC<AIChatProps> = ({ isOpen, onClose, userRole = "user", isAbovePanel = false, isPanelExpanded = false }) => {
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -503,8 +504,14 @@ const AIChat: React.FC<AIChatProps> = ({ isOpen, onClose, userRole = "user" }) =
   return (
     <div
       className={cn(
-        "fixed bottom-6 right-6 z-50 transition-all duration-300",
+        "fixed z-50 transition-all duration-300",
         isOpen ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0",
+        // Position matches AIAssistantButton logic:
+        // No panel: bottom-6 (24px from bottom)
+        // Panel collapsed (48px): bottom-[72px] (48px + 24px spacing)
+        // Panel expanded (500px): bottom-[524px] (500px + 24px spacing)
+        "right-6",
+        !isAbovePanel ? "bottom-6" : isPanelExpanded ? "bottom-[524px]" : "bottom-[72px]",
       )}
     >
       <div
@@ -517,20 +524,26 @@ const AIChat: React.FC<AIChatProps> = ({ isOpen, onClose, userRole = "user" }) =
       >
         <div
           className={cn(
-            "flex items-center justify-between px-4 py-3 text-white border-b border-white/20",
+            "flex items-center justify-between px-4 py-3 text-white border-b border-black/20 dark:border-white/20 shadow-lg",
             "bg-gradient-to-r",
             roleTheme.gradient,
           )}
         >
           <div className="flex items-center gap-3">
-            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white/15 backdrop-blur">
-              {roleTheme.icon}
+            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-black/20 backdrop-blur dark:bg-white/15">
+              <svg
+                viewBox="0 0 24 24"
+                className="h-5 w-5 text-black dark:text-white"
+                fill="currentColor"
+              >
+                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z" />
+              </svg>
             </span>
             <div className="flex flex-col">
-              <span className="text-xs font-medium uppercase tracking-wide text-white/70">
+              <span className="text-xs font-medium uppercase tracking-wide text-black dark:text-white">
                 {roleTheme.sublabel}
               </span>
-              <span className="text-sm font-semibold leading-tight">
+              <span className="text-sm font-semibold leading-tight text-black dark:text-white">
                 {roleTheme.label}
               </span>
             </div>
@@ -540,7 +553,7 @@ const AIChat: React.FC<AIChatProps> = ({ isOpen, onClose, userRole = "user" }) =
               type="button"
               variant="ghost"
               size="icon"
-              className="h-8 w-8 rounded-full bg-white/10 text-white hover:bg-white/20"
+              className="h-8 w-8 rounded-full bg-black/20 text-black hover:bg-black/30 dark:bg-white/10 dark:text-white dark:hover:bg-white/20"
               onClick={() => setIsMinimized((prev) => !prev)}
               aria-label={isMinimized ? "Expand chat" : "Minimize chat"}
             >
@@ -554,7 +567,7 @@ const AIChat: React.FC<AIChatProps> = ({ isOpen, onClose, userRole = "user" }) =
               type="button"
               variant="ghost"
               size="icon"
-              className="h-8 w-8 rounded-full bg-white/10 text-white hover:bg-white/20"
+              className="h-8 w-8 rounded-full bg-black/20 text-black hover:bg-black/30 dark:bg-white/10 dark:text-white dark:hover:bg-white/20"
               onClick={onClose}
               aria-label="Close chat"
             >
@@ -577,9 +590,9 @@ const AIChat: React.FC<AIChatProps> = ({ isOpen, onClose, userRole = "user" }) =
 
         {!isMinimized && (
           <>
-            <div className="flex h-full flex-col bg-gradient-to-b from-background/70 via-background/80 to-background/95">
-              <div className="flex-1 min-h-0 px-4 py-3">
-                <ChatMessageList smooth className="bg-transparent">
+            <div className="flex flex-col bg-gradient-to-b from-background/70 via-background/80 to-background/95 overflow-hidden">
+              <div className="relative flex-1 min-h-0 px-4 py-2 overflow-hidden">
+                <ChatMessageList smooth className="bg-transparent pb-2">
                   {messages.length === 0 && !isLoading && (
                     <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-border/60 bg-card/60 px-6 py-10 text-center text-muted-foreground">
                       <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
@@ -618,10 +631,15 @@ const AIChat: React.FC<AIChatProps> = ({ isOpen, onClose, userRole = "user" }) =
                         className="items-start"
                       >
                         {!isUser && (
-                          <ChatBubbleAvatar
-                            fallback={roleTheme.avatarFallback}
-                            className="hidden sm:flex"
-                          />
+                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 dark:bg-primary/20">
+                            <svg
+                              viewBox="0 0 24 24"
+                              className="h-5 w-5 text-primary"
+                              fill="currentColor"
+                            >
+                              <path d="M20 9V7c0-1.1-.9-2-2-2h-3c0-1.66-1.34-3-3-3S9 3.34 9 5H6c-1.1 0-2 .9-2 2v2c-1.66 0-3 1.34-3 3s1.34 3 3 3v4c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2v-4c1.66 0 3-1.34 3-3s-1.34-3-3-3zM7.5 11.5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5S9.83 13 9 13s-1.5-.67-1.5-1.5zM16 17H8v-2h8v2zm-1-4c-.83 0-1.5-.67-1.5-1.5S14.17 10 15 10s1.5.67 1.5 1.5S15.83 13 15 13z" />
+                            </svg>
+                          </div>
                         )}
                         <div className="flex max-w-[85%] flex-col gap-2">
                           <ChatBubbleMessage
@@ -630,8 +648,8 @@ const AIChat: React.FC<AIChatProps> = ({ isOpen, onClose, userRole = "user" }) =
                               "prose prose-sm max-w-none text-left leading-relaxed",
                               "dark:prose-invert",
                               isUser
-                                ? "bg-primary text-primary-foreground shadow-sm"
-                                : "border border-border bg-card text-foreground shadow-sm",
+                                ? "bg-blue-500 text-white shadow-lg dark:bg-primary dark:text-white [&_p]:text-white [&_ul]:text-white [&_ol]:text-white [&_li]:text-white [&_strong]:text-white [&_em]:text-white [&_a]:text-white dark:[&_p]:text-white dark:[&_ul]:text-white dark:[&_ol]:text-white dark:[&_li]:text-white dark:[&_strong]:text-white dark:[&_em]:text-white dark:[&_a]:text-white"
+                                : "bg-white/40 border border-white/60 shadow-lg text-gray-900 dark:bg-gray-800/90 dark:border-gray-700/60 dark:text-white",
                             )}
                           >
                             <ReactMarkdown
@@ -656,10 +674,15 @@ const AIChat: React.FC<AIChatProps> = ({ isOpen, onClose, userRole = "user" }) =
 
                   {isLoading && (
                     <ChatBubble variant="received">
-                      <ChatBubbleAvatar
-                        fallback={roleTheme.avatarFallback}
-                        className="hidden sm:flex"
-                      />
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 dark:bg-primary/20">
+                        <svg
+                          viewBox="0 0 24 24"
+                          className="h-5 w-5 text-primary"
+                          fill="currentColor"
+                        >
+                          <path d="M20 9V7c0-1.1-.9-2-2-2h-3c0-1.66-1.34-3-3-3S9 3.34 9 5H6c-1.1 0-2 .9-2 2v2c-1.66 0-3 1.34-3 3s1.34 3 3 3v4c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2v-4c1.66 0 3-1.34 3-3s-1.34-3-3-3zM7.5 11.5c0-.83.67-1.5 1.5-1.5s1.5.67 1.5 1.5S9.83 13 9 13s-1.5-.67-1.5-1.5zM16 17H8v-2h8v2zm-1-4c-.83 0-1.5-.67-1.5-1.5S14.17 10 15 10s1.5.67 1.5 1.5S15.83 13 15 13z" />
+                        </svg>
+                      </div>
                       <ChatBubbleMessage className="bg-background text-foreground">
                         <MessageLoading />
                       </ChatBubbleMessage>
@@ -674,7 +697,7 @@ const AIChat: React.FC<AIChatProps> = ({ isOpen, onClose, userRole = "user" }) =
                 </ChatMessageList>
               </div>
 
-              <div className="border-t border-border/80 bg-background/95 px-4 py-3">
+              <div className="flex-shrink-0 border-t border-border/80 bg-background/95 px-4 py-3">
                 <div className="space-y-2">
                   <div className="flex items-end gap-3">
                     <ChatInput
@@ -706,7 +729,7 @@ const AIChat: React.FC<AIChatProps> = ({ isOpen, onClose, userRole = "user" }) =
                       type="button"
                       onClick={handleSendMessage}
                       disabled={!input.trim() || isLoading}
-                      className="h-[48px] w-[48px] rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground/90"
+                      className="h-[48px] w-[48px] rounded-full bg-blue-500 text-white shadow-lg hover:bg-blue-600 disabled:bg-muted disabled:text-muted-foreground/90 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90"
                       aria-label="Send message"
                     >
                       {isLoading ? (

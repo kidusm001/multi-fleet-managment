@@ -174,7 +174,14 @@ export async function gatherContext(req: Request): Promise<string> {
  * Get role-specific system prompt
  */
 function getRoleSystemPrompt(role: string): string {
-  const basePrompt = `You are an AI assistant for a multi-fleet management system. Be helpful, concise, and professional. Always prioritize security and data privacy.`;
+  const basePrompt = `You are an AI assistant for a multi-fleet management system. 
+
+CRITICAL RULES:
+- Keep responses CONCISE (2-4 sentences max for simple queries)
+- Use bullet points for lists
+- Prioritize actionable information
+- Be helpful, professional, and direct
+- Always prioritize security and data privacy`;
   
   const rolePrompts: Record<string, string> = {
     superadmin: `${basePrompt}
