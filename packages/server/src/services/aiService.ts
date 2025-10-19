@@ -1,9 +1,59 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenerativeAI, type GenerativeModel } from '@google/generative-ai';
 import prisma from '../db';
 import type { Request } from 'express';
 
 // Initialize Gemini client
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+
+const FALLBACK_MODELS = [
+  process.env.GEMINI_MODEL,
+  'gemini-2.0-flash-exp',
+  'gemini-2.0-flash',
+  'gemini-1.5-flash-latest',
+  'gemini-1.5-flash',
+];
+
+let resolvedModelName: string | null = null;
+
+function normalizeModelName(name: string): string {
+  if (!name) return '';
+  return name.startsWith('models/') ? name : `models/${name}`;
+}
+
+function getModelCandidates(): string[] {
+  const candidates = [resolvedModelName, ...FALLBACK_MODELS]
+    .filter((value): value is string => Boolean(value))
+    .map(normalizeModelName);
+  return Array.from(new Set(candidates));
+}
+
+function isModelNotFoundError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const message = (error as { message?: string }).message || String(error);
+  return message.includes('models/') && message.toLowerCase().includes('not found');
+}
+
+async function runWithGeminiModel<T>(
+  action: (modelName: string, model: GenerativeModel) => Promise<T>,
+): Promise<T> {
+  let lastError: unknown = null;
+  for (const candidate of getModelCandidates()) {
+    try {
+      const model = genAI.getGenerativeModel({ model: candidate });
+      const result = await action(candidate, model);
+      resolvedModelName = candidate;
+      return result;
+    } catch (error) {
+      lastError = error;
+      if (isModelNotFoundError(error)) {
+        console.warn(`Gemini model not found: ${candidate}. Trying next fallback.`);
+        continue;
+      }
+      throw error;
+    }
+  }
+  throw lastError ?? new Error('No Gemini model is available.');
+}
 
 // Cost tracking (approximate Gemini 1.5 Flash pricing - FREE for most usage)
 const COST_PER_1K_INPUT_TOKENS = 0.0; // Free up to rate limits
@@ -225,22 +275,31 @@ export async function generateAIResponse(
     });
   }
   
-  // Initialize Gemini model
-  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-  
-  // Start chat with history
-  const chat = model.startChat({
-    history: conversationHistory,
-    generationConfig: {
-      temperature: 0.7,
-      maxOutputTokens: 1000,
-    },
-  });
-  
-  // Send message and get response
-  const result = await chat.sendMessage(userMessage);
-  const response = result.response;
-  const responseText = response.text();
+  // Send message and get response (with error handling)
+  let responseText = '';
+  try {
+    await runWithGeminiModel(async (_modelName, model) => {
+      const chat = model.startChat({
+        history: conversationHistory,
+        generationConfig: {
+          temperature: 0.7,
+          maxOutputTokens: 1000,
+        },
+      });
+
+      const result = await chat.sendMessage(userMessage);
+      responseText = result.response.text();
+    });
+  } catch (err: any) {
+    const errMsg = err?.message || String(err);
+    console.error('Gemini chat error:', errMsg);
+    try {
+      await logAIUsage(user?.id || 'unknown', user?.organizationId || null, '/api/ai/chat', 0, 0, false, errMsg);
+    } catch (e) {
+      console.warn('Failed to log AI usage error:', e);
+    }
+    throw new Error('AI service error: ' + errMsg);
+  }
   
   // Estimate token usage (Gemini doesn't provide exact counts in free tier)
   const inputTokens = Math.ceil((userMessage.length + contextData.length) / 4);
@@ -365,23 +424,22 @@ export async function getOrCreateConversation(
  */
 export async function generateConversationTitle(firstMessage: string): Promise<string> {
   try {
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-    
-    const result = await model.generateContent({
-      contents: [{
-        role: 'user',
-        parts: [{ text: `Generate a short 3-5 word title for this conversation. Only return the title, nothing else.\n\nMessage: ${firstMessage}` }],
-      }],
-      generationConfig: {
-        temperature: 0.5,
-        maxOutputTokens: 20,
-      },
+    let title = '';
+    await runWithGeminiModel(async (_modelName, model) => {
+      const chat = model.startChat({
+        history: [
+          { role: 'user', parts: [{ text: 'You are a title generator. Generate a short 3-5 word title for the following conversation. Only return the title.' }] },
+          { role: 'user', parts: [{ text: `Message: ${firstMessage}` }] },
+        ],
+        generationConfig: { temperature: 0.5, maxOutputTokens: 20 },
+      });
+
+      const res = await chat.sendMessage('Generate title');
+      title = res.response.text().trim();
     });
-    
-    const response = result.response;
-    return response.text().trim() || 'New Conversation';
-  } catch (error) {
-    console.error('Error generating title:', error);
+    return title || 'New Conversation';
+  } catch (error: any) {
+    console.error('Error generating title:', error?.message || error);
     return 'New Conversation';
   }
 }

@@ -37,7 +37,10 @@ The AI automatically gathers relevant context based on:
 ```bash
 # In packages/server/.env
 GEMINI_API_KEY=your-gemini-api-key-here
+GEMINI_MODEL=gemini-2.0-flash
 ```
+
+`GEMINI_MODEL` is optional. When not available, the server automatically falls back through `gemini-2.0-flash-exp`, `gemini-1.5-flash-latest`, and `gemini-1.5-flash` to maximize compatibility with your Google AI Studio account.
 
 ### 3. Run Database Migration
 ```bash
@@ -304,6 +307,7 @@ npx prisma studio
 ```bash
 # Add to .env file
 GEMINI_API_KEY=your-gemini-api-key-here
+GEMINI_MODEL=gemini-2.0-flash
 
 # Verify it's set correctly
 node -e "console.log(process.env.GEMINI_API_KEY ? '✅ Set' : '❌ Missing')"

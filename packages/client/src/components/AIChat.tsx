@@ -1,6 +1,31 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { X, Send, Minimize2, MessageSquare, Loader2, Sparkles } from 'lucide-react';
-import axios from 'axios';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import axios from "axios";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import {
+  Sparkles,
+  ShieldCheck,
+  BarChart3,
+  Users,
+  ClipboardList,
+  Minimize2,
+  MessageSquare,
+  Send,
+  Loader2,
+  Mic,
+  MicOff,
+} from "lucide-react";
+
+import { Button } from "@/components/ui/button";
+import {
+  ChatBubble,
+  ChatBubbleAvatar,
+  ChatBubbleMessage,
+} from "@/components/ui/chat-bubble";
+import { ChatMessageList } from "@/components/ui/chat-message-list";
+import { MessageLoading } from "@/components/ui/message-loading";
+import { ChatInput } from "@/components/ui/chat-input";
+import { cn } from "@/lib/utils";
 
 interface Message {
   id: string;
@@ -21,237 +46,702 @@ interface AIChatProps {
   userRole?: string;
 }
 
-const AIChat: React.FC<AIChatProps> = ({ isOpen, onClose, userRole = 'user' }) => {
+type BrowserSpeechRecognitionConstructor = new () => BrowserSpeechRecognitionInstance;
+
+interface BrowserSpeechRecognitionInstance {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  onresult: ((event: BrowserSpeechRecognitionEvent) => void) | null;
+  onerror: ((event: BrowserSpeechRecognitionErrorEvent) => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+}
+
+interface BrowserSpeechRecognitionEvent {
+  results: BrowserSpeechRecognitionResultList;
+}
+
+interface BrowserSpeechRecognitionResultList {
+  length: number;
+  item: (index: number) => BrowserSpeechRecognitionResult;
+  [index: number]: BrowserSpeechRecognitionResult;
+}
+
+interface BrowserSpeechRecognitionResult {
+  isFinal: boolean;
+  [index: number]: BrowserSpeechRecognitionAlternative;
+  length: number;
+}
+
+interface BrowserSpeechRecognitionAlternative {
+  transcript: string;
+}
+
+interface BrowserSpeechRecognitionErrorEvent {
+  error: string;
+}
+
+interface BrowserSpeechRecognitionWindow extends Window {
+  webkitSpeechRecognition?: BrowserSpeechRecognitionConstructor;
+  SpeechRecognition?: BrowserSpeechRecognitionConstructor;
+}
+
+interface RoleTheme {
+  label: string;
+  sublabel: string;
+  gradient: string;
+  avatarFallback: string;
+  icon: React.ReactNode;
+}
+
+const ROLE_THEMES: Record<string, RoleTheme> = {
+  superadmin: {
+    label: "Platform Control",
+    sublabel: "Superadmin Mode",
+    gradient: "from-amber-500 via-orange-500 to-rose-500",
+    avatarFallback: "SA",
+    icon: <ShieldCheck className="h-5 w-5" />,
+  },
+  owner: {
+    label: "Org Overview",
+    sublabel: "Owner Mode",
+    gradient: "from-primary via-primary/80 to-purple-500",
+    avatarFallback: "OW",
+    icon: <BarChart3 className="h-5 w-5" />,
+  },
+  admin: {
+    label: "Operations Desk",
+    sublabel: "Admin Mode",
+    gradient: "from-sky-500 via-blue-500 to-indigo-500",
+    avatarFallback: "AD",
+    icon: <ClipboardList className="h-5 w-5" />,
+  },
+  manager: {
+    label: "Team Navigator",
+    sublabel: "Manager Mode",
+    gradient: "from-emerald-500 via-emerald-500 to-teal-500",
+    avatarFallback: "MG",
+    icon: <Users className="h-5 w-5" />,
+  },
+};
+
+const BASE_SUGGESTIONS = [
+  {
+    label: "Daily snapshot",
+    prompt:
+      "Give me a concise daily operations snapshot for my organization (max 5 bullets).",
+  },
+  {
+    label: "Route issues",
+    prompt:
+      "List any route assignments that need attention today and what actions I should take.",
+  },
+  {
+    label: "Upcoming deadlines",
+    prompt:
+      "Highlight upcoming deadlines or renewals I should know about this week, in under 4 bullets.",
+  },
+];
+
+const ROLE_SUGGESTIONS: Record<string, { label: string; prompt: string }[]> = {
+  superadmin: [
+    {
+      label: "System health",
+      prompt:
+        "Summarize overall platform health and any anomalies that superadmins should address immediately.",
+    },
+  ],
+  owner: [
+    {
+      label: "KPI pulse",
+      prompt:
+        "What are my organization's key metrics right now? Keep it concise with 3 actionable bullets.",
+    },
+    {
+      label: "Add admin",
+      prompt: "How do I add an admin to my organization? Walk me through the steps briefly.",
+    },
+    {
+      label: "Member error",
+      prompt: "Why am I getting a 'not a member' error? Give me a quick diagnostic checklist.",
+    },
+  ],
+  admin: [
+    {
+      label: "Route optimize",
+      prompt:
+        "How do I optimize route assignments today? Provide the top actions I should consider.",
+    },
+    {
+      label: "Vehicle care",
+      prompt:
+        "What's the best way to manage vehicle maintenance this week? Focus on the essentials.",
+    },
+    {
+      label: "Payroll help",
+      prompt:
+        "Help me understand the payroll report in under 4 bullets, highlighting any anomalies.",
+    },
+  ],
+  manager: [
+    {
+      label: "Assign team",
+      prompt: "How do I assign employees to routes? Summarize the process in 3 steps.",
+    },
+    {
+      label: "Shift process",
+      prompt: "What's the process for scheduling shifts? Keep the answer short and actionable.",
+    },
+    {
+      label: "Driver availability",
+      prompt: "How can I track driver availability right now? Provide a quick checklist.",
+    },
+  ],
+};
+
+const markdownComponents = {
+  p: ({ children }: { children: React.ReactNode }) => (
+    <p className="mb-3 last:mb-0 text-sm leading-relaxed text-muted-foreground dark:text-muted-foreground/90">
+      {children}
+    </p>
+  ),
+  ul: ({ children }: { children: React.ReactNode }) => (
+    <ul className="list-disc pl-5 text-sm text-muted-foreground dark:text-muted-foreground/90">
+      {children}
+    </ul>
+  ),
+  ol: ({ children }: { children: React.ReactNode }) => (
+    <ol className="list-decimal pl-5 text-sm text-muted-foreground dark:text-muted-foreground/90">
+      {children}
+    </ol>
+  ),
+  li: ({ children }: { children: React.ReactNode }) => (
+    <li className="leading-relaxed">{children}</li>
+  ),
+  strong: ({ children }: { children: React.ReactNode }) => (
+    <strong className="font-semibold text-foreground">{children}</strong>
+  ),
+  em: ({ children }: { children: React.ReactNode }) => (
+    <em className="italic text-muted-foreground">{children}</em>
+  ),
+  code: ({ children, inline }: { children: React.ReactNode; inline?: boolean }) =>
+    inline ? (
+      <code className="rounded bg-muted px-1.5 py-0.5 text-xs text-foreground">
+        {children}
+      </code>
+    ) : (
+      <pre className="overflow-x-auto rounded-lg bg-muted px-3 py-2 text-xs text-muted-foreground">
+        <code>{children}</code>
+      </pre>
+    ),
+  a: ({ children, href }: { children: React.ReactNode; href?: string }) => (
+    <a
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      className="font-medium text-primary underline-offset-4 hover:underline"
+    >
+      {children}
+    </a>
+  ),
+};
+
+const AIChat: React.FC<AIChatProps> = ({ isOpen, onClose, userRole = "user" }) => {
   const [conversation, setConversation] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [isVoiceSupported, setIsVoiceSupported] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const recognitionRef = useRef<BrowserSpeechRecognitionInstance | null>(null);
 
-  const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
-  // Auto-scroll to bottom when new messages arrive
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  const roleTheme = ROLE_THEMES[userRole] || {
+    label: "Assistant Desk",
+    sublabel: "Assistant Mode",
+    gradient: "from-primary via-primary/80 to-purple-500",
+    avatarFallback: "AI",
+    icon: <Sparkles className="h-5 w-5" />,
+  };
 
-  // Focus input when chat opens
+  const suggestions = useMemo(() => {
+    return [...BASE_SUGGESTIONS, ...(ROLE_SUGGESTIONS[userRole] || [])];
+  }, [userRole]);
+
   useEffect(() => {
     if (isOpen && !isMinimized) {
       inputRef.current?.focus();
     }
   }, [isOpen, isMinimized]);
 
-  const handleSendMessage = async () => {
-    if (!input.trim() || isLoading) return;
+  useEffect(() => {
+    if (!isOpen) {
+      setIsMinimized(false);
+    }
+  }, [isOpen]);
 
-    const userMessage = input.trim();
-    setInput('');
-    setError(null);
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
 
-    // Optimistically add user message
-    const tempUserMessage: Message = {
-      id: `temp-${Date.now()}`,
-      role: 'user',
-      content: userMessage,
-      createdAt: new Date().toISOString(),
+    const speechWindow = window as BrowserSpeechRecognitionWindow;
+    const SpeechRecognitionConstructor =
+      speechWindow.SpeechRecognition || speechWindow.webkitSpeechRecognition;
+
+    if (!SpeechRecognitionConstructor) {
+      return;
+    }
+
+    const recognition = new SpeechRecognitionConstructor();
+    recognition.lang = "en-US";
+    recognition.continuous = false;
+    recognition.interimResults = true;
+
+    recognitionRef.current = recognition;
+    setIsVoiceSupported(true);
+
+    return () => {
+      recognition.stop();
     };
-    setMessages((prev) => [...prev, tempUserMessage]);
+  }, []);
 
-    setIsLoading(true);
+  const sendMessage = useCallback(
+    async (messageContent: string) => {
+      const trimmedContent = messageContent.trim();
 
-    try {
-      const response = await axios.post(
-        `${API_URL}/api/ai/chat`,
-        {
-          message: userMessage,
-          conversationId: conversation?.id,
-        },
-        {
-          withCredentials: true,
+      if (!trimmedContent || isLoading) {
+        return;
+      }
+
+      setInput("");
+      setError(null);
+
+      const tempUserMessage: Message = {
+        id: `temp-${Date.now()}`,
+        role: "user",
+        content: trimmedContent,
+        createdAt: new Date().toISOString(),
+      };
+
+      setMessages((prev) => [...prev, tempUserMessage]);
+      setIsLoading(true);
+
+      try {
+        const response = await axios.post(
+          `${API_URL}/api/ai/chat`,
+          {
+            message: trimmedContent,
+            conversationId: conversation?.id,
+          },
+          {
+            withCredentials: true,
+          },
+        );
+
+        if (!conversation) {
+          setConversation({
+            id: response.data.conversationId,
+            title: response.data.message?.conversationTitle || "New Conversation",
+            messages: [],
+          });
         }
-      );
 
-      // Update conversation ID if this is the first message
-      if (!conversation) {
-        setConversation({
-          id: response.data.conversationId,
-          title: 'New Conversation',
-          messages: [],
+        const assistantMessage: Message = {
+          id: response.data.message.id,
+          role: "assistant",
+          content: response.data.message.content,
+          createdAt: response.data.message.createdAt,
+        };
+
+        setMessages((prev) => {
+          const withoutTemp = prev.filter((m) => m.id !== tempUserMessage.id);
+          return [
+            ...withoutTemp,
+            {
+              ...tempUserMessage,
+              id: `user-${Date.now()}`,
+              createdAt: tempUserMessage.createdAt,
+            },
+            assistantMessage,
+          ];
+        });
+      } catch (err) {
+        console.error("AI chat error:", err);
+        setMessages((prev) => prev.filter((m) => m.id !== tempUserMessage.id));
+
+        const errorResponse = err as {
+          response?: { status?: number; data?: { message?: string } };
+        };
+        if (errorResponse.response?.status === 429) {
+          setError("Rate limit exceeded. Please try again in a few minutes.");
+        } else if (errorResponse.response?.status === 401) {
+          setError("Authentication required. Please log in.");
+        } else {
+          setError(
+            errorResponse.response?.data?.message ||
+              "Failed to send message. Please try again.",
+          );
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [API_URL, conversation, isLoading],
+  );
+
+  useEffect(() => {
+    const recognition = recognitionRef.current;
+    if (!recognition) {
+      return;
+    }
+
+    recognition.onresult = (event: BrowserSpeechRecognitionEvent) => {
+      const { results } = event;
+      let interimTranscript = "";
+      let finalTranscript = "";
+
+      for (let i = results.length - 1; i >= 0; i -= 1) {
+        const result = results[i];
+        if (result.isFinal && !finalTranscript) {
+          finalTranscript = result[0]?.transcript?.trim() || "";
+        } else if (!result.isFinal && !interimTranscript) {
+          interimTranscript = result[0]?.transcript?.trim() || "";
+        }
+      }
+
+      if (interimTranscript) {
+        setInput((prev) => {
+          const base = prev.trim();
+          const merged = base ? `${base} ${interimTranscript}`.trim() : interimTranscript;
+          return merged;
         });
       }
 
-      // Add assistant response
-      const assistantMessage: Message = {
-        id: response.data.message.id,
-        role: 'assistant',
-        content: response.data.message.content,
-        createdAt: response.data.message.createdAt,
-      };
-
-      setMessages((prev) => {
-        // Replace temp message with actual user message and add assistant response
-        const withoutTemp = prev.filter((m) => m.id !== tempUserMessage.id);
-        return [...withoutTemp, tempUserMessage, assistantMessage];
-      });
-    } catch (err) {
-      console.error('AI chat error:', err);
-      
-      // Remove temp message on error
-      setMessages((prev) => prev.filter((m) => m.id !== tempUserMessage.id));
-      
-      const error = err as { response?: { status?: number; data?: { message?: string } } };
-      if (error.response?.status === 429) {
-        setError('Rate limit exceeded. Please try again in a few minutes.');
-      } else if (error.response?.status === 401) {
-        setError('Authentication required. Please log in.');
-      } else {
-        setError(error.response?.data?.message || 'Failed to send message. Please try again.');
+      if (finalTranscript) {
+        setInput(finalTranscript);
+        setTimeout(() => {
+          void sendMessage(finalTranscript);
+        }, 0);
       }
-    } finally {
-      setIsLoading(false);
+    };
+
+    recognition.onerror = () => {
+      setIsRecording(false);
+      setError("Microphone error. Please check permissions and try again.");
+    };
+
+    recognition.onend = () => {
+      setIsRecording(false);
+    };
+
+    return () => {
+      recognition.onresult = null;
+      recognition.onerror = null;
+      recognition.onend = null;
+    };
+  }, [sendMessage]);
+
+  const handleSuggestionClick = (prompt: string) => {
+    setInput(prompt);
+    setTimeout(() => inputRef.current?.focus(), 50);
+  };
+
+  const handleVoiceToggle = () => {
+    if (!isVoiceSupported || !recognitionRef.current) {
+      setError("Voice mode is not supported in this browser.");
+      return;
+    }
+
+    if (isRecording) {
+      recognitionRef.current.stop();
+      return;
+    }
+
+    try {
+      setError(null);
+      recognitionRef.current.start();
+      setIsRecording(true);
+      setInput("");
+    } catch (err) {
+      console.error("Voice start error:", err);
+      setError("Unable to access the microphone. Please check permissions.");
+      setIsRecording(false);
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
+  const handleSendMessage = async () => {
+    if (!input.trim()) {
+      return;
+    }
+
+    await sendMessage(input);
+  };
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
       handleSendMessage();
     }
   };
 
-  const getRoleLabel = () => {
-    return userRole.charAt(0).toUpperCase() + userRole.slice(1);
+  const formatTimestamp = (timestamp: string) => {
+    return new Date(timestamp).toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   };
 
   if (!isOpen) return null;
 
   return (
     <div
-      className={`fixed bottom-4 right-4 z-50 flex flex-col bg-white rounded-lg shadow-2xl border border-gray-200 transition-all duration-300 ${
-        isMinimized ? 'h-14 w-80' : 'h-[600px] w-96'
-      }`}
-    >
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-t-lg">
-        <div className="flex items-center gap-2">
-          <Sparkles className="w-5 h-5" />
-          <div className="flex flex-col">
-            <span className="font-semibold text-sm">AI Assistant</span>
-            <span className="text-xs opacity-90">{getRoleLabel()} Mode</span>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => setIsMinimized(!isMinimized)}
-            className="hover:bg-white/20 rounded p-1 transition-colors"
-            aria-label={isMinimized ? 'Maximize' : 'Minimize'}
-          >
-            <Minimize2 className="w-4 h-4" />
-          </button>
-          <button
-            onClick={onClose}
-            className="hover:bg-white/20 rounded p-1 transition-colors"
-            aria-label="Close"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-
-      {/* Messages */}
-      {!isMinimized && (
-        <>
-          <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
-            {messages.length === 0 && (
-              <div className="flex flex-col items-center justify-center h-full text-center text-gray-500">
-                <MessageSquare className="w-12 h-12 mb-3 opacity-50" />
-                <p className="text-sm font-medium">Start a conversation</p>
-                <p className="text-xs mt-1 px-4">
-                  Ask me anything about your fleet management tasks and I&apos;ll help you out!
-                </p>
-              </div>
-            )}
-
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-              >
-                <div
-                  className={`max-w-[80%] rounded-lg px-4 py-2 ${
-                    message.role === 'user'
-                      ? 'bg-indigo-600 text-white'
-                      : 'bg-white border border-gray-200 text-gray-800'
-                  }`}
-                >
-                  <p className="text-sm whitespace-pre-wrap break-words">{message.content}</p>
-                  <span
-                    className={`text-xs mt-1 block ${
-                      message.role === 'user' ? 'text-indigo-200' : 'text-gray-400'
-                    }`}
-                  >
-                    {new Date(message.createdAt).toLocaleTimeString([], {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
-                  </span>
-                </div>
-              </div>
-            ))}
-
-            {isLoading && (
-              <div className="flex justify-start">
-                <div className="bg-white border border-gray-200 rounded-lg px-4 py-3">
-                  <Loader2 className="w-5 h-5 animate-spin text-indigo-600" />
-                </div>
-              </div>
-            )}
-
-            {error && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                <p className="text-sm text-red-700">{error}</p>
-              </div>
-            )}
-
-            <div ref={messagesEndRef} />
-          </div>
-
-          {/* Input */}
-          <div className="p-4 border-t border-gray-200 bg-white rounded-b-lg">
-            <div className="flex gap-2">
-              <textarea
-                ref={inputRef}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="Ask me anything..."
-                className="flex-1 resize-none border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                rows={1}
-                disabled={isLoading}
-              />
-              <button
-                onClick={handleSendMessage}
-                disabled={!input.trim() || isLoading}
-                className="bg-indigo-600 text-white rounded-lg px-4 py-2 hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors flex items-center justify-center"
-                aria-label="Send message"
-              >
-                {isLoading ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                ) : (
-                  <Send className="w-5 h-5" />
-                )}
-              </button>
-            </div>
-            <p className="text-xs text-gray-500 mt-2">
-              Press Enter to send, Shift+Enter for new line
-            </p>
-          </div>
-        </>
+      className={cn(
+        "fixed bottom-6 right-6 z-50 transition-all duration-300",
+        isOpen ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0",
       )}
+    >
+      <div
+        className={cn(
+          "relative flex flex-col overflow-hidden rounded-3xl border border-border bg-card/95 shadow-[0_25px_60px_-15px_rgba(15,23,42,0.45)] backdrop-blur-xl transition-all duration-300",
+          isMinimized
+            ? "h-[64px] w-[21rem]"
+            : "h-[34rem] w-[25rem] sm:w-[26rem] lg:h-[36rem] lg:w-[28rem] xl:h-[40rem] xl:w-[32rem]",
+        )}
+      >
+        <div
+          className={cn(
+            "flex items-center justify-between px-4 py-3 text-white border-b border-white/20",
+            "bg-gradient-to-r",
+            roleTheme.gradient,
+          )}
+        >
+          <div className="flex items-center gap-3">
+            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white/15 backdrop-blur">
+              {roleTheme.icon}
+            </span>
+            <div className="flex flex-col">
+              <span className="text-xs font-medium uppercase tracking-wide text-white/70">
+                {roleTheme.sublabel}
+              </span>
+              <span className="text-sm font-semibold leading-tight">
+                {roleTheme.label}
+              </span>
+            </div>
+          </div>
+          <div className="flex items-center gap-1">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 rounded-full bg-white/10 text-white hover:bg-white/20"
+              onClick={() => setIsMinimized((prev) => !prev)}
+              aria-label={isMinimized ? "Expand chat" : "Minimize chat"}
+            >
+              {isMinimized ? (
+                <MessageSquare className="h-4 w-4" />
+              ) : (
+                <Minimize2 className="h-4 w-4" />
+              )}
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 rounded-full bg-white/10 text-white hover:bg-white/20"
+              onClick={onClose}
+              aria-label="Close chat"
+            >
+              <span className="sr-only">Close chat</span>
+              <svg
+                viewBox="0 0 24 24"
+                className="h-4 w-4"
+                stroke="currentColor"
+                strokeWidth="1.8"
+                fill="none"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </Button>
+          </div>
+        </div>
+
+        {!isMinimized && (
+          <>
+            <div className="flex h-full flex-col bg-gradient-to-b from-background/70 via-background/80 to-background/95">
+              <div className="flex-1 min-h-0 px-4 py-3">
+                <ChatMessageList smooth className="bg-transparent">
+                  {messages.length === 0 && !isLoading && (
+                    <div className="flex flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-border/60 bg-card/60 px-6 py-10 text-center text-muted-foreground">
+                      <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+                        <Sparkles className="h-6 w-6" />
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-sm font-medium text-foreground">
+                          Start a conversation
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Ask a concise question or choose a quick prompt below to get going.
+                        </p>
+                      </div>
+                      <div className="flex w-full flex-wrap justify-center gap-2">
+                        {suggestions.map((suggestion) => (
+                          <Button
+                            key={suggestion.label}
+                            size="sm"
+                            variant="outline"
+                            onClick={() => handleSuggestionClick(suggestion.prompt)}
+                            className="h-8 rounded-full border-border bg-background text-xs font-semibold text-foreground hover:bg-primary/10 hover:text-primary"
+                          >
+                            {suggestion.label}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {messages.map((message) => {
+                    const isUser = message.role === "user";
+                    return (
+                      <ChatBubble
+                        key={message.id}
+                        variant={isUser ? "sent" : "received"}
+                        className="items-start"
+                      >
+                        {!isUser && (
+                          <ChatBubbleAvatar
+                            fallback={roleTheme.avatarFallback}
+                            className="hidden sm:flex"
+                          />
+                        )}
+                        <div className="flex max-w-[85%] flex-col gap-2">
+                          <ChatBubbleMessage
+                            variant={isUser ? "sent" : "received"}
+                            className={cn(
+                              "prose prose-sm max-w-none text-left leading-relaxed",
+                              "dark:prose-invert",
+                              isUser
+                                ? "bg-primary text-primary-foreground shadow-sm"
+                                : "border border-border bg-card text-foreground shadow-sm",
+                            )}
+                          >
+                            <ReactMarkdown
+                              remarkPlugins={[remarkGfm]}
+                              components={markdownComponents as never}
+                            >
+                              {message.content}
+                            </ReactMarkdown>
+                          </ChatBubbleMessage>
+                          <span
+                            className={cn(
+                              "text-[11px] font-medium text-muted-foreground",
+                              isUser ? "text-primary/60" : "text-muted-foreground/70",
+                            )}
+                          >
+                            {formatTimestamp(message.createdAt)}
+                          </span>
+                        </div>
+                      </ChatBubble>
+                    );
+                  })}
+
+                  {isLoading && (
+                    <ChatBubble variant="received">
+                      <ChatBubbleAvatar
+                        fallback={roleTheme.avatarFallback}
+                        className="hidden sm:flex"
+                      />
+                      <ChatBubbleMessage className="bg-background text-foreground">
+                        <MessageLoading />
+                      </ChatBubbleMessage>
+                    </ChatBubble>
+                  )}
+
+                  {error && (
+                    <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                      {error}
+                    </div>
+                  )}
+                </ChatMessageList>
+              </div>
+
+              <div className="border-t border-border/80 bg-background/95 px-4 py-3">
+                <div className="space-y-2">
+                  <div className="flex items-end gap-3">
+                    <ChatInput
+                      ref={inputRef}
+                      value={input}
+                      onChange={(event) => setInput(event.target.value)}
+                      onKeyDown={handleKeyDown}
+                      placeholder="Ask something precise..."
+                      disabled={isLoading}
+                      className="h-auto min-h-[58px] rounded-2xl border border-border/80 bg-card px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/70 focus-visible:ring-2 focus-visible:ring-primary/40"
+                    />
+                    {isVoiceSupported && (
+                      <Button
+                        type="button"
+                        variant={isRecording ? "default" : "outline"}
+                        onClick={handleVoiceToggle}
+                        className={cn(
+                          "h-[48px] w-[48px] rounded-full border-border/80 text-foreground transition-colors",
+                          isRecording
+                            ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                            : "bg-card hover:bg-primary/10 hover:text-primary",
+                        )}
+                        aria-label={isRecording ? "Stop voice input" : "Start voice input"}
+                      >
+                        {isRecording ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+                      </Button>
+                    )}
+                    <Button
+                      type="button"
+                      onClick={handleSendMessage}
+                      disabled={!input.trim() || isLoading}
+                      className="h-[48px] w-[48px] rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground/90"
+                      aria-label="Send message"
+                    >
+                      {isLoading ? (
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                      ) : (
+                        <Send className="h-5 w-5" />
+                      )}
+                    </Button>
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] font-medium text-muted-foreground/80">
+                    <span>
+                      {isVoiceSupported
+                        ? "Enter to send · Shift+Enter for newline · Tap mic for voice"
+                        : "Enter to send · Shift+Enter for newline"}
+                    </span>
+                    <span className="inline-flex items-center gap-1">
+                      <Sparkles className="h-3 w-3" />
+                      Powered by Gemini Flash
+                    </span>
+                  </div>
+                  {isRecording && (
+                    <div className="flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-[11px] font-semibold text-primary">
+                      <span className="relative flex h-2 w-2">
+                        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary/60 opacity-75" />
+                        <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
+                      </span>
+                      Listening...
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
     </div>
   );
 };
