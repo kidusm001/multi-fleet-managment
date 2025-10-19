@@ -47,6 +47,8 @@ import { Link } from "react-router-dom";
 import { cn } from "@lib/utils";
 import { LayoutDashboard, Send } from "lucide-react";
 import LoadingAnimation from "@components/Common/LoadingAnimation";
+import AIAssistantButton from "@components/AIAssistantButton";
+import { useAIAssistant } from "@hooks/useAIAssistant";
 
 import "@styles/App.css";
 
@@ -136,6 +138,7 @@ function ProtectedLayout({ isDark }) {
   const location = useLocation();
   const isHomeLanding = location.pathname === ROUTES.HOME;
   const isEmployeePortal = location.pathname.startsWith('/employee-portal');
+  const { shouldShow, userRole } = useAIAssistant();
 
   if (isHomeLanding) {
     return <Outlet />;
@@ -151,6 +154,8 @@ function ProtectedLayout({ isDark }) {
           {!isEmployeePortal && <Footer />}
         </main>
       </div>
+      {/* AI Assistant - Show for privileged roles only */}
+      {shouldShow && <AIAssistantButton userRole={userRole} />}
     </div>
   );
 }

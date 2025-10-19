@@ -22,6 +22,7 @@ import payrollPeriodRoutes from './payroll-periods';
 import cacheRoutes from './cache';
 import invitationRoutes from './invitation';
 import searchRoutes from './search';
+import aiRoutes from './ai';
 // import shiftRoutes from './shiftRoutes';
 // import employeeRoutes from './employeeRoutes';
 // import routeRoutes from './routeRoutes';
@@ -68,6 +69,7 @@ router.use('/payroll-periods', payrollPeriodRoutes);
 router.use('/cache', cacheRoutes);
 router.use('/accept-invitation', invitationRoutes);
 router.use('/search', searchRoutes);
+router.use('/ai', aiRoutes);
 
 // Register routes
 // router.use('/shifts', shiftRoutes);

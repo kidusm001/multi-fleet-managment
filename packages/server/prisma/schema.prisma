@@ -585,6 +585,7 @@ model User {
   isSubscribed Boolean?
 
   seenNotifications NotificationSeen[] @relation("UserSeenNotifications")
+  aiConversations   AiConversation[]   @relation("UserConversations")
 
   @@unique([email])
   @@map("user")
@@ -657,6 +658,9 @@ model Organization {
   attendanceRecords AttendanceRecord[]
   payrollPeriods    PayrollPeriod[]
   payrollEntries    PayrollEntry[]
+  
+  // AI Assistant relations
+  aiConversations AiConversation[] @relation("OrgConversations")
 
   @@unique([slug])
   @@map("organization")
@@ -886,4 +890,66 @@ enum ImportanceLevel {
 enum LocationType {
   BRANCH
   HQ
+}
+
+// AI Assistant Models
+model AiConversation {
+  id             String   @id @default(cuid())
+  userId         String
+  organizationId String?
+  userRole       String // Role at time of conversation
+  title          String? // Auto-generated from first message
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  archived       Boolean  @default(false)
+  
+  user         User             @relation("UserConversations", fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization?    @relation("OrgConversations", fields: [organizationId], references: [id], onDelete: Cascade)
+  messages     AiMessage[]
+  
+  @@index([userId])
+  @@index([organizationId])
+  @@index([createdAt])
+  @@map("ai_conversations")
+}
+
+model AiMessage {
+  id             String   @id @default(cuid())
+  conversationId String
+  role           MessageRole // user or assistant
+  content        String   @db.Text
+  tokens         Int?     // Track token usage
+  cost           Decimal? @db.Decimal(10, 6) // Track cost per message
+  contextUsed    String?  @db.Text // What context was provided to the AI
+  createdAt      DateTime @default(now())
+  
+  conversation AiConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  
+  @@index([conversationId])
+  @@index([createdAt])
+  @@map("ai_messages")
+}
+
+model AiUsageLog {
+  id             String   @id @default(cuid())
+  userId         String
+  organizationId String?
+  endpoint       String // Which endpoint was called
+  tokensUsed     Int
+  cost           Decimal  @db.Decimal(10, 6)
+  success        Boolean  @default(true)
+  errorMessage   String?
+  responseTime   Int? // milliseconds
+  createdAt      DateTime @default(now())
+  
+  @@index([userId])
+  @@index([organizationId])
+  @@index([createdAt])
+  @@map("ai_usage_logs")
+}
+
+enum MessageRole {
+  user
+  assistant
+  system
 }
