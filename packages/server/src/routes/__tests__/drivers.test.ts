@@ -117,7 +117,7 @@ const baseDriver = {
   organization: { id: 'org1', name: 'Org 1' },
   vehicleAvailability: [],
   payrollReports: [],
-  assignedVehicles: [],
+  assignedVehicle: null,
 };
 
 const resetMocks = () => {
@@ -191,7 +191,7 @@ describe('Drivers Routes', () => {
             organization: true,
             vehicleAvailability: true,
             payrollReports: true,
-            assignedVehicles: true,
+            assignedVehicle: true,
             attendanceRecords: true,
             payrollEntries: true,
           },
@@ -203,7 +203,7 @@ describe('Drivers Routes', () => {
             organization: true,
             vehicleAvailability: true,
             payrollReports: true,
-            assignedVehicles: true,
+            assignedVehicle: true,
             attendanceRecords: true,
             payrollEntries: true,
           },
@@ -234,7 +234,7 @@ describe('Drivers Routes', () => {
             organization: true,
             vehicleAvailability: true,
             payrollReports: true,
-            assignedVehicles: true,
+            assignedVehicle: true,
             attendanceRecords: true,
             payrollEntries: true,
           },
@@ -263,7 +263,7 @@ describe('Drivers Routes', () => {
             organization: true,
             vehicleAvailability: true,
             payrollReports: true,
-            assignedVehicles: true,
+            assignedVehicle: true,
             attendanceRecords: true,
             payrollEntries: true,
           },
@@ -543,16 +543,16 @@ describe('Drivers Routes', () => {
   describe('User routes', () => {
     describe('GET /drivers', () => {
       it('returns drivers for active org', async () => {
-        mockPrisma.driver.findMany.mockResolvedValueOnce([{ ...baseDriver, assignedVehicles: [] }]);
+        mockPrisma.driver.findMany.mockResolvedValueOnce([{ ...baseDriver, assignedVehicle: null }]);
 
         const res = await request(app).get('/drivers');
 
-        const { assignedVehicles: _ignoredVehicles, ...driverWithoutVehicles } = baseDriver;
+        const { assignedVehicle: _ignoredVehicle, ...driverWithoutVehicle } = baseDriver;
 
         expect(res.status).toBe(200);
         expect(res.body).toEqual([
           {
-            ...driverWithoutVehicles,
+            ...driverWithoutVehicle,
             shuttleId: null,
             shuttle: null,
           },
@@ -594,7 +594,7 @@ describe('Drivers Routes', () => {
           where: {
             organizationId: 'org_test_123',
             deleted: false,
-            assignedVehicles: { none: {} },
+            assignedVehicle: null,
           },
         });
       });
@@ -743,15 +743,13 @@ describe('Drivers Routes', () => {
 
         const driverWithVehicle = {
           ...baseDriver,
-          assignedVehicles: [
-            {
-              id: 'vehicle1',
-              name: 'Shuttle 1',
-              plateNumber: 'ABC-123',
-              status: 'AVAILABLE',
-              capacity: 20,
-            },
-          ],
+          assignedVehicle: {
+            id: 'vehicle1',
+            name: 'Shuttle 1',
+            plateNumber: 'ABC-123',
+            status: 'AVAILABLE',
+            capacity: 20,
+          },
         };
 
         mockPrisma.driver.findUnique.mockResolvedValueOnce(driverWithVehicle);

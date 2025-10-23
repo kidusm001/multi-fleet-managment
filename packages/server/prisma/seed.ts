@@ -387,13 +387,13 @@ async function createEmployeesFromMembers(org: any, departments: any[], shifts: 
     employeeRoles.includes(member.role)
   ) as any[]
 
-  // Special handling for Sterling Logistics - create more concentrated employee groups
+  // Special handling for Sterling Logistics - assign each member to ONE department/shift/location
   let employeesToCreate = eligibleMembers
   if (org.slug === 'sterling-logistics') {
-    console.log(`   📈 Sterling Logistics: Creating concentrated employee groups (30+ per shift/location)`)
+    console.log(`   📈 Sterling Logistics: Assigning members to departments, shifts, and locations`)
     
-    // For Sterling Logistics, create multiple employees per shift/location combination
-    // to ensure at least 30 employees per shift per location
+    // For Sterling Logistics, assign each eligible member to exactly ONE combination
+    // of department, shift, and location (no duplicates)
     const concentratedEmployees = []
     
     // Get all locations for Sterling Logistics
@@ -401,23 +401,19 @@ async function createEmployeesFromMembers(org: any, departments: any[], shifts: 
       where: { organizationId: org.id }
     })
     
-    // For each shift, create employees concentrated in ALL locations
-    for (const shift of shifts) {
-      for (const location of allLocations) {
-        // Create 30-35 employees per shift/location combination
-        const employeesForThisCombo = Math.floor(Math.random() * 6) + 30 // 30-35 employees
-        
-        for (let i = 0; i < employeesForThisCombo; i++) {
-          // Use existing members in round-robin fashion
-          const member = eligibleMembers[i % eligibleMembers.length]
-          concentratedEmployees.push({
-            member,
-            department: departments[Math.floor(Math.random() * departments.length)],
-            shift,
-            location
-          })
-        }
-      }
+    // Assign each member to ONE department, shift, and location
+    for (let i = 0; i < eligibleMembers.length; i++) {
+      const member = eligibleMembers[i]
+      const department = departments[i % departments.length]
+      const shift = shifts[i % shifts.length]
+      const location = allLocations[i % allLocations.length]
+      
+      concentratedEmployees.push({
+        member,
+        department,
+        shift,
+        location
+      })
     }
     
     // Convert to the format expected by the rest of the function
