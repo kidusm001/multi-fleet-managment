@@ -27,6 +27,7 @@ const DriverPortal = lazy(() => import('@pages/DriverPortal'));
 const EmployeePortal = lazy(() => import('@pages/EmployeePortal'));
 const Home = lazy(() => import('@pages/Home'));
 const Profile = lazy(() => import('@pages/Profile'));
+const Landing = lazy(() => import('@components/landing').then(m => ({ default: m.LandingPage })));
 
 import { RoleProvider, useRole } from "@contexts/RoleContext";
 import { OrganizationProvider } from "@contexts/OrganizationContext";
@@ -232,6 +233,14 @@ function AppContent() {
       <Routes key={`routes-${role}`}>
         {/* Public Routes */}
         <Route
+          path="/landing"
+          element={
+            <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading…</div>}>
+              <Landing />
+            </Suspense>
+          }
+        />
+        <Route
           path="/auth/login"
           element={
             <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading…</div>}>
@@ -248,6 +257,9 @@ function AppContent() {
           }
         />
         <Route path="/unauthorized" element={<Unauthorized />} />
+        
+        {/* Root redirect to landing */}
+        <Route index element={<Navigate to="/landing" replace />} />
         
         {/* Organization Selection - Protected but outside main layout */}
         <Route

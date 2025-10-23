@@ -28,7 +28,8 @@ export default function Login() {
   const [error, setError] = useState(null);
 
   const performHardRefresh = useCallback((targetPath) => {
-    const safePath = targetPath || '/';
+    // Default to landing so root always leads to /landing when a path isn't provided
+    const safePath = targetPath || '/landing';
     // Force a full reload so contexts rebuild with the new session.
     if (safePath.startsWith('http://') || safePath.startsWith('https://')) {
       window.location.replace(safePath);
@@ -67,9 +68,9 @@ export default function Login() {
         return;
       }
 
-      // Always redirect to home page after successful login
-      // Home page will handle role-based redirects
-      window.setTimeout(() => performHardRefresh(ROUTES.HOME), 150);
+      // After successful login, redirect users to organization selection
+      // (previous behavior redirected to ROUTES.HOME which points to '/').
+      window.setTimeout(() => performHardRefresh(ROUTES.ORGANIZATIONS), 150);
     } catch (error) {
       setError(error.message || 'An error occurred');
     } finally {
@@ -91,6 +92,24 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-4 bg-gradient-to-br from-slate-950 via-[#1a2327] to-[#1a2327] overflow-hidden">
+      {/* Back Button */}
+      <motion.div 
+        initial={{ x: -20, opacity: 0 }} 
+        animate={{ x: 0, opacity: 1 }} 
+        className="absolute top-8 left-8 z-20"
+      >
+        <Link
+          to="/"
+          className="flex items-center gap-2 px-4 py-2 text-white/80 hover:text-white transition-colors duration-300 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-white/20 hover:border-white/30"
+          style={{ fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif' }}
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+          </svg>
+          Back
+        </Link>
+      </motion.div>
+
       <motion.div initial={{ y: -10, opacity: 0 }} animate={{ y: 0, opacity: 1 }} className="mb-8 relative z-10">
         <div className="relative flex items-center bg-white/80 backdrop-blur-sm px-4 py-[0.2rem] rounded-[1.5rem]">
           <img src={logoSrc} alt="Routegna" className="h-14 object-contain" />
@@ -117,6 +136,7 @@ export default function Login() {
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               className="text-4xl font-black tracking-tight text-[#f3684e] mb-4"
+              style={{ fontFamily: "'Bebas Neue', -apple-system, BlinkMacSystemFont, sans-serif" }}
             >
               Routegna Platform
             </motion.h2>
@@ -124,6 +144,7 @@ export default function Login() {
               className="text-4xl font-bold text-white mb-8"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
+              style={{ fontFamily: "'Bebas Neue', -apple-system, BlinkMacSystemFont, sans-serif" }}
             >
               Welcome back
             </motion.h1>
