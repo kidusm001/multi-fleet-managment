@@ -1,4 +1,4 @@
-import { TrendingUp, Calendar, DollarSign, Truck, X } from "lucide-react";
+import { TrendingUp, Calendar, Banknote, Truck, X } from "lucide-react";
 import PropTypes from "prop-types";
 import { formatCurrency } from "@/utils/formatters";
 
@@ -47,7 +47,7 @@ export function ShuttleAnalysis({
               <OverviewCard
                 title="Monthly Cost"
                 value={formatCurrency(calculateMonthlyCost(selectedShuttle))}
-                icon={<DollarSign className="h-4 w-4 text-muted-foreground" />}
+                icon={<Banknote className="h-4 w-4 text-muted-foreground" />}
               />
               <OverviewCard
                 title="Usage (Days)"

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Calendar, Clock, TrendingUp, DollarSign } from "lucide-react";
+import { Calendar, Clock, TrendingUp, Banknote } from "lucide-react";
 import Button from "@/components/Common/UI/Button";
 import { Input } from "@/components/Common/UI/Input";
 import { Label } from "@/components/Common/UI/Label";
@@ -291,7 +291,7 @@ export default function AttendanceFormDialog({
             {/* Fuel Cost */}
             <div className="space-y-2">
               <Label htmlFor="fuelCost" className={cn(labelClass, "flex items-center gap-2")}>
-                <DollarSign className="h-4 w-4" />
+                <Banknote className="h-4 w-4" />
                 Fuel Cost (ETB)
               </Label>
               <Input
@@ -314,7 +314,7 @@ export default function AttendanceFormDialog({
             {/* Toll Cost */}
             <div className="space-y-2">
               <Label htmlFor="tollCost" className={cn(labelClass, "flex items-center gap-2")}>
-                <DollarSign className="h-4 w-4" />
+                <Banknote className="h-4 w-4" />
                 Toll Cost (ETB)
               </Label>
               <Input

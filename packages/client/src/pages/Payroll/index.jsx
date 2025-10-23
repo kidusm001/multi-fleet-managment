@@ -1,7 +1,7 @@
 // EnhancedShuttlePayrollDashboard.jsx
 import { 
   Download, 
-  DollarSign, 
+  Banknote, 
   Users, 
   TrendingUp, 
   Calendar,
@@ -450,7 +450,7 @@ export default function EnhancedShuttlePayrollDashboard() {
           <div className={`p-2 rounded-lg ${
             isDark ? 'bg-green-900/20' : 'bg-green-50'
           }`}>
-            <DollarSign className={`h-6 w-6 ${
+            <Banknote className={`h-6 w-6 ${
               isDark ? 'text-green-400' : 'text-green-600'
             }`} />
           </div>
@@ -597,7 +597,7 @@ export default function EnhancedShuttlePayrollDashboard() {
               <div className={`p-3 rounded-lg ${
                 isDark ? 'bg-blue-900/30' : 'bg-blue-100'
               }`}>
-                <DollarSign className={`h-6 w-6 ${
+                <Banknote className={`h-6 w-6 ${
                   isDark ? 'text-blue-400' : 'text-blue-600'
                 }`} />
               </div>

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Home, Route, Truck, Users, Settings, DollarSign, Building2 } from "lucide-react";
+import { X, Home, Route, Truck, Users, Settings, Banknote, Building2 } from "lucide-react";
 import { useRole } from "@contexts/RoleContext";
 import { NAV_CONFIG } from "@/config/nav-config";
 import { cn } from "@lib/utils";
@@ -18,7 +18,7 @@ const getNavIcon = (label) => {
     case "Employees":
       return Users;
     case "Payroll":
-      return DollarSign;
+      return Banknote;
     case "Settings":
       return Settings;
     case "Organizations":
