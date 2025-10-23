@@ -96,34 +96,138 @@ function OverviewCard({ title, value, icon }) {
 }
 
 function PayrollAnalysis({ shuttle, calculateMonthlyCost }) {
+  const grossAmount = shuttle.grossAmount || calculateMonthlyCost(shuttle);
+  const bonuses = shuttle.bonuses || 0;
+  const deductions = shuttle.deductions || 0;
+  const netPay = shuttle.totalAmount || (grossAmount + bonuses - deductions);
+  
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <h3 className="text-lg font-semibold">
-        Payroll Analysis for {shuttle.id}
+        Payroll Breakdown for {shuttle.driver?.name || shuttle.id}
       </h3>
-      <div className="grid gap-4 md:grid-cols-2">
+      
+      {/* Status and Payment Info */}
+      <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm">Daily Cost</CardTitle>
+            <CardTitle className="text-sm">Payment Status</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {formatCurrency(shuttle.costPerDay)}
+            <div className="text-lg font-bold capitalize">
+              {shuttle.status || 'PENDING'}
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle className="text-sm">Monthly Cost</CardTitle>
+            <CardTitle className="text-sm">Payment Method</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
-              {formatCurrency(calculateMonthlyCost(shuttle))}
+            <div className="text-lg font-bold">
+              Bank Transfer
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm">Bank Account</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-sm">
+              {shuttle.driver?.bankName || 'N/A'}<br />
+              {shuttle.driver?.bankAccountNumber || 'Not specified'}
             </div>
           </CardContent>
         </Card>
       </div>
-      <CostBreakdown shuttle={shuttle} />
+
+      {/* Payroll Calculation */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Payment Calculation</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            <div className="flex justify-between py-2 border-b">
+              <span className="text-[var(--text-secondary)]">Gross Pay (Base + Overtime)</span>
+              <span className="font-semibold">{formatCurrency(grossAmount)}</span>
+            </div>
+            {bonuses > 0 && (
+              <div className="flex justify-between py-2 border-b text-green-600">
+                <span>+ Bonuses</span>
+                <span className="font-semibold">{formatCurrency(bonuses)}</span>
+              </div>
+            )}
+            {deductions > 0 && (
+              <div className="flex justify-between py-2 border-b text-red-600">
+                <span>- Deductions (Tax & Penalties)</span>
+                <span className="font-semibold">-{formatCurrency(deductions)}</span>
+              </div>
+            )}
+            <div className="flex justify-between py-3 border-t-2 border-[var(--divider)]">
+              <span className="text-lg font-bold">Net Pay</span>
+              <span className="text-lg font-bold text-blue-600">{formatCurrency(netPay)}</span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Work Summary */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Work Summary</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-3 md:grid-cols-2">
+            <div className="flex justify-between">
+              <span className="text-[var(--text-secondary)]">Days Worked</span>
+              <span className="font-semibold">{shuttle.usageDays || 0} days</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-[var(--text-secondary)]">Hours Worked</span>
+              <span className="font-semibold">{shuttle.hoursWorked?.toFixed(1) || '0.0'} hours</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-[var(--text-secondary)]">Trips Completed</span>
+              <span className="font-semibold">{shuttle.tripsCompleted || 0} trips</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-[var(--text-secondary)]">Distance Covered</span>
+              <span className="font-semibold">{shuttle.kmsCovered?.toFixed(1) || '0.0'} km</span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Driver Info if available */}
+      {shuttle.driver && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Driver Information</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <div className="flex justify-between">
+                <span className="text-[var(--text-secondary)]">Name</span>
+                <span className="font-semibold">{shuttle.driver.name}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-[var(--text-secondary)]">Email</span>
+                <span className="font-semibold">{shuttle.driver.email || 'N/A'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-[var(--text-secondary)]">Base Salary</span>
+                <span className="font-semibold">{formatCurrency(shuttle.driver.baseSalary || 0)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-[var(--text-secondary)]">Hourly Rate</span>
+                <span className="font-semibold">{formatCurrency(shuttle.driver.hourlyRate || 0)}/hr</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

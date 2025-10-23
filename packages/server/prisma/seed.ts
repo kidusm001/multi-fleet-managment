@@ -513,6 +513,13 @@ async function createDriversFromMembers(org: any, usersByRole: any) {
           continue
         }
 
+        // Create varied salaries for Sterling Logistics drivers
+        const baseSalary = org.slug === 'sterling-logistics' 
+          ? [5000, 6000, 7000, 8000, 9000, 10000][i % 6] // Varied salaries
+          : 5000 + Math.floor(Math.random() * 3000) // Random for others
+        
+        const hourlyRate = baseSalary / 160 // Assuming ~160 hours per month
+        
         const driver = await prisma.driver.create({
           data: { 
             name: member.user.name, 
@@ -520,7 +527,12 @@ async function createDriversFromMembers(org: any, usersByRole: any) {
             phoneNumber: `+1-555-${String(Math.floor(Math.random() * 9000) + 1000)}-${i}`, 
             licenseNumber, 
             experienceYears: Math.floor(Math.random() * 10) + 2, 
-            status: DriverStatus.ACTIVE, 
+            status: DriverStatus.ACTIVE,
+            baseSalary: baseSalary,
+            hourlyRate: hourlyRate,
+            overtimeRate: 1.5,
+            bankAccountNumber: `ACC${String(Math.floor(Math.random() * 100000000)).padStart(10, '0')}`,
+            bankName: ['Commercial Bank of Ethiopia', 'Dashen Bank', 'Awash Bank', 'Bank of Abyssinia'][i % 4],
             organizationId: org.id 
           },
         })
@@ -846,6 +858,264 @@ async function createNotifications(org: any, usersByRole: any) {
   return notificationCount
 }
 
+async function createAttendanceRecords(org: any, drivers: any[], vehicles: any[]) {
+  console.log(`   📅 Creating attendance records for ${org.name}...`)
+  
+  if (drivers.length === 0 || vehicles.length === 0) {
+    console.log(`   ⚠️  Skipping attendance - no drivers or vehicles`)
+    return 0
+  }
+
+  const today = new Date()
+  const currentMonth = today.getMonth()
+  const currentYear = today.getFullYear()
+  
+  // Create attendance for the last 20 days of current month
+  const daysToCreate = Math.min(20, today.getDate())
+  let recordCount = 0
+  
+  for (let dayOffset = daysToCreate; dayOffset > 0; dayOffset--) {
+    const recordDate = new Date(currentYear, currentMonth, today.getDate() - dayOffset)
+    recordDate.setHours(0, 0, 0, 0)
+    
+    // Create attendance for each driver (80% attendance rate)
+    for (const driver of drivers) {
+      if (Math.random() < 0.8) { // 80% attendance
+        const assignedVehicle = vehicles.find(v => v.driverId === driver.id) || getRandomElement(vehicles)
+        
+        // Generate realistic work metrics
+        const hoursWorked = 7 + Math.random() * 3 // 7-10 hours
+        const tripsCompleted = Math.floor(Math.random() * 5) + 2 // 2-6 trips
+        const kmsCovered = 50 + Math.random() * 150 // 50-200 km
+        const fuelCost = kmsCovered * (0.8 + Math.random() * 0.4) // ~0.8-1.2 per km
+        const tollCost = tripsCompleted * (5 + Math.random() * 10) // ~5-15 per trip
+        
+        try {
+          await prisma.attendanceRecord.create({
+            data: {
+              driverId: driver.id,
+              vehicleId: assignedVehicle.id,
+              date: recordDate,
+              hoursWorked: hoursWorked,
+              tripsCompleted: tripsCompleted,
+              kmsCovered: kmsCovered,
+              fuelCost: fuelCost,
+              tollCost: tollCost,
+              organizationId: org.id
+            }
+          })
+          recordCount++
+        } catch (error) {
+          console.log(`     ⚠️  Could not create attendance for ${driver.name} on ${recordDate.toISOString()}: ${error}`)
+        }
+      }
+    }
+  }
+  
+  console.log(`   ✅ Created ${recordCount} attendance records`)
+  return recordCount
+}
+
+async function createPayrollPeriods(org: any, drivers: any[], vehicles: any[]) {
+  console.log(`   💼 Creating payroll periods and entries for ${org.name}...`)
+  
+  if (drivers.length === 0) {
+    console.log(`   ⚠️  Skipping payroll - no drivers`)
+    return 0
+  }
+
+  const today = new Date()
+  const currentMonth = today.getMonth() + 1
+  const currentYear = today.getFullYear()
+  
+  // Create period for current month
+  const periodStartDate = new Date(currentYear, currentMonth - 1, 1)
+  periodStartDate.setHours(0, 0, 0, 0)
+  const periodEndDate = new Date(currentYear, currentMonth, 0)
+  periodEndDate.setHours(23, 59, 59, 999)
+  
+  const monthNames = ['January', 'February', 'March', 'April', 'May', 'June', 
+                      'July', 'August', 'September', 'October', 'November', 'December']
+  const periodName = `${monthNames[currentMonth - 1]} ${currentYear}`
+  
+  try {
+    // Calculate total attendance per driver
+    const attendanceStats = await Promise.all(
+      drivers.map(async (driver) => {
+        const records = await prisma.attendanceRecord.findMany({
+          where: {
+            driverId: driver.id,
+            date: {
+              gte: periodStartDate,
+              lte: periodEndDate
+            }
+          }
+        })
+        
+        const daysWorked = records.length
+        const hoursWorked = records.reduce((sum, r) => sum + (r.hoursWorked || 0), 0)
+        const tripsCompleted = records.reduce((sum, r) => sum + r.tripsCompleted, 0)
+        const kmsCovered = records.reduce((sum, r) => sum + (r.kmsCovered || 0), 0)
+        
+        return {
+          driver,
+          daysWorked,
+          hoursWorked,
+          tripsCompleted,
+          kmsCovered
+        }
+      })
+    )
+    
+    // Calculate total payroll amount
+    let totalAmount = 0
+    const entries = []
+    
+    for (const stats of attendanceStats) {
+      const { driver, daysWorked, hoursWorked, tripsCompleted, kmsCovered } = stats
+      
+      // MATCHING ACTUAL PAYROLL SERVICE LOGIC
+      let basePay = 0
+      let overtimePay = 0
+      let bonuses = 0
+      let deductions = 0
+      
+      // 1. Calculate base pay (matches payroll-periods.ts lines 312-320)
+      if (driver.baseSalary) {
+        // Monthly salary (full amount if working days met)
+        basePay = parseFloat(driver.baseSalary.toString())
+      } else if (driver.hourlyRate) {
+        // Hourly rate for regular hours (up to 160 hours/month)
+        const regularHours = Math.min(hoursWorked, 160)
+        basePay = parseFloat(driver.hourlyRate.toString()) * regularHours
+      }
+      
+      // 2. Calculate overtime (matches payroll-periods.ts lines 322-328)
+      const regularHoursPerMonth = 160 // ~8 hours/day * 20 days
+      if (hoursWorked > regularHoursPerMonth && driver.hourlyRate) {
+        const overtimeHours = hoursWorked - regularHoursPerMonth
+        const overtimeRate = driver.overtimeRate || 1.5
+        overtimePay = parseFloat(driver.hourlyRate.toString()) * overtimeHours * overtimeRate
+      }
+      
+      // 3. Calculate automated bonuses (matches payroll-periods.ts lines 330-347)
+      // Performance bonus: $5 per trip if > 50 trips
+      if (tripsCompleted > 50) {
+        bonuses += (tripsCompleted - 50) * 5
+      }
+      
+      // Punctuality bonus: $100 if 95%+ attendance (assuming 22 working days)
+      const expectedWorkingDays = 22
+      const attendanceRate = (daysWorked / expectedWorkingDays) * 100
+      if (attendanceRate >= 95) {
+        bonuses += 100
+      }
+      
+      // Fuel efficiency bonus: $50 if avg > 10 km/hour
+      const avgKmPerHour = hoursWorked > 0 ? kmsCovered / hoursWorked : 0
+      if (avgKmPerHour > 10) {
+        bonuses += 50
+      }
+      
+      // 4. Calculate automated deductions (matches payroll-periods.ts lines 349-359)
+      const grossPay = basePay + overtimePay + bonuses
+      
+      // Tax deduction (10% TDS - matches actual service)
+      deductions += grossPay * 0.10
+      
+      // Late penalties: $20 per day with less than 8 hours
+      // (In seed, we assume some random late days)
+      const estimatedLateDays = Math.floor(daysWorked * 0.1) // 10% late days
+      if (estimatedLateDays > 0) {
+        deductions += estimatedLateDays * 20
+      }
+      
+      // 5. Calculate net pay (matches payroll-periods.ts line 361)
+      const amount = basePay + overtimePay
+      const netPay = grossPay - deductions
+      totalAmount += netPay
+      
+      entries.push({
+        driver,
+        amount, // Base + overtime (before bonuses)
+        bonuses,
+        deductions,
+        netPay,
+        daysWorked,
+        hoursWorked,
+        tripsCompleted,
+        kmsCovered
+      })
+    }
+    
+    // Create the payroll period
+    const payrollPeriod = await prisma.payrollPeriod.create({
+      data: {
+        name: periodName,
+        startDate: periodStartDate,
+        endDate: periodEndDate,
+        totalAmount: totalAmount,
+        status: PaymentStatus.PENDING,
+        organizationId: org.id
+      }
+    })
+    
+    // Create payroll entries with varied statuses
+    let entryCount = 0
+    for (let i = 0; i < entries.length; i++) {
+      const entry = entries[i]
+      const assignedVehicle = vehicles.find(v => v.driverId === entry.driver.id)
+      
+      // Vary the payment status: 40% PAID (completed), 30% PROCESSED (approved), 30% PENDING
+      let status: typeof PaymentStatus[keyof typeof PaymentStatus] = PaymentStatus.PENDING
+      let paidAt: Date | undefined = undefined
+      const random = Math.random()
+      if (random < 0.4) {
+        status = PaymentStatus.PAID
+        // Set paid date to random day in last week
+        paidAt = new Date()
+        paidAt.setDate(paidAt.getDate() - Math.floor(Math.random() * 7))
+      } else if (random < 0.7) {
+        status = PaymentStatus.PROCESSED
+      }
+      
+      try {
+        await prisma.payrollEntry.create({
+          data: {
+            payrollPeriodId: payrollPeriod.id,
+            driverId: entry.driver.id,
+            vehicleId: assignedVehicle?.id,
+            payrollType: 'SALARY',
+            // Match the description format from payroll-periods.ts line 370
+            description: `Salary for ${entry.daysWorked} days (${entry.hoursWorked.toFixed(1)}h, ${entry.tripsCompleted} trips)`,
+            amount: entry.amount,
+            bonuses: entry.bonuses,
+            deductions: entry.deductions,
+            netPay: entry.netPay,
+            daysWorked: entry.daysWorked,
+            hoursWorked: entry.hoursWorked,
+            tripsCompleted: entry.tripsCompleted,
+            kmsCovered: entry.kmsCovered,
+            paymentMethod: 'BANK_TRANSFER',
+            status: status,
+            paidAt: paidAt,
+            organizationId: org.id
+          }
+        })
+        entryCount++
+      } catch (error) {
+        console.log(`     ⚠️  Could not create payroll entry for ${entry.driver.name}: ${error}`)
+      }
+    }
+    
+    console.log(`   ✅ Created payroll period "${periodName}" with ${entryCount} entries (Total: $${totalAmount.toFixed(2)})`)
+    return entryCount
+  } catch (error) {
+    console.log(`   ❌ Error creating payroll period: ${error}`)
+    return 0
+  }
+}
+
 async function createPayrollReports(org: any, usersByRole: any) {
   console.log(`   💰 Creating payroll reports for ${org.name}...`)
 
@@ -946,6 +1216,16 @@ async function seedOrganization(org: any) {
   // Create availability and scheduling
   await createVehicleAvailability(org, vehicles, drivers, routes, shifts)
   
+  // Create attendance records for Sterling Logistics
+  if (org.slug === 'sterling-logistics') {
+    await createAttendanceRecords(org, drivers, vehicles)
+  }
+  
+  // Create payroll periods and entries for Sterling Logistics
+  if (org.slug === 'sterling-logistics') {
+    await createPayrollPeriods(org, drivers, vehicles)
+  }
+  
   // Create business processes
   await createVehicleRequests(org, categories, usersByRole)
   await createNotifications(org, usersByRole)
@@ -984,12 +1264,16 @@ async function main() {
     prisma.vehicleRequest.count(),
     prisma.notification.count(),
     prisma.payrollReport.count(),
+    prisma.attendanceRecord.count(),
+    prisma.payrollPeriod.count(),
+    prisma.payrollEntry.count(),
   ])
 
   const [
     orgCount, memberCount, driverCount, vehicleCount, 
     routeCount, stopCount, employeeCount, availabilityCount,
-    requestCount, notificationCount, payrollCount
+    requestCount, notificationCount, payrollCount,
+    attendanceCount, payrollPeriodCount, payrollEntryCount
   ] = finalCounts
 
   console.log(`   Organizations: ${orgCount}`)
@@ -1003,6 +1287,9 @@ async function main() {
   console.log(`   Vehicle Requests: ${requestCount}`)
   console.log(`   Notifications: ${notificationCount}`)
   console.log(`   Payroll Reports: ${payrollCount}`)
+  console.log(`   Attendance Records: ${attendanceCount}`)
+  console.log(`   Payroll Periods: ${payrollPeriodCount}`)
+  console.log(`   Payroll Entries: ${payrollEntryCount}`)
   
   console.log(`\n✨ Successfully seeded ${orgCount} organizations with comprehensive fleet management data!`)
 }
