@@ -11,23 +11,40 @@ interface SyntheticEmployee {
 // Generate realistic synthetic employees for Sterling Logistics
 function generateSyntheticEmployees(count: number): SyntheticEmployee[] {
   const firstNames = [
+    // Amharic/Ethiopian names
+    'Abebe', 'Almaz', 'Amanuel', 'Azeb', 'Belete', 'Bethlehem', 'Biruk', 'Chaltu',
+    'Daniel', 'Dawit', 'Eleni', 'Emebet', 'Eshetu', 'Eyob', 'Fentaye', 'Fikirte',
+    'Getachew', 'Gelila', 'Habtamu', 'Hanna', 'Hiwot', 'Kalkidan', 'Kebede', 'Liya',
+    'Marta', 'Meaza', 'Meseret', 'Mulu', 'Nahom', 'Netsanet', 'Samuel', 'Sara',
+    'Seble', 'Seyoum', 'Sisay', 'Tadesse', 'Tewodros', 'Tigist', 'Tsion', 'Yared',
+    'Yohannes', 'Yonas', 'Zelalem', 'Zerihun', 'Zewdu',
+    // International names for diversity
     'Sarah', 'Jennifer', 'Michael', 'David', 'John', 'Richard', 'Joseph', 'Thomas',
-    'Charles', 'Christopher', 'Daniel', 'Matthew', 'Anthony', 'Mark', 'Donald', 'Steven',
+    'Charles', 'Christopher', 'Matthew', 'Anthony', 'Mark', 'Steven', 'Emma', 'Olivia',
     'Paul', 'Andrew', 'Joshua', 'Kenneth', 'Kevin', 'Brian', 'George', 'Edward',
     'Ronald', 'Timothy', 'Jason', 'Jeffrey', 'Ryan', 'Jacob', 'Gary', 'Nicholas',
     'Eric', 'Jonathan', 'Stephen', 'Larry', 'Justin', 'Scott', 'Brandon', 'Benjamin',
-    'Samuel', 'Frank', 'Gregory', 'Alexander', 'Patrick', 'Jack', 'Dennis', 'Jerry'
+    'Frank', 'Gregory', 'Alexander', 'Patrick', 'Jack', 'Dennis', 'Jerry', 'Sophia',
+    'Amelia', 'Isabella', 'Mia', 'Charlotte', 'Ava', 'Evelyn', 'Abigail', 'Harper',
+    'Emily', 'Elizabeth', 'Sofia', 'Avery', 'Ella', 'Scarlett', 'Grace', 'Chloe'
   ];
 
   const lastNames = [
+    // Ethiopian surnames
+    'Abebe', 'Alemu', 'Amare', 'Assefa', 'Bekele', 'Birhan', 'Chala', 'Demissie',
+    'Desta', 'Gebre', 'Gebru', 'Gemechu', 'Getachew', 'Girma', 'Haile', 'Kebede',
+    'Lemma', 'Mengistu', 'Mulugeta', 'Negash', 'Reta', 'Tadesse', 'Tefera', 'Tekle',
+    'Tesfaye', 'Teshome', 'Wolde', 'Worku', 'Yilma', 'Zenebe',
+    // International surnames for diversity
     'Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis',
     'Rodriguez', 'Martinez', 'Hernandez', 'Lopez', 'Gonzalez', 'Wilson', 'Anderson',
     'Thomas', 'Taylor', 'Moore', 'Jackson', 'Martin', 'Lee', 'Perez', 'Thompson',
     'White', 'Harris', 'Sanchez', 'Clark', 'Ramirez', 'Lewis', 'Robinson', 'Young',
     'Allen', 'King', 'Wright', 'Scott', 'Torres', 'Peterson', 'Phillips', 'Campbell',
     'Parker', 'Evans', 'Edwards', 'Collins', 'Reyes', 'Stewart', 'Morris', 'Rogers',
-    'Morgan', 'Peterson', 'Cooper', 'Reed', 'Cook', 'Morgan', 'Bell', 'Murphy',
-    'Bailey', 'Rivera', 'Cooper', 'Richardson', 'Cox', 'Howard', 'Ward', 'Cox'
+    'Morgan', 'Cooper', 'Reed', 'Cook', 'Bell', 'Murphy', 'Bailey', 'Rivera',
+    'Richardson', 'Cox', 'Howard', 'Ward', 'Brooks', 'Kelly', 'Sanders', 'Price',
+    'Bennett', 'Wood', 'Barnes', 'Ross', 'Henderson', 'Coleman', 'Jenkins', 'Perry'
   ];
 
   const employees: SyntheticEmployee[] = [];

@@ -42,7 +42,7 @@ import { ShuttleAnalysis } from "./components/ShuttleAnalysis";
 export default function EnhancedShuttlePayrollDashboard() {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
-  const [selectedMonth, setSelectedMonth] = useState("");
+  const [_selectedMonth, setSelectedMonth] = useState("");
   const [selectedShuttle, setSelectedShuttle] = useState(null);
   const [shuttleData, setShuttleData] = useState([]);
   const [searchTerm, setSearchTerm] = useState("");

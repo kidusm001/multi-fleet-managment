@@ -889,9 +889,9 @@ export const payrollService = {
   /**
    * Generate a PDF report for the actual payroll period with entries
    * @param {Object} period - The payroll period object with entries
-   * @param {Array} shuttleData - The formatted shuttle/vehicle data for display
+   * @param {Array} _shuttleData - The formatted shuttle/vehicle data for display
    */
-  async generatePayrollReport(period, shuttleData = []) {
+  async generatePayrollReport(period, _shuttleData = []) {
     try {
       if (!period) {
         throw new Error("No payroll period provided");
@@ -1032,7 +1032,7 @@ export const payrollService = {
         ['Net Pay:', `ETB ${totalNetPay.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`],
       ];
 
-      financialData.forEach(([label, value], index) => {
+      financialData.forEach(([label, value], _index) => {
         const isNetPay = label === 'Net Pay:';
         if (isNetPay) {
           doc.setFont('helvetica', 'bold');
