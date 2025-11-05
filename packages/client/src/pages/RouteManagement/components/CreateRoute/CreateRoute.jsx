@@ -2,8 +2,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@utils/cn";
+import { motion } from "framer-motion";
 // UI Components
-import { Card, CardHeader, CardContent } from "@components/Common/UI/Card";
 import { toast } from "sonner";
 import { ScrollArea } from "@components/Common/UI/scroll-area";
 import LoadingAnimation from "@/components/Common/LoadingAnimation";
@@ -52,6 +52,8 @@ function CreateRoute() {
   const [routes, setRoutes] = useState([]);
   const [shuttles, setShuttles] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [employeeCurrentPage, setEmployeeCurrentPage] = useState(1);
+  const [employeesPerPage] = useState(10);
 
   // Check if device is mobile
   const isMobile = () => {
@@ -401,18 +403,11 @@ function CreateRoute() {
   };
 
   return (
-    <Card
-      className={cn(
-        styles.mainCard,
-        "select-none",
-        "dark:select-border-transparent",
-        "p-4 md:p-6"
-      )}
-    >
-      <CardHeader className="px-4 md:px-6 pt-4 md:pt-6 pb-3 md:pb-4">
+    <div className="select-none">
+      <div className="px-4 sm:px-6 lg:px-8 pt-4 md:pt-6 pb-3 md:pb-4">
         <h2 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-gray-100">Create Route</h2>
-      </CardHeader>
-      <CardContent className={cn(styles.cardContent, "p-4 md:p-6")}>
+      </div>
+      <div className="px-4 sm:px-6 lg:px-8 py-4 md:py-6">
         {loading ? (
           <div className={cn(styles.loadingContainer, "py-8")}>
             <LoadingAnimation />
@@ -424,7 +419,7 @@ function CreateRoute() {
             <div className="block md:hidden">
               <div className="px-3 py-3 space-y-3">
                 {/* Mobile Shift Selection */}
-                <div className="bg-white rounded-2xl p-3 shadow-sm">
+                <div className="p-3">
                   <ShiftSelection
                     selectedShift={selectedShift}
                     onShiftChange={handleShiftChange}
@@ -440,7 +435,7 @@ function CreateRoute() {
 
                 {/* Mobile Location Selection and Create Button - only show when shift is selected */}
                 {selectedShift && (
-                  <div className="bg-white rounded-2xl p-3 shadow-sm space-y-3">
+                  <div className="p-3 space-y-3">
                     <LocationSelection
                       selectedLocation={selectedLocation}
                       onLocationChange={handleLocationChange}
@@ -453,7 +448,7 @@ function CreateRoute() {
                 )}
 
                 {/* Mobile Routes List */}
-                <div className="bg-white rounded-2xl p-3 shadow-sm">
+                <div className="p-3">
                   <div className="flex justify-between items-center mb-3">
                     <h2 className="text-lg font-semibold text-gray-900">Current Routes</h2>
                     <span className="text-xs bg-indigo-100 text-indigo-700 px-2 py-1 rounded-full">
@@ -466,7 +461,7 @@ function CreateRoute() {
                 </div>
 
                 {/* Mobile Employees List */}
-                <div className="bg-white rounded-2xl p-3 shadow-sm">
+                <div className="p-3">
                   <div className="flex justify-between items-center mb-3">
                     <h2 className="text-lg font-semibold text-gray-900">Available Employees</h2>
                     <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">
@@ -482,37 +477,54 @@ function CreateRoute() {
 
             <div className="hidden md:block">
               {/* Shift Selection with Create Route Button */}
-              <div className={cn(styles.shiftHeader, "flex flex-col lg:flex-row gap-4 lg:gap-6")}>
-                <ShiftSelection
-                  selectedShift={selectedShift}
-                  onShiftChange={handleShiftChange}
-                  shifts={shifts}
-                  stats={{
-                    shifts: shifts.length,
-                    employees: employees.length,
-                    routes: routes.length,
-                    shuttlesCount: shuttles.length,
-                  }}
-                />
+              <motion.div 
+                className={selectedShift ? "grid gap-6 mb-4" : cn(styles.shiftHeader)}
+                style={selectedShift ? { gridTemplateColumns: '1.5fr 1fr' } : {}}
+                layout
+                transition={{ duration: 0.4, ease: "easeInOut" }}
+              >
+                <motion.div
+                  layout
+                  transition={{ duration: 0.4, ease: "easeInOut" }}
+                >
+                  <ShiftSelection
+                    selectedShift={selectedShift}
+                    onShiftChange={handleShiftChange}
+                    shifts={shifts}
+                    stats={{
+                      shifts: shifts.length,
+                      employees: employees.length,
+                      routes: routes.length,
+                      shuttlesCount: shuttles.length,
+                    }}
+                    isCompact={!!selectedShift}
+                  />
+                </motion.div>
 
-                {/* Location Selection and Create Button Row - only show when shift is selected */}
+                {/* Location Selection and Create Button - only show when shift is selected */}
                 {selectedShift && (
-                  <div className={cn(styles.locationAndCreateRow, "flex flex-col sm:flex-row gap-4 sm:gap-6")}>
-                    <div className={styles.locationSelectionWrapper}>
+                  <motion.div 
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 20 }}
+                    transition={{ duration: 0.4, ease: "easeInOut" }}
+                    className="flex flex-col gap-4 items-end"
+                  >
+                    <div className="w-auto min-w-[250px] flex justify-end">
+                      <CustomButton onClick={handleCreateRoute} disabled={!selectedLocation}>
+                        Create Route
+                      </CustomButton>
+                    </div>
+                    <div className="w-full flex justify-end">
                       <LocationSelection
                         selectedLocation={selectedLocation}
                         onLocationChange={handleLocationChange}
                         locations={locations}
                       />
                     </div>
-                    <div className={styles.createButtonWrapper}>
-                      <CustomButton onClick={handleCreateRoute} disabled={!selectedLocation}>
-                        Create Route
-                      </CustomButton>
-                    </div>
-                  </div>
+                  </motion.div>
                 )}
-              </div>
+              </motion.div>
 
               {/* Main Content Grid - Always show */}
               <div className={cn(styles.mainGrid, "grid grid-cols-1 lg:grid-cols-[350px_1fr] gap-4 lg:gap-6")}>
@@ -530,16 +542,42 @@ function CreateRoute() {
                 </div>
 
                 {/* Right Panel - Employees */}
-                <div className={cn(styles.mainContent, "h-[300px] lg:h-[500px] order-1 lg:order-2")}>
+                <div className={cn(styles.mainContent, "h-[300px] lg:h-[500px] order-1 lg:order-2 flex flex-col")}>
                   <div className={styles.employeeTableHeader}>
                     <h2 className={styles.cardTitle}>Available Employees</h2>
                     <span className={styles.cardBadge}>
                       {employees.length} employees
                     </span>
                   </div>
-                  <div className={styles.tableWrapper}>
-                    <EmployeeTable data={employees} />
+                  <div className={cn(styles.tableWrapper, "flex-1 overflow-auto")}>
+                    <EmployeeTable data={employees.slice((employeeCurrentPage - 1) * employeesPerPage, employeeCurrentPage * employeesPerPage)} />
                   </div>
+                  {employees.length > employeesPerPage && (
+                    <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200/50 dark:border-border/50">
+                      <div className="text-sm text-gray-500 dark:text-muted-foreground">
+                        Showing {((employeeCurrentPage - 1) * employeesPerPage) + 1} to {Math.min(employeeCurrentPage * employeesPerPage, employees.length)} of {employees.length}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => setEmployeeCurrentPage(p => Math.max(1, p - 1))}
+                          disabled={employeeCurrentPage === 1}
+                          className="px-3 py-1 text-sm rounded-md border border-gray-200 dark:border-border bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-gray-700"
+                        >
+                          Previous
+                        </button>
+                        <span className="text-sm text-gray-600 dark:text-gray-400">
+                          Page {employeeCurrentPage} of {Math.ceil(employees.length / employeesPerPage)}
+                        </span>
+                        <button
+                          onClick={() => setEmployeeCurrentPage(p => Math.min(Math.ceil(employees.length / employeesPerPage), p + 1))}
+                          disabled={employeeCurrentPage >= Math.ceil(employees.length / employeesPerPage)}
+                          className="px-3 py-1 text-sm rounded-md border border-gray-200 dark:border-border bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 disabled:opacity-50 hover:bg-gray-50 dark:hover:bg-gray-700"
+                        >
+                          Next
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -604,8 +642,8 @@ function CreateRoute() {
             )}
           </>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
 

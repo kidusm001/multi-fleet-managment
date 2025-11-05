@@ -41,7 +41,7 @@ import {
 // Constants for pagination
 const ITEMS_PER_PAGE = {
   GRID: 6,
-  LIST: 10,
+  LIST: 6,
   TABLE: 1000, // High number to effectively show all items in table mode
 };
 
@@ -563,6 +563,7 @@ function RouteManagementView({ refreshTrigger }) {
             totalPages={totalPages}
             onPageChange={setCurrentPage}
             totalItems={filteredRoutes.length}
+            className={viewMode === "grid" ? "mt-4" : ""}
           />
         )}
       </div>

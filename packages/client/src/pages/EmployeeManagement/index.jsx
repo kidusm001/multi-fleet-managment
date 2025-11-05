@@ -256,10 +256,9 @@ export default function EmployeeManagement() {
 
   return (
     <LoadingWrapper isLoading={isLoading}>
-      <main className="content-area text-[var(--text-primary)]">
-        <div className="container mx-auto min-w-[90%] py-4 md:py-6 px-4 md:px-6">
-          <div className="rounded-[30px] border border-[var(--divider)] shadow-[0_12px_48px_-8px_rgba(66,114,255,0.15),0_8px_24px_-4px_rgba(66,114,255,0.1)] bg-[var(--card-background)]">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 md:p-6 border-b border-[var(--divider)] gap-4 sm:gap-0">
+      <main className="content-area text-[var(--text-primary)] container mx-auto px-4 sm:px-6 lg:px-8 max-w-[1400px]">
+        <div>
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center py-4 md:py-6 gap-4 sm:gap-0">
               <h1 className="text-xl md:text-2xl font-bold text-[var(--text-primary)]">
                 Employee Management
               </h1>
@@ -278,7 +277,7 @@ export default function EmployeeManagement() {
                   />
 
                   {/* Employees Section */}
-                  <div className="rounded-2xl border border-[var(--divider)] bg-[var(--card-background)] shadow-lg p-4 md:p-6">
+                  <div className="p-4 md:p-6">
                     <h2 className="text-lg md:text-xl font-bold mb-4 md:mb-6 text-[var(--text-primary)]">
                       Employee List
                     </h2>
@@ -308,14 +307,13 @@ export default function EmployeeManagement() {
 
                   {/* Employee Shuttle Requests Section */}
                   {(role === 'admin' || role === 'owner' || role === 'manager') && (
-                    <div className="rounded-2xl border border-[var(--divider)] bg-[var(--card-background)] shadow-lg p-4 md:p-6">
+                    <div className="p-4 md:p-6">
                       <EmployeeShuttleRequestsTable />
                     </div>
                   )}
                 </div>
               )}
             </div>
-          </div>
         </div>
       </main>
     </LoadingWrapper>

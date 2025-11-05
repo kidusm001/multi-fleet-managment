@@ -17,6 +17,8 @@ interface UserDropdownProps {
   email: string;
   roleLabel?: string;
   normalizedRole?: string | null;
+  compact?: "mobile" | "none";
+  redirectTo?: string;
 }
 
 // User button styles as CSS variables in a style tag (no external dependency)
@@ -53,11 +55,23 @@ const UserButtonCss = ({ theme }: { theme: string }) => {
       transition: var(--btn-transition);
     }
 
+    .button-user.compact-mobile {
+      padding: 4px;
+      height: 28px;
+    }
+
     .button-user:hover {
       height: 48px;
       padding: 6px 16px 6px 6px;
       background-color: var(--bg-hover-color);
       transition: var(--btn-transition);
+    }
+
+    .button-user.compact-mobile:hover,
+    .button-user.no-animation:hover {
+      height: 28px;
+      padding: 4px;
+      background-color: var(--bg-color);
     }
 
     .button-user:active {
@@ -75,6 +89,12 @@ const UserButtonCss = ({ theme }: { theme: string }) => {
     .button-user:hover .content-avatar {
       width: 36px;
       height: 36px;
+    }
+
+    .button-user.compact-mobile .content-avatar,
+    .button-user.compact-mobile:hover .content-avatar {
+      width: 20px;
+      height: 20px;
     }
 
     .avatar {
@@ -122,6 +142,11 @@ const UserButtonCss = ({ theme }: { theme: string }) => {
       padding-left: 6px;
       text-align: initial;
       color: var(--text-color);
+    }
+
+    .button-user.compact-mobile .notice-content,
+    .button-user.compact-mobile:hover .notice-content {
+      display: none;
     }
 
     .username {
@@ -195,6 +220,11 @@ const UserButtonCss = ({ theme }: { theme: string }) => {
       transform: rotate(90deg); // Changed to rotate downward
       opacity: 1;
     }
+
+    .button-user.compact-mobile .chevron,
+    .button-user.compact-mobile:hover .chevron {
+      display: none;
+    }
     
     .chevron {
       margin-left: 4px;
@@ -250,7 +280,7 @@ const UserButtonCss = ({ theme }: { theme: string }) => {
   return <style dangerouslySetInnerHTML={{ __html: styles }} />;
 };
 
-const UserButton = ({ username, email, roleLabel }: { username: string; email: string; roleLabel?: string }) => {
+const UserButton = ({ username, email, roleLabel, compact }: { username: string; email: string; roleLabel?: string; compact?: "mobile" | "none" }) => {
   const computedRoleLabel = React.useMemo(() => {
     const raw = (roleLabel ?? '').toString();
     if (!raw) return 'User';
@@ -273,7 +303,7 @@ const UserButton = ({ username, email, roleLabel }: { username: string; email: s
   }, [roleLabel]);
 
   return (
-    <button className="button-user">
+    <button className={cn("button-user", compact === "mobile" && "compact-mobile")}>
       <div className="content-avatar">
         <div className="status-user"></div>
         <div className="avatar">
@@ -294,7 +324,7 @@ const UserButton = ({ username, email, roleLabel }: { username: string; email: s
   );
 };
 
-export function UserDropdown({ username, email, roleLabel, normalizedRole }: UserDropdownProps) {
+export function UserDropdown({ username, email, roleLabel, normalizedRole, compact = "none", redirectTo }: UserDropdownProps) {
   const navigate = useNavigate();
   const { theme } = useTheme();
   const isDarkMode = theme === 'dark';
@@ -315,7 +345,7 @@ export function UserDropdown({ username, email, roleLabel, normalizedRole }: Use
   };
   
   const handleProfileClick = () => {
-    navigate("/profile");
+    navigate(redirectTo || "/profile");
     setIsOpen(false);
   };
   
@@ -329,15 +359,29 @@ export function UserDropdown({ username, email, roleLabel, normalizedRole }: Use
     setIsOpen(false);
   };
 
+  // For compact mobile mode, clicking should directly navigate to profile
+  const handleCompactClick = () => {
+    if (compact === "mobile" && redirectTo) {
+      navigate(redirectTo);
+    }
+  };
+
   return (
     <>
       <UserButtonCss theme={theme} />
-      <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
-        <DropdownMenuTrigger asChild>
-          <div>
-            <UserButton username={username} email={email} roleLabel={roleLabel} />
-          </div>
-        </DropdownMenuTrigger>
+      {compact === "mobile" && redirectTo ? (
+        // Direct navigation for mobile - wrap in div and add onClick to UserButton
+        <div onClick={handleCompactClick} className="cursor-pointer">
+          <UserButton username={username} email={email} roleLabel={roleLabel} compact={compact} />
+        </div>
+      ) : (
+        // Normal dropdown for other modes
+        <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+          <DropdownMenuTrigger asChild>
+            <div>
+              <UserButton username={username} email={email} roleLabel={roleLabel} compact={compact} />
+            </div>
+          </DropdownMenuTrigger>
 
         <DropdownMenuContent 
           className={cn(
@@ -443,6 +487,7 @@ export function UserDropdown({ username, email, roleLabel, normalizedRole }: Use
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      )}
     </>
   );
 }

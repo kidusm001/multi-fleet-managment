@@ -9,6 +9,7 @@ import {
 import { Clock, Users, Route, Bus } from "lucide-react";
 import PropTypes from "prop-types";
 import { useTheme } from "@/contexts/ThemeContext";
+import { cn } from "@/lib/utils";
 
 import styles from "../styles/ShiftSelection.module.css";
 
@@ -17,6 +18,7 @@ export default function ShiftSelection({
   onShiftChange,
   shifts = [],
   stats,
+  isCompact = false,
 }) {
   const { theme } = useTheme();
   const isDark = theme === "dark";
@@ -58,7 +60,7 @@ export default function ShiftSelection({
           <Clock className="w-5 h-5" />
           Select Shift
         </h2>
-        <div className={styles.selectWrapper}>
+        <div className={cn(styles.selectWrapper, isCompact && "flex-col items-start")}>
           <Select
             onValueChange={handleShiftChange}
             value={selectedShiftId ? String(selectedShiftId) : undefined}
@@ -94,18 +96,7 @@ export default function ShiftSelection({
             </SelectContent>
           </Select>
 
-          {selectedShiftData && (
-            <div className={`flex items-center mt-2.5 px-3 py-2 rounded-md text-sm font-medium shadow-sm ${
-              isDark 
-                ? "bg-primary/20 border border-primary/30" 
-                : "bg-blue-100 border border-blue-200"
-            }`}>
-              <Clock className="w-5 h-5 mr-2 text-primary" />
-              <span>Ends at: <span className="font-semibold text-primary">{selectedShiftData.endTime}</span></span>
-            </div>
-          )}
-
-          <div className={styles.shiftStats}>
+          <div className={cn(styles.shiftStats, isCompact && "grid grid-cols-2 gap-4")}>
             <div className={styles.statItem}>
               <span className={styles.statLabel}>
                 <Clock className="w-4 h-4 inline mr-1" />
@@ -136,6 +127,17 @@ export default function ShiftSelection({
             </div>
           </div>
         </div>
+
+        {selectedShiftData && (
+          <div className={`flex items-center mt-2.5 px-3 py-2 rounded-md text-sm font-medium shadow-sm w-fit ${
+            isDark 
+              ? "bg-primary/20 border border-primary/30" 
+              : "bg-blue-100 border border-blue-200"
+          }`}>
+            <Clock className="w-5 h-5 mr-2 text-primary" />
+            <span>Ends at: <span className="font-semibold text-primary">{selectedShiftData.endTime}</span></span>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -167,4 +169,5 @@ ShiftSelection.propTypes = {
     routes: PropTypes.number.isRequired,
     shuttlesCount: PropTypes.number.isRequired,
   }).isRequired,
+  isCompact: PropTypes.bool,
 };

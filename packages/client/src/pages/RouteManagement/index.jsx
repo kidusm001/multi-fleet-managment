@@ -51,11 +51,9 @@ function RouteManagement() {
   // Tabs are now controlled from top navigation; page reads URL/state to decide activeTab
 
   return (
-    <div className="container mx-auto min-w-[90%]">
-      <div className="rounded-[30px] border border-[var(--divider)] shadow-[0_12px_48px_-8px_rgba(66,114,255,0.15),0_8px_24px_-4px_rgba(66,114,255,0.1)] bg-[var(--card-background)]">
+    <>
         {/* Top header and internal tabs removed — main nav provides the controls now. */}
-        <div className="p-0">
-        <div className="">
+        <div className="container mx-auto px-4 sm:px-6 lg:px-8 max-w-[1400px]">
           {activeTab === "management" ? (
             <RouteManagementView refreshTrigger={refreshTrigger} />
           ) : activeTab === "assignment" ? (
@@ -64,9 +62,7 @@ function RouteManagement() {
             <CreateRoute />
           )}
         </div>
-      </div>
-    </div>
-  </div>
+    </>
   );
 }
 

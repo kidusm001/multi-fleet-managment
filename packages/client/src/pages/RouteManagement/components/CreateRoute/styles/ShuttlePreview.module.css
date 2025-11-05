@@ -1,7 +1,7 @@
 .overlay {
   position: absolute;
   top: -50px;
-  left: -12%;
+  /* left: -12%; */
   width: 100vw;
   height: calc(100vh + 50px);
   background-color: rgba(0, 0, 0, 0.5);

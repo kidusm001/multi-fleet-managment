@@ -50,7 +50,7 @@ const mapImportanceToType = (importance) => {
   return undefined;
 };
 
-function NotificationDropdown() {
+function NotificationDropdown({ compact = false }) {
   const navigate = useNavigate();
   const { theme } = useTheme();
   const isDarkMode = theme === 'dark';
@@ -105,8 +105,10 @@ function NotificationDropdown() {
       <PopoverTrigger asChild>
         <button 
           className={cn(
-            "button relative flex items-center justify-center",
-            "w-12 md:w-9 h-9 rounded-full cursor-pointer transition-all duration-300",
+            "button relative flex items-center justify-center cursor-pointer transition-all duration-300",
+            compact 
+              ? "w-8 h-8 rounded-full" 
+              : "w-12 md:w-9 h-9 rounded-full",
             isDarkMode 
               ? "bg-gray-800 hover:bg-gray-700 shadow-md border border-gray-700" 
               : "bg-white hover:bg-gray-50 shadow-sm border border-border",
@@ -114,7 +116,7 @@ function NotificationDropdown() {
           )}
           aria-label="Open notifications"
         >
-          <svg viewBox="0 0 448 512" className="bell w-4 transition-transform">
+          <svg viewBox="0 0 448 512" className={cn("bell transition-transform", compact ? "w-3.5" : "w-4")}>
             <path 
               d="M224 0c-17.7 0-32 14.3-32 32V49.9C119.5 61.4 64 124.2 64 200v33.4c0 45.4-15.5 89.5-43.8 124.9L5.3 377c-5.8 7.2-6.9 17.1-2.9 25.4S14.8 416 24 416H424c9.2 0 17.6-5.3 21.6-13.6s2.9-18.2-2.9-25.4l-14.9-18.6C399.5 322.9 384 278.8 384 233.4V200c0-75.8-55.5-138.6-128-150.1V32c0-17.7-14.3-32-32-32zm0 96h8c57.4 0 104 46.6 104 104v33.4c0 47.9 13.9 94.6 39.7 134.6H72.3C98.1 328 112 281.3 112 233.4V200c0-57.4 46.6-104 104-104h8zm64 352H224 160c0 17 6.7 33.3 18.7 45.3s28.3 18.7 45.3 18.7s33.3-6.7 45.3-18.7s18.7-28.3 18.7-45.3z" 
               className={cn(
@@ -126,13 +128,10 @@ function NotificationDropdown() {
           {unreadCount > 0 && (
             <span className={cn(
               "absolute -top-0.5 -right-0.5",
-              "min-w-[18px] h-[18px] px-1",
-              "rounded-full bg-red-500",
-              "text-[10px] font-medium text-white",
-              "flex items-center justify-center",
-              "border-[1.5px]",
-              isDarkMode ? "border-gray-900" : "border-white",
-              "shadow-sm"
+              compact ? "min-w-[16px] h-[16px] text-[9px]" : "min-w-[18px] h-[18px] text-[10px]",
+              "px-1 rounded-full bg-red-500 font-medium text-white",
+              "flex items-center justify-center border-[1.5px] shadow-sm",
+              isDarkMode ? "border-gray-900" : "border-white"
             )}>
               {unreadCount}
             </span>
@@ -153,7 +152,7 @@ function NotificationDropdown() {
         }
         
         .button:hover .bell {
-          animation: bellRing 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+          animation: ${compact ? 'none' : 'bellRing 0.8s cubic-bezier(0.4, 0, 0.2, 1)'};
         }
         
 

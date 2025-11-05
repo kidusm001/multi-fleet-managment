@@ -28,44 +28,44 @@ const getSeverityColor = (importance: string): string => {
 const getSeverityBadge = (importance: string) => {
   const level = importance.toLowerCase();
   if (level.includes('critical') || level === 'urgent') {
-    return <span className="px-2 py-1 text-xs font-bold text-white bg-red-600 rounded">CRITICAL</span>;
+    return <span className="px-1 md:px-2 py-0.5 md:py-1 text-[9px] md:text-xs font-bold text-white bg-red-600 rounded">CRITICAL</span>;
   }
   if (level.includes('high')) {
-    return <span className="px-2 py-1 text-xs font-bold text-white bg-orange-600 rounded">HIGH</span>;
+    return <span className="px-1 md:px-2 py-0.5 md:py-1 text-[9px] md:text-xs font-bold text-white bg-orange-600 rounded">HIGH</span>;
   }
   if (level.includes('medium')) {
-    return <span className="px-2 py-1 text-xs font-semibold text-white bg-yellow-600 rounded">MEDIUM</span>;
+    return <span className="px-1 md:px-2 py-0.5 md:py-1 text-[9px] md:text-xs font-semibold text-white bg-yellow-600 rounded">MEDIUM</span>;
   }
   if (level.includes('low')) {
-    return <span className="px-2 py-1 text-xs text-white bg-blue-600 rounded">LOW</span>;
+    return <span className="px-1 md:px-2 py-0.5 md:py-1 text-[9px] md:text-xs text-white bg-blue-600 rounded">LOW</span>;
   }
   return null;
 };
 
 const getTypeIcon = (type: string) => {
-  if (!type) return <Bell className="h-6 w-6" />;
+  if (!type) return <Bell className="h-4 w-4 md:h-6 md:w-6" />;
   const typeStr = type.toUpperCase();
-  if (typeStr.startsWith('VEHICLE_')) return <Car className="h-6 w-6" />;
-  if (typeStr.startsWith('ROUTE_')) return <Route className="h-6 w-6" />;
-  if (typeStr.startsWith('EMPLOYEE_')) return <Users className="h-6 w-6" />;
-  if (typeStr.startsWith('DRIVER_')) return <UserCog className="h-6 w-6" />;
-  if (typeStr.startsWith('DEPARTMENT_')) return <Building className="h-6 w-6" />;
-  if (typeStr.startsWith('SHIFT_')) return <Clock className="h-6 w-6" />;
-  if (typeStr.startsWith('STOP_')) return <Building className="h-6 w-6" />;
-  if (typeStr.startsWith('ORG_')) return <Building className="h-6 w-6" />;
-  if (typeStr.startsWith('USER_')) return <Users className="h-6 w-6" />;
-  if (typeStr.startsWith('PERMISSIONS_')) return <Shield className="h-6 w-6" />;
-  if (typeStr.startsWith('ACCOUNT_')) return <Shield className="h-6 w-6" />;
-  if (typeStr.startsWith('PAYROLL_')) return <UserCog className="h-6 w-6" />;
-  if (typeStr.startsWith('PAYMENT_')) return <UserCog className="h-6 w-6" />;
-  if (typeStr.startsWith('AVAILABILITY_')) return <Clock className="h-6 w-6" />;
-  if (typeStr.startsWith('REQUEST_')) return <Users className="h-6 w-6" />;
-  if (typeStr.startsWith('SYSTEM_')) return <Settings className="h-6 w-6" />;
-  if (typeStr.startsWith('SECURITY_')) return <Shield className="h-6 w-6" />;
-  if (typeStr.startsWith('INFO')) return <Bell className="h-6 w-6" />;
-  if (typeStr.startsWith('WARNING')) return <Bell className="h-6 w-6" />;
-  if (typeStr.startsWith('ALERT')) return <Bell className="h-6 w-6" />;
-  return <Bell className="h-6 w-6" />;
+  if (typeStr.startsWith('VEHICLE_')) return <Car className="h-4 w-4 md:h-6 md:w-6" />;
+  if (typeStr.startsWith('ROUTE_')) return <Route className="h-4 w-4 md:h-6 md:w-6" />;
+  if (typeStr.startsWith('EMPLOYEE_')) return <Users className="h-4 w-4 md:h-6 md:w-6" />;
+  if (typeStr.startsWith('DRIVER_')) return <UserCog className="h-4 w-4 md:h-6 md:w-6" />;
+  if (typeStr.startsWith('DEPARTMENT_')) return <Building className="h-4 w-4 md:h-6 md:w-6" />;
+  if (typeStr.startsWith('SHIFT_')) return <Clock className="h-4 w-4 md:h-6 md:w-6" />;
+  if (typeStr.startsWith('STOP_')) return <Building className="h-4 w-4 md:h-6 md:w-6" />;
+  if (typeStr.startsWith('ORG_')) return <Building className="h-4 w-4 md:h-6 md:w-6" />;
+  if (typeStr.startsWith('USER_')) return <Users className="h-4 w-4 md:h-6 md:w-6" />;
+  if (typeStr.startsWith('PERMISSIONS_')) return <Shield className="h-4 w-4 md:h-6 md:w-6" />;
+  if (typeStr.startsWith('ACCOUNT_')) return <Shield className="h-4 w-4 md:h-6 md:w-6" />;
+  if (typeStr.startsWith('PAYROLL_')) return <UserCog className="h-4 w-4 md:h-6 md:w-6" />;
+  if (typeStr.startsWith('PAYMENT_')) return <UserCog className="h-4 w-4 md:h-6 md:w-6" />;
+  if (typeStr.startsWith('AVAILABILITY_')) return <Clock className="h-4 w-4 md:h-6 md:w-6" />;
+  if (typeStr.startsWith('REQUEST_')) return <Users className="h-4 w-4 md:h-6 md:w-6" />;
+  if (typeStr.startsWith('SYSTEM_')) return <Settings className="h-4 w-4 md:h-6 md:w-6" />;
+  if (typeStr.startsWith('SECURITY_')) return <Shield className="h-4 w-4 md:h-6 md:w-6" />;
+  if (typeStr.startsWith('INFO')) return <Bell className="h-4 w-4 md:h-6 md:w-6" />;
+  if (typeStr.startsWith('WARNING')) return <Bell className="h-4 w-4 md:h-6 md:w-6" />;
+  if (typeStr.startsWith('ALERT')) return <Bell className="h-4 w-4 md:h-6 md:w-6" />;
+  return <Bell className="h-4 w-4 md:h-6 md:w-6" />;
 };
 
 export function NotificationItem({
@@ -99,16 +99,16 @@ export function NotificationItem({
       className={cn(
         "group relative overflow-hidden notification-glow",
         `importance-${importance.level}`,
-        "p-4 transition-all duration-500 ease-out rounded-2xl",
+        "p-2 md:p-4 transition-all duration-500 ease-out rounded-lg md:rounded-2xl",
         getSeverityColor(importance.label), // Apply severity-based background and border
-        "h-[88px]", // Fixed height for collapsed state
-        isExpanded && hasExpandableContent && "h-auto" // Expand height when needed
+        "h-auto md:h-[88px]", // Auto height for mobile, fixed for desktop
+        isExpanded && hasExpandableContent && "md:h-auto" // Expand height when needed on desktop
       )}
       onClick={() => hasExpandableContent && setIsExpanded(!isExpanded)}
     >
-      <div className="flex items-start gap-4">
+      <div className="flex items-start gap-2 md:gap-4">
         <div 
-          className="mt-1 cursor-pointer"
+          className="mt-0.5 md:mt-1 cursor-pointer"
           onClick={(e) => {
             e.stopPropagation();
             onSelect?.(id);
@@ -133,17 +133,19 @@ export function NotificationItem({
               "hover:border-primary/50",
               isSelected ? "bg-primary border-transparent" : "bg-transparent",
               "rounded-full",
-              "w-[24px] h-[24px]" // Increased from 22px to 24px
+              "w-[18px] h-[18px] md:w-[24px] md:h-[24px]" // Smaller on mobile
             )}
           />
         </div>
         <div className="flex-1 min-w-0"> {/* Add min-w-0 to prevent flex item from overflowing */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 min-w-0"> {/* Add min-w-0 here too */}
-              {getTypeIcon(type)}
+          <div className="flex items-center justify-between gap-1 md:gap-2">
+            <div className="flex items-center gap-1 md:gap-2 min-w-0 flex-1"> {/* Add min-w-0 and flex-1 */}
+              <div className="shrink-0">
+                {getTypeIcon(type)}
+              </div>
               <h4
                 className={cn(
-                  "font-semibold transition-colors duration-200 truncate", // Add truncate
+                  "font-semibold transition-colors duration-200 truncate text-xs md:text-base", // Smaller text on mobile
                   isRead 
                     ? isDark ? "text-gray-500" : "text-gray-400" // More contrast for read items
                     : isDark ? "text-gray-100" : "text-gray-900",
@@ -152,25 +154,27 @@ export function NotificationItem({
               >
                 {title}
               </h4>
-              {getSeverityBadge(importance.label)}
+              <div className="shrink-0">
+                {getSeverityBadge(importance.label)}
+              </div>
             </div>
-            <div className="flex items-center gap-2 shrink-0"> {/* Add shrink-0 */}
+            <div className="flex items-center gap-1 md:gap-2 shrink-0"> {/* Smaller gap on mobile */}
               <Badge
                 variant="secondary"
                 className={cn(
-                  "text-xs capitalize transition-all duration-200 px-3 py-1", // Enhanced padding
+                  "text-[9px] md:text-xs capitalize transition-all duration-200 px-1.5 md:px-3 py-0.5 md:py-1", // Much smaller on mobile
                   isDark ? "bg-gray-800" : "bg-gray-100", // Solid background
                   isDark ? "text-gray-100" : "text-gray-800", // Better contrast
                   isDark ? "border-gray-700" : "border-gray-200",
                   "group-hover:bg-primary/10 group-hover:border-primary/20",
                   "font-medium", // Make text bolder
-                  "shadow-sm" // Subtle shadow
+                  "shadow-sm hidden md:inline-flex" // Hide on mobile to save space
                 )}
               >
                 {source}
               </Badge>
               <span className={cn(
-                "text-sm transition-colors duration-200",
+                "text-[9px] md:text-sm transition-colors duration-200", // Much smaller on mobile
                 isDark ? "text-gray-400" : "text-gray-500",
                 "group-hover:text-primary/70"
               )}>

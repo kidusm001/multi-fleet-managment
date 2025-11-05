@@ -62,7 +62,7 @@ function EmployeeTopBar() {
 
   const tabs = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/employee-portal' },
-    { id: 'request', label: 'Request Shuttle', icon: Send, path: '/employee-portal/request' },
+    { id: 'request', label: 'Request', icon: Send, path: '/employee-portal/request' },
   ];
 
   const activeTab = location.pathname === '/employee-portal/request' ? 'request' : 'dashboard';
@@ -124,10 +124,10 @@ function EmployeeTopBar() {
         </div>
 
         {/* Right side actions */}
-        <div className="flex items-center space-x-2 sm:space-x-4">
-          <ThemeToggle />
-          <NotificationDropdown />
-          <UserDropdown />
+        <div className="flex items-center space-x-1 sm:space-x-3">
+          <ThemeToggle compact />
+          <NotificationDropdown compact />
+          <UserDropdown compact="mobile" redirectTo="/profile" />
         </div>
       </div>
     </div>
@@ -137,9 +137,12 @@ function EmployeeTopBar() {
 // Layout for all authenticated/protected pages
 function ProtectedLayout({ isDark }) {
   const location = useLocation();
+  const { role } = useRole();
   const isHomeLanding = location.pathname === ROUTES.HOME;
   const isEmployeePortal = location.pathname.startsWith('/employee-portal');
   const { shouldShow, userRole } = useAIAssistant();
+  const isEmployee = role === ROLES.EMPLOYEE;
+  const shouldShowEmployeeTopBar = isEmployeePortal || isEmployee;
 
   if (isHomeLanding) {
     return <Outlet />;
@@ -147,9 +150,9 @@ function ProtectedLayout({ isDark }) {
 
   return (
     <div className={`min-h-screen ${isDark ? "bg-slate-900" : "bg-gray-50"} transition-colors duration-300`}>
-      {isEmployeePortal ? <EmployeeTopBar /> : <TopBar />}
+      {shouldShowEmployeeTopBar ? <EmployeeTopBar /> : <TopBar />}
       <div className={`main-content backdrop-blur-xl ${isDark ? "bg-black/20" : "bg-white/20"}`}>
-        <main id="main" className={`content-area ${isDark ? "text-gray-100" : "text-gray-900"} pt-[60px]`}>
+        <main id="main" className={`content-area ${isDark ? "text-gray-100" : "text-gray-900"} pt-0`}>
           <Outlet />
           {orgsEnabled() && <ErrorBanner />}
           {!isEmployeePortal && <Footer />}
@@ -181,7 +184,7 @@ function DriverLayout({ isDark }) {
     <div className={`min-h-screen ${isDark ? "bg-slate-900" : "bg-gray-50"} transition-colors duration-300`}>
       <TopBar driverMode={true} />
       <div className={`main-content backdrop-blur-xl ${isDark ? "bg-black/20" : "bg-white/20"}`}>
-        <main id="main" className={`content-area ${isDark ? "text-gray-100" : "text-gray-900"} pt-[60px]`}>
+        <main id="main" className={`content-area ${isDark ? "text-gray-100" : "text-gray-900"}`}>
           <Outlet />
           <Footer />
         </main>

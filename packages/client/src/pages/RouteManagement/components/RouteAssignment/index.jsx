@@ -181,7 +181,7 @@ function RouteAssignment({ refreshTrigger }) {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="max-w-[1440px] mx-auto p-4 md:p-8">
+      <div className="max-w-[1440px] mx-auto p-2 md:p-4">
         <div className="mb-6 md:mb-10">
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6 md:mb-8">
             <div>
