@@ -76,12 +76,12 @@ model Employee {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  user           User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  department     Department       @relation(fields: [departmentId], references: [id], onDelete: Cascade)
-  shift          Shift            @relation(fields: [shiftId], references: [id], onDelete: Cascade)
-  stop           Stop?            @relation(fields: [stopId], references: [id], onDelete: SetNull)
-  workLocation   Location?        @relation("EmployeeLocation", fields: [locationId], references: [id], onDelete: SetNull)
+  organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  department      Department       @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  shift           Shift            @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  stop            Stop?            @relation(fields: [stopId], references: [id], onDelete: SetNull)
+  workLocation    Location?        @relation("EmployeeLocation", fields: [locationId], references: [id], onDelete: SetNull)
   shuttleRequests ShuttleRequest[]
 
   @@index([assigned])
@@ -119,7 +119,7 @@ model Driver {
   organization        Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   vehicleAvailability VehicleAvailability[]
   payrollReports      PayrollReport[]
-  assignedVehicles    Vehicle[]             @relation("VehicleDriver")
+  assignedVehicle     Vehicle?              @relation("VehicleDriver")
   attendanceRecords   AttendanceRecord[]
   payrollEntries      PayrollEntry[]
 
@@ -195,7 +195,7 @@ model Vehicle {
   dailyRate         Decimal?      @db.Decimal(10, 2)
   isActive          Boolean       @default(true)
   categoryId        String?
-  driverId          String? // Assigned driver
+  driverId          String?       @unique // Assigned driver (one-to-one)
   serviceProviderId String? // For service provider vehicles
   organizationId    String
   deleted           Boolean       @default(false)
@@ -541,16 +541,16 @@ model VehicleRequest {
 }
 
 model ShuttleRequest {
-  id             String         @id @default(cuid())
+  id             String        @id @default(cuid())
   employeeId     String
   date           DateTime
   shiftId        String
   pickupLocation String
   notes          String?
-  status         RequestStatus  @default(PENDING)
+  status         RequestStatus @default(PENDING)
   organizationId String
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
 
   employee     Employee     @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   shift        Shift        @relation(fields: [shiftId], references: [id])
@@ -658,7 +658,7 @@ model Organization {
   attendanceRecords AttendanceRecord[]
   payrollPeriods    PayrollPeriod[]
   payrollEntries    PayrollEntry[]
-  
+
   // AI Assistant relations
   aiConversations AiConversation[] @relation("OrgConversations")
 
@@ -902,11 +902,11 @@ model AiConversation {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
   archived       Boolean  @default(false)
-  
-  user         User             @relation("UserConversations", fields: [userId], references: [id], onDelete: Cascade)
-  organization Organization?    @relation("OrgConversations", fields: [organizationId], references: [id], onDelete: Cascade)
+
+  user         User          @relation("UserConversations", fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization? @relation("OrgConversations", fields: [organizationId], references: [id], onDelete: Cascade)
   messages     AiMessage[]
-  
+
   @@index([userId])
   @@index([organizationId])
   @@index([createdAt])
@@ -914,17 +914,17 @@ model AiConversation {
 }
 
 model AiMessage {
-  id             String   @id @default(cuid())
+  id             String      @id @default(cuid())
   conversationId String
   role           MessageRole // user or assistant
-  content        String   @db.Text
-  tokens         Int?     // Track token usage
-  cost           Decimal? @db.Decimal(10, 6) // Track cost per message
-  contextUsed    String?  @db.Text // What context was provided to the AI
-  createdAt      DateTime @default(now())
-  
+  content        String      @db.Text
+  tokens         Int? // Track token usage
+  cost           Decimal?    @db.Decimal(10, 6) // Track cost per message
+  contextUsed    String?     @db.Text // What context was provided to the AI
+  createdAt      DateTime    @default(now())
+
   conversation AiConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  
+
   @@index([conversationId])
   @@index([createdAt])
   @@map("ai_messages")
@@ -941,7 +941,7 @@ model AiUsageLog {
   errorMessage   String?
   responseTime   Int? // milliseconds
   createdAt      DateTime @default(now())
-  
+
   @@index([userId])
   @@index([organizationId])
   @@index([createdAt])

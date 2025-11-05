@@ -1,43 +1,50 @@
 import { PrismaClient } from '@prisma/client';
-import { exec } from 'child_process';
-import { promisify } from 'util';
-import fs from 'fs';
+import { execa } from 'execa';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
 
-const execAsync = promisify(exec);
 const prisma = new PrismaClient();
 
-async function runCommand(command: string, description: string) {
+// Get the actual directory of this script file
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// Navigate to the server directory (two levels up from src/script)
+const SERVER_DIR = path.join(__dirname, '..', '..');
+
+async function runCommand(command: string, description: string): Promise<void> {
   console.log(`\n${'='.repeat(60)}`);
   console.log(`🚀 ${description}`);
   console.log(`${'='.repeat(60)}\n`);
   
   try {
-    const { stdout, stderr } = await execAsync(command, { 
-      cwd: '/home/leul/Documents/github/multi-fleet-managment/packages/server',
-      maxBuffer: 10 * 1024 * 1024
+    await execa(command, {
+      cwd: SERVER_DIR,
+      stdio: 'inherit',
+      shell: true
     });
-    if (stdout) console.log(stdout);
-    if (stderr) console.error(stderr);
     console.log(`✅ ${description} - COMPLETED\n`);
   } catch (error: any) {
     console.error(`❌ ${description} - FAILED`);
-    console.error(error.message);
+    if (error.message) console.error(error.message);
     throw error;
   }
 }
 
 async function cleanDatabase() {
   console.log(`\n${'='.repeat(60)}`);
-  console.log('🗑️  CLEANING DATABASE');
+  console.log('🗑️  PREPARING DATABASE');
   console.log(`${'='.repeat(60)}\n`);
 
-  const dbPath = '/home/leul/Documents/github/multi-fleet-managment/packages/server/prisma/dev.db';
-  
-  if (fs.existsSync(dbPath)) {
-    fs.unlinkSync(dbPath);
-    console.log('✅ Deleted existing database\n');
-  } else {
-    console.log('ℹ️  No existing database found\n');
+  // For PostgreSQL, the database cleanup will be handled by prisma migrate reset
+  // No need to delete files like SQLite - just verify connection
+  try {
+    await prisma.$connect();
+    console.log('✅ Database connection verified\n');
+  } catch (error) {
+    console.error('❌ Database connection failed. Please check your DATABASE_URL in .env\n');
+    throw error;
   }
 }
 
@@ -171,34 +178,43 @@ async function main() {
     );
 
     await runCommand(
-      'npx tsx src/script/addMembersToSterling.ts',
-      'Step 7: Add 30 additional employees to Sterling Logistics'
+      'npx tsx src/script/addMoreEmployeesToSterling.ts',
+      'Step 7: Add 50 synthetic employees to Sterling Logistics'
     );
 
-    await runCommand(
-      'npx tsx src/script/addLocationsToSterling.ts',
-      'Step 8: Assign locations to new Sterling employees'
-    );
+    // Note: Steps 8-13 are commented out to avoid duplicate employee creation
+    // The prisma/seed.ts (Step 4) already creates enough employees for all organizations
+    // If you need to add more employees to Sterling specifically, uncomment these:
+    
+    // await runCommand(
+    //   'npx tsx src/script/addMembersToSterling.ts',
+    //   'Step 8: Add 30 additional employees to Sterling Logistics'
+    // );
 
-    await runCommand(
-      'npx tsx src/script/addStopsToSterling.ts',
-      'Step 9: Create stops for new Sterling employees'
-    );
+    // await runCommand(
+    //   'npx tsx src/script/addLocationsToSterling.ts',
+    //   'Step 9: Assign locations to new Sterling employees'
+    // );
 
-    await runCommand(
-      'npx tsx src/script/addEmployeesFromOldSeed.ts',
-      'Step 10: Add employees from old seed.ts to Sterling (all in one shift)'
-    );
+    // await runCommand(
+    //   'npx tsx src/script/addStopsToSterling.ts',
+    //   'Step 10: Create stops for new Sterling employees'
+    // );
 
-    await runCommand(
-      'npx tsx src/script/addSingleLocationToSterling.ts',
-      'Step 11: Assign all Sterling employees to single primary location'
-    );
+    // await runCommand(
+    //   'npx tsx src/script/addEmployeesFromOldSeed.ts',
+    //   'Step 11: Add employees from old seed.ts to Sterling (all in one shift)'
+    // );
 
-    await runCommand(
-      'npx tsx src/script/addStopsFromOldSeed.ts',
-      'Step 12: Create stops for employees from old seed.ts'
-    );
+    // await runCommand(
+    //   'npx tsx src/script/addSingleLocationToSterling.ts',
+    //   'Step 12: Assign all Sterling employees to single primary location'
+    // );
+
+    // await runCommand(
+    //   'npx tsx src/script/addStopsFromOldSeed.ts',
+    //   'Step 13: Create stops for employees from old seed.ts'
+    // );
 
     await verifyData();
 
