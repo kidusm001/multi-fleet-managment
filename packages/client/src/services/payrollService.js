@@ -122,6 +122,28 @@ export const payrollService = {
   },
 
   /**
+   * Generate filtered payroll with advanced filters (NEW)
+   * @param {Object} filters - Filter options
+   * @param {string} filters.startDate - Start date (YYYY-MM-DD or ISO)
+   * @param {string} filters.endDate - End date (YYYY-MM-DD or ISO)
+   * @param {string} [filters.vehicleType] - 'IN_HOUSE' or 'OUTSOURCED'
+   * @param {string[]} [filters.shiftIds] - Array of shift IDs
+   * @param {string[]} [filters.departmentIds] - Array of department IDs
+   * @param {string[]} [filters.locationIds] - Array of location/branch IDs
+   * @param {string[]} [filters.vehicleIds] - Array of specific vehicle IDs
+   * @param {string} [filters.name] - Custom payroll period name
+   */
+  async generateFilteredPayroll(filters) {
+    try {
+      const response = await api.post('/payroll-periods/generate-filtered', filters);
+      return response.data;
+    } catch (error) {
+      console.error("Error generating filtered payroll:", error);
+      throw error;
+    }
+  },
+
+  /**
    * Update payroll period status
    */
   async updatePayrollPeriodStatus(periodId, status) {

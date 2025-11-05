@@ -38,6 +38,7 @@ import {
 import { MonthlyPayrollChart } from "./components/MonthlyPayrollChart";
 import { ShuttleTable } from "./components/ShuttleTable";
 import { ShuttleAnalysis } from "./components/ShuttleAnalysis";
+import { GenerateFilteredPayrollDialog } from "./components/GenerateFilteredPayrollDialog";
 
 export default function EnhancedShuttlePayrollDashboard() {
   const { theme } = useTheme();
@@ -60,6 +61,7 @@ export default function EnhancedShuttlePayrollDashboard() {
   const [error, setError] = useState(null);
   const [currentPeriod, setCurrentPeriod] = useState(null);
   const [isGeneratingPayroll, setIsGeneratingPayroll] = useState(false);
+  const [showFilteredPayrollDialog, setShowFilteredPayrollDialog] = useState(false);
 
   const handleSearchChange = (event) => {
     setSearchTerm(event.target.value);
@@ -555,6 +557,14 @@ export default function EnhancedShuttlePayrollDashboard() {
             Refresh
           </Button>
           <Button
+            variant="outline"
+            onClick={() => setShowFilteredPayrollDialog(true)}
+            className="border-blue-500 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950"
+          >
+            <Filter className="h-4 w-4 mr-2" />
+            Generate with Filters
+          </Button>
+          <Button
             className="bg-green-600 hover:bg-green-700 text-white"
             onClick={handleGeneratePayroll}
             disabled={isGeneratingPayroll || !currentPeriod}
@@ -842,6 +852,17 @@ export default function EnhancedShuttlePayrollDashboard() {
           onClose={() => setSelectedShuttle(null)}
         />
       )}
+
+      {/* Filtered Payroll Generation Dialog */}
+      <GenerateFilteredPayrollDialog
+        open={showFilteredPayrollDialog}
+        onOpenChange={setShowFilteredPayrollDialog}
+        onSuccess={(result) => {
+          console.log('Payroll generated:', result);
+          // Refresh the data
+          window.location.reload();
+        }}
+      />
     </div>
   );
 }
