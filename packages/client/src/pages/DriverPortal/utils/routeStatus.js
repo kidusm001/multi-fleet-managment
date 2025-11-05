@@ -87,11 +87,13 @@ export const getRouteEndTime = (route) => {
 export const getEffectiveRouteStatus = (route, now = new Date()) => {
   if (!route) return 'UPCOMING';
 
+  // Use driverStatus from server if available
   const driverStatus = typeof route.driverStatus === 'string' ? route.driverStatus.toUpperCase() : '';
-  if (driverStatus === 'UPCOMING' || driverStatus === 'ACTIVE' || driverStatus === 'COMPLETED') {
+  if (driverStatus === 'UPCOMING' || driverStatus === 'ACTIVE' || driverStatus === 'COMPLETED' || driverStatus === 'CANCELLED') {
     return driverStatus;
   }
 
+  // Fallback client-side logic (shouldn't be needed with server driverStatus)
   const statusRaw = typeof route.status === 'string' ? route.status.toUpperCase() : '';
   const status = statusRaw === 'IN_PROGRESS' ? 'ACTIVE' : statusRaw;
   const start = getRouteStartTime(route);

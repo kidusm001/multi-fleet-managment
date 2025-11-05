@@ -47,24 +47,24 @@ function RouteListCard({ route, onClick }) {
     <div
       onClick={onClick}
       className={cn(
-        "rounded-lg border p-4 cursor-pointer transition-all",
+        "rounded-lg border p-3 md:p-4 cursor-pointer transition-all",
         getStatusColor(status),
         isDark ? "hover:bg-gray-800/50" : "hover:shadow-md"
       )}
     >
-      <div className="space-y-3">
+      <div className="space-y-2 md:space-y-3">
         {/* Header */}
         <div className="flex items-start justify-between">
           <div className="flex-1">
             {getStatusBadge(status)}
             <h3 className={cn(
-              "text-lg font-bold mt-1",
+              "text-base md:text-lg font-bold mt-1",
               isDark ? "text-gray-100" : "text-gray-900"
             )}>
               {route.name}
             </h3>
             <p className={cn(
-              "text-sm",
+              "text-xs md:text-sm",
               isDark ? "text-gray-400" : "text-gray-600"
             )}>
               {route.shift?.name || 'No shift assigned'}
@@ -73,32 +73,51 @@ function RouteListCard({ route, onClick }) {
         </div>
 
         {/* Details Grid */}
-        <div className="grid grid-cols-2 gap-2 text-sm">
-          <div className="flex items-center gap-2">
-            <Truck className="w-4 h-4 text-gray-500" />
-            <span className={isDark ? "text-gray-300" : "text-gray-700"}>
-              {route.vehicle?.name || 'N/A'}
+        <div className="grid grid-cols-2 gap-1.5 md:gap-2 text-xs md:text-sm">
+          <div className="flex items-center gap-1.5 md:gap-2">
+            <Truck className="w-3 h-3 md:w-4 md:h-4 text-gray-500" />
+            <div className="truncate">
+              <span className={cn(
+                "text-xs md:text-sm",
+                isDark ? "text-gray-300" : "text-gray-700"
+              )}>
+                {route.vehicle?.name || 'No vehicle'}
+              </span>
+              {route.vehicle?.plateNumber && (
+                <span className="text-[10px] md:text-xs text-gray-500 ml-1">
+                  ({route.vehicle.plateNumber})
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5 md:gap-2">
+            <Clock className="w-3 h-3 md:w-4 md:h-4 text-gray-500" />
+            <span className={cn(
+              "text-xs md:text-sm",
+              isDark ? "text-gray-300" : "text-gray-700"
+            )}>
+              {status === 'ACTIVE' ? 'Started' : route.shift?.startTime ? new Date(route.shift.startTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : route.startTime ? new Date(route.startTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : 'TBD'}
             </span>
           </div>
 
-          <div className="flex items-center gap-2">
-            <Clock className="w-4 h-4 text-gray-500" />
-            <span className={isDark ? "text-gray-300" : "text-gray-700"}>
-              {status === 'ACTIVE' ? 'Started' : route.startTime || 'TBD'}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <MapPin className="w-4 h-4 text-gray-500" />
-            <span className={isDark ? "text-gray-300" : "text-gray-700"}>
+          <div className="flex items-center gap-1.5 md:gap-2">
+            <MapPin className="w-3 h-3 md:w-4 md:h-4 text-gray-500" />
+            <span className={cn(
+              "text-xs md:text-sm",
+              isDark ? "text-gray-300" : "text-gray-700"
+            )}>
               {totalStops} stops
             </span>
           </div>
 
           {status === 'ACTIVE' && (
-            <div className="flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-gray-500" />
-              <span className={isDark ? "text-gray-300" : "text-gray-700"}>
+            <div className="flex items-center gap-1.5 md:gap-2">
+              <TrendingUp className="w-3 h-3 md:w-4 md:h-4 text-gray-500" />
+              <span className={cn(
+                "text-xs md:text-sm",
+                isDark ? "text-gray-300" : "text-gray-700"
+              )}>
                 {completedStops}/{totalStops}
               </span>
             </div>
@@ -107,8 +126,8 @@ function RouteListCard({ route, onClick }) {
 
         {/* Progress Bar (for active routes) */}
         {status === 'ACTIVE' && (
-          <div className="space-y-1">
-            <div className="flex justify-between text-xs">
+          <div className="space-y-0.5 md:space-y-1">
+            <div className="flex justify-between text-[10px] md:text-xs">
               <span className={isDark ? "text-gray-400" : "text-gray-600"}>
                 Progress
               </span>
@@ -116,9 +135,9 @@ function RouteListCard({ route, onClick }) {
                 {Math.round(progress)}%
               </span>
             </div>
-            <div className="w-full bg-gray-700 rounded-full h-2">
+            <div className="w-full bg-gray-700 rounded-full h-1.5 md:h-2">
               <div
-                className="bg-green-500 h-2 rounded-full transition-all"
+                className="bg-green-500 h-1.5 md:h-2 rounded-full transition-all"
                 style={{ width: `${progress}%` }}
               />
             </div>
@@ -127,14 +146,15 @@ function RouteListCard({ route, onClick }) {
 
         {/* CTA Button */}
         <button className={cn(
-          "w-full py-2 px-4 rounded-lg font-medium transition-colors",
+          "w-full py-1.5 md:py-2 px-3 md:px-4 rounded-lg font-medium transition-colors flex items-center justify-center gap-1.5 md:gap-2 text-xs md:text-sm",
           status === 'ACTIVE'
             ? "bg-[#f3684e] hover:bg-[#e55a28] text-white"
             : isDark
             ? "bg-gray-700 hover:bg-gray-600 text-gray-200"
             : "bg-gray-200 hover:bg-gray-300 text-gray-800"
         )}>
-          {status === 'ACTIVE' ? 'Continue →' : 'View Details →'}
+          <MapPin className="w-3 h-3 md:w-4 md:h-4" />
+          {status === 'ACTIVE' ? 'Continue Route' : 'View Map'}
         </button>
       </div>
     </div>

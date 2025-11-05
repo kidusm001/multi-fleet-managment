@@ -334,6 +334,21 @@ const buildDriverSchedule = async ({
 }: ScheduleWindow): Promise<AnnotatedRoute<RouteForSchedule>[]> => {
     const templateWindowStart = addDays(startDate, -28);
 
+    // Get driver's assigned vehicle if any
+    const driverVehicle = await prisma.vehicle.findFirst({
+        where: {
+            driverId: driverProfile.id,
+            deleted: false,
+        },
+        select: {
+            id: true,
+            name: true,
+            plateNumber: true,
+            status: true,
+            capacity: true,
+        },
+    });
+
     const driverRoutes = await prisma.route.findMany({
         where: {
             organizationId: driverProfile.organizationId,
@@ -390,6 +405,46 @@ const buildDriverSchedule = async ({
     driverRoutes.forEach((route) => {
         if (recurringTemplateMap.has(route.id)) {
             recurringTemplateMap.set(route.id, route);
+        }
+    });
+
+    const attendanceRecords = await prisma.attendanceRecord.findMany({
+        where: {
+            organizationId: driverProfile.organizationId,
+            date: {
+                gte: templateWindowStart,
+                lte: endDate,
+            },
+            OR: [
+                { driverId: driverProfile.id },
+                {
+                    driverId: null,
+                    vehicle: {
+                        driverId: driverProfile.id,
+                    },
+                },
+            ],
+        },
+        select: {
+            id: true,
+            date: true,
+            vehicleId: true,
+        },
+    });
+
+    const attendanceByVehicle = new Set<string>();
+    const attendanceByDate = new Set<string>();
+
+    attendanceRecords.forEach((record) => {
+        const recordDate = new Date(record.date);
+        if (Number.isNaN(recordDate.getTime())) {
+            return;
+        }
+
+        const dateKey = formatDateKey(recordDate);
+        attendanceByDate.add(dateKey);
+        if (record.vehicleId) {
+            attendanceByVehicle.add(`${dateKey}::${record.vehicleId}`);
         }
     });
 
@@ -508,7 +563,37 @@ const buildDriverSchedule = async ({
 
     const now = new Date();
     const sortedSchedule = sortRoutesForSchedule([...synthesizedSchedule]);
-    return sortedSchedule.map((route) => annotateRouteWithStatuses(route, now));
+
+    const scheduleWithAttendance = sortedSchedule.map((route) => {
+        const routeDate = resolveRouteDate(route);
+
+        if (!routeDate) {
+            return {
+                ...route,
+                hasAttendanceRecord: false,
+                vehicle: route.vehicle || driverVehicle || null,
+            };
+        }
+
+        const dateKey = formatDateKey(routeDate);
+        const vehicleIdentifier = route.vehicleId || route.vehicle?.id || null;
+        const vehicleKey = vehicleIdentifier ? `${dateKey}::${vehicleIdentifier}` : null;
+
+        const hasAttendanceRecord =
+            (vehicleKey && attendanceByVehicle.has(vehicleKey)) || attendanceByDate.has(dateKey);
+
+        return {
+            ...route,
+            hasAttendanceRecord,
+            vehicle: route.vehicle || driverVehicle || null,
+        };
+    });
+
+    const annotated = scheduleWithAttendance.map((route) => {
+        return annotateRouteWithStatuses(route, now);
+    });
+
+    return annotated;
 };
 
 /**
@@ -1536,7 +1621,7 @@ router.get('/me/routes', requireAuth, async (req: Request, res: Response) => {
         let filteredRoutes = scheduleRoutes;
 
         if (normalizedStatus === 'CANCELLED') {
-            filteredRoutes = scheduleRoutes.filter((route) => (route.status ?? '').toUpperCase() === 'CANCELLED');
+            filteredRoutes = scheduleRoutes.filter((route) => route.driverStatus === 'CANCELLED');
         } else if (normalizedStatus === 'INACTIVE') {
             filteredRoutes = scheduleRoutes.filter((route) => route.managementStatus === 'INACTIVE');
         } else if (normalizedStatus) {

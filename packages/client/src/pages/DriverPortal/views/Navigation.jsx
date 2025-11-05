@@ -18,6 +18,7 @@ import { driverService } from '@services/driverService';
 import { cn } from '@lib/utils';
 import { MAP_STYLES } from '@components/Common/Map/config';
 import { transformRouteForMap, buildGoogleMapsUrl } from '../utils/mapHelpers';
+import { getEffectiveRouteStatus } from '../utils/routeStatus';
 
 const MapComponent = React.lazy(() => import('@components/Common/Map/MapComponent'));
 
@@ -136,15 +137,15 @@ function NavigationView() {
     return transformRouteForMap({ ...route, stops });
   }, [route, stops]);
 
-  const driverStatus = (route?.driverStatus || route?.status || '').toUpperCase();
+  const rawStatus = route ? getEffectiveRouteStatus(route) : 'UPCOMING';
+  // In navigation view, treat CANCELLED routes as UPCOMING (they shouldn't be accessible anyway)
+  const driverStatus = rawStatus === 'CANCELLED' ? 'UPCOMING' : rawStatus;
   const isRouteActive = driverStatus === 'ACTIVE';
   const isRouteCompleted = driverStatus === 'COMPLETED';
   const statusLabel = isRouteCompleted
     ? 'Completed'
     : isRouteActive
     ? 'In Progress'
-    : driverStatus === 'CANCELLED'
-    ? 'Cancelled'
     : 'Scheduled';
   const StatusIcon = isRouteCompleted ? CheckCircle2 : isRouteActive ? NavigationIcon : RouteIcon;
 
@@ -489,7 +490,10 @@ function NavigationView() {
             </h2>
             <p className={cn('mt-1 text-sm flex items-center gap-2', isDark ? 'text-gray-300' : 'text-gray-600')}>
               <RouteIcon className="h-4 w-4" />
-              {stops.length} stops • {route.vehicle?.plateNumber || 'No shuttle assigned'}
+              {stops.length} stops • {route.vehicle?.name || 'No shuttle assigned'}
+              {route.vehicle?.plateNumber && (
+                <span className="text-xs text-gray-500">({route.vehicle.plateNumber})</span>
+              )}
             </p>
           </div>
           {currentStop && (
@@ -506,15 +510,18 @@ function NavigationView() {
           <button
             type="button"
             onClick={tracking ? handleStopTracking : handleStartRoute}
+            disabled={!isRouteActive && !tracking}
             className={cn(
               'flex-1 rounded-lg px-4 py-3 font-semibold transition-colors flex items-center justify-center gap-2',
-              tracking
+              !isRouteActive && !tracking
+                ? 'cursor-not-allowed bg-gray-400/40 text-gray-500 dark:bg-gray-800/40 dark:text-gray-600'
+                : tracking
                 ? 'bg-gray-200 text-gray-800 hover:bg-gray-300 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700'
                 : 'bg-[#f3684e] text-white hover:bg-[#e55a28]'
             )}
           >
             {tracking ? <StopCircle className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-            {tracking ? 'Pause Tracking' : isRouteActive ? 'Resume Tracking' : 'Start Route'}
+            {tracking ? 'Pause Tracking' : isRouteActive ? 'Start Route' : 'Start Route'}
           </button>
 
           <button
@@ -538,9 +545,12 @@ function NavigationView() {
             <button
               type="button"
               onClick={handleCompleteRoute}
+              disabled={!isRouteActive}
               className={cn(
                 'flex items-center justify-center gap-2 rounded-lg px-4 py-3 font-semibold transition-colors',
-                'bg-emerald-500 text-white hover:bg-emerald-600'
+                !isRouteActive
+                  ? 'cursor-not-allowed bg-gray-400/40 text-gray-500 dark:bg-gray-800/40 dark:text-gray-600'
+                  : 'bg-emerald-500 text-white hover:bg-emerald-600'
               )}
             >
               <CheckCircle2 className="h-4 w-4" />
@@ -589,6 +599,9 @@ function NavigationView() {
                 <div className="flex-1 space-y-1">
                   <p className={cn('font-medium', isDark ? 'text-white' : 'text-gray-900')}>
                     {stop.employee?.name || stop.name || `Stop ${index + 1}`}
+                    {stop.completedAt && (
+                      <span className="ml-2 text-xs font-normal text-emerald-500">✓ Completed</span>
+                    )}
                   </p>
                   {(stop.address || stop.estimatedArrivalTime) && (
                     <p className={cn('text-sm flex flex-wrap items-center gap-2', isDark ? 'text-gray-400' : 'text-gray-600')}>
@@ -609,6 +622,48 @@ function NavigationView() {
                     <p className={cn('text-xs italic', isDark ? 'text-gray-400' : 'text-gray-500')}>
                       {stop.notes}
                     </p>
+                  )}
+                  {tracking && !stop.completedAt && isRouteActive && (
+                    <div className="flex gap-2 mt-2">
+                      <button
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          try {
+                            await driverService.checkinStop(route.id, stop.id);
+                            const updatedRoute = await driverService.getRoute(route.id);
+                            setRoute(updatedRoute);
+                          } catch (err) {
+                            console.error('Failed to mark stop as completed:', err);
+                          }
+                        }}
+                        className={cn(
+                          'flex-1 text-xs py-1.5 px-3 rounded-lg font-medium transition-colors',
+                          'bg-emerald-500 text-white hover:bg-emerald-600'
+                        )}
+                      >
+                        Mark Dropped
+                      </button>
+                      <button
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          try {
+                            await driverService.checkinStop(route.id, stop.id, { skipped: true });
+                            const updatedRoute = await driverService.getRoute(route.id);
+                            setRoute(updatedRoute);
+                          } catch (err) {
+                            console.error('Failed to skip stop:', err);
+                          }
+                        }}
+                        className={cn(
+                          'text-xs py-1.5 px-3 rounded-lg font-medium transition-colors',
+                          isDark
+                            ? 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                        )}
+                      >
+                        Skip
+                      </button>
+                    </div>
                   )}
                 </div>
               </li>

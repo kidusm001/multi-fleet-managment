@@ -122,22 +122,22 @@ function RoutesListView() {
       <div className="max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 md:gap-3">
             <div className={cn(
-              "p-2 rounded-lg",
+              "p-1.5 md:p-2 rounded-lg",
               isDark ? "bg-gray-800" : "bg-white"
             )}>
-              <ListFilter className="w-5 h-5 text-[#f3684e]" />
+              <ListFilter className="w-4 h-4 md:w-5 md:h-5 text-[#f3684e]" />
             </div>
             <div>
               <h1 className={cn(
-                "text-2xl font-bold",
+                "text-lg md:text-2xl font-bold",
                 isDark ? "text-white" : "text-gray-900"
               )}>
                 My Routes
               </h1>
               <p className={cn(
-                "text-sm",
+                "text-xs md:text-sm",
                 isDark ? "text-gray-400" : "text-gray-600"
               )}>
                 {routesForFilter.length} {filter.toLowerCase()} {routesForFilter.length === 1 ? 'route' : 'routes'}
@@ -148,14 +148,14 @@ function RoutesListView() {
             onClick={handleRefresh}
             disabled={refreshing}
             className={cn(
-              "p-2 rounded-lg transition-colors",
+              "p-1.5 md:p-2 rounded-lg transition-colors",
               isDark
                 ? "bg-gray-800 text-gray-400 hover:bg-gray-700"
                 : "bg-white text-gray-600 hover:bg-gray-100"
             )}
           >
             <RefreshCw className={cn(
-              "w-5 h-5",
+              "w-4 h-4 md:w-5 md:h-5",
               refreshing && "animate-spin"
             )} />
           </button>
@@ -163,7 +163,7 @@ function RoutesListView() {
 
         {/* Tab Filters */}
         <div className={cn(
-          "flex gap-2 p-1 rounded-xl border",
+          "flex gap-1 md:gap-2 p-1 rounded-xl border",
           isDark
             ? "bg-gray-800 border-gray-700"
             : "bg-white border-gray-200"
@@ -173,7 +173,7 @@ function RoutesListView() {
               key={tab.id}
               onClick={() => setFilter(tab.id)}
               className={cn(
-                "flex-1 py-3 px-4 rounded-lg font-medium transition-all",
+                "flex-1 py-2 md:py-3 px-2 md:px-4 rounded-lg font-medium transition-all text-xs md:text-sm",
                 filter === tab.id
                   ? "bg-[#f3684e] text-white shadow-lg"
                   : isDark
@@ -181,10 +181,10 @@ function RoutesListView() {
                   : "text-gray-600 hover:bg-gray-100"
               )}
             >
-              <span className="inline-flex items-center justify-center gap-2">
+              <span className="inline-flex items-center justify-center gap-1 md:gap-2">
                 <span>{tab.label}</span>
                 <span className={cn(
-                  "text-xs font-semibold px-2 py-0.5 rounded-full",
+                  "text-[10px] md:text-xs font-semibold px-1.5 md:px-2 py-0.5 rounded-full",
                   filter === tab.id
                     ? "bg-white/20"
                     : isDark
@@ -202,12 +202,12 @@ function RoutesListView() {
 
         {/* Routes List */}
         {routesForFilter.length > 0 ? (
-          <div className="space-y-3">
+          <div className="space-y-2 md:space-y-3">
             {routesForFilter.map((route) => (
               <RouteListCard
                 key={route.id}
                 route={route}
-                onClick={() => navigate(`/driver/route/${route.id}`, {
+                onClick={() => navigate(`/driver/navigate/${route.id}/${route.vehicle?.id || route.vehicleId || 'unknown'}`, {
                   state: { route }
                 })}
               />
@@ -215,22 +215,22 @@ function RoutesListView() {
           </div>
         ) : (
           <div className={cn(
-            "rounded-2xl border p-12 text-center",
+            "rounded-2xl border p-6 md:p-12 text-center",
             isDark
               ? "bg-gray-800/50 border-gray-700"
               : "bg-white border-gray-200"
           )}>
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-700 mb-4">
-              <ListFilter className="w-8 h-8 text-gray-400" />
+            <div className="inline-flex items-center justify-center w-12 h-12 md:w-16 md:h-16 rounded-full bg-gray-100 dark:bg-gray-700 mb-2 md:mb-4">
+              <ListFilter className="w-6 h-6 md:w-8 md:h-8 text-gray-400" />
             </div>
             <h3 className={cn(
-              "text-lg font-semibold mb-2",
+              "text-sm md:text-lg font-semibold mb-1 md:mb-2",
               isDark ? "text-gray-200" : "text-gray-900"
             )}>
               No {filter.toLowerCase()} routes
             </h3>
             <p className={cn(
-              "text-sm",
+              "text-xs md:text-sm",
               isDark ? "text-gray-400" : "text-gray-600"
             )}>
               {filter === 'ACTIVE' && "You don't have any active routes at the moment."}

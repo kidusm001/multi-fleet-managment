@@ -166,28 +166,28 @@ function ScheduleView() {
 
   return (
     <div className={cn(
-      "min-h-screen p-4 md:p-6",
+      "min-h-screen p-3 md:p-6",
       isDark ? "bg-gray-900" : "bg-gray-50"
     )}>
-      <div className="max-w-7xl mx-auto space-y-6">
+      <div className="max-w-7xl mx-auto space-y-3 md:space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 md:gap-3">
             <div className={cn(
-              "p-2 rounded-lg",
+              "p-1.5 md:p-2 rounded-lg",
               isDark ? "bg-gray-800" : "bg-white"
             )}>
-              <Calendar className="w-5 h-5 text-[#f3684e]" />
+              <Calendar className="w-4 h-4 md:w-5 md:h-5 text-[#f3684e]" />
             </div>
             <div>
               <h1 className={cn(
-                "text-2xl font-bold",
+                "text-lg md:text-2xl font-bold",
                 isDark ? "text-white" : "text-gray-900"
               )}>
                 My Schedule
               </h1>
               <p className={cn(
-                "text-sm",
+                "text-xs md:text-sm",
                 isDark ? "text-gray-400" : "text-gray-600"
               )}>
                 {schedule.length} {schedule.length === 1 ? 'route' : 'routes'} this month
@@ -197,7 +197,7 @@ function ScheduleView() {
           <button
             onClick={handleToday}
             className={cn(
-              "px-4 py-2 rounded-lg font-medium transition-colors",
+              "px-3 md:px-4 py-1.5 md:py-2 rounded-lg font-medium transition-colors text-xs md:text-sm",
               isDark
                 ? "bg-gray-800 text-gray-300 hover:bg-gray-700"
                 : "bg-white text-gray-700 hover:bg-gray-100"

@@ -5,7 +5,7 @@ import { useTheme } from '@contexts/ThemeContext';
 import { cn } from '@lib/utils';
 import { driverService } from '@services/driverService';
 import ActiveRouteCard from '../components/ActiveRouteCard';
-import { Calendar, Clock, MapPin, TrendingUp } from 'lucide-react';
+import { Calendar, Clock, MapPin, TrendingUp, Truck } from 'lucide-react';
 import {
   groupRoutesByEffectiveStatus,
   sortRoutesByStartTime,
@@ -175,29 +175,28 @@ function DashboardView() {
       "min-h-screen p-4 md:p-6",
       isDark ? "bg-gray-900" : "bg-gray-50"
     )}>
-      <div className="max-w-7xl mx-auto space-y-6">
+      <div className="max-w-7xl mx-auto space-y-3 md:space-y-4">
         {/* Greeting Section */}
         <div className={cn(
-          "rounded-2xl p-6 border",
+          "rounded-lg p-3 md:p-4 border",
           isDark
-            ? "bg-gradient-to-br from-gray-800 to-gray-900 border-gray-700"
-            : "bg-gradient-to-br from-white to-gray-50 border-gray-200"
+            ? "bg-gray-800 border-gray-700"
+            : "bg-white border-gray-200"
         )}>
           <h1 className={cn(
-            "text-2xl md:text-3xl font-bold",
+            "text-lg md:text-2xl font-bold",
             isDark ? "text-white" : "text-gray-900"
           )}>
-            {getGreeting()}, {session?.user?.name?.split(' ')[0] || 'Driver'}!
+            {getGreeting()}, {session?.user?.name?.split(' ')[0] || 'Driver'}
           </h1>
           <p className={cn(
-            "mt-2 flex items-center gap-2",
+            "mt-1 flex items-center gap-1.5 text-xs md:text-sm",
             isDark ? "text-gray-400" : "text-gray-600"
           )}>
-            <Calendar className="w-4 h-4" />
+            <Calendar className="w-3 h-3 md:w-4 md:h-4" />
             {new Date().toLocaleDateString('en-US', { 
               weekday: 'long', 
-              year: 'numeric', 
-              month: 'long', 
+              month: 'short', 
               day: 'numeric' 
             })}
           </p>
@@ -220,12 +219,12 @@ function DashboardView() {
         ) : nextRoute ? (
           // Show next upcoming route with Start Tracking button
           <div className={cn(
-            "rounded-2xl border p-6",
+            "rounded-lg border p-3 md:p-4",
             isDark
-              ? "bg-gradient-to-br from-blue-900/30 to-blue-800/20 border-blue-700/50"
-              : "bg-gradient-to-br from-blue-50 to-blue-100/50 border-blue-200"
+              ? "bg-gray-800 border-gray-700"
+              : "bg-white border-gray-200"
           )}>
-            <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start justify-between gap-2 md:gap-4">
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-2">
                   <div className="p-2 rounded-lg bg-blue-500/10">
@@ -238,12 +237,6 @@ function DashboardView() {
                     )}>
                       Next Route
                     </h3>
-                    <p className={cn(
-                      "text-sm",
-                      isDark ? "text-gray-400" : "text-gray-600"
-                    )}>
-                      Ready to start
-                    </p>
                   </div>
                 </div>
                 
@@ -271,19 +264,27 @@ function DashboardView() {
                         </span>
                       </div>
                     )}
-                    {nextRoute.vehicle && (
-                      <div className="flex items-center gap-1.5">
-                        <MapPin className={cn(
-                          "w-4 h-4",
-                          isDark ? "text-gray-400" : "text-gray-500"
-                        )} />
+                    <div className="flex items-center gap-1.5">
+                      <Truck className={cn(
+                        "w-4 h-4",
+                        isDark ? "text-gray-400" : "text-gray-500"
+                      )} />
+                      <div>
                         <span className={cn(
                           isDark ? "text-gray-300" : "text-gray-700"
                         )}>
-                          {nextRoute.vehicle.plateNumber}
+                          {nextRoute.vehicle?.name || 'No vehicle'}
                         </span>
+                        {nextRoute.vehicle?.plateNumber && (
+                          <span className={cn(
+                            "text-xs ml-1",
+                            isDark ? "text-gray-500" : "text-gray-500"
+                          )}>
+                            ({nextRoute.vehicle.plateNumber})
+                          </span>
+                        )}
                       </div>
-                    )}
+                    </div>
                     <div className="flex items-center gap-1.5">
                       <Calendar className={cn(
                         "w-4 h-4",
@@ -303,7 +304,7 @@ function DashboardView() {
                 onClick={handleStartTracking}
                 disabled={startingRoute}
                 className={cn(
-                  "px-6 py-3 rounded-xl font-medium transition-all shadow-lg",
+                  "px-4 md:px-6 py-2 md:py-3 rounded-lg font-medium transition-all text-sm md:text-base",
                   "bg-[#f3684e] hover:bg-[#e55739] text-white",
                   "disabled:opacity-50 disabled:cursor-not-allowed",
                   startingRoute && "animate-pulse"
@@ -315,9 +316,9 @@ function DashboardView() {
           </div>
         ) : (
           <div className={cn(
-            "rounded-2xl border p-8 text-center",
+            "rounded-lg border p-4 md:p-6 text-center",
             isDark
-              ? "bg-gray-800/50 border-gray-700"
+              ? "bg-gray-800 border-gray-700"
               : "bg-white border-gray-200"
           )}>
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-700 mb-4">
@@ -340,9 +341,9 @@ function DashboardView() {
 
         {/* Stats Grid */}
         {activeRoute && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
             <div className={cn(
-              "rounded-xl p-4 border",
+              "rounded-lg p-4 border",
               isDark
                 ? "bg-gray-800 border-gray-700"
                 : "bg-white border-gray-200"
@@ -361,7 +362,7 @@ function DashboardView() {
             </div>
 
             <div className={cn(
-              "rounded-xl p-4 border",
+              "rounded-lg p-4 border",
               isDark
                 ? "bg-gray-800 border-gray-700"
                 : "bg-white border-gray-200"
@@ -380,7 +381,7 @@ function DashboardView() {
             </div>
 
             <div className={cn(
-              "rounded-xl p-4 border",
+              "rounded-lg p-4 border",
               isDark
                 ? "bg-gray-800 border-gray-700"
                 : "bg-white border-gray-200"
@@ -399,7 +400,7 @@ function DashboardView() {
             </div>
 
             <div className={cn(
-              "rounded-xl p-4 border",
+              "rounded-lg p-4 border",
               isDark
                 ? "bg-gray-800 border-gray-700"
                 : "bg-white border-gray-200"
@@ -422,13 +423,13 @@ function DashboardView() {
         {/* Upcoming Shifts */}
         {upcomingShifts.length > 0 && (
           <div className={cn(
-            "rounded-2xl border p-6",
+            "rounded-lg border p-3 md:p-4",
             isDark
               ? "bg-gray-800 border-gray-700"
               : "bg-white border-gray-200"
           )}>
             <h2 className={cn(
-              "text-xl font-semibold mb-4",
+              "text-base md:text-lg font-semibold mb-2 md:mb-3",
               isDark ? "text-white" : "text-gray-900"
             )}>
               Upcoming Routes
@@ -438,12 +439,12 @@ function DashboardView() {
                 <div
                   key={shift.id}
                   className={cn(
-                    "p-4 rounded-xl border cursor-pointer transition-colors",
+                    "p-4 rounded-lg border cursor-pointer transition-colors",
                     isDark
-                      ? "bg-gray-700/50 border-gray-600 hover:bg-gray-700"
+                      ? "bg-gray-700 border-gray-600 hover:bg-gray-600"
                       : "bg-gray-50 border-gray-200 hover:bg-gray-100"
                   )}
-                  onClick={() => navigate(`/driver/route/${shift.id}`, {
+                  onClick={() => navigate(`/driver/navigate/${shift.id}/${shift.vehicle?.id || shift.vehicleId || 'unknown'}`, {
                     state: { route: shift }
                   })}
                 >
@@ -459,7 +460,10 @@ function DashboardView() {
                         "text-sm mt-1",
                         isDark ? "text-gray-400" : "text-gray-600"
                       )}>
-                        {shift.stops?.length || 0} stops • {shift.vehicle?.licensePlate || 'No vehicle'}
+                        {shift.stops?.length || 0} stops • {shift.vehicle?.name || 'No vehicle'}
+                        {shift.vehicle?.plateNumber && (
+                          <span className="text-xs ml-1">({shift.vehicle.plateNumber})</span>
+                        )}
                       </p>
                     </div>
                     <div className="text-right">
@@ -473,7 +477,7 @@ function DashboardView() {
                         "text-xs",
                         isDark ? "text-gray-500" : "text-gray-500"
                       )}>
-                        {shift.startTime || 'No time set'}
+                        {shift.shift?.startTime ? new Date(shift.shift.startTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : shift.startTime ? new Date(shift.startTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : 'No time set'}
                       </p>
                     </div>
                   </div>
