@@ -1,0 +1,1074 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shuttle Route Visualization</title>
+    
+    <!-- D3.js -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    
+    <!-- Leaflet (for map view) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', sans-serif;
+            background: #0d0d0d;
+            color: #e0e0e0;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            width: 100%;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            background: linear-gradient(135deg, #1a1a1a 0%, #252525 100%);
+            border-bottom: 1px solid #333;
+            z-index: 100;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+        }
+
+        .title {
+            font-size: 24px;
+            font-weight: 600;
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .control-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        button, select {
+            padding: 10px 16px;
+            border: 1px solid #444;
+            border-radius: 6px;
+            background: #1a1a1a;
+            color: #e0e0e0;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        button:hover, select:hover {
+            background: #252525;
+            border-color: #6366f1;
+            box-shadow: 0 0 12px rgba(99, 102, 241, 0.3);
+        }
+
+        button.active {
+            background: #6366f1;
+            border-color: #6366f1;
+            color: #fff;
+            box-shadow: 0 0 12px rgba(99, 102, 241, 0.5);
+        }
+
+        select {
+            cursor: pointer;
+            padding: 8px 12px;
+        }
+
+        .main-content {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            gap: 15px;
+            padding: 15px;
+            background: #0d0d0d;
+        }
+
+        .canvas-container {
+            flex: 1;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            overflow: hidden;
+            position: relative;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+        }
+
+        #graph-canvas, #map {
+            width: 100%;
+            height: 100%;
+        }
+
+        .sidebar {
+            width: 320px;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            overflow-y: auto;
+            padding: 20px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .sidebar-section {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .sidebar-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #6366f1;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .shuttle-item {
+            padding: 12px;
+            background: #252525;
+            border: 1px solid #333;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 13px;
+        }
+
+        .shuttle-item:hover {
+            background: #2d2d2d;
+            border-color: #444;
+        }
+
+        .shuttle-item.selected {
+            border-color: #6366f1;
+            background: rgba(99, 102, 241, 0.1);
+        }
+
+        .shuttle-color {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+
+        .shuttle-info {
+            font-size: 12px;
+            color: #888;
+            margin-top: 4px;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .stat-card {
+            padding: 12px;
+            background: rgba(99, 102, 241, 0.1);
+            border: 1px solid #333;
+            border-radius: 6px;
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 11px;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-value {
+            font-size: 18px;
+            font-weight: 700;
+            color: #6366f1;
+            margin-top: 4px;
+        }
+
+        .legend {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+        }
+
+        .legend-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .tooltip {
+            position: absolute;
+            padding: 12px;
+            background: rgba(26, 26, 26, 0.95);
+            border: 1px solid #444;
+            border-radius: 6px;
+            font-size: 12px;
+            pointer-events: none;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+            max-width: 200px;
+            display: none;
+        }
+
+        .tooltip.active {
+            display: block;
+        }
+
+        .tooltip-title {
+            font-weight: 600;
+            color: #6366f1;
+            margin-bottom: 4px;
+        }
+
+        .tooltip-line {
+            color: #aaa;
+            margin: 2px 0;
+        }
+
+        .tooltip-line strong {
+            color: #e0e0e0;
+        }
+
+        /* D3 Nodes and Links */
+        .node {
+            stroke: #333;
+            stroke-width: 2px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .node-hq {
+            filter: drop-shadow(0 0 12px rgba(255, 107, 53, 0.8));
+        }
+
+        .node-shuttle {
+            filter: drop-shadow(0 0 8px currentColor);
+            stroke-width: 2px;
+            stroke: #fff;
+        }
+
+        .node-employee {
+            filter: drop-shadow(0 0 6px currentColor);
+        }
+
+        .node:hover {
+            stroke-width: 3px;
+            filter: drop-shadow(0 0 12px currentColor);
+        }
+
+        .node-label {
+            pointer-events: none;
+            text-shadow: 0 0 3px rgba(0,0,0,0.8);
+        }
+
+        .link {
+            stroke-opacity: 0.6;
+            stroke-linecap: round;
+        }
+
+        .link-hq-shuttle {
+            stroke-width: 3px;
+        }
+
+        .link-shuttle-employee {
+            stroke-width: 2px;
+        }
+
+        .link.active {
+            stroke-opacity: 0.9;
+            filter: drop-shadow(0 0 4px currentColor);
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #888;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            background: #1a1a1a;
+            z-index: 500;
+        }
+
+        .spinner {
+            border: 3px solid #333;
+            border-top: 3px solid #6366f1;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            padding: 16px;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid #ef4444;
+            border-radius: 6px;
+            color: #fca5a5;
+            font-size: 13px;
+            margin-bottom: 12px;
+        }
+
+        .info-box {
+            padding: 12px;
+            background: rgba(99, 102, 241, 0.1);
+            border: 1px solid #6366f1;
+            border-radius: 6px;
+            font-size: 12px;
+            line-height: 1.4;
+            color: #aaa;
+        }
+
+        /* Scrollbar Styling */
+        .sidebar::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .sidebar::-webkit-scrollbar-track {
+            background: #1a1a1a;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 3px;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb:hover {
+            background: #444;
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .sidebar {
+                width: 280px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                flex-direction: column;
+            }
+
+            .sidebar {
+                width: 100%;
+                max-height: 200px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="title">🚐 Shuttle Route Optimizer</div>
+            <div class="controls">
+                <div class="control-group">
+                    <label style="font-size: 13px; margin-right: 8px;">API URL:</label>
+                    <input type="text" id="api-url" value="http://localhost:8000" 
+                           style="padding: 8px 12px; background: #252525; border: 1px solid #444; border-radius: 6px; color: #e0e0e0; width: 180px;">
+                </div>
+                <button id="load-btn">📊 Load Data</button>
+                <button id="view-toggle" class="active">Graph View</button>
+                <select id="animation-speed">
+                    <option value="slow">Slow</option>
+                    <option value="normal" selected>Normal</option>
+                    <option value="fast">Fast</option>
+                </select>
+                <button id="reset-btn">↺ Reset</button>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <div class="canvas-container">
+                <svg id="graph-canvas" style="display: block;"></svg>
+                <div id="map" style="display: none;"></div>
+                <div class="tooltip" id="tooltip"></div>
+                <div class="loading" id="loading" style="display: flex;">
+                    <div class="spinner"></div>
+                    <div>Loading and optimizing routes...</div>
+                    <div style="font-size: 12px; color: #888; margin-top: 10px;">Sending request to API...</div>
+                </div>
+                <div id="error" class="error" style="display: none; position: absolute; top: 20px; left: 20px; right: 20px;"></div>
+            </div>
+
+            <div class="sidebar">
+                <div class="sidebar-section">
+                    <div class="sidebar-title">Statistics</div>
+                    <div class="stats">
+                        <div class="stat-card">
+                            <div class="stat-label">Employees</div>
+                            <div class="stat-value" id="stat-employees">0</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Shuttles</div>
+                            <div class="stat-value" id="stat-shuttles">0</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Total Capacity</div>
+                            <div class="stat-value" id="stat-capacity">0</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Utilization</div>
+                            <div class="stat-value" id="stat-utilization">0%</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="sidebar-section">
+                    <div class="sidebar-title">Shuttles</div>
+                    <div id="shuttle-list"></div>
+                </div>
+
+                <div class="sidebar-section">
+                    <div class="sidebar-title">Legend</div>
+                    <div class="legend">
+                        <div class="legend-item">
+                            <div class="legend-dot" style="background: #ff6b35; box-shadow: 0 0 8px rgba(255, 107, 53, 0.6);"></div>
+                            <span>HQ (Central Hub)</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-dot" style="background: #6366f1; box-shadow: 0 0 6px rgba(99, 102, 241, 0.6); width: 14px; height: 14px;"></div>
+                            <span>Shuttles (Color-coded)</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-dot" style="background: #6366f1; box-shadow: 0 0 6px rgba(99, 102, 241, 0.6);"></div>
+                            <span>Employees</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-dot" style="background: #10b981; height: 2px; width: 16px; border-radius: 0;"></div>
+                            <span>HQ → Shuttle</span>
+                        </div>
+                        <div class="legend-item">
+                            <div class="legend-dot" style="background: #10b981; height: 1px; width: 14px; border-radius: 0; opacity: 0.6;"></div>
+                            <span>Shuttle → Employee</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="sidebar-section">
+                    <div class="info-box">
+                        💡 Hover over nodes to see details. Click shuttles in the list to highlight their routes. Use the view toggle to switch between graph and map views.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const CONFIG = {
+            animationSpeeds: {
+                slow: 2000,
+                normal: 1000,
+                fast: 500
+            },
+            colors: {
+                shuttles: [
+                    '#6366f1', '#8b5cf6', '#ec4899', '#f43f5e', '#f59e0b', '#14b8a6', 
+                    '#06b6d4', '#0ea5e9', '#3b82f6', '#1d4ed8', '#7c3aed', '#d946ef'
+                ],
+                hq: '#ff6b35',
+                employee: '#6366f1',
+                link: '#10b981'
+            },
+            nodeSize: {
+                hq: 20,
+                employee: 12
+            },
+            forces: {
+                chargeStrength: -400,
+                linkDistance: 80,
+                linkStrength: 0.3
+            }
+        };
+
+        // State
+        let state = {
+            data: null,
+            routes: null,
+            selectedShuttle: null,
+            animationSpeed: 'normal',
+            viewMode: 'graph',
+            simulation: null,
+            map: null,
+            markers: {},
+            polylines: {}
+        };
+
+        // Utility Functions
+        function showError(message) {
+            const errorDiv = document.getElementById('error');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            setTimeout(() => {
+                errorDiv.style.display = 'none';
+            }, 5000);
+        }
+
+        function showLoading(show = true) {
+            const loading = document.getElementById('loading');
+            if (show) {
+                loading.innerHTML = `
+                    <div class="spinner"></div>
+                    <div>Loading and optimizing routes...</div>
+                    <div style="font-size: 12px; color: #888; margin-top: 10px;">Sending request to API...</div>
+                `;
+                loading.style.display = 'flex';
+            } else {
+                loading.style.display = 'none';
+            }
+        }
+
+        function getShuttleColor(shuttleId) {
+            return CONFIG.colors.shuttles[shuttleId % CONFIG.colors.shuttles.length];
+        }
+
+        // API Functions
+        async function loadData() {
+            showLoading(true);
+            try {
+                const apiUrl = document.getElementById('api-url').value;
+                
+                // Create sample test data with more employees for better visualization
+                const testData = {
+                    "locations": {
+                        "HQ": [9.0222, 38.7468],
+                        "employees": [
+                            {"id": "emp001", "latitude": 9.03287202200085, "longitude": 38.76343705089629},
+                            {"id": "emp002", "latitude": 9.04293879926999, "longitude": 38.76907066992139},
+                            {"id": "emp003", "latitude": 9.03369509386297, "longitude": 38.75478508606945},
+                            {"id": "emp004", "latitude": 9.012204294628887, "longitude": 38.74679027085802},
+                            {"id": "emp005", "latitude": 9.044270542583565, "longitude": 38.76023426541653},
+                            {"id": "emp006", "latitude": 9.03457270903528, "longitude": 38.84610715018231},
+                            {"id": "emp007", "latitude": 9.034572932288537, "longitude": 38.84613217184764},
+                            {"id": "emp008", "latitude": 9.046267720531768, "longitude": 38.88009541881031},
+                            {"id": "emp009", "latitude": 9.017882290414272, "longitude": 38.79562470479321},
+                            {"id": "emp010", "latitude": 9.010779787674236, "longitude": 38.89456335992595},
+                            {"id": "emp011", "latitude": 9.001489969659858, "longitude": 38.7819725340372},
+                            {"id": "emp012", "latitude": 8.986746249254816, "longitude": 38.79336889463149},
+                            {"id": "emp013", "latitude": 8.967152184362995, "longitude": 38.78025356978782},
+                            {"id": "emp014", "latitude": 9.002833836117155, "longitude": 38.79971092620778},
+                            {"id": "emp015", "latitude": 8.987472802464548, "longitude": 38.7973012408324},
+                            {"id": "emp016", "latitude": 8.98311777237035, "longitude": 38.77275682326565},
+                            {"id": "emp017", "latitude": 9.002150369296826, "longitude": 38.8423026262783},
+                            {"id": "emp018", "latitude": 9.059905443974783, "longitude": 38.78734247206368},
+                            {"id": "emp019", "latitude": 9.042873786750272, "longitude": 38.76917973308376},
+                            {"id": "emp020", "latitude": 9.00149837352932, "longitude": 38.78199238373926}
+                        ]
+                    },
+                    "shuttles": [
+                        {"id": "1", "capacity": 6},
+                        {"id": "2", "capacity": 6},
+                        {"id": "3", "capacity": 4},
+                        {"id": "4", "capacity": 7}
+                    ]
+                };
+
+                console.log('🚀 Loading shuttle route data...');
+                console.log('📍 API URL:', `${apiUrl}/clustering`);
+                console.log('📦 Employees:', testData.locations.employees.length);
+                console.log('🚐 Shuttles:', testData.shuttles.length);
+
+                const response = await fetch(`${apiUrl}/clustering`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(testData),
+                    timeout: 30000
+                });
+
+                if (!response.ok) {
+                    throw new Error(`API error: ${response.status} ${response.statusText}`);
+                }
+
+                const result = await response.json();
+                console.log('✅ API Response received:', result);
+                
+                state.data = testData;
+                state.routes = result.routes.filter(r => r.employees.length > 0);
+
+                console.log(`📊 Routes assigned: ${state.routes.length}`);
+                console.log(`👥 Total employees assigned: ${state.routes.reduce((sum, r) => sum + r.employees.length, 0)}`);
+
+                if (state.routes.length === 0) {
+                    throw new Error('No routes returned from API - all shuttles empty');
+                }
+
+                updateStatistics();
+                renderVisualization();
+                console.log('🎨 Visualization rendered successfully!');
+            } catch (error) {
+                console.error('❌ Error:', error);
+                showError(`Failed to load data: ${error.message}`);
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        function updateStatistics() {
+            if (!state.data || !state.routes) return;
+
+            const employees = state.data.locations.employees.length;
+            const assignedEmployees = state.routes.reduce((sum, r) => sum + r.employees.length, 0);
+            const shuttles = state.data.shuttles.length;
+            const capacity = state.data.shuttles.reduce((sum, s) => sum + s.capacity, 0);
+            const utilization = capacity > 0 ? Math.round((assignedEmployees / capacity) * 100) : 0;
+
+            document.getElementById('stat-employees').textContent = assignedEmployees;
+            document.getElementById('stat-shuttles').textContent = shuttles;
+            document.getElementById('stat-capacity').textContent = capacity;
+            document.getElementById('stat-utilization').textContent = `${utilization}%`;
+
+            console.log('Statistics updated:', {employees, assignedEmployees, shuttles, capacity, utilization});
+            renderShuttleList();
+        }
+
+        function renderShuttleList() {
+            const list = document.getElementById('shuttle-list');
+            list.innerHTML = '';
+
+            state.routes.forEach(route => {
+                const shuttle = state.data.shuttles.find(s => s.id === route.shuttle_id);
+                if (!shuttle) return;
+                
+                const color = getShuttleColor(route.shuttle_id);
+                
+                const item = document.createElement('div');
+                item.className = 'shuttle-item';
+                item.innerHTML = `
+                    <span class="shuttle-color" style="background: ${color}; box-shadow: 0 0 6px ${color};"></span>
+                    <strong>Shuttle ${route.shuttle_id}</strong>
+                    <div class="shuttle-info">
+                        ${route.employees.length} employees / ${shuttle.capacity} capacity
+                    </div>
+                `;
+                
+                item.addEventListener('click', () => {
+                    state.selectedShuttle = state.selectedShuttle === route.shuttle_id ? null : route.shuttle_id;
+                    renderVisualization();
+                });
+
+                if (state.selectedShuttle === route.shuttle_id) {
+                    item.classList.add('selected');
+                }
+
+                list.appendChild(item);
+            });
+        }
+
+        function renderVisualization() {
+            if (state.viewMode === 'graph') {
+                renderGraphView();
+            } else {
+                renderMapView();
+            }
+        }
+
+        function renderGraphView() {
+            document.getElementById('graph-canvas').style.display = 'block';
+            document.getElementById('map').style.display = 'none';
+
+            const container = document.querySelector('.canvas-container');
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+
+            // Clear previous visualization
+            d3.select('#graph-canvas').selectAll('*').remove();
+
+            const svg = d3.select('#graph-canvas')
+                .attr('width', width)
+                .attr('height', height);
+
+            // Add background
+            svg.append('rect')
+                .attr('width', width)
+                .attr('height', height)
+                .attr('fill', '#1a1a1a');
+
+            // Create a group for zooming
+            const g = svg.append('g');
+
+            // Create hierarchical structure: HQ -> Shuttles -> Employees
+            const nodes = [];
+            const links = [];
+
+            // Add HQ as central node
+            const hqNode = {
+                id: 'HQ',
+                type: 'hq',
+                lat: state.data.locations.HQ[0],
+                lon: state.data.locations.HQ[1],
+                radius: CONFIG.nodeSize.hq,
+                level: 0
+            };
+            nodes.push(hqNode);
+
+            // Add shuttles and connect them to HQ
+            const shuttleNodes = {};
+            state.routes.forEach(route => {
+                const shuttleNode = {
+                    id: `shuttle-${route.shuttle_id}`,
+                    type: 'shuttle',
+                    shuttleId: route.shuttle_id,
+                    color: getShuttleColor(route.shuttle_id),
+                    radius: 16,
+                    level: 1,
+                    employeeCount: route.employees.length
+                };
+                nodes.push(shuttleNode);
+                shuttleNodes[route.shuttle_id] = shuttleNode;
+
+                // Connect shuttle to HQ
+                links.push({
+                    source: hqNode,
+                    target: shuttleNode,
+                    type: 'hq-shuttle',
+                    color: getShuttleColor(route.shuttle_id),
+                    shuttle: route.shuttle_id
+                });
+
+                // Add employees for this shuttle
+                route.employees.forEach(empId => {
+                    const emp = state.data.locations.employees.find(e => e.id === empId);
+                    if (emp) {
+                        const employeeNode = {
+                            id: empId,
+                            type: 'employee',
+                            shuttle: route.shuttle_id,
+                            color: getShuttleColor(route.shuttle_id),
+                            lat: emp.latitude,
+                            lon: emp.longitude,
+                            radius: CONFIG.nodeSize.employee,
+                            level: 2
+                        };
+                        nodes.push(employeeNode);
+
+                        // Connect employee to their shuttle
+                        links.push({
+                            source: shuttleNode,
+                            target: employeeNode,
+                            type: 'shuttle-employee',
+                            color: getShuttleColor(route.shuttle_id),
+                            shuttle: route.shuttle_id
+                        });
+                    }
+                });
+            });
+
+            console.log('Rendering hierarchical graph with', nodes.length, 'nodes and', links.length, 'links');
+
+            // Create simulation with radial forces
+            const simulation = d3.forceSimulation(nodes)
+                .force('link', d3.forceLink(links)
+                    .id(d => d.id)
+                    .distance(d => {
+                        if (d.type === 'hq-shuttle') return 120;
+                        if (d.type === 'shuttle-employee') return 90;
+                        return 80;
+                    })
+                    .strength(d => {
+                        if (d.type === 'hq-shuttle') return 0.5;
+                        if (d.type === 'shuttle-employee') return 0.8;
+                        return 0.3;
+                    }))
+                .force('charge', d3.forceManyBody()
+                    .strength(d => {
+                        if (d.type === 'hq') return -800;
+                        if (d.type === 'shuttle') return -400;
+                        return -200;
+                    }))
+                .force('center', d3.forceCenter(width / 2, height / 2).strength(0.1))
+                .force('radial', d3.forceRadial(d => {
+                    if (d.type === 'hq') return 0;
+                    if (d.type === 'shuttle') return 150;
+                    return 250;
+                }, width / 2, height / 2).strength(d => {
+                    if (d.type === 'hq') return 0;
+                    if (d.type === 'shuttle') return 0.3;
+                    return 0.2;
+                }))
+                .force('collision', d3.forceCollide().radius(d => d.radius + 5));
+
+            state.simulation = simulation;
+
+            // Add links
+            const link = g.selectAll('.link')
+                .data(links)
+                .enter()
+                .append('line')
+                .attr('class', d => `link link-${d.type}`)
+                .attr('stroke', d => d.color)
+                .attr('stroke-width', d => d.type === 'hq-shuttle' ? 3 : 2)
+                .attr('stroke-opacity', 0.6);
+
+            // Add nodes
+            const node = g.selectAll('.node')
+                .data(nodes)
+                .enter()
+                .append('circle')
+                .attr('class', d => `node node-${d.type}`)
+                .attr('r', d => d.radius)
+                .attr('fill', d => {
+                    if (d.type === 'hq') return CONFIG.colors.hq;
+                    if (d.type === 'shuttle') return d.color;
+                    return d.color;
+                })
+                .attr('stroke', '#333')
+                .attr('stroke-width', 2);
+
+            // Add labels for shuttles
+            const labels = g.selectAll('.node-label')
+                .data(nodes.filter(d => d.type === 'shuttle' || d.type === 'hq'))
+                .enter()
+                .append('text')
+                .attr('class', 'node-label')
+                .attr('text-anchor', 'middle')
+                .attr('dy', '.35em')
+                .attr('fill', '#fff')
+                .attr('font-size', '12px')
+                .attr('font-weight', 'bold')
+                .attr('pointer-events', 'none')
+                .text(d => {
+                    if (d.type === 'hq') return 'HQ';
+                    return `S${d.shuttleId}`;
+                });
+
+            // Add drag behavior
+            node.call(d3.drag()
+                .on('start', dragStarted)
+                .on('drag', dragged)
+                .on('end', dragEnded));
+
+            // Add tooltips
+            node.on('mouseenter', function(event, d) {
+                const tooltip = document.getElementById('tooltip');
+                
+                let tooltipText = `<div class="tooltip-title">${d.id}</div>`;
+                if (d.type === 'hq') {
+                    tooltipText += '<div class="tooltip-line"><strong>Distribution Center</strong></div>';
+                } else if (d.type === 'shuttle') {
+                    tooltipText += `<div class="tooltip-line"><strong>Shuttle ${d.shuttleId}</strong></div>`;
+                    tooltipText += `<div class="tooltip-line">Employees: ${d.employeeCount}</div>`;
+                } else if (d.type === 'employee') {
+                    tooltipText += `<div class="tooltip-line"><strong>Shuttle:</strong> ${d.shuttle}</div>`;
+                    tooltipText += `<div class="tooltip-line"><strong>Lat:</strong> ${d.lat.toFixed(4)}</div>`;
+                    tooltipText += `<div class="tooltip-line"><strong>Lon:</strong> ${d.lon.toFixed(4)}</div>`;
+                }
+                
+                tooltip.innerHTML = tooltipText;
+                tooltip.classList.add('active');
+                tooltip.style.left = event.pageX + 10 + 'px';
+                tooltip.style.top = event.pageY + 10 + 'px';
+            })
+            .on('mousemove', function(event) {
+                const tooltip = document.getElementById('tooltip');
+                tooltip.style.left = event.pageX + 10 + 'px';
+                tooltip.style.top = event.pageY + 10 + 'px';
+            })
+            .on('mouseleave', function() {
+                document.getElementById('tooltip').classList.remove('active');
+            });
+
+            // Add zoom behavior
+            svg.call(d3.zoom()
+                .on('zoom', (event) => {
+                    g.attr('transform', event.transform);
+                }));
+
+            // Update positions on simulation tick
+            simulation.on('tick', () => {
+                link
+                    .attr('x1', d => d.source.x)
+                    .attr('y1', d => d.source.y)
+                    .attr('x2', d => d.target.x)
+                    .attr('y2', d => d.target.y)
+                    .attr('stroke-opacity', d => {
+                        if (!state.selectedShuttle) return 0.6;
+                        return d.shuttle === state.selectedShuttle ? 0.8 : 0.15;
+                    });
+
+                node
+                    .attr('cx', d => d.x)
+                    .attr('cy', d => d.y)
+                    .attr('opacity', d => {
+                        if (!state.selectedShuttle) return 1;
+                        if (d.type === 'hq') return 1;
+                        if (d.type === 'shuttle') return d.shuttleId === state.selectedShuttle ? 1 : 0.3;
+                        return d.shuttle === state.selectedShuttle ? 1 : 0.3;
+                    });
+
+                labels
+                    .attr('x', d => d.x)
+                    .attr('y', d => d.y)
+                    .attr('opacity', d => {
+                        if (!state.selectedShuttle) return 1;
+                        if (d.type === 'hq') return 1;
+                        return d.shuttleId === state.selectedShuttle ? 1 : 0.3;
+                    });
+            });
+
+            function dragStarted(event, d) {
+                if (!event.active) simulation.alphaTarget(0.3).restart();
+                d.fx = d.x;
+                d.fy = d.y;
+            }
+
+            function dragged(event, d) {
+                d.fx = event.x;
+                d.fy = event.y;
+            }
+
+            function dragEnded(event, d) {
+                if (!event.active) simulation.alphaTarget(0);
+                d.fx = null;
+                d.fy = null;
+            }
+        }
+
+        function renderMapView() {
+            document.getElementById('graph-canvas').style.display = 'none';
+            document.getElementById('map').style.display = 'block';
+
+            if (!state.map) {
+                const hq = state.data.locations.HQ;
+                state.map = L.map('map').setView([hq[0], hq[1]], 13);
+
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap contributors',
+                    maxZoom: 19
+                }).addTo(state.map);
+            }
+
+            // Clear existing markers and polylines
+            Object.values(state.markers).forEach(marker => {
+                state.map.removeLayer(marker);
+            });
+            Object.values(state.polylines).forEach(polyline => {
+                state.map.removeLayer(polyline);
+            });
+            state.markers = {};
+            state.polylines = {};
+
+            // Add HQ marker
+            const hq = state.data.locations.HQ;
+            state.markers['HQ'] = L.circleMarker([hq[0], hq[1]], {
+                radius: 10,
+                fillColor: CONFIG.colors.hq,
+                color: '#fff',
+                weight: 2,
+                opacity: 1,
+                fillOpacity: 0.8
+            }).bindPopup('<b>HQ</b>').addTo(state.map);
+
+            // Add routes
+            state.routes.forEach(route => {
+                const hqLatLng = [hq[0], hq[1]];
+                const color = getShuttleColor(route.shuttle_id);
+
+                route.employees.forEach(empId => {
+                    const emp = state.data.locations.employees.find(e => e.id === empId);
+                    if (emp) {
+                        const empLatLng = [emp.latitude, emp.longitude];
+
+                        // Add employee marker
+                        if (!state.markers[empId]) {
+                            state.markers[empId] = L.circleMarker(empLatLng, {
+                                radius: 6,
+                                fillColor: color,
+                                color: '#fff',
+                                weight: 1,
+                                opacity: 1,
+                                fillOpacity: 0.7
+                            }).bindPopup(`<b>${empId}</b><br>Shuttle ${route.shuttle_id}`).addTo(state.map);
+                        }
+
+                        // Add polyline from HQ to employee
+                        const opacity = state.selectedShuttle === null || state.selectedShuttle === route.shuttle_id ? 0.6 : 0.2;
+                        state.polylines[`${route.shuttle_id}-${empId}`] = L.polyline(
+                            [hqLatLng, empLatLng],
+                            {
+                                color: color,
+                                weight: 2,
+                                opacity: opacity
+                            }
+                        ).addTo(state.map);
+                    }
+                });
+            });
+        }
+
+        // Event Listeners
+        document.getElementById('load-btn').addEventListener('click', loadData);
+
+        document.getElementById('view-toggle').addEventListener('click', function() {
+            state.viewMode = state.viewMode === 'graph' ? 'map' : 'graph';
+            this.textContent = state.viewMode === 'graph' ? 'Graph View' : 'Map View';
+            this.classList.toggle('active');
+            renderVisualization();
+        });
+
+        document.getElementById('animation-speed').addEventListener('change', function(e) {
+            state.animationSpeed = e.target.value;
+        });
+
+        document.getElementById('reset-btn').addEventListener('click', function() {
+            state.selectedShuttle = null;
+            if (state.simulation) {
+                state.simulation.alpha(1).restart();
+            }
+            renderVisualization();
+        });
+
+        // Auto-load on page load
+        window.addEventListener('load', () => {
+            // Auto-load data on page load
+            loadData();
+        });
+    </script>
+</body>
+</html>
