@@ -1,7 +1,7 @@
 // EnhancedShuttlePayrollDashboard.jsx
 import { 
   Download, 
-  DollarSign, 
+  Banknote, 
   Users, 
   TrendingUp, 
   Calendar,
@@ -37,6 +37,7 @@ import {
 
 import { MonthlyPayrollChart } from "./components/MonthlyPayrollChart";
 import { ShuttleTable } from "./components/ShuttleTable";
+import { ShuttleAnalysis } from "./components/ShuttleAnalysis";
 
 export default function EnhancedShuttlePayrollDashboard() {
   const { theme } = useTheme();
@@ -144,6 +145,12 @@ export default function EnhancedShuttlePayrollDashboard() {
         let period = null;
         try {
           period = await payrollService.getCurrentMonthPeriod();
+          
+          // If we got a period, fetch full details with all entries
+          if (period && period.id) {
+            period = await payrollService.getPayrollPeriod(period.id);
+          }
+          
           setCurrentPeriod(period);
           
           // If period exists but has no entries, suggest generating them
@@ -160,19 +167,70 @@ export default function EnhancedShuttlePayrollDashboard() {
         let shuttleDataTemp = [];
         try {
           if (period && period.payrollEntries && period.payrollEntries.length > 0) {
+            console.log("Period data:", period);
+            console.log("Payroll entries count:", period.payrollEntries.length);
+            console.log("Total amount in period:", period.totalAmount);
+            
             // Transform payroll entries to shuttle format
-            shuttleDataTemp = period.payrollEntries.map(entry => ({
-              id: entry.vehicle?.id || entry.id,
-              type: entry.driver ? 'Owned' : 'Outsourced',
-              model: entry.vehicle?.model || 'Unknown',
-              usageDays: entry.daysWorked || 0,
-              costPerDay: entry.daysWorked > 0 ? Number(entry.amount) / entry.daysWorked : 0,
-              status: entry.status || 'PENDING',
-              efficiency: 85, // Placeholder
-              totalAmount: Number(entry.netPay || 0),
-              driver: entry.driver,
-              serviceProvider: entry.serviceProvider
-            }));
+            shuttleDataTemp = period.payrollEntries.map(entry => {
+              // Calculate efficiency based on actual performance metrics
+              // Factors: attendance rate, trips/day, km/hour, on-time performance
+              const daysWorked = entry.daysWorked || 0;
+              const hoursWorked = entry.hoursWorked || 0;
+              const tripsCompleted = entry.tripsCompleted || 0;
+              const kmsCovered = entry.kmsCovered || 0;
+              
+              let efficiency = 0;
+              if (daysWorked > 0 && hoursWorked > 0) {
+                // 1. Attendance rate (30%): percentage of expected working days
+                const expectedDays = 22; // Standard working days per month
+                const attendanceScore = Math.min((daysWorked / expectedDays) * 100, 100);
+                
+                // 2. Productivity (40%): trips completed per day
+                const tripsPerDay = tripsCompleted / daysWorked;
+                const expectedTripsPerDay = 4; // Expected average trips per day
+                const productivityScore = Math.min((tripsPerDay / expectedTripsPerDay) * 100, 100);
+                
+                // 3. Fuel efficiency (30%): km covered per hour
+                const kmPerHour = kmsCovered / hoursWorked;
+                const expectedKmPerHour = 15; // Expected average km per hour
+                const fuelEfficiencyScore = Math.min((kmPerHour / expectedKmPerHour) * 100, 100);
+                
+                // Weighted average
+                efficiency = Math.round(
+                  (attendanceScore * 0.3) + 
+                  (productivityScore * 0.4) + 
+                  (fuelEfficiencyScore * 0.3)
+                );
+              } else {
+                efficiency = 0; // No work done
+              }
+              
+              return {
+                id: entry.vehicle?.id || entry.id,
+                type: entry.driver ? 'Owned' : 'Outsourced',
+                model: entry.vehicle?.model || 'Unknown',
+                usageDays: daysWorked,
+                // Use netPay for cost calculations to match period total
+                costPerDay: daysWorked > 0 ? Number(entry.netPay) / daysWorked : 0,
+                status: entry.status || 'PENDING',
+                efficiency: efficiency,
+                totalAmount: Number(entry.netPay || 0),
+                // Store original values for display/details
+                grossAmount: Number(entry.amount || 0),
+                bonuses: Number(entry.bonuses || 0),
+                deductions: Number(entry.deductions || 0),
+                hoursWorked: hoursWorked,
+                tripsCompleted: tripsCompleted,
+                kmsCovered: kmsCovered,
+                driver: entry.driver,
+                serviceProvider: entry.serviceProvider,
+                entryId: entry.id, // Store the payroll entry ID for updates
+                paidAt: entry.paidAt
+              };
+            });
+            
+            console.log("Transformed shuttle data:", shuttleDataTemp);
           } else {
             // Fallback to old API for backwards compatibility
             const payrolls = await payrollService.getAllMonthlyPayrolls(currentMonth, currentYear);
@@ -318,8 +376,22 @@ export default function EnhancedShuttlePayrollDashboard() {
 
   const generateReport = async () => {
     try {
-      const currentYear = new Date().getFullYear();
-      await payrollService.generateReport(selectedMonth, currentYear);
+      if (!currentPeriod) {
+        toast('No payroll period found. Please create a period first.', {
+          type: 'error'
+        });
+        return;
+      }
+
+      if (!currentPeriod.payrollEntries || currentPeriod.payrollEntries.length === 0) {
+        toast('No payroll entries found. Please generate payroll entries first.', {
+          type: 'error'
+        });
+        return;
+      }
+
+      // Pass the current period and filtered shuttle data to generate the report
+      await payrollService.generatePayrollReport(currentPeriod, filteredShuttleData);
       toast('Report generated and downloaded successfully');
     } catch (error) {
       console.error("Error generating report:", error);
@@ -450,7 +522,7 @@ export default function EnhancedShuttlePayrollDashboard() {
           <div className={`p-2 rounded-lg ${
             isDark ? 'bg-green-900/20' : 'bg-green-50'
           }`}>
-            <DollarSign className={`h-6 w-6 ${
+            <Banknote className={`h-6 w-6 ${
               isDark ? 'text-green-400' : 'text-green-600'
             }`} />
           </div>
@@ -597,7 +669,7 @@ export default function EnhancedShuttlePayrollDashboard() {
               <div className={`p-3 rounded-lg ${
                 isDark ? 'bg-blue-900/30' : 'bg-blue-100'
               }`}>
-                <DollarSign className={`h-6 w-6 ${
+                <Banknote className={`h-6 w-6 ${
                   isDark ? 'text-blue-400' : 'text-blue-600'
                 }`} />
               </div>
@@ -761,6 +833,15 @@ export default function EnhancedShuttlePayrollDashboard() {
           )}
         </CardContent>
       </Card>
+
+      {/* Shuttle Analysis - Show when a shuttle is selected */}
+      {selectedShuttle && (
+        <ShuttleAnalysis
+          selectedShuttle={selectedShuttle}
+          calculateMonthlyCost={calculateMonthlyCost}
+          onClose={() => setSelectedShuttle(null)}
+        />
+      )}
     </div>
   );
 }

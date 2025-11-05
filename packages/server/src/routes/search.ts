@@ -238,7 +238,7 @@ router.get('/', requireAuth, asyncHandler(async (req: Request, res: Response, _n
           where: driverWhere,
           take: limitNum,
           include: {
-            assignedVehicles: {
+            assignedVehicle: {
               select: { name: true, plateNumber: true }
             }
           },

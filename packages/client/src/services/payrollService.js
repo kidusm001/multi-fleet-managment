@@ -884,5 +884,293 @@ export const payrollService = {
       console.error("Error generating report:", error);
       throw new Error("Failed to generate report");
     }
+  },
+
+  /**
+   * Generate a PDF report for the actual payroll period with entries
+   * @param {Object} period - The payroll period object with entries
+   * @param {Array} shuttleData - The formatted shuttle/vehicle data for display
+   */
+  async generatePayrollReport(period, shuttleData = []) {
+    try {
+      if (!period) {
+        throw new Error("No payroll period provided");
+      }
+
+      // Create PDF document
+      const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+
+      // Helper functions for formatting
+      const drawLine = (x1, y1, x2, y2) => {
+        doc.setDrawColor(222, 226, 230);
+        doc.setLineWidth(0.5);
+        doc.line(x1, y1, x2, y2);
+      };
+
+      const createColoredRect = (x, y, width, height, fillColor) => {
+        if (typeof fillColor === 'string' && fillColor.startsWith('#')) {
+          // Convert hex to RGB
+          const r = parseInt(fillColor.slice(1, 3), 16);
+          const g = parseInt(fillColor.slice(3, 5), 16);
+          const b = parseInt(fillColor.slice(5, 7), 16);
+          doc.setFillColor(r, g, b);
+        } else {
+          doc.setFillColor(fillColor);
+        }
+        doc.rect(x, y, width, height, 'F');
+      };
+
+      // Add header
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(0, 102, 204);
+      doc.setFontSize(22);
+      doc.text('Multi-Fleet Management System', 105, 20, { align: 'center' });
+
+      doc.setFontSize(18);
+      doc.setTextColor(51, 51, 51);
+      doc.text('Payroll Report', 105, 30, { align: 'center' });
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(12);
+      doc.setTextColor(102, 102, 102);
+      
+      const startDate = new Date(period.startDate);
+      const endDate = new Date(period.endDate);
+      doc.text(`Period: ${period.name}`, 105, 38, { align: 'center' });
+      doc.text(
+        `${startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} - ${endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`,
+        105,
+        44,
+        { align: 'center' }
+      );
+
+      // Add status badge
+      doc.setFontSize(10);
+      const statusColor = period.status === 'FINALIZED' ? '#16a34a' : period.status === 'PAID' ? '#0066cc' : '#eab308';
+      createColoredRect(95, 47, 20, 6, statusColor);
+      doc.setTextColor(255, 255, 255);
+      doc.text(period.status, 105, 51, { align: 'center' });
+
+      drawLine(20, 55, 190, 55);
+
+      // Summary Section
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(0, 102, 204);
+      doc.setFontSize(14);
+      doc.text('Summary', 20, 65);
+
+      const entries = period.payrollEntries || [];
+      const totalDriverEntries = entries.filter(e => e.driverId).length;
+      const totalProviderEntries = entries.filter(e => e.serviceProviderId).length;
+      const totalGrossPay = entries.reduce((sum, e) => sum + Number(e.amount || 0), 0);
+      const totalBonuses = entries.reduce((sum, e) => sum + Number(e.bonuses || 0), 0);
+      const totalDeductions = entries.reduce((sum, e) => sum + Number(e.deductions || 0), 0);
+      const totalNetPay = entries.reduce((sum, e) => sum + Number(e.netPay || 0), 0);
+
+      // Summary boxes
+      const summaryY = 70;
+      const boxHeight = 20;
+      const boxWidth = 42;
+
+      // Box 1: Total Entries
+      createColoredRect(20, summaryY, boxWidth, boxHeight, '#e0f2fe');
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.setTextColor(51, 51, 51);
+      doc.text('Total Entries', 22, summaryY + 6);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(16);
+      doc.text(String(entries.length), 22, summaryY + 15);
+
+      // Box 2: Drivers
+      createColoredRect(64, summaryY, boxWidth, boxHeight, '#dbeafe');
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.text('Drivers', 66, summaryY + 6);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(16);
+      doc.text(String(totalDriverEntries), 66, summaryY + 15);
+
+      // Box 3: Service Providers
+      createColoredRect(108, summaryY, boxWidth, boxHeight, '#bfdbfe');
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.text('Service Providers', 110, summaryY + 6);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(16);
+      doc.text(String(totalProviderEntries), 110, summaryY + 15);
+
+      // Box 4: Total Net Pay
+      createColoredRect(152, summaryY, boxWidth, boxHeight, '#93c5fd');
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.text('Total Net Pay', 154, summaryY + 6);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(14);
+      doc.text(`ETB ${totalNetPay.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, 154, summaryY + 15);
+
+      // Financial Summary
+      let financialY = summaryY + boxHeight + 10;
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(0, 102, 204);
+      doc.setFontSize(12);
+      doc.text('Financial Breakdown', 20, financialY);
+      financialY += 5;
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
+      doc.setTextColor(51, 51, 51);
+      
+      const financialData = [
+        ['Gross Pay:', `ETB ${totalGrossPay.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`],
+        ['Bonuses:', `ETB ${totalBonuses.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`],
+        ['Deductions:', `ETB ${totalDeductions.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`],
+        ['Net Pay:', `ETB ${totalNetPay.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`],
+      ];
+
+      financialData.forEach(([label, value], index) => {
+        const isNetPay = label === 'Net Pay:';
+        if (isNetPay) {
+          doc.setFont('helvetica', 'bold');
+          drawLine(20, financialY, 90, financialY);
+          financialY += 2;
+        }
+        doc.text(label, 20, financialY);
+        doc.text(value, 90, financialY, { align: 'right' });
+        financialY += 6;
+      });
+
+      // Payroll Entries Table
+      financialY += 5;
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(0, 102, 204);
+      doc.setFontSize(14);
+      doc.text('Payroll Entries', 20, financialY);
+      financialY += 5;
+
+      // Table headers
+      const headers = ['Employee/Provider', 'Type', 'Days', 'Gross', 'Bonus', 'Deduct', 'Net Pay'];
+      const columnWidths = [50, 25, 15, 23, 18, 18, 25];
+      const tableWidth = columnWidths.reduce((sum, w) => sum + w, 0);
+
+      // Draw header background
+      createColoredRect(20, financialY, tableWidth, 8, '#0066cc');
+      
+      // Draw header text
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(9);
+      
+      let colX = 20;
+      headers.forEach((header, i) => {
+        doc.text(header, colX + 2, financialY + 5);
+        colX += columnWidths[i];
+      });
+
+      financialY += 8;
+
+      // Table rows
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(51, 51, 51);
+      doc.setFontSize(8);
+
+      entries.forEach((entry, rowIndex) => {
+        // Check if we need a new page
+        if (financialY > 270) {
+          doc.addPage();
+          financialY = 20;
+
+          // Redraw header on new page
+          createColoredRect(20, financialY, tableWidth, 8, '#0066cc');
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(255, 255, 255);
+          doc.setFontSize(9);
+          
+          colX = 20;
+          headers.forEach((header, i) => {
+            doc.text(header, colX + 2, financialY + 5);
+            colX += columnWidths[i];
+          });
+
+          financialY += 8;
+          doc.setFont('helvetica', 'normal');
+          doc.setTextColor(51, 51, 51);
+          doc.setFontSize(8);
+        }
+
+        // Alternating row background
+        if (rowIndex % 2 === 0) {
+          createColoredRect(20, financialY, tableWidth, 8, '#f8f9fa');
+        }
+
+        // Determine employee/provider name
+        let name = 'Unknown';
+        let type = 'N/A';
+        
+        if (entry.driver) {
+          name = `${entry.driver.firstName || ''} ${entry.driver.lastName || ''}`.trim();
+          type = entry.payrollType === 'SALARY' ? 'Driver' : 'Hourly';
+        } else if (entry.serviceProvider) {
+          name = entry.serviceProvider.name || 'Unknown Provider';
+          type = 'Service';
+        }
+
+        // Truncate name if too long
+        if (name.length > 25) {
+          name = name.substring(0, 22) + '...';
+        }
+
+        const rowData = [
+          name,
+          type,
+          String(entry.daysWorked || 0),
+          `${Number(entry.amount || 0).toLocaleString()}`,
+          `${Number(entry.bonuses || 0).toLocaleString()}`,
+          `${Number(entry.deductions || 0).toLocaleString()}`,
+          `${Number(entry.netPay || 0).toLocaleString()}`,
+        ];
+
+        colX = 20;
+        rowData.forEach((cell, i) => {
+          doc.text(String(cell), colX + 2, financialY + 5);
+          doc.setDrawColor(222, 226, 230);
+          doc.setLineWidth(0.1);
+          doc.rect(colX, financialY, columnWidths[i], 8);
+          colX += columnWidths[i];
+        });
+
+        financialY += 8;
+      });
+
+      // Add footer with page numbers
+      const totalPages = doc.internal.getNumberOfPages();
+      for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i);
+        drawLine(20, 280, 190, 280);
+        
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8);
+        doc.setTextColor(128, 128, 128);
+        doc.text(
+          `Generated on ${new Date().toLocaleDateString()} | Page ${i} of ${totalPages}`,
+          105,
+          285,
+          { align: 'center' }
+        );
+      }
+
+      // Save the PDF with period name
+      const fileName = `payroll-report-${period.name.replace(/\s+/g, '-')}-${new Date().toISOString().split('T')[0]}.pdf`;
+      doc.save(fileName);
+
+      return true;
+    } catch (error) {
+      console.error("Error generating payroll report:", error);
+      throw new Error("Failed to generate payroll report");
+    }
   }
 };

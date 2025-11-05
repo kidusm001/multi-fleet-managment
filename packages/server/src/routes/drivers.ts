@@ -22,7 +22,7 @@ type DriverList = Driver[];
 
 const driverInclude = {
     organization: true,
-    assignedVehicles: {
+    assignedVehicle: {
         where: {
             deleted: false,
         },
@@ -153,8 +153,8 @@ async function syncVehicleAssignment(
 }
 
 function mapDriverResponse(driver: any) {
-    const { assignedVehicles = [], ...rest } = driver;
-    const vehicle = Array.isArray(assignedVehicles) ? assignedVehicles[0] : null;
+    const { assignedVehicle, ...rest } = driver;
+    const vehicle = assignedVehicle || null;
 
     const shuttle = vehicle
         ? {
@@ -527,7 +527,7 @@ router.get('/superadmin', requireAuth, requireRole(["superadmin"]), async (req: 
                 organization: true,
                 vehicleAvailability: true,
                 payrollReports: true,
-                assignedVehicles: true,
+                assignedVehicle: true,
                 attendanceRecords: true,
                 payrollEntries: true
             },
@@ -565,7 +565,7 @@ router.get('/superadmin/by-organization/:organizationId', requireAuth, requireRo
                 organization: true,
                 vehicleAvailability: true,
                 payrollReports: true,
-                assignedVehicles: true,
+                assignedVehicle: true,
                 attendanceRecords: true,
                 payrollEntries: true
             },
@@ -598,7 +598,7 @@ router.get('/superadmin/:id', requireAuth, requireRole(["superadmin"]), async (r
                 organization: true,
                 vehicleAvailability: true,
                 payrollReports: true,
-                assignedVehicles: true,
+                assignedVehicle: true,
                 attendanceRecords: true,
                 payrollEntries: true
             }
@@ -922,7 +922,7 @@ router.get('/superadmin/stats/summary', requireAuth, requireRole(["superadmin"])
         const drivers = await prisma.driver.findMany({
             include: {
                 organization: true,
-                assignedVehicles: true
+                assignedVehicle: true
             }
         });
         const activeDrivers = drivers.filter(d => !d.deleted && d.isActive);
@@ -937,7 +937,7 @@ router.get('/superadmin/stats/summary', requireAuth, requireRole(["superadmin"])
                 acc[orgName] += 1;
                 return acc;
             }, {} as Record<string, number>),
-            driversWithVehicles: activeDrivers.filter(d => d.assignedVehicles.length > 0).length,
+            driversWithVehicles: activeDrivers.filter(d => d.assignedVehicle !== null).length,
             topDrivers: activeDrivers
                 .sort((a, b) => (b.experienceYears || 0) - (a.experienceYears || 0))
                 .slice(0, 5)
@@ -946,7 +946,7 @@ router.get('/superadmin/stats/summary', requireAuth, requireRole(["superadmin"])
                     name: d.name,
                     organization: d.organization.name,
                     experienceYears: d.experienceYears,
-                    vehicleCount: d.assignedVehicles.length
+                    vehicleCount: d.assignedVehicle ? 1 : 0
                 }))
         };
         res.json(stats);
@@ -992,7 +992,7 @@ router.get('/', requireAuth, async (req: Request, res: Response) => {
                 deleted: false
             },
             include: {
-                assignedVehicles: {
+                assignedVehicle: {
                     where: {
                         deleted: false
                     },
@@ -1042,7 +1042,7 @@ router.get('/unassigned', requireAuth, async (req: Request, res: Response) => {
             where: {
                 organizationId: activeOrgId,
                 deleted: false,
-                assignedVehicles: { none: {} }
+                assignedVehicle: null
             }
         });
 
@@ -1090,7 +1090,7 @@ router.get('/:id', requireAuth, validateSchema(DriverIdParam, 'params'), async (
                 organization: true,
                 vehicleAvailability: true,
                 payrollReports: true,
-                assignedVehicles: true,
+                assignedVehicle: true,
                 attendanceRecords: true,
                 payrollEntries: true
             }

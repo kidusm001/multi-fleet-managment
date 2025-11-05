@@ -1,4 +1,4 @@
-import { Edit, Trash2, Eye, Clock, TrendingUp, Fuel, DollarSign, Car } from "lucide-react";
+import { Edit, Trash2, Eye, Clock, TrendingUp, Fuel, Banknote, Car } from "lucide-react";
 import { Badge } from "@/components/Common/UI/Badge";
 import Button from "@/components/Common/UI/Button";
 import {
@@ -100,7 +100,7 @@ export default function AttendanceTable({
             </TableHead>
             <TableHead className={`font-semibold ${isDark ? "text-gray-300" : "text-gray-700"}`}>
               <div className="flex items-center gap-1">
-                <DollarSign className="h-4 w-4" />
+                <Banknote className="h-4 w-4" />
                 Toll
               </div>
             </TableHead>
