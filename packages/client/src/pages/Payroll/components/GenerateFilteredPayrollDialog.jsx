@@ -25,12 +25,9 @@ import { MultiSelect } from '@/components/Common/UI/MultiSelect';
 /**
  * GenerateFilteredPayrollDialog
  * 
- * A dialog component for generating payroll with advanced filters:
+ * A dialog component for generating payroll with filters:
  * - Date range (required)
  * - Vehicle type (IN_HOUSE / OUTSOURCED)
- * - Shifts
- * - Departments
- * - Locations (branches)
  * - Specific vehicles
  */
 export function GenerateFilteredPayrollDialog({ open, onOpenChange, onSuccess }) {
@@ -39,17 +36,11 @@ export function GenerateFilteredPayrollDialog({ open, onOpenChange, onSuccess })
     startDate: '',
     endDate: '',
     vehicleType: '',
-    shiftIds: [],
-    departmentIds: [],
-    locationIds: [],
     vehicleIds: [],
     name: '',
   });
 
   // Options for dropdowns
-  const [shifts, setShifts] = useState([]);
-  const [departments, setDepartments] = useState([]);
-  const [locations, setLocations] = useState([]);
   const [vehicles, setVehicles] = useState([]);
   const [loadingOptions, setLoadingOptions] = useState(false);
 
@@ -74,22 +65,18 @@ export function GenerateFilteredPayrollDialog({ open, onOpenChange, onSuccess })
   const loadFilterOptions = async () => {
     setLoadingOptions(true);
     try {
-      // Load shifts, departments, locations, and vehicles from API
-      // You'll need to implement these endpoints or use existing ones
-      const [shiftsRes, deptsRes, locsRes, vehiclesRes] = await Promise.all([
-        fetch('/api/shifts').then(r => r.json()).catch(() => ({ shifts: [] })),
-        fetch('/api/departments').then(r => r.json()).catch(() => ({ departments: [] })),
-        fetch('/api/locations').then(r => r.json()).catch(() => ({ locations: [] })),
-        fetch('/api/vehicles').then(r => r.json()).catch(() => ({ vehicles: [] })),
-      ]);
-
-      setShifts(shiftsRes.shifts || shiftsRes || []);
-      setDepartments(deptsRes.departments || deptsRes || []);
-      setLocations(locsRes.locations || locsRes || []);
-      setVehicles(vehiclesRes.vehicles || vehiclesRes || []);
+      // Load vehicles from API
+      const vehiclesRes = await fetch('/api/shuttles').then(r => r.json()).catch(() => []);
+      console.log('Vehicles response:', vehiclesRes);
+      
+      // API returns array directly
+      const vehiclesList = Array.isArray(vehiclesRes) ? vehiclesRes : [];
+      console.log('Vehicles list:', vehiclesList);
+      
+      setVehicles(vehiclesList);
     } catch (error) {
-      console.error('Error loading filter options:', error);
-      toast.error('Failed to load filter options');
+      console.error('Error loading vehicles:', error);
+      toast.error('Failed to load vehicles');
     } finally {
       setLoadingOptions(false);
     }
@@ -113,9 +100,6 @@ export function GenerateFilteredPayrollDialog({ open, onOpenChange, onSuccess })
       };
 
       if (filters.vehicleType) payload.vehicleType = filters.vehicleType;
-      if (filters.shiftIds.length > 0) payload.shiftIds = filters.shiftIds;
-      if (filters.departmentIds.length > 0) payload.departmentIds = filters.departmentIds;
-      if (filters.locationIds.length > 0) payload.locationIds = filters.locationIds;
       if (filters.vehicleIds.length > 0) payload.vehicleIds = filters.vehicleIds;
       if (filters.name) payload.name = filters.name;
 
@@ -134,9 +118,6 @@ export function GenerateFilteredPayrollDialog({ open, onOpenChange, onSuccess })
         startDate: '',
         endDate: '',
         vehicleType: '',
-        shiftIds: [],
-        departmentIds: [],
-        locationIds: [],
         vehicleIds: [],
         name: '',
       });
@@ -163,7 +144,7 @@ export function GenerateFilteredPayrollDialog({ open, onOpenChange, onSuccess })
             Generate Filtered Payroll
           </DialogTitle>
           <DialogDescription>
-            Generate payroll with advanced filters. Select date range and optional filters to narrow down the scope.
+            Generate payroll with filters. Select date range and optionally filter by vehicle type or specific vehicles.
           </DialogDescription>
         </DialogHeader>
 
@@ -237,67 +218,17 @@ export function GenerateFilteredPayrollDialog({ open, onOpenChange, onSuccess })
               </Select>
             </div>
 
-            {/* Shifts Multi-Select */}
-            <div className="space-y-2">
-              <Label>Shifts</Label>
-              {loadingOptions ? (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Loading shifts...
-                </div>
-              ) : (
-                <MultiSelect
-                  options={shifts.map(s => ({ value: s.id, label: s.name }))}
-                  selected={filters.shiftIds}
-                  onChange={(values) => setFilters({ ...filters, shiftIds: values })}
-                  placeholder="Select shifts..."
-                />
-              )}
-            </div>
-
-            {/* Departments Multi-Select */}
-            <div className="space-y-2">
-              <Label>Departments</Label>
-              {loadingOptions ? (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Loading departments...
-                </div>
-              ) : (
-                <MultiSelect
-                  options={departments.map(d => ({ value: d.id, label: d.name }))}
-                  selected={filters.departmentIds}
-                  onChange={(values) => setFilters({ ...filters, departmentIds: values })}
-                  placeholder="Select departments..."
-                />
-              )}
-            </div>
-
-            {/* Locations/Branches Multi-Select */}
-            <div className="space-y-2">
-              <Label>Locations / Branches</Label>
-              {loadingOptions ? (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Loading locations...
-                </div>
-              ) : (
-                <MultiSelect
-                  options={locations.map(l => ({ value: l.id, label: l.address || l.type }))}
-                  selected={filters.locationIds}
-                  onChange={(values) => setFilters({ ...filters, locationIds: values })}
-                  placeholder="Select locations..."
-                />
-              )}
-            </div>
-
             {/* Specific Vehicles Multi-Select */}
             <div className="space-y-2">
-              <Label>Specific Vehicles</Label>
+              <Label>Specific Vehicles ({vehicles.length} available)</Label>
               {loadingOptions ? (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Loading vehicles...
+                </div>
+              ) : vehicles.length === 0 ? (
+                <div className="text-sm text-muted-foreground p-2 border rounded">
+                  No vehicles found in your organization
                 </div>
               ) : (
                 <MultiSelect
