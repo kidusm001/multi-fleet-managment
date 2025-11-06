@@ -1072,6 +1072,51 @@ router.put('/:id', requireAuth, validateMultiple([{ schema: VehicleIdParamSchema
             }
         });
 
+        // Detect changes for notification
+        const changes: string[] = [];
+        if (vehicleData.plateNumber && vehicleData.plateNumber !== existingVehicle.plateNumber) {
+            changes.push('plate number');
+        }
+        if (vehicleData.model && vehicleData.model !== existingVehicle.model) {
+            changes.push('model');
+        }
+        if (vehicleData.capacity && vehicleData.capacity !== existingVehicle.capacity) {
+            changes.push('capacity');
+        }
+        if (vehicleData.status && vehicleData.status !== existingVehicle.status) {
+            changes.push('status');
+        }
+
+        // Send notifications
+        if (changes.length > 0) {
+            // Standard admin notification
+            const adminNotification = vehicleNotifications.updated(activeOrgId, vehicle, changes);
+            await broadcastNotification(adminNotification);
+
+            // High-priority driver notification if vehicle has assigned driver
+            if (vehicle.driver) {
+                const driverNotification = vehicleNotifications.updatedForDriver(
+                    activeOrgId, 
+                    vehicle, 
+                    vehicle.driver, 
+                    changes
+                );
+                
+                // Get driver's User ID
+                if (vehicle.driver.email) {
+                    const driverUser = await prisma.user.findUnique({
+                        where: { email: vehicle.driver.email },
+                        select: { id: true }
+                    });
+                    if (driverUser) {
+                        driverNotification.toUserId = driverUser.id;
+                    }
+                }
+                
+                await broadcastNotification(driverNotification);
+            }
+        }
+
         res.json(vehicle);
     } catch (error) {
         console.error(error);

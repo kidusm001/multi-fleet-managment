@@ -6,7 +6,7 @@ import { validateSchema, validateMultiple } from '../middleware/zodValidation';
 import { fromNodeHeaders } from 'better-auth/node';
 import { auth } from '../lib/auth';
 import prisma from '../db';
-import { driverNotifications } from '../lib/notificationHelpers';
+import { driverNotifications, vehicleNotifications } from '../lib/notificationHelpers';
 import { broadcastNotification } from '../lib/notificationBroadcaster';
 import {
     AnnotatedRoute,
@@ -1364,6 +1364,9 @@ router.put('/:id',
                     id,
                     organizationId: activeOrgId,
                     deleted: false
+                },
+                include: {
+                    assignedVehicle: true  // Include vehicle to track changes
                 }
             });
 
@@ -1434,16 +1437,88 @@ router.put('/:id',
                 return refreshedDriver;
             });
 
+            // Get the User ID for the driver based on their email
+            let driverUserId: string | undefined;
+            if (driver.email) {
+                const driverUser = await prisma.user.findUnique({
+                    where: { email: driver.email },
+                    select: { id: true }
+                });
+                driverUserId = driverUser?.id;
+            }
+
             // Send status change notification if status changed
             if (status !== undefined && status !== existingDriver.status) {
                 const notifications = driverNotifications.statusChanged(activeOrgId, driver, status);
                 for (const notif of notifications) {
+                    // Override toUserId with actual User ID for driver notifications
+                    if (notif.toRoles.includes('driver') && driverUserId) {
+                        notif.toUserId = driverUserId;
+                    }
                     await broadcastNotification(notif);
                 }
             } else {
-                // General update notification
-                const notification = driverNotifications.updated(activeOrgId, driver);
-                await broadcastNotification(notification);
+                // Check if vehicle assignment changed
+                const vehicleChanged = vehicleId !== undefined && 
+                    (vehicleId !== null ? driver.assignedVehicle?.id !== existingDriver.assignedVehicle?.id : existingDriver.assignedVehicle !== null);
+                
+                // Determine if there are non-vehicle changes
+                const hasNonVehicleChanges = Object.keys(updateData).length > 0;
+                
+                // Always send driver update notification to managers if anything changed (vehicle or other fields)
+                if (vehicleChanged || hasNonVehicleChanges) {
+                    const adminNotification = driverNotifications.updated(activeOrgId, driver);
+                    await broadcastNotification(adminNotification);
+                }
+                
+                // Only notify driver about profile update if non-vehicle fields changed
+                // Driver will get vehicle-specific notifications separately
+                if (hasNonVehicleChanges && driverUserId) {
+                    const driverNotification = driverNotifications.profileUpdated(activeOrgId, driver);
+                    driverNotification.toUserId = driverUserId; // Use actual User ID
+                    await broadcastNotification(driverNotification);
+                }
+            }
+
+            // Check if vehicle assignment changed and send vehicle notifications
+            if (vehicleId !== undefined) {
+                const currentVehicle = driver.assignedVehicle;
+                const previousVehicle = existingDriver.assignedVehicle;
+
+                // Vehicle was assigned or changed
+                if (vehicleId && currentVehicle && currentVehicle.id !== previousVehicle?.id) {
+                    const vehicleNotifs = vehicleNotifications.assignedToDriver(activeOrgId, currentVehicle, driver);
+                    for (const notif of vehicleNotifs) {
+                        // Only send vehicle assignment notifications to the driver, not to managers
+                        // Managers already received the "Driver Updated" notification above
+                        // Skip notifications that are for managers/admins/owners
+                        const isManagerNotification = notif.toRoles.some(role => 
+                            ['owner', 'admin', 'manager'].includes(role)
+                        );
+                        
+                        if (!isManagerNotification && notif.toRoles.includes('driver') && driverUserId) {
+                            notif.toUserId = driverUserId;
+                            await broadcastNotification(notif);
+                        }
+                    }
+                }
+                // Vehicle was unassigned
+                else if (vehicleId === null && previousVehicle) {
+                    const vehicleNotifs = vehicleNotifications.unassignedFromDriver(activeOrgId, previousVehicle, driver);
+                    for (const notif of vehicleNotifs) {
+                        // Only send vehicle unassignment notifications to the driver, not to managers
+                        // Managers already received the "Driver Updated" notification above
+                        // Skip notifications that are for managers/admins/owners
+                        const isManagerNotification = notif.toRoles.some(role => 
+                            ['owner', 'admin', 'manager'].includes(role)
+                        );
+                        
+                        if (!isManagerNotification && notif.toRoles.includes('driver') && driverUserId) {
+                            notif.toUserId = driverUserId;
+                            await broadcastNotification(notif);
+                        }
+                    }
+                }
             }
 
             res.json(mapDriverResponse(driver));

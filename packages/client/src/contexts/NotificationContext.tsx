@@ -271,6 +271,10 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
           setUnreadCount(prev => prev + 1);
         }
       }
+      
+      // Emit event to notify other components (like NotificationPanel) about new notification
+      log('Emitting new-notification event for other components');
+      window.dispatchEvent(new CustomEvent('new-notification', { detail: notification }));
     });
 
     const unsubSeen = socketClient.onNotificationSeen(({ notificationId, userId, userName }) => {

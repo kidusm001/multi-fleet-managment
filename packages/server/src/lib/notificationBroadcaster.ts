@@ -211,9 +211,12 @@ export async function broadcastNotification(notificationOrOptions: NotificationP
     });
   }
 
-  // Emit to entire organization
-  console.log(`[NotificationBroadcaster] Emitting to org:${broadcastOptions.organizationId}`);
-  io.to(`org:${broadcastOptions.organizationId}`).emit('notification:new', formattedNotification);
+  // Only emit to entire organization if no specific user or roles are targeted
+  // This prevents notifications meant for specific roles/users from broadcasting to everyone
+  if (!broadcastOptions.toUserId && (!broadcastOptions.toRoles || broadcastOptions.toRoles.length === 0)) {
+    console.log(`[NotificationBroadcaster] Emitting to org:${broadcastOptions.organizationId} (no specific targets)`);
+    io.to(`org:${broadcastOptions.organizationId}`).emit('notification:new', formattedNotification);
+  }
 
   return notification;
 }

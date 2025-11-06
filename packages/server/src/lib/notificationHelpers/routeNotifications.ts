@@ -19,6 +19,23 @@ export const routeNotifications = {
   }),
 
   /**
+   * Route Created for Driver's Vehicle - Notify driver about new route on their vehicle
+   */
+  createdForDriver: (organizationId: string, route: any, driver: any, shift: any): NotificationPayload => ({
+    organizationId,
+    title: 'New Route Assigned to Your Vehicle',
+    message: `A new route "${route.name}" has been created for your vehicle on ${shift.name} shift`,
+    type: NotificationType.ROUTE_CREATED,
+    importance: ImportanceLevel.HIGH,
+    toRoles: ['driver'],
+    toUserId: driver.id,
+    fromRole: 'manager',
+    relatedEntityId: route.id,
+    actionUrl: `/routes/${route.id}`,
+    metadata: { routeId: route.id, routeName: route.name, vehicleId: route.vehicleId, shiftId: route.shiftId, shiftName: shift.name },
+  }),
+
+  /**
    * Route Updated - Notify admins
    */
   updated: (organizationId: string, route: any): NotificationPayload => ({
@@ -106,18 +123,19 @@ export const routeNotifications = {
       },
     ];
 
-    if (route.driverId) {
+    // Notify driver with HIGH importance - route deactivated affects their schedule
+    if (route.vehicle?.driverId) {
       notifications.push({
         organizationId,
         title: 'Route Deactivated',
-        message: `Route "${route.name}" has been deactivated`,
+        message: `Route "${route.name}" has been deactivated. All upcoming scheduled trips on this route are cancelled.`,
         type: NotificationType.ROUTE_DEACTIVATED,
         importance: ImportanceLevel.HIGH,
         toRoles: ['driver'],
-        toUserId: route.driverId,
+        toUserId: route.vehicle.driverId,
         fromRole: 'manager',
         relatedEntityId: route.id,
-        metadata: { routeId: route.id, routeName: route.name },
+        metadata: { routeId: route.id, routeName: route.name, vehicleId: route.vehicleId },
       });
     }
 

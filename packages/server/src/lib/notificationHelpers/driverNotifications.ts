@@ -19,7 +19,7 @@ export const driverNotifications = {
   }),
 
   /**
-   * Driver Updated - Notify admins
+   * Driver Updated - Notify admins only
    */
   updated: (organizationId: string, driver: any): NotificationPayload => ({
     organizationId,
@@ -31,6 +31,22 @@ export const driverNotifications = {
     fromRole: 'admin',
     relatedEntityId: driver.id,
     actionUrl: `/drivers/${driver.id}`,
+    metadata: { driverId: driver.id, driverName: driver.name },
+  }),
+
+  /**
+   * Driver Profile Updated - Notify driver only about their profile changes
+   */
+  profileUpdated: (organizationId: string, driver: any): NotificationPayload => ({
+    organizationId,
+    title: 'Your Profile Updated',
+    message: `Your driver profile has been updated. Please review the changes.`,
+    type: NotificationType.DRIVER_UPDATED,
+    importance: ImportanceLevel.MEDIUM,
+    toRoles: ['driver'],
+    toUserId: driver.id,
+    fromRole: 'admin',
+    relatedEntityId: driver.id,
     metadata: { driverId: driver.id, driverName: driver.name },
   }),
 

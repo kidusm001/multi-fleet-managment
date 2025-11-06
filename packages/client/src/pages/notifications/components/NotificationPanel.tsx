@@ -118,16 +118,29 @@ export function NotificationPanel({
     fetchNotifications();
   }, [currentPage, itemsPerPage, readFilter, refreshTrigger]);
 
-  // Listen for external notification updates
+  // Listen for external notification updates (including socket events from NotificationContext)
   useEffect(() => {
     const handleNotificationUpdate = () => {
+      console.log('[NotificationPanel] Notification update event received, refreshing...');
       setRefreshTrigger(prev => prev + 1);
       refreshStats();
     };
 
+    // Listen to both custom events and the notification context updates
     window.addEventListener('notification-updated', handleNotificationUpdate);
+    
+    // Also trigger refresh when NotificationContext gets new notifications via socket
+    const handleNewNotification = () => {
+      console.log('[NotificationPanel] New notification received via socket, refreshing...');
+      setRefreshTrigger(prev => prev + 1);
+      refreshStats();
+    };
+    
+    window.addEventListener('new-notification', handleNewNotification);
+    
     return () => {
       window.removeEventListener('notification-updated', handleNotificationUpdate);
+      window.removeEventListener('new-notification', handleNewNotification);
     };
   }, [refreshStats]);
 

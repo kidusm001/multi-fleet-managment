@@ -35,6 +35,23 @@ export const vehicleNotifications = {
   }),
 
   /**
+   * Vehicle Updated with Driver Assignment - Notify driver with CRITICAL importance
+   */
+  updatedForDriver: (organizationId: string, vehicle: any, driver: any, changes?: string[]): NotificationPayload => ({
+    organizationId,
+    title: 'Your Assigned Vehicle Updated',
+    message: `Your assigned vehicle ${vehicle.plateNumber} has been updated${changes ? `: ${changes.join(', ')}` : ''}. Please review the changes.`,
+    type: NotificationType.VEHICLE_UPDATED,
+    importance: ImportanceLevel.CRITICAL,
+    toRoles: ['driver'],
+    toUserId: driver.id,
+    fromRole: 'manager',
+    relatedEntityId: vehicle.id,
+    actionUrl: `/vehicles/${vehicle.id}`,
+    metadata: { vehicleId: vehicle.id, plateNumber: vehicle.plateNumber, driverId: driver.id, changes },
+  }),
+
+  /**
    * Vehicle Deleted - Notify admins/owners
    */
   deleted: (organizationId: string, vehicle: any): NotificationPayload => ({
@@ -129,7 +146,7 @@ export const vehicleNotifications = {
       message: `Vehicle ${vehicle.plateNumber} assigned to driver ${driver.name}`,
       type: NotificationType.VEHICLE_ASSIGNED,
       importance: ImportanceLevel.MEDIUM,
-      toRoles: ['owner', 'admin'],
+      toRoles: ['owner', 'admin', 'manager'],
       fromRole: 'manager',
       relatedEntityId: vehicle.id,
       actionUrl: `/vehicles/${vehicle.id}`,
