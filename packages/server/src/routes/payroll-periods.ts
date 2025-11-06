@@ -534,9 +534,6 @@ router.post('/generate-filtered', requireAuth, validateSchema(GeneratePayrollSch
       startDate,
       endDate,
       vehicleType,
-      shiftIds,
-      departmentIds,
-      locationIds,
       vehicleIds,
       name,
     } = req.body;
@@ -550,30 +547,14 @@ router.post('/generate-filtered', requireAuth, validateSchema(GeneratePayrollSch
       return res.status(400).json({ message: 'startDate must be before endDate' });
     }
 
-    // Check for overlapping periods
-    const existingPeriod = await prisma.payrollPeriod.findFirst({
-      where: {
-        organizationId,
-        OR: [
-          {
-            startDate: { lte: end },
-            endDate: { gte: start },
-          },
-        ],
-      },
-    });
-
-    if (existingPeriod) {
-      return res.status(400).json({
-        message: 'A payroll period already exists for this date range',
-        existingPeriod,
-      });
-    }
+    // Note: No overlap check for filtered payroll generation
+    // Filtered payrolls are meant to be run multiple times with different criteria
+    // (e.g., separate payrolls for BUS vs VAN, different departments, etc.)
 
     // Auto-generate name if not provided
     const periodName = name || `Payroll ${start.toISOString().split('T')[0]} to ${end.toISOString().split('T')[0]}`;
 
-    // Build attendance filter
+    // Build attendance filter - only use fields that exist on AttendanceRecord
     const attendanceWhere: any = {
       organizationId,
       date: {
@@ -608,67 +589,12 @@ router.post('/generate-filtered', requireAuth, validateSchema(GeneratePayrollSch
       },
     });
 
-    // Apply additional filtering for shift, department, or location
-    // These filters apply to vehicles assigned to routes with those characteristics
-    let filteredRecords = attendanceRecords;
-    if (shiftIds || departmentIds || locationIds) {
-      // Get routes that match the criteria
-      const matchingRoutes = await prisma.route.findMany({
-        where: {
-          organizationId,
-          ...(shiftIds && shiftIds.length > 0 ? { shiftId: { in: shiftIds } } : {}),
-          ...(locationIds && locationIds.length > 0 ? { locationId: { in: locationIds } } : {}),
-        },
-        select: { vehicleId: true },
-      });
-
-      const matchingVehicleIds = new Set(
-        matchingRoutes.map(r => r.vehicleId).filter((id): id is string => id !== null)
-      );
-
-      // If department filter is provided, find employees in those departments and their associated routes
-      if (departmentIds && departmentIds.length > 0) {
-        const employeesInDepartments = await prisma.employee.findMany({
-          where: {
-            organizationId,
-            departmentId: { in: departmentIds },
-          },
-          include: {
-            stop: {
-              include: {
-                route: {
-                  select: { vehicleId: true },
-                },
-              },
-            },
-          },
-        });
-
-        employeesInDepartments.forEach(emp => {
-          if (emp.stop?.route?.vehicleId) {
-            matchingVehicleIds.add(emp.stop.route.vehicleId);
-          }
-        });
-      }
-
-      if (matchingVehicleIds.size > 0) {
-        filteredRecords = attendanceRecords.filter(
-          record => matchingVehicleIds.has(record.vehicleId)
-        );
-      } else {
-        filteredRecords = [];
-      }
-    }
-
-    if (filteredRecords.length === 0) {
+    if (attendanceRecords.length === 0) {
       return res.status(400).json({
         message: 'No attendance records found matching the specified filters',
         filters: {
           dateRange: { startDate, endDate },
           vehicleType,
-          shiftIds,
-          departmentIds,
-          locationIds,
           vehicleIds,
         },
       });
@@ -689,10 +615,10 @@ router.post('/generate-filtered', requireAuth, validateSchema(GeneratePayrollSch
       });
 
       // Group by driver and service provider
-      const driverMap = new Map<string, typeof filteredRecords>();
-      const serviceProviderMap = new Map<string, typeof filteredRecords>();
+      const driverMap = new Map<string, typeof attendanceRecords>();
+      const serviceProviderMap = new Map<string, typeof attendanceRecords>();
 
-      for (const record of filteredRecords) {
+      for (const record of attendanceRecords) {
         // Group in-house driver records
         if (record.driverId && record.vehicle.type === 'IN_HOUSE') {
           const existing = driverMap.get(record.driverId) || [];
@@ -886,9 +812,6 @@ router.post('/generate-filtered', requireAuth, validateSchema(GeneratePayrollSch
       filters: {
         dateRange: { startDate, endDate },
         vehicleType,
-        shiftIds,
-        departmentIds,
-        locationIds,
         vehicleIds,
       },
     });

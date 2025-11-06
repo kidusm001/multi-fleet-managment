@@ -2,18 +2,15 @@ import { z } from 'zod';
 
 /**
  * Schema for generating payroll with filters
- * Similar to notification date ranges
+ * Only includes filters that can be directly applied to AttendanceRecord
  */
 export const GeneratePayrollSchema = z.object({
   // Date range (required)
   startDate: z.string().datetime().or(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)),
   endDate: z.string().datetime().or(z.string().regex(/^\d{4}-\d{2}-\d{2}$/)),
   
-  // Optional filters
+  // Optional filters (only vehicle-related filters work with current schema)
   vehicleType: z.enum(['IN_HOUSE', 'OUTSOURCED']).optional(),
-  shiftIds: z.array(z.string()).optional(),
-  departmentIds: z.array(z.string()).optional(),
-  locationIds: z.array(z.string()).optional(), // Branch filter
   vehicleIds: z.array(z.string()).optional(),
   
   // Payroll period name (optional, will be auto-generated if not provided)
