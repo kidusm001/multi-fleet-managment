@@ -129,7 +129,7 @@ createBullBoard({
 app.use('/admin/queues', serverAdapter.getRouter());
 ```
 
-Access at: `http://localhost:3001/admin/queues`
+Access at: `http://localhost:3000/admin/queues`
 
 ## Payroll Calculation Logic
 

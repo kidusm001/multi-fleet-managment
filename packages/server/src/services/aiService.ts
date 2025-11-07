@@ -1,6 +1,7 @@
 import { GoogleGenerativeAI, type GenerativeModel } from '@google/generative-ai';
 import prisma from '../db';
 import type { Request } from 'express';
+import { buildOrganizationContext, buildSuperadminContext } from './context';
 
 // Initialize Gemini client
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
@@ -85,89 +86,26 @@ function sanitizeContext(data: any): any {
 export async function gatherContext(req: Request): Promise<string> {
   const { user, organizationRole, activeOrganizationId } = req;
   const role = organizationRole || user?.role || 'user';
-  
-  let context = `User Role: ${role}\n`;
-  
+
+  const sections: string[] = [`User Role: ${role}`];
+
   try {
-    // Superadmin context
     if (role === 'superadmin') {
-      const orgCount = await prisma.organization.count();
-      const userCount = await prisma.user.count();
-      const activeUsers = await prisma.session.count({
-        where: { expiresAt: { gte: new Date() } }
-      });
-      
-      context += `System Overview:\n`;
-      context += `- Total Organizations: ${orgCount}\n`;
-      context += `- Total Users: ${userCount}\n`;
-      context += `- Active Sessions: ${activeUsers}\n`;
-      return context;
+      const superadminContext = await buildSuperadminContext();
+      sections.push(superadminContext);
+      return sanitizeContext(sections.join('\n'));
     }
-    
-    // Organization-scoped roles
+
     if (activeOrganizationId) {
-      const org = await prisma.organization.findUnique({
-        where: { id: activeOrganizationId },
-        include: {
-          _count: {
-            select: {
-              employees: true,
-              drivers: true,
-              vehicles: true,
-              routes: true,
-              members: true,
-            }
-          }
-        }
-      });
-      
-      if (org) {
-        context += `Organization: ${org.name}\n`;
-        context += `Members: ${org._count.members}\n`;
-        
-        // Owner/Admin context - full operational data
-        if (role === 'owner' || role === 'admin') {
-          context += `Employees: ${org._count.employees}\n`;
-          context += `Drivers: ${org._count.drivers}\n`;
-          context += `Vehicles: ${org._count.vehicles}\n`;
-          context += `Routes: ${org._count.routes}\n`;
-          
-          // Recent activity
-          const recentNotifications = await prisma.notification.count({
-            where: {
-              organizationId: activeOrganizationId,
-              createdAt: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) }
-            }
-          });
-          
-          context += `Recent Notifications (24h): ${recentNotifications}\n`;
-          
-          // Pending requests
-          const pendingRequests = await prisma.vehicleRequest.count({
-            where: {
-              organizationId: activeOrganizationId,
-              status: 'PENDING'
-            }
-          });
-          
-          context += `Pending Vehicle Requests: ${pendingRequests}\n`;
-        }
-        
-        // Manager context - operational data
-        if (role === 'manager') {
-          context += `Employees: ${org._count.employees}\n`;
-          context += `Drivers: ${org._count.drivers}\n`;
-          context += `Vehicles: ${org._count.vehicles}\n`;
-          context += `Routes: ${org._count.routes}\n`;
-        }
-      }
+      const organizationContext = await buildOrganizationContext(role, activeOrganizationId);
+      if (organizationContext) sections.push(organizationContext);
     }
   } catch (error) {
     console.error('Error gathering context:', error);
-    context += 'Unable to gather full context.\n';
+    sections.push('Unable to gather full context.');
   }
-  
-  return sanitizeContext(context);
+
+  return sanitizeContext(sections.join('\n'));
 }
 
 /**
@@ -181,7 +119,10 @@ CRITICAL RULES:
 - Use bullet points for lists
 - Prioritize actionable information
 - Be helpful, professional, and direct
-- Always prioritize security and data privacy`;
+- Always prioritize security and data privacy
+- Rely ONLY on provided context and verified conversation history; never invent details
+- If context is missing required data, ask the user for specifics instead of guessing
+- Never assume "all" resources share a status unless the context explicitly proves it. State counts per status as given, and call out unknowns.`;
   
   const rolePrompts: Record<string, string> = {
     superadmin: `${basePrompt}
@@ -289,7 +230,7 @@ export async function generateAIResponse(
       const chat = model.startChat({
         history: conversationHistory,
         generationConfig: {
-          temperature: 0.7,
+          temperature: 0.4,
           maxOutputTokens: 1000,
         },
       });
@@ -356,19 +297,23 @@ export async function logAIUsage(
   success: boolean = true,
   errorMessage?: string,
   responseTime?: number
-) {
-  return await prisma.aiUsageLog.create({
-    data: {
-      userId,
-      organizationId,
-      endpoint,
-      tokensUsed,
-      cost: cost.toString(),
-      success,
-      errorMessage,
-      responseTime,
-    },
-  });
+): Promise<void> {
+  try {
+    await prisma.aiUsageLog.create({
+      data: {
+        userId,
+        organizationId,
+        endpoint,
+        tokensUsed,
+        cost: cost.toString(),
+        success,
+        errorMessage,
+        responseTime,
+      },
+    });
+  } catch (error) {
+    console.warn('Failed to log AI usage:', error);
+  }
 }
 
 /**

@@ -503,7 +503,7 @@ Capacity triggers automatically scale or alert when CPU > 65%, memory > 75%, que
 | -------- | ----- | ------- | -------- | ------- |
 | DATABASE_URL | Server | Postgres connection string | Yes | — |
 | REDIS_URL | Server | Cache & queue backend | Yes | — |
-| PORT | Server | API listen port | No | 3001 |
+| PORT | Server | API listen port | No | 3000 |
 | SESSION_SECRET | Server | Session encryption | Yes | — |
 | AUTH_FAYDA_CLIENT_ID/SECRET | Server | OAuth integration | Yes | — |
 | MAPBOX_ACCESS_TOKEN | Server & Client | Directions API | Yes | — |

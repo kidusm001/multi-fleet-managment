@@ -275,7 +275,7 @@ pnpm test:e2e:report
 ```
 
 **Prerequisites**:
-- Backend server running on port 3001
+- Backend server running on port 3000
 - Test database seeded
 - Frontend dev server (auto-starts on port 5173)
 

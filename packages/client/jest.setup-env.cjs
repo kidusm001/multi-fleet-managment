@@ -7,8 +7,8 @@ if (!globalThis.__IMETA) {
 globalThis.__IMETA.env.VITE_ENABLE_ORGANIZATIONS = globalThis.__IMETA.env.VITE_ENABLE_ORGANIZATIONS || 'true';
 globalThis.__IMETA.env.VITE_ORG_MODE = globalThis.__IMETA.env.VITE_ORG_MODE || 'mock';
 // Provide generic API base defaults for tests referencing import.meta.env
-globalThis.__IMETA.env.VITE_API_BASE = globalThis.__IMETA.env.VITE_API_BASE || 'http://localhost:3001';
-globalThis.__IMETA.env.VITE_API_URL = globalThis.__IMETA.env.VITE_API_URL || 'http://localhost:3001';
+globalThis.__IMETA.env.VITE_API_BASE = globalThis.__IMETA.env.VITE_API_BASE || 'http://localhost:3000';
+globalThis.__IMETA.env.VITE_API_URL = globalThis.__IMETA.env.VITE_API_URL || 'http://localhost:3000';
 globalThis.__IMETA.env.DEV = 'true';
 // Map configuration defaults
 globalThis.__IMETA.env.VITE_HQ_NAME = 'Routegna (HQ)';

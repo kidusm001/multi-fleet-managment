@@ -23,7 +23,7 @@ import { adminClient } from "better-auth/client/plugins";
 })();
 */
 
-const API_BASE = 'http://localhost:3001';
+const API_BASE = 'http://localhost:3000';
 
 const createClient = () => {
   return createAuthClient({

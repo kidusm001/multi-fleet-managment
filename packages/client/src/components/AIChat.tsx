@@ -58,6 +58,7 @@ interface BrowserSpeechRecognitionInstance {
   onend: (() => void) | null;
   start: () => void;
   stop: () => void;
+  abort?: () => void;
 }
 
 interface BrowserSpeechRecognitionEvent {
@@ -88,6 +89,23 @@ interface BrowserSpeechRecognitionWindow extends Window {
   webkitSpeechRecognition?: BrowserSpeechRecognitionConstructor;
   SpeechRecognition?: BrowserSpeechRecognitionConstructor;
 }
+
+interface ExtendedSpeechRecognitionWindow extends BrowserSpeechRecognitionWindow {
+  mozSpeechRecognition?: BrowserSpeechRecognitionConstructor;
+  msSpeechRecognition?: BrowserSpeechRecognitionConstructor;
+}
+
+type MicrophonePermissionState = "prompt" | "granted" | "denied" | "not-supported";
+
+type MicrophonePermissionDescriptor = PermissionDescriptor & { name: "microphone" };
+
+type MicrophoneErrorKind =
+  | "none"
+  | "permission"
+  | "no-speech"
+  | "audio"
+  | "network"
+  | "generic";
 
 interface RoleTheme {
   label: string;
@@ -258,10 +276,27 @@ const AIChat: React.FC<AIChatProps> = ({ isOpen, onClose, userRole = "user", isA
   const [error, setError] = useState<string | null>(null);
   const [isVoiceSupported, setIsVoiceSupported] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [micPermission, setMicPermission] = useState<MicrophonePermissionState>("prompt");
+  const [voiceSupportHint, setVoiceSupportHint] = useState<string | null>(null);
+  const [micErrorKind, setMicErrorKind] = useState<MicrophoneErrorKind>("none");
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const recognitionRef = useRef<BrowserSpeechRecognitionInstance | null>(null);
+  const permissionStatusRef = useRef<PermissionStatus | null>(null);
+  const baseVoiceInputRef = useRef<string>("");
+  const baseInputSnapshotRef = useRef<string>("");
+  const voiceFinalTextRef = useRef<string>("");
+  const interimTranscriptRef = useRef<string>("");
+  const isRecordingRef = useRef(false);
+  const restartTimeoutRef = useRef<number | null>(null);
 
-  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
+  const clearPendingRestart = useCallback(() => {
+    if (restartTimeoutRef.current !== null) {
+      window.clearTimeout(restartTimeoutRef.current);
+      restartTimeoutRef.current = null;
+    }
+  }, []);
+
+  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
   const roleTheme = ROLE_THEMES[userRole] || {
     label: "Assistant Desk",
@@ -275,11 +310,46 @@ const AIChat: React.FC<AIChatProps> = ({ isOpen, onClose, userRole = "user", isA
     return [...BASE_SUGGESTIONS, ...(ROLE_SUGGESTIONS[userRole] || [])];
   }, [userRole]);
 
+  const requestMicrophoneAccess = useCallback(async (): Promise<boolean> => {
+    if (typeof window === "undefined" || !navigator?.mediaDevices?.getUserMedia) {
+      setMicPermission("not-supported");
+      setError("Microphone access is not available in this browser.");
+      return false;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      stream.getTracks().forEach((track) => track.stop());
+      setMicPermission("granted");
+      setError(null);
+      setMicErrorKind("none");
+      return true;
+    } catch (err) {
+      console.error("Microphone permission error:", err);
+      setMicPermission("denied");
+      setMicErrorKind("permission");
+
+      if (err instanceof DOMException && err.name === "NotAllowedError") {
+        setError(
+          "Microphone access is blocked. Please enable it in your browser settings and try again.",
+        );
+      } else {
+        setError("Unable to access microphone. Please check browser permissions.");
+      }
+
+      return false;
+    }
+  }, []);
+
   useEffect(() => {
     if (isOpen && !isMinimized) {
       inputRef.current?.focus();
     }
   }, [isOpen, isMinimized]);
+
+  useEffect(() => {
+    isRecordingRef.current = isRecording;
+  }, [isRecording]);
 
   useEffect(() => {
     if (!isOpen) {
@@ -292,24 +362,124 @@ const AIChat: React.FC<AIChatProps> = ({ isOpen, onClose, userRole = "user", isA
       return;
     }
 
-    const speechWindow = window as BrowserSpeechRecognitionWindow;
-    const SpeechRecognitionConstructor =
-      speechWindow.SpeechRecognition || speechWindow.webkitSpeechRecognition;
-
-    if (!SpeechRecognitionConstructor) {
+    if (!window.isSecureContext) {
+      setIsVoiceSupported(false);
+      recognitionRef.current = null;
+      setVoiceSupportHint(
+        "Voice mode requires a secure context. Open this app via https:// or localhost to enable the microphone.",
+      );
       return;
     }
 
-    const recognition = new SpeechRecognitionConstructor();
-    recognition.lang = "en-US";
-    recognition.continuous = false;
-    recognition.interimResults = true;
+    const speechWindow = window as ExtendedSpeechRecognitionWindow;
+    const SpeechRecognitionConstructor =
+      speechWindow.SpeechRecognition ||
+      speechWindow.webkitSpeechRecognition ||
+      speechWindow.mozSpeechRecognition ||
+      speechWindow.msSpeechRecognition;
 
-    recognitionRef.current = recognition;
-    setIsVoiceSupported(true);
+    if (!SpeechRecognitionConstructor) {
+      setIsVoiceSupported(false);
+      recognitionRef.current = null;
+      const userAgent = navigator.userAgent.toLowerCase();
+      if (userAgent.includes("firefox")) {
+        setVoiceSupportHint(
+          "Firefox currently disables speech recognition by default. In about:config enable media.webspeech.recognition.enable and media.webspeech.recognition.force_enable, then reload this page.",
+        );
+      } else {
+        setVoiceSupportHint(
+          "Voice mode is unavailable. Use a browser with Web Speech API support (Chrome, Edge, Vivaldi) while we continue expanding compatibility.",
+        );
+      }
+      return;
+    }
+
+    let recognition: BrowserSpeechRecognitionInstance | null = null;
+
+    try {
+      recognition = new SpeechRecognitionConstructor();
+      recognition.lang = "en-US";
+      recognition.continuous = true;
+      recognition.interimResults = true;
+
+      recognitionRef.current = recognition;
+      setIsVoiceSupported(true);
+      setVoiceSupportHint(null);
+    } catch (instantiationError) {
+      console.error("Speech recognition init error:", instantiationError);
+      recognitionRef.current = null;
+      setIsVoiceSupported(false);
+      const userAgent = navigator.userAgent.toLowerCase();
+      if (userAgent.includes("firefox")) {
+        setVoiceSupportHint(
+          "Speech recognition failed to start. Confirm media.webspeech.recognition.enable is true in about:config and reload the page.",
+        );
+      } else {
+        setVoiceSupportHint(
+          "Voice mode is unavailable. Ensure this page is served over HTTPS, then retry or switch to Chrome/Edge/Vivaldi.",
+        );
+      }
+      return;
+    }
 
     return () => {
-      recognition.stop();
+      if (!recognition) {
+        return;
+      }
+
+      recognition.onresult = null;
+      recognition.onerror = null;
+      recognition.onend = null;
+      try {
+        recognition.stop();
+      } catch {
+        // recognition may already be inactive
+      }
+      recognitionRef.current = null;
+      clearPendingRestart();
+    };
+  }, [clearPendingRestart]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setMicPermission("not-supported");
+      return;
+    }
+
+    if (!navigator.permissions?.query) {
+      return;
+    }
+
+    let isCancelled = false;
+
+    navigator.permissions
+      .query({ name: "microphone" } as MicrophonePermissionDescriptor)
+      .then((status) => {
+        if (isCancelled) {
+          return;
+        }
+
+        permissionStatusRef.current = status;
+        setMicPermission(status.state as MicrophonePermissionState);
+
+        status.onchange = () => {
+          setMicPermission(status.state as MicrophonePermissionState);
+        };
+      })
+      .catch(() => {
+        // Navigator permissions may not support microphone queries in some browsers.
+      });
+
+    return () => {
+      isCancelled = true;
+      if (permissionStatusRef.current) {
+        permissionStatusRef.current.onchange = null;
+        permissionStatusRef.current = null;
+      }
     };
   }, []);
 
@@ -321,8 +491,21 @@ const AIChat: React.FC<AIChatProps> = ({ isOpen, onClose, userRole = "user", isA
         return;
       }
 
+      const previousState = {
+        inputValue: messageContent,
+        baseSnapshot: baseInputSnapshotRef.current,
+        baseVoice: baseVoiceInputRef.current,
+        voiceFinal: voiceFinalTextRef.current,
+        interim: interimTranscriptRef.current,
+      };
+
       setInput("");
       setError(null);
+      setMicErrorKind("none");
+      baseInputSnapshotRef.current = "";
+      baseVoiceInputRef.current = "";
+      voiceFinalTextRef.current = "";
+      interimTranscriptRef.current = "";
 
       const tempUserMessage: Message = {
         id: `temp-${Date.now()}`,
@@ -377,18 +560,30 @@ const AIChat: React.FC<AIChatProps> = ({ isOpen, onClose, userRole = "user", isA
         console.error("AI chat error:", err);
         setMessages((prev) => prev.filter((m) => m.id !== tempUserMessage.id));
 
-        const errorResponse = err as {
-          response?: { status?: number; data?: { message?: string } };
-        };
-        if (errorResponse.response?.status === 429) {
-          setError("Rate limit exceeded. Please try again in a few minutes.");
-        } else if (errorResponse.response?.status === 401) {
-          setError("Authentication required. Please log in.");
+        setMicErrorKind("generic");
+        setInput(previousState.inputValue);
+        baseInputSnapshotRef.current = previousState.baseSnapshot;
+        baseVoiceInputRef.current = previousState.baseVoice;
+        voiceFinalTextRef.current = previousState.voiceFinal;
+        interimTranscriptRef.current = previousState.interim;
+
+        if (axios.isAxiosError(err)) {
+          const { response, code, message } = err;
+          if (!response) {
+            setError(
+              code === "ERR_NETWORK"
+                ? "AI service is unreachable. Ensure the backend server is running and accessible."
+                : message || "Network error while sending the message.",
+            );
+          } else if (response.status === 429) {
+            setError("Rate limit exceeded. Please try again in a few minutes.");
+          } else if (response.status === 401) {
+            setError("Authentication required. Please log in.");
+          } else {
+            setError(response.data?.message || "Failed to send message. Please try again.");
+          }
         } else {
-          setError(
-            errorResponse.response?.data?.message ||
-              "Failed to send message. Please try again.",
-          );
+          setError("Failed to send message. Please try again.");
         }
       } finally {
         setIsLoading(false);
@@ -403,79 +598,310 @@ const AIChat: React.FC<AIChatProps> = ({ isOpen, onClose, userRole = "user", isA
       return;
     }
 
+    const scheduleRestart = () => {
+      if (!isRecordingRef.current) {
+        return;
+      }
+      clearPendingRestart();
+      restartTimeoutRef.current = window.setTimeout(() => {
+        if (!isRecordingRef.current) {
+          restartTimeoutRef.current = null;
+          return;
+        }
+        try {
+          recognition.start();
+        } catch (restartError) {
+          if (
+            !(restartError instanceof DOMException && restartError.name === "InvalidStateError")
+          ) {
+            console.error("Speech recognition restart error:", restartError);
+            isRecordingRef.current = false;
+            setIsRecording(false);
+          }
+        } finally {
+          restartTimeoutRef.current = null;
+        }
+      }, 200);
+    };
+
     recognition.onresult = (event: BrowserSpeechRecognitionEvent) => {
       const { results } = event;
-      let interimTranscript = "";
-      let finalTranscript = "";
 
-      for (let i = results.length - 1; i >= 0; i -= 1) {
+      const joinWithSpace = (base: string, addition: string) => {
+        if (!addition) return base;
+        if (!base) return addition;
+        return /\s$/.test(base) ? `${base}${addition}` : `${base} ${addition}`;
+      };
+
+      let finalTranscript = "";
+      let interimTranscript = "";
+
+      for (let i = 0; i < results.length; i += 1) {
         const result = results[i];
-        if (result.isFinal && !finalTranscript) {
-          finalTranscript = result[0]?.transcript?.trim() || "";
-        } else if (!result.isFinal && !interimTranscript) {
-          interimTranscript = result[0]?.transcript?.trim() || "";
+        const transcript = result[0]?.transcript?.trim() || "";
+
+        if (!transcript) {
+          continue;
+        }
+
+        if (result.isFinal) {
+          finalTranscript = finalTranscript
+            ? `${finalTranscript} ${transcript}`
+            : transcript;
+        } else {
+          interimTranscript = transcript;
         }
       }
 
-      if (interimTranscript) {
-        setInput((prev) => {
-          const base = prev.trim();
-          const merged = base ? `${base} ${interimTranscript}`.trim() : interimTranscript;
-          return merged;
-        });
+      const baseSnapshot = baseInputSnapshotRef.current;
+      const trimmedFinal = finalTranscript.trim();
+      let resolvedFinal = voiceFinalTextRef.current.trim();
+
+      if (trimmedFinal) {
+        resolvedFinal = trimmedFinal;
+        setMicErrorKind("none");
+        setError(null);
       }
 
-      if (finalTranscript) {
-        setInput(finalTranscript);
-        setTimeout(() => {
-          void sendMessage(finalTranscript);
-        }, 0);
+      voiceFinalTextRef.current = resolvedFinal;
+
+      const baseWithResolvedFinal = joinWithSpace(baseSnapshot, resolvedFinal);
+      baseVoiceInputRef.current = baseWithResolvedFinal;
+
+      const trimmedInterim = interimTranscript.trim();
+
+      if (trimmedInterim) {
+        interimTranscriptRef.current = trimmedInterim;
+        const previewText = joinWithSpace(baseWithResolvedFinal, trimmedInterim);
+        setInput(previewText);
+      } else {
+        interimTranscriptRef.current = "";
+        setInput(baseWithResolvedFinal);
       }
     };
 
-    recognition.onerror = () => {
+    recognition.onerror = (event: BrowserSpeechRecognitionErrorEvent) => {
+      if (event.error === "no-speech") {
+        interimTranscriptRef.current = "";
+        voiceFinalTextRef.current = "";
+        baseVoiceInputRef.current = inputRef.current?.value ?? baseVoiceInputRef.current;
+        baseInputSnapshotRef.current = baseVoiceInputRef.current;
+        setMicErrorKind("no-speech");
+        setError("No speech detected. Still listening...");
+        scheduleRestart();
+        return;
+      }
+
+      if (event.error === "aborted") {
+        return;
+      }
+
+      if (event.error === "network") {
+        setMicErrorKind("network");
+        setError("Connection to the speech service dropped. Trying again...");
+        scheduleRestart();
+        return;
+      }
+
+      isRecordingRef.current = false;
       setIsRecording(false);
-      setError("Microphone error. Please check permissions and try again.");
+      clearPendingRestart();
+      interimTranscriptRef.current = "";
+      voiceFinalTextRef.current = "";
+      baseVoiceInputRef.current = inputRef.current?.value ?? baseVoiceInputRef.current;
+      baseInputSnapshotRef.current = baseVoiceInputRef.current;
+
+      if (event.error === "not-allowed" || event.error === "service-not-allowed") {
+        setMicPermission("denied");
+        setMicErrorKind("permission");
+        setError("Microphone access is blocked. Click Allow below to re-request access.");
+        void requestMicrophoneAccess();
+      } else if (event.error === "audio-capture") {
+        setMicErrorKind("audio");
+        setError("Microphone not found. Connect a mic or check system settings, then retry.");
+      } else {
+        setMicErrorKind("generic");
+        setError("Microphone error. Please check permissions and try again.");
+        if (micPermission !== "granted") {
+          void requestMicrophoneAccess();
+        }
+      }
     };
 
     recognition.onend = () => {
-      setIsRecording(false);
+      interimTranscriptRef.current = "";
+      voiceFinalTextRef.current = "";
+      baseVoiceInputRef.current = inputRef.current?.value ?? baseVoiceInputRef.current;
+      baseInputSnapshotRef.current = baseVoiceInputRef.current;
+      if (isRecordingRef.current) {
+        scheduleRestart();
+      } else {
+        clearPendingRestart();
+        setIsRecording(false);
+      }
     };
 
     return () => {
+      clearPendingRestart();
       recognition.onresult = null;
       recognition.onerror = null;
       recognition.onend = null;
     };
-  }, [sendMessage]);
+  }, [clearPendingRestart, micPermission, requestMicrophoneAccess]);
 
   const handleSuggestionClick = (prompt: string) => {
     setInput(prompt);
     setTimeout(() => inputRef.current?.focus(), 50);
   };
 
-  const handleVoiceToggle = () => {
-    if (!isVoiceSupported || !recognitionRef.current) {
-      setError("Voice mode is not supported in this browser.");
-      return;
+  const startRecognitionSession = useCallback(async (): Promise<boolean> => {
+    let recognition = recognitionRef.current;
+
+    if (!recognition && typeof window !== "undefined" && window.isSecureContext) {
+      const speechWindow = window as ExtendedSpeechRecognitionWindow;
+      const SpeechRecognitionConstructor =
+        speechWindow.SpeechRecognition ||
+        speechWindow.webkitSpeechRecognition ||
+        speechWindow.mozSpeechRecognition ||
+        speechWindow.msSpeechRecognition;
+
+      if (SpeechRecognitionConstructor) {
+        try {
+          recognition = new SpeechRecognitionConstructor();
+          recognition.lang = "en-US";
+          recognition.continuous = true;
+          recognition.interimResults = true;
+          recognitionRef.current = recognition;
+          setIsVoiceSupported(true);
+          setVoiceSupportHint(null);
+        } catch (instantiationError) {
+          console.error("Speech recognition instantiation error during start:", instantiationError);
+          recognition = null;
+        }
+      }
     }
 
-    if (isRecording) {
-      recognitionRef.current.stop();
-      return;
+    const previousState = {
+      baseSnapshot: baseInputSnapshotRef.current,
+      baseVoice: baseVoiceInputRef.current,
+      voiceFinal: voiceFinalTextRef.current,
+      interim: interimTranscriptRef.current,
+    };
+
+    const currentInputValue = inputRef.current?.value ?? "";
+    baseInputSnapshotRef.current = currentInputValue;
+    baseVoiceInputRef.current = currentInputValue;
+    voiceFinalTextRef.current = "";
+    interimTranscriptRef.current = "";
+
+    if (!recognition) {
+      setError(
+        "Voice mode is not supported in this browser. Please try the latest Chrome, Edge, or Firefox with speech recognition enabled.",
+      );
+      setMicErrorKind("generic");
+      return false;
     }
+
+    if (micPermission !== "granted") {
+      const granted = await requestMicrophoneAccess();
+      if (!granted) {
+        return false;
+      }
+    }
+
+    clearPendingRestart();
 
     try {
       setError(null);
-      recognitionRef.current.start();
+      setMicErrorKind("none");
+      recognition.start();
+      isRecordingRef.current = true;
       setIsRecording(true);
-      setInput("");
+      return true;
     } catch (err) {
       console.error("Voice start error:", err);
-      setError("Unable to access the microphone. Please check permissions.");
+      if (err instanceof DOMException) {
+        if (err.name === "NotAllowedError" || err.name === "SecurityError") {
+          setMicPermission("denied");
+          setMicErrorKind("permission");
+          setError("Microphone access is blocked. Click Allow below to re-request access.");
+          void requestMicrophoneAccess();
+        } else if (err.name === "InvalidStateError") {
+          isRecordingRef.current = true;
+          setIsRecording(true);
+          setError(null);
+          setMicErrorKind("none");
+          return true;
+        } else if (err.name === "NotReadableError") {
+          setMicErrorKind("audio");
+          setError("Unable to access the microphone. Check system privacy settings, then retry.");
+        } else {
+          setMicErrorKind("generic");
+          setError(err.message || "Unable to start voice input. Please ensure microphone access is allowed and try again.");
+        }
+      } else {
+        setMicErrorKind("generic");
+        setError("Unable to start voice input. Please ensure microphone access is allowed and try again.");
+      }
+      isRecordingRef.current = false;
       setIsRecording(false);
+      baseInputSnapshotRef.current = previousState.baseSnapshot;
+      baseVoiceInputRef.current = previousState.baseVoice;
+      voiceFinalTextRef.current = previousState.voiceFinal;
+      interimTranscriptRef.current = previousState.interim;
+      return false;
     }
-  };
+  }, [clearPendingRestart, micPermission, requestMicrophoneAccess]);
+
+  const handleRetryListening = useCallback(() => {
+    setError(null);
+    setMicErrorKind("none");
+
+    const recognition = recognitionRef.current;
+    if (recognition && isRecordingRef.current) {
+      clearPendingRestart();
+      try {
+        recognition.start();
+      } catch (err) {
+        if (!(err instanceof DOMException && err.name === "InvalidStateError")) {
+          void startRecognitionSession();
+        }
+      }
+      return;
+    }
+
+    void startRecognitionSession();
+  }, [clearPendingRestart, startRecognitionSession]);
+
+  const handleVoiceToggle = useCallback(async () => {
+    const recognition = recognitionRef.current;
+
+    if (recognition && isRecording) {
+      clearPendingRestart();
+      try {
+        recognition.stop();
+      } catch {
+        // stop can throw if recognition is already idle
+      }
+      if (typeof recognition.abort === "function") {
+        recognition.abort();
+      }
+      isRecordingRef.current = false;
+      setIsRecording(false);
+      setMicErrorKind("none");
+      setError(null);
+      interimTranscriptRef.current = "";
+      baseVoiceInputRef.current = inputRef.current?.value ?? baseVoiceInputRef.current;
+      baseInputSnapshotRef.current = inputRef.current?.value ?? baseInputSnapshotRef.current;
+      voiceFinalTextRef.current = "";
+      return;
+    }
+
+    const started = await startRecognitionSession();
+    if (started) {
+      isRecordingRef.current = true;
+    }
+  }, [clearPendingRestart, isRecording, startRecognitionSession]);
 
   const handleSendMessage = async () => {
     if (!input.trim()) {
@@ -690,8 +1116,48 @@ const AIChat: React.FC<AIChatProps> = ({ isOpen, onClose, userRole = "user", isA
                   )}
 
                   {error && (
-                    <div className="rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                      {error}
+                    <div className="flex items-center justify-between gap-2 rounded-lg border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                      <span className="flex-1 text-left">{error}</span>
+                      <div className="flex items-center gap-2">
+                        {(micErrorKind === "no-speech" || micErrorKind === "network") && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 border-destructive text-destructive hover:bg-destructive/10"
+                            onClick={handleRetryListening}
+                          >
+                            Retry Listening
+                          </Button>
+                        )}
+                        {micErrorKind === "permission" && micPermission !== "not-supported" && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 border-destructive text-destructive hover:bg-destructive/10"
+                            onClick={() => {
+                              void requestMicrophoneAccess().then((granted) => {
+                                if (granted) {
+                                  setError(null);
+                                  setMicErrorKind("none");
+                                }
+                              });
+                            }}
+                          >
+                            Request Access
+                          </Button>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 px-3 text-destructive hover:text-destructive"
+                          onClick={() => {
+                            setError(null);
+                            setMicErrorKind("none");
+                          }}
+                        >
+                          Dismiss
+                        </Button>
+                      </div>
                     </div>
                   )}
                 </ChatMessageList>
@@ -713,16 +1179,22 @@ const AIChat: React.FC<AIChatProps> = ({ isOpen, onClose, userRole = "user", isA
                       <Button
                         type="button"
                         variant={isRecording ? "default" : "outline"}
-                        onClick={handleVoiceToggle}
+                        onClick={() => {
+                          void handleVoiceToggle();
+                        }}
                         className={cn(
-                          "h-[48px] w-[48px] rounded-full border-border/80 text-foreground transition-colors",
+                          "h-[48px] w-[48px] rounded-full border-border/80 transition-colors",
                           isRecording
-                            ? "bg-primary text-primary-foreground hover:bg-primary/90"
+                            ? "bg-primary text-black hover:bg-primary/90 dark:text-primary-foreground"
                             : "bg-card hover:bg-primary/10 hover:text-primary",
                         )}
                         aria-label={isRecording ? "Stop voice input" : "Start voice input"}
                       >
-                        {isRecording ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+                        {isRecording ? (
+                          <MicOff className="h-5 w-5 text-black dark:text-primary-foreground" />
+                        ) : (
+                          <Mic className="h-5 w-5 text-foreground" />
+                        )}
                       </Button>
                     )}
                     <Button
@@ -750,6 +1222,56 @@ const AIChat: React.FC<AIChatProps> = ({ isOpen, onClose, userRole = "user", isA
                       Powered by Gemini Flash
                     </span>
                   </div>
+                  {micPermission === "not-supported" && (
+                    <div className="rounded-2xl border border-border/60 bg-card/70 px-3 py-2 text-[11px] font-medium text-muted-foreground">
+                      This browser does not expose microphone access or speech recognition APIs. Try the latest Chrome, Edge, or Firefox Dev Edition.
+                    </div>
+                  )}
+                  {micPermission === "denied" && (
+                    <div className="flex items-center justify-between rounded-2xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-[11px] font-semibold text-destructive">
+                      <span>Microphone access is blocked. Update permissions, then retry.</span>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 px-2 text-destructive hover:text-destructive"
+                        onClick={() => {
+                          void requestMicrophoneAccess().then((granted) => {
+                            if (granted) {
+                              setError(null);
+                              setMicErrorKind("none");
+                            }
+                          });
+                        }}
+                      >
+                        Retry
+                      </Button>
+                    </div>
+                  )}
+                  {micPermission === "prompt" && isVoiceSupported && (
+                    <div className="flex items-center justify-between rounded-2xl border border-primary/30 bg-primary/10 px-3 py-2 text-[11px] font-semibold text-primary">
+                      <span>Allow microphone access to try the voice assistant.</span>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 px-2 text-primary hover:text-primary"
+                        onClick={() => {
+                          void requestMicrophoneAccess().then((granted) => {
+                            if (granted) {
+                              setError(null);
+                              setMicErrorKind("none");
+                            }
+                          });
+                        }}
+                      >
+                        Allow
+                      </Button>
+                    </div>
+                  )}
+                  {voiceSupportHint && (
+                    <div className="rounded-2xl border border-border/60 bg-card/70 px-3 py-2 text-[11px] font-medium text-muted-foreground">
+                      {voiceSupportHint}
+                    </div>
+                  )}
                   {isRecording && (
                     <div className="flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-[11px] font-semibold text-primary">
                       <span className="relative flex h-2 w-2">

@@ -119,7 +119,7 @@ Next Plans (Frontend)
 	- Final Verification (2025-08-29): `pnpm -C packages/client build` completes without errors/warnings beyond standard Tailwind notices; added smoke auth test at `packages/client/src/__tests__/smoke-auth.test.js` validating protected dashboard render under admin role; test passes (`pnpm -C packages/client test smoke-auth`).
 
 Environment Variables
-- `VITE_API_BASE` (default: `http://localhost:3001` in `.env`; same-origin in dev via proxy).
+- `VITE_API_BASE` (default: `http://localhost:3000` in `.env`; same-origin in dev via proxy).
 - `VITE_API_URL` (legacy compatibility; used as fallback).
 - `VITE_ENABLE_MSW` (optional, for local mocks).
 

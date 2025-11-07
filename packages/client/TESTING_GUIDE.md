@@ -131,7 +131,7 @@ pnpm test:e2e:report
 ```
 
 **Prerequisites for E2E Tests**:
-1. Backend server must be running (port 3001)
+1. Backend server must be running (port 3000)
 2. Frontend dev server will auto-start (port 5173)
 3. Test database should be seeded with test data
 
@@ -340,7 +340,7 @@ test('should receive real-time notifications', async ({ page }) => {
 
 2. **Port conflicts**:
    - Ensure port 5173 (frontend) is available
-   - Ensure port 3001 (backend) is available
+  - Ensure port 3000 (backend) is available
 
 3. **Browser issues**:
    ```bash

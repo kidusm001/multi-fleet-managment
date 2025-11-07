@@ -5,7 +5,7 @@ This file archives the update logs previously embedded in `frontend-port-plan.md
 Update Log — 2025-08-19
 - Resolved remaining TypeScript compile issues (animated tabs typing, auth client export conflict, global test token typing).
 - Verified ESLint clean for JS/JSX; build compiles TS/TSX without blocking errors.
-- Backend auth routes confirmed: `/auth/sign-in`, `/auth/sign-in/email`, `/auth/me`, `/auth/logout` (port 3001). Client `authClient` uses `credentials: 'include'` and `API_BASE` default http://localhost:3001.
+- Backend auth routes confirmed: `/auth/sign-in`, `/auth/sign-in/email`, `/auth/me`, `/auth/logout` (port 3000). Client `authClient` uses `credentials: 'include'` and `API_BASE` default http://localhost:3000.
 - Added debug logging in `AuthContext` login flow to surface server errors while validating credentials.
 - Rebranding progress: replaced logos in TopBar, Sidebar, Login, Home; updated texts in Footer, About, RouteList; map HQ label; loading animation text. Added `logo-dark.PNG` and `logo-light.png` assets.
 - Updated `packages/client/.env` to set `VITE_HQ_NAME="Routegna (HQ)"`.
@@ -39,4 +39,4 @@ Update Log — 2025-08-20 (cont. 2)
 - Removed reliance on non-existent endpoints (`/drivers/stats`, `/drivers/history`, `/employees/history`, `/activities`) by computing metrics client-side and returning safe fallbacks.
 - Activity services: global returns mock in dev/404; settings-scoped service returns empty list on error to avoid crashes.
 - App polish: Added `ErrorBoundary`, refined CSP meta, added a11y skip link with styles, set `id="main"` on primary landmark, and improved Suspense fallbacks.
-- Verified frontend and backend dev servers run: Vite on 5173, API on 3001 with Socket.IO ready. 401/403 handling confirmed.
+- Verified frontend and backend dev servers run: Vite on 5173, API on 3000 with Socket.IO ready. 401/403 handling confirmed.

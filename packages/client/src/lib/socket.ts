@@ -69,7 +69,7 @@ class SocketManager {
     }
 
     log('Creating new socket connection');
-  const base = import.meta.env.DEV ? '' : (import.meta.env.VITE_API_BASE || import.meta.env.VITE_API_URL || 'http://localhost:3001');
+  const base = import.meta.env.DEV ? '' : (import.meta.env.VITE_API_BASE || import.meta.env.VITE_API_URL || 'http://localhost:3000');
   this.socket = io(base, {
       withCredentials: true,
       // Prefer WebSocket to avoid polling overhead in dev
