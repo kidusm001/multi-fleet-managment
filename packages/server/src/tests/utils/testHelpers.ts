@@ -1,5 +1,5 @@
 import express, { Express, RequestHandler } from 'express';
-import { vi } from 'vitest';
+import { expect, vi } from 'vitest';
 
 export const createTestApp = (router: express.Router, basePath = '/api'): Express => {
   const app = express();

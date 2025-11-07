@@ -2,97 +2,16 @@ import request from 'supertest';
 import express from 'express';
 import { describe, it, expect, beforeAll, beforeEach, vi, afterEach } from 'vitest';
 import { RouteStatus } from '@prisma/client';
+import { createMockPrismaClient } from '../../tests/utils/mockFactories';
 
-vi.mock('../../db', () => ({
-  default: {
-    route: {
-      findMany: vi.fn(),
-      findUnique: vi.fn(),
-      findFirst: vi.fn(),
-      create: vi.fn(),
-      update: vi.fn(),
-      delete: vi.fn(),
-      count: vi.fn(),
-    },
-    organization: {
-      findUnique: vi.fn(),
-    },
-    location: {
-      findFirst: vi.fn(),
-      findUnique: vi.fn(),
-    },
-    vehicle: {
-      findUnique: vi.fn(),
-    },
-    shift: {
-      findUnique: vi.fn(),
-      findFirst: vi.fn(),
-    },
-    stop: {
-      findMany: vi.fn(),
-      create: vi.fn(),
-      update: vi.fn(),
-      delete: vi.fn(),
-      deleteMany: vi.fn(),
-      updateMany: vi.fn(),
-      findFirst: vi.fn(),
-    },
-    employee: {
-      findUnique: vi.fn(),
-      findMany: vi.fn(),
-      updateMany: vi.fn(),
-      findFirst: vi.fn(),
-    },
-    vehicleAvailability: {
-      update: vi.fn(),
-      updateMany: vi.fn(),
-    },
-    $transaction: vi.fn((callback: any) => callback({
-      route: {
-        findMany: vi.fn(),
-        findUnique: vi.fn(),
-        findFirst: vi.fn(),
-        create: vi.fn(),
-        update: vi.fn(),
-        delete: vi.fn(),
-        count: vi.fn(),
-      },
-      organization: {
-        findUnique: vi.fn(),
-      },
-      location: {
-        findFirst: vi.fn(),
-        findUnique: vi.fn(),
-      },
-      vehicle: {
-        findUnique: vi.fn(),
-      },
-      shift: {
-        findUnique: vi.fn(),
-        findFirst: vi.fn(),
-      },
-      stop: {
-        findMany: vi.fn(),
-        findFirst: vi.fn(),
-        create: vi.fn(),
-        update: vi.fn(),
-        delete: vi.fn(),
-        deleteMany: vi.fn(),
-        updateMany: vi.fn(),
-      },
-      employee: {
-        findUnique: vi.fn(),
-        findMany: vi.fn(),
-        updateMany: vi.fn(),
-        findFirst: vi.fn(),
-      },
-      vehicleAvailability: {
-        update: vi.fn(),
-        updateMany: vi.fn(),
-      },
-    })),
-  },
-}));
+var prismaMock: ReturnType<typeof createMockPrismaClient>;
+
+vi.mock('../../db', () => {
+  prismaMock = createMockPrismaClient();
+  return {
+    default: prismaMock,
+  };
+});
 
 vi.mock('../../middleware/auth', () => ({
   requireAuth: async (req: any, _res: any, next: any) => {
@@ -301,7 +220,7 @@ describe('Route Routes', () => {
     it('should create a new route', async () => {
       const mockOrganization = { id: 'org_test_123', name: 'Test Org' };
       const mockLocation = { id: 'loc_123', organizationId: 'org_test_123' };
-      const mockVehicle = { id: 'veh_123', organizationId: 'org_test_123', driverId: 'driver_123' };
+      const mockVehicle = { id: 'veh_123', organizationId: 'org_test_123', driverId: null };
       const mockShift = { id: 'shift_123', organizationId: 'org_test_123', endTime: new Date() };
       const mockStops = [
         { id: 'stop_1', organizationId: 'org_test_123', routeId: null, employee: { id: 'emp_1', assigned: false } }
@@ -323,27 +242,14 @@ describe('Route Routes', () => {
       mockPrisma.shift.findFirst.mockResolvedValue(mockShift);
       mockPrisma.employee.findMany.mockResolvedValue([{ id: 'emp_1' }]);
       mockPrisma.stop.findMany.mockResolvedValue(mockStops);
-
-      mockPrisma.$transaction.mockImplementation(async (callback: any) => {
-        const txPrisma = {
-          route: {
-            create: vi.fn().mockResolvedValue(mockRoute),
-          },
-          stop: {
-            updateMany: vi.fn().mockResolvedValue({}),
-          },
-          employee: {
-            updateMany: vi.fn().mockResolvedValue({}),
-          },
-          vehicle: {
-            findUnique: vi.fn().mockResolvedValue(mockVehicle),
-          },
-          vehicleAvailability: {
-            upsert: vi.fn().mockResolvedValue({}),
-          },
-        };
-        return callback(txPrisma);
-      });
+      mockPrisma.driver.findFirst.mockResolvedValue({ id: 'driver_123' });
+      mockPrisma.route.create.mockResolvedValue(mockRoute);
+      mockPrisma.stop.updateMany.mockResolvedValue({ count: 1 });
+      mockPrisma.employee.updateMany.mockResolvedValue({ count: 1 });
+      mockPrisma.vehicle.updateMany.mockResolvedValue({ count: 0 });
+      mockPrisma.vehicle.findFirst.mockResolvedValue({ id: 'veh_123' });
+      mockPrisma.vehicle.update.mockResolvedValue({ id: 'veh_123', driverId: 'driver_123' });
+      mockPrisma.vehicleAvailability.upsert.mockResolvedValue({});
 
       const newRouteData = {
         name: 'New Route',
@@ -479,50 +385,23 @@ describe('Route Routes', () => {
         deletedAt: new Date(),
       };
 
-      mockPrisma.$transaction.mockImplementation(async (callback: any) => {
-        const txPrisma = {
-          route: {
-            findFirst: vi.fn().mockResolvedValue(mockRoute),
-            update: vi.fn().mockResolvedValue(deletedRoute),
-          },
-          employee: {
-            updateMany: vi.fn(),
-          },
-          vehicleAvailability: {
-            updateMany: vi.fn(),
-          },
-          stop: {
-            updateMany: vi.fn(),
-          },
-        };
-        return callback(txPrisma);
-      });
+      mockPrisma.route.findFirst.mockResolvedValue(mockRoute);
+      mockPrisma.route.update.mockResolvedValue(deletedRoute);
+      mockPrisma.employee.updateMany.mockResolvedValue({ count: 0 });
+      mockPrisma.vehicleAvailability.updateMany.mockResolvedValue({ count: 0 });
+      mockPrisma.stop.updateMany.mockResolvedValue({ count: 0 });
 
       const response = await request(app).delete('/routes/route_123').expect(204);
     });
 
     it('should return 404 if route not found', async () => {
-      mockPrisma.$transaction.mockImplementation(async (callback: any) => {
-        const txPrisma = {
-          route: {
-            findFirst: vi.fn().mockResolvedValue(null),
-          },
-        };
-        return callback(txPrisma);
-      });
+      mockPrisma.route.findFirst.mockResolvedValue(null);
 
       await request(app).delete('/routes/nonexistent').expect(404);
     });
 
     it('returns 400 when route already deleted', async () => {
-      mockPrisma.$transaction.mockImplementation(async (callback: any) => {
-        const txPrisma = {
-          route: {
-            findFirst: vi.fn().mockResolvedValue({ id: 'route_123', deleted: true, organizationId: 'org_test_123', stops: [], vehicleId: null, shiftId: null, date: null }),
-          },
-        };
-        return callback(txPrisma);
-      });
+      mockPrisma.route.findFirst.mockResolvedValue({ id: 'route_123', deleted: true, organizationId: 'org_test_123', stops: [], vehicleId: null, shiftId: null, date: null });
       const res = await request(app).delete('/routes/route_123').expect(400);
       expect(res.body.message).toBeDefined();
     });
