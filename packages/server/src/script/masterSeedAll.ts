@@ -13,7 +13,7 @@ async function runCommand(command: string, description: string) {
   
   try {
     const { stdout, stderr } = await execAsync(command, { 
-      cwd: '/home/leul/Documents/github/multi-fleet-managment/packages/server',
+      cwd: '/home/leul/Documents/Github/multi-fleet-managment/packages/server',
       maxBuffer: 10 * 1024 * 1024
     });
     if (stdout) console.log(stdout);
