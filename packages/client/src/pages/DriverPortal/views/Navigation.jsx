@@ -144,7 +144,8 @@ function NavigationView() {
   const isRouteActive = driverStatus === 'ACTIVE';
   const isRouteCompleted = driverStatus === 'COMPLETED';
   const isRouteUpcoming = driverStatus === 'UPCOMING';
-  const canStartRoute = isRouteUpcoming || isRouteActive; // Can start if UPCOMING or already ACTIVE
+  // const canStartRoute = isRouteUpcoming || isRouteActive; // Can start if UPCOMING or already ACTIVE
+const canStartRoute =  isRouteActive;
   const statusLabel = isRouteCompleted
     ? 'Completed'
     : isRouteActive

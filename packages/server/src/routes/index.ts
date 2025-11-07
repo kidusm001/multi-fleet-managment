@@ -23,6 +23,7 @@ import cacheRoutes from './cache';
 import invitationRoutes from './invitation';
 import searchRoutes from './search';
 import aiRoutes from './ai';
+import payrollKpiRoutes from './payroll-kpi';
 // import shiftRoutes from './shiftRoutes';
 // import employeeRoutes from './employeeRoutes';
 // import routeRoutes from './routeRoutes';
@@ -70,6 +71,7 @@ router.use('/cache', cacheRoutes);
 router.use('/accept-invitation', invitationRoutes);
 router.use('/search', searchRoutes);
 router.use('/ai', aiRoutes);
+router.use('/kpi', payrollKpiRoutes);
 
 // Register routes
 // router.use('/shifts', shiftRoutes);

@@ -44,10 +44,8 @@ export function ShuttleTable({
   };
 
   const calculateDailyCost = (shuttle) => {
-    const baseCost = shuttle.costPerDay || 0;
-    const maintenanceCost = shuttle.type === 'Owned' ? 450 : 550; // Updated to ETB
-    const insuranceCost = (shuttle.type === 'Owned' ? 5000 : 6000) / 22; // Updated to ETB (monthly/22)
-    return baseCost + maintenanceCost + insuranceCost;
+    // For payroll entries, this returns the gross amount (amount before deductions)
+    return parseFloat((shuttle.amount || shuttle.costPerDay || 0).toFixed(2));
   };
 
   const calculateUtilization = (usageDays) => {
@@ -77,8 +75,8 @@ export function ShuttleTable({
             <TableHead>Type</TableHead>
             <TableHead>Model</TableHead>
             <TableHead>Usage Days</TableHead>
-            <TableHead>Daily Cost</TableHead>
-            <TableHead>Monthly Cost</TableHead>
+            <TableHead>Gross Pay</TableHead>
+            <TableHead>Net Pay</TableHead>
             <TableHead>Efficiency</TableHead>
             <TableHead>Utilization</TableHead>
             <TableHead>Status</TableHead>
@@ -94,7 +92,7 @@ export function ShuttleTable({
                 selectedShuttle?.id === shuttle.id ? "bg-blue-50/50" : ""
               }`}
             >
-              <TableCell className="py-2.5 font-medium">{shuttle.id}</TableCell>
+              <TableCell className="py-2.5 font-medium">{shuttle.vehicleId || shuttle.id}</TableCell>
               <TableCell className="py-2.5">{shuttle.type}</TableCell>
               <TableCell className="py-2.5">{shuttle.model}</TableCell>
               <TableCell className="py-2.5">{shuttle.usageDays}</TableCell>
