@@ -194,6 +194,19 @@ export default function AttendanceManagement() {
     handleEdit(record);
   };
 
+  const handleRecalculate = async (record) => {
+    try {
+      const result = await attendanceService.recalculateAttendanceMetrics(record.id);
+      toast.success(
+        `Recalculated: ${result.calculatedMetrics.tripsCompleted} trips, ${result.calculatedMetrics.kmsCovered?.toFixed(1) || 0} km`
+      );
+      await loadData();
+    } catch (err) {
+      console.error("Error recalculating metrics:", err);
+      toast.error("Failed to recalculate metrics from routes");
+    }
+  };
+
   const handleSubmit = async (data) => {
     try {
       const payload = {
@@ -489,6 +502,7 @@ export default function AttendanceManagement() {
               onEdit={handleEdit}
               onDelete={handleDelete}
               onView={handleView}
+              onRecalculate={handleRecalculate}
             />
           )}
         </CardContent>

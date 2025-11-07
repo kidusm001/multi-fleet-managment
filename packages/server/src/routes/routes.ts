@@ -25,6 +25,7 @@ import {
     AddStopToRouteInput,
     UpdateRouteStopsInput
 } from '../schema/routeSchemas';
+import { CompleteRouteSchema, RouteCompletionQuerySchema, CompleteRouteInput } from '../schema/routeCompletionSchemas';
 import { routeNotifications, employeeNotifications } from '../lib/notificationHelpers';
 import { broadcastNotification } from '../lib/notificationBroadcaster';
 import { formatRouteForManagement, formatRoutesForManagement } from '../utils/routeStatus';
@@ -1642,6 +1643,268 @@ router.get('/stats/summary', requireAuth, async (req: Request, res: Response) =>
         res.json(stats);
     } catch (error) {
         console.error(error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+/**
+ * @route   POST /completions
+ * @desc    Mark a route as completed (simple button click)
+ * @access  Private (Driver)
+ */
+router.post('/completions', requireAuth, validateSchema(CompleteRouteSchema), async (req: Request, res: Response) => {
+    try {
+        const activeOrgId = req.session?.session?.activeOrganizationId;
+        if (!activeOrgId) return res.status(400).json({ message: 'Active organization not found' });
+
+        // Get the authenticated user's driver record
+        const userId = req.session?.user?.id;
+        if (!userId) return res.status(401).json({ message: 'User not authenticated' });
+
+        const { routeId } = req.body as CompleteRouteInput;
+
+        // Verify the route exists and belongs to the organization
+        const route = await prisma.route.findFirst({
+            where: {
+                id: routeId,
+                organizationId: activeOrgId
+            },
+            include: {
+                vehicle: {
+                    include: {
+                        driver: true
+                    }
+                }
+            }
+        });
+
+        if (!route) {
+            return res.status(404).json({ message: 'Route not found' });
+        }
+
+        // Get the driver assigned to the vehicle
+        if (!route.vehicle?.driverId) {
+            return res.status(400).json({ 
+                message: 'No driver assigned to this vehicle. Please assign a driver to the vehicle first.' 
+            });
+        }
+
+        // Create route completion record with the vehicle's assigned driver
+        const completion = await prisma.routeCompletion.create({
+            data: {
+                routeId,
+                driverId: route.vehicle.driverId,
+                vehicleId: route.vehicleId,
+                organizationId: activeOrgId
+            },
+            include: {
+                driver: {
+                    select: {
+                        id: true,
+                        name: true
+                    }
+                },
+                vehicle: {
+                    select: {
+                        id: true,
+                        plateNumber: true,
+                        model: true
+                    }
+                }
+            }
+        });
+
+        res.status(201).json({
+            message: 'Route completed successfully',
+            completion
+        });
+    } catch (error) {
+        console.error('Error completing route:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+/**
+ * @route   GET /completions
+ * @desc    Get route completion history with route distance
+ * @access  Private (User)
+ */
+router.get('/completions', requireAuth, async (req: Request, res: Response) => {
+    try {
+        const activeOrgId = req.session?.session?.activeOrganizationId;
+        if (!activeOrgId) return res.status(400).json({ message: 'Active organization not found' });
+
+        const hasPermission = await auth.api.hasPermission({
+            headers: await fromNodeHeaders(req.headers),
+            body: { permissions: { route: ["read"] } }
+        });
+
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
+
+        // Parse query params
+        const { driverId, startDate, endDate, limit } = req.query;
+
+        const where: any = {
+            organizationId: activeOrgId
+        };
+
+        if (driverId && typeof driverId === 'string') {
+            where.driverId = driverId;
+        }
+
+        if (startDate || endDate) {
+            where.completedAt = {};
+            if (startDate && typeof startDate === 'string') {
+                where.completedAt.gte = new Date(startDate);
+            }
+            if (endDate && typeof endDate === 'string') {
+                where.completedAt.lte = new Date(endDate);
+            }
+        }
+
+        const completions = await prisma.routeCompletion.findMany({
+            where,
+            include: {
+                driver: {
+                    select: {
+                        id: true,
+                        name: true,
+                        email: true
+                    }
+                },
+                vehicle: {
+                    select: {
+                        id: true,
+                        plateNumber: true,
+                        model: true,
+                        make: true
+                    }
+                }
+            },
+            orderBy: {
+                completedAt: 'desc'
+            },
+            take: limit ? parseInt(limit as string) : undefined
+        });
+
+        // Fetch route info for each completion to get distance
+        const completionsWithRouteInfo = await Promise.all(
+            completions.map(async (completion) => {
+                const route = await prisma.route.findUnique({
+                    where: { id: completion.routeId },
+                    select: {
+                        id: true,
+                        name: true,
+                        totalDistance: true,
+                        totalTime: true
+                    }
+                });
+                return {
+                    ...completion,
+                    route
+                };
+            })
+        );
+
+        res.json({
+            completions: completionsWithRouteInfo,
+            total: completionsWithRouteInfo.length
+        });
+    } catch (error) {
+        console.error('Error fetching route completions:', error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+});
+
+/**
+ * @route   GET /completions/stats
+ * @desc    Get route completion statistics
+ * @access  Private (User)
+ */
+router.get('/completions/stats', requireAuth, async (req: Request, res: Response) => {
+    try {
+        const activeOrgId = req.session?.session?.activeOrganizationId;
+        if (!activeOrgId) return res.status(400).json({ message: 'Active organization not found' });
+
+        const hasPermission = await auth.api.hasPermission({
+            headers: await fromNodeHeaders(req.headers),
+            body: { permissions: { route: ["read"] } }
+        });
+
+        if (!hasPermission.success) {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
+
+        const completions = await prisma.routeCompletion.findMany({
+            where: { organizationId: activeOrgId },
+            include: {
+                driver: {
+                    select: {
+                        id: true,
+                        name: true
+                    }
+                }
+            }
+        });
+
+        // Fetch route distances
+        const routeIds = [...new Set(completions.map(c => c.routeId))];
+        const routes = await prisma.route.findMany({
+            where: { id: { in: routeIds } },
+            select: {
+                id: true,
+                totalDistance: true,
+                totalTime: true
+            }
+        });
+
+        const routeMap = new Map(routes.map(r => [r.id, r]));
+
+        // Calculate statistics
+        const totalCompletions = completions.length;
+        const totalDistance = completions.reduce((sum: number, c) => {
+            const route = routeMap.get(c.routeId);
+            return sum + (route?.totalDistance || 0);
+        }, 0);
+        const totalTime = completions.reduce((sum: number, c) => {
+            const route = routeMap.get(c.routeId);
+            return sum + (route?.totalTime || 0);
+        }, 0);
+        const avgDistance = totalCompletions > 0 ? totalDistance / totalCompletions : 0;
+        const avgTime = totalCompletions > 0 ? totalTime / totalCompletions : 0;
+
+        // Group by driver
+        const byDriver = completions.reduce((acc: any, c) => {
+            const driverId = c.driverId;
+            const route = routeMap.get(c.routeId);
+            
+            if (!acc[driverId]) {
+                acc[driverId] = {
+                    driverId,
+                    driverName: c.driver.name,
+                    completions: 0,
+                    totalDistance: 0,
+                    totalTime: 0
+                };
+            }
+            acc[driverId].completions++;
+            acc[driverId].totalDistance += route?.totalDistance || 0;
+            acc[driverId].totalTime += route?.totalTime || 0;
+            return acc;
+        }, {});
+
+        res.json({
+            totalCompletions,
+            totalDistance,
+            totalTime,
+            averageDistance: avgDistance,
+            averageTime: avgTime,
+            byDriver: Object.values(byDriver)
+        });
+    } catch (error) {
+        console.error('Error fetching route completion stats:', error);
         res.status(500).json({ message: 'Internal Server Error' });
     }
 });

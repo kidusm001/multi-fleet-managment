@@ -15,6 +15,7 @@ import {
 import { useTheme } from '@contexts/ThemeContext';
 import { useAuth } from '@contexts/AuthContext';
 import { driverService } from '@services/driverService';
+import { routeCompletionService } from '@services/routeCompletionService';
 import { cn } from '@lib/utils';
 import { MAP_STYLES } from '@components/Common/Map/config';
 import { transformRouteForMap, buildGoogleMapsUrl } from '../utils/mapHelpers';
@@ -142,6 +143,8 @@ function NavigationView() {
   const driverStatus = rawStatus === 'CANCELLED' ? 'UPCOMING' : rawStatus;
   const isRouteActive = driverStatus === 'ACTIVE';
   const isRouteCompleted = driverStatus === 'COMPLETED';
+  const isRouteUpcoming = driverStatus === 'UPCOMING';
+  const canStartRoute = isRouteUpcoming || isRouteActive; // Can start if UPCOMING or already ACTIVE
   const statusLabel = isRouteCompleted
     ? 'Completed'
     : isRouteActive
@@ -301,8 +304,18 @@ function NavigationView() {
     if (!route) return;
 
     try {
+      // Update route status to COMPLETED
       const updatedRoute = await driverService.updateRouteStatus(route.id, 'COMPLETED');
       setRoute(updatedRoute);
+      
+      // Record the route completion
+      try {
+        await routeCompletionService.completeRoute(route.id);
+      } catch (completionError) {
+        console.warn('Failed to record route completion:', completionError);
+        // Don't fail the whole operation if completion record fails
+      }
+      
       handleStopTracking();
     } catch (completeError) {
       console.error('Failed to complete route:', completeError);
@@ -510,10 +523,10 @@ function NavigationView() {
           <button
             type="button"
             onClick={tracking ? handleStopTracking : handleStartRoute}
-            disabled={!isRouteActive && !tracking}
+            disabled={!canStartRoute && !tracking}
             className={cn(
               'flex-1 rounded-lg px-4 py-3 font-semibold transition-colors flex items-center justify-center gap-2',
-              !isRouteActive && !tracking
+              !canStartRoute && !tracking
                 ? 'cursor-not-allowed bg-gray-400/40 text-gray-500 dark:bg-gray-800/40 dark:text-gray-600'
                 : tracking
                 ? 'bg-gray-200 text-gray-800 hover:bg-gray-300 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700'
@@ -521,7 +534,7 @@ function NavigationView() {
             )}
           >
             {tracking ? <StopCircle className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-            {tracking ? 'Pause Tracking' : isRouteActive ? 'Start Route' : 'Start Route'}
+            {tracking ? 'Pause Tracking' : 'Start Route'}
           </button>
 
           <button
@@ -545,10 +558,10 @@ function NavigationView() {
             <button
               type="button"
               onClick={handleCompleteRoute}
-              disabled={!isRouteActive}
+              disabled={!isRouteActive && !tracking}
               className={cn(
                 'flex items-center justify-center gap-2 rounded-lg px-4 py-3 font-semibold transition-colors',
-                !isRouteActive
+                !isRouteActive && !tracking
                   ? 'cursor-not-allowed bg-gray-400/40 text-gray-500 dark:bg-gray-800/40 dark:text-gray-600'
                   : 'bg-emerald-500 text-white hover:bg-emerald-600'
               )}

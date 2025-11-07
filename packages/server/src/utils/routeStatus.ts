@@ -132,6 +132,11 @@ export const deriveDriverStatus = (
   const driverMarkedComplete = COMPLETED_STATUSES.has(normalizedStatus) || Boolean(toDateOrNull(route.completedAt));
   const hasAttendance = route.hasAttendanceRecord === true;
 
+  // 1. Check if route is explicitly completed (this should override time-based status)
+  if (driverMarkedComplete) {
+    return 'COMPLETED';
+  }
+
   // Determine time-based active window (2 hours around start time)
   let activeWindowStart: number | null = null;
   let activeWindowEnd: number | null = null;
@@ -144,46 +149,40 @@ export const deriveDriverStatus = (
     activeWindowEnd = endTime;
   }
 
-  // 1. Check if we're in the active window (ACTIVE) - purely time-based
+  // 2. Check if we're in the active window (ACTIVE) - purely time-based
   if (activeWindowStart !== null && activeWindowEnd !== null) {
     if (referenceTime >= activeWindowStart && referenceTime <= activeWindowEnd) {
       return 'ACTIVE';
     }
   }
 
-  // 2. Check if we're before the route starts (UPCOMING)
+  // 3. Check if we're before the route starts (UPCOMING)
   // Do this BEFORE checking if past, to avoid misclassifying future routes
   if (startTime !== null && referenceTime < (startTime - AUTO_ACTIVATION_WINDOW_MS)) {
     return 'UPCOMING';
   }
 
-  // 3. Determine if route is in the past
+  // 4. Determine if route is in the past
   // Only mark as past if we're beyond the end time OR beyond the start time + window
   const isPastRoute = 
     (endTime !== null && referenceTime > endTime) ||
     (endTime === null && startTime !== null && referenceTime > (startTime + AUTO_ACTIVATION_WINDOW_MS));
 
   if (isPastRoute) {
-    // Route is in the past - check completion OR attendance
-    if (driverMarkedComplete || hasAttendance) {
-      // Driver marked complete OR attendance exists = COMPLETED
+    // Route is in the past - check if attendance exists (even without explicit completion)
+    if (hasAttendance) {
       return 'COMPLETED';
     }
     // Missing BOTH completion AND attendance = CANCELLED
     return 'CANCELLED';
   }
 
-  // 4. Between active window and start (shouldn't normally happen, but handle gracefully)
+  // 5. Between active window and start (shouldn't normally happen, but handle gracefully)
   if (startTime !== null && referenceTime < startTime) {
     return 'UPCOMING';
   }
 
-  // 4. No clear timing - check completion status
-  if (driverMarkedComplete && hasAttendance) {
-    return 'COMPLETED';
-  }
-
-  // 5. Default fallback
+  // 6. Default fallback
   return 'UPCOMING';
 };
 

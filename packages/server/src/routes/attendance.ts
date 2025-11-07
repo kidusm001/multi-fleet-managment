@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import prisma from '../db';
 import { requireAuth, requireRole } from '../middleware/auth';
+import { calculateAttendanceMetricsFromRoutes } from '../utils/attendanceMetrics';
 
 const router = Router();
 
@@ -79,6 +80,128 @@ router.get('/', requireAuth, async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Error fetching attendance records:', error);
     res.status(500).json({ message: 'Failed to fetch attendance records' });
+  }
+});
+
+/**
+ * GET /calculate-preview - Preview calculated metrics from routes without saving
+ * Query params: vehicleId, date, driverId (optional)
+ */
+router.get('/calculate-preview', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const organizationId = req.session?.session?.activeOrganizationId;
+    if (!organizationId) {
+      return res.status(400).json({ message: 'Active organization not found' });
+    }
+
+    const { vehicleId, date, driverId } = req.query;
+
+    if (!vehicleId || !date) {
+      return res.status(400).json({ 
+        message: 'vehicleId and date are required query parameters' 
+      });
+    }
+
+    // Verify vehicle belongs to organization
+    const vehicle = await prisma.vehicle.findFirst({
+      where: {
+        id: vehicleId as string,
+        organizationId,
+      },
+      select: {
+        id: true,
+        model: true,
+        plateNumber: true,
+      }
+    });
+
+    if (!vehicle) {
+      return res.status(404).json({ message: 'Vehicle not found in organization' });
+    }
+
+    // Calculate metrics
+    console.log('Calculate preview params:', {
+      driverId,
+      vehicleId,
+      date,
+      organizationId,
+      parsedDate: new Date(date as string)
+    });
+
+    const calculatedMetrics = await calculateAttendanceMetricsFromRoutes(
+      driverId ? (driverId as string) : null,
+      vehicleId as string,
+      new Date(date as string),
+      organizationId
+    );
+
+    // Get route completions for this date to show details
+    const startOfDay = new Date(date as string);
+    startOfDay.setHours(0, 0, 0, 0);
+    
+    const endOfDay = new Date(date as string);
+    endOfDay.setHours(23, 59, 59, 999);
+
+    console.log('Date range for query:', { startOfDay, endOfDay });
+
+    const completions = await prisma.routeCompletion.findMany({
+      where: {
+        organizationId,
+        vehicleId: vehicleId as string,
+        ...(driverId && { driverId: driverId as string }),
+        completedAt: {
+          gte: startOfDay,
+          lte: endOfDay
+        }
+      },
+      include: {
+        driver: {
+          select: {
+            id: true,
+            name: true
+          }
+        }
+      }
+    });
+
+    console.log('Found completions:', completions.length, completions);
+
+    const routeIds = completions.map(c => c.routeId);
+    const routes = await prisma.route.findMany({
+      where: {
+        id: { in: routeIds },
+        organizationId
+      },
+      select: {
+        id: true,
+        name: true,
+        totalDistance: true,
+        startTime: true,
+        endTime: true
+      }
+    });
+
+    const routeDetails = completions.map(completion => {
+      const route = routes.find(r => r.id === completion.routeId);
+      return {
+        routeId: completion.routeId,
+        routeName: route?.name || 'Unknown',
+        completedAt: completion.completedAt,
+        distance: route?.totalDistance || 0,
+        driver: completion.driver
+      };
+    });
+
+    res.json({
+      vehicle,
+      date: date as string,
+      calculatedMetrics,
+      routeCompletions: routeDetails,
+      message: 'This is a preview. Use POST to create or PUT to update the attendance record with these values.'
+    });
+  } catch (error) {
+    console.error('Error calculating attendance preview:', error);
+    res.status(500).json({ message: 'Failed to calculate attendance preview' });
   }
 });
 
@@ -202,15 +325,36 @@ router.post('/', requireAuth, async (req: Request, res: Response) => {
       });
     }
 
+    // Calculate metrics from completed routes (auto-populate trips and kms)
+    const calculatedMetrics = await calculateAttendanceMetricsFromRoutes(
+      driverId || null,
+      vehicleId,
+      new Date(date),
+      organizationId
+    );
+
+    // Use calculated metrics, but allow manual overrides if provided
+    const finalTripsCompleted = tripsCompleted !== undefined && tripsCompleted !== null
+      ? parseInt(tripsCompleted, 10)
+      : calculatedMetrics.tripsCompleted;
+
+    const finalKmsCovered = kmsCovered !== undefined && kmsCovered !== null
+      ? parseFloat(kmsCovered)
+      : calculatedMetrics.kmsCovered;
+
+    const finalHoursWorked = hoursWorked !== undefined && hoursWorked !== null
+      ? parseFloat(hoursWorked)
+      : calculatedMetrics.hoursWorked;
+
     const record = await prisma.attendanceRecord.create({
       data: {
         organizationId,
         driverId: driverId || null,
         vehicleId,
         date: new Date(date),
-        hoursWorked: hoursWorked ? parseFloat(hoursWorked) : null,
-        tripsCompleted: tripsCompleted ? parseInt(tripsCompleted, 10) : 0,
-        kmsCovered: kmsCovered ? parseFloat(kmsCovered) : null,
+        hoursWorked: finalHoursWorked,
+        tripsCompleted: finalTripsCompleted,
+        kmsCovered: finalKmsCovered,
         fuelCost: fuelCost || null,
         tollCost: tollCost || null,
       },
@@ -259,6 +403,7 @@ router.put('/:id', requireAuth, async (req: Request, res: Response) => {
       kmsCovered,
       fuelCost,
       tollCost,
+      recalculateFromRoutes, // New flag to trigger recalculation
     } = req.body;
 
     // Check if record exists and belongs to organization
@@ -291,10 +436,28 @@ router.put('/:id', requireAuth, async (req: Request, res: Response) => {
 
     const updateData: any = {};
 
+    // If recalculate flag is set, calculate metrics from routes
+    if (recalculateFromRoutes === true) {
+      const calculatedMetrics = await calculateAttendanceMetricsFromRoutes(
+        driverId !== undefined ? driverId : existingRecord.driverId,
+        existingRecord.vehicleId,
+        existingRecord.date,
+        organizationId
+      );
+      
+      updateData.tripsCompleted = calculatedMetrics.tripsCompleted;
+      updateData.kmsCovered = calculatedMetrics.kmsCovered;
+      if (calculatedMetrics.hoursWorked !== null) {
+        updateData.hoursWorked = calculatedMetrics.hoursWorked;
+      }
+    } else {
+      // Manual updates (existing behavior)
+      if (hoursWorked !== undefined) updateData.hoursWorked = hoursWorked ? parseFloat(hoursWorked) : null;
+      if (tripsCompleted !== undefined) updateData.tripsCompleted = parseInt(tripsCompleted, 10);
+      if (kmsCovered !== undefined) updateData.kmsCovered = kmsCovered ? parseFloat(kmsCovered) : null;
+    }
+
     if (driverId !== undefined) updateData.driverId = driverId || null;
-    if (hoursWorked !== undefined) updateData.hoursWorked = hoursWorked ? parseFloat(hoursWorked) : null;
-    if (tripsCompleted !== undefined) updateData.tripsCompleted = parseInt(tripsCompleted, 10);
-    if (kmsCovered !== undefined) updateData.kmsCovered = kmsCovered ? parseFloat(kmsCovered) : null;
     if (fuelCost !== undefined) updateData.fuelCost = fuelCost;
     if (tollCost !== undefined) updateData.tollCost = tollCost;
 
@@ -325,6 +488,77 @@ router.put('/:id', requireAuth, async (req: Request, res: Response) => {
   } catch (error) {
     console.error('Error updating attendance record:', error);
     res.status(500).json({ message: 'Failed to update attendance record' });
+  }
+});
+
+/**
+ * POST /:id/recalculate - Recalculate attendance metrics from completed routes
+ */
+router.post('/:id/recalculate', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const organizationId = req.session?.session?.activeOrganizationId;
+    if (!organizationId) {
+      return res.status(400).json({ message: 'Active organization not found' });
+    }
+
+    const { id } = req.params;
+
+    // Check if record exists and belongs to organization
+    const existingRecord = await prisma.attendanceRecord.findFirst({
+      where: {
+        id,
+        organizationId,
+      },
+    });
+
+    if (!existingRecord) {
+      return res.status(404).json({ message: 'Attendance record not found' });
+    }
+
+    // Calculate metrics from completed routes
+    const calculatedMetrics = await calculateAttendanceMetricsFromRoutes(
+      existingRecord.driverId,
+      existingRecord.vehicleId,
+      existingRecord.date,
+      organizationId
+    );
+
+    // Update the record with calculated metrics
+    const record = await prisma.attendanceRecord.update({
+      where: { id },
+      data: {
+        tripsCompleted: calculatedMetrics.tripsCompleted,
+        kmsCovered: calculatedMetrics.kmsCovered,
+        hoursWorked: calculatedMetrics.hoursWorked,
+      },
+      include: {
+        driver: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            licenseNumber: true,
+          },
+        },
+        vehicle: {
+          select: {
+            id: true,
+            model: true,
+            plateNumber: true,
+            type: true,
+          },
+        },
+      },
+    });
+
+    res.json({
+      message: 'Attendance metrics recalculated from completed routes',
+      record,
+      calculatedMetrics
+    });
+  } catch (error) {
+    console.error('Error recalculating attendance metrics:', error);
+    res.status(500).json({ message: 'Failed to recalculate attendance metrics' });
   }
 });
 
@@ -364,8 +598,109 @@ router.delete('/:id', requireAuth, async (req: Request, res: Response) => {
 });
 
 /**
- * GET /summary/driver/:driverId - Get attendance summary for a driver
+ * POST /bulk-recalculate - Recalculate attendance metrics for all records in a date range
  */
+router.post('/bulk-recalculate', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const organizationId = req.session?.session?.activeOrganizationId;
+    if (!organizationId) {
+      return res.status(400).json({ message: 'Active organization not found' });
+    }
+
+    const { startDate, endDate, driverId, vehicleId } = req.body;
+
+    if (!startDate || !endDate) {
+      return res.status(400).json({ 
+        message: 'startDate and endDate are required' 
+      });
+    }
+
+    const where: any = {
+      organizationId,
+      date: {
+        gte: new Date(startDate),
+        lte: new Date(endDate),
+      },
+    };
+
+    if (driverId) {
+      where.driverId = driverId;
+    }
+
+    if (vehicleId) {
+      where.vehicleId = vehicleId;
+    }
+
+    // Find all attendance records in the date range
+    const records = await prisma.attendanceRecord.findMany({
+      where,
+      select: {
+        id: true,
+        driverId: true,
+        vehicleId: true,
+        date: true,
+      },
+    });
+
+    let updatedCount = 0;
+    let errorCount = 0;
+    const results = [];
+
+    // Recalculate metrics for each record
+    for (const record of records) {
+      try {
+        const calculatedMetrics = await calculateAttendanceMetricsFromRoutes(
+          record.driverId,
+          record.vehicleId,
+          record.date,
+          organizationId
+        );
+
+        await prisma.attendanceRecord.update({
+          where: { id: record.id },
+          data: {
+            tripsCompleted: calculatedMetrics.tripsCompleted,
+            kmsCovered: calculatedMetrics.kmsCovered,
+            hoursWorked: calculatedMetrics.hoursWorked,
+          },
+        });
+
+        updatedCount++;
+        results.push({
+          id: record.id,
+          date: record.date,
+          success: true,
+          metrics: calculatedMetrics
+        });
+      } catch (error) {
+        errorCount++;
+        results.push({
+          id: record.id,
+          date: record.date,
+          success: false,
+          error: (error as Error).message
+        });
+      }
+    }
+
+    res.json({
+      message: `Bulk recalculation completed`,
+      summary: {
+        totalRecords: records.length,
+        updated: updatedCount,
+        errors: errorCount
+      },
+      results
+    });
+  } catch (error) {
+    console.error('Error in bulk recalculation:', error);
+    res.status(500).json({ message: 'Failed to perform bulk recalculation' });
+  }
+});
+
+/**
+ * GET /summary/driver/:driverId - Get attendance summary for a driver
+```
 router.get('/summary/driver/:driverId', requireAuth, async (req: Request, res: Response) => {
   try {
     const organizationId = req.session?.session?.activeOrganizationId;

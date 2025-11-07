@@ -1,4 +1,4 @@
-import { Edit, Trash2, Eye, Clock, TrendingUp, Fuel, Banknote, Car } from "lucide-react";
+import { Edit, Trash2, Eye, Clock, TrendingUp, Fuel, Banknote, Car, RefreshCw } from "lucide-react";
 import { Badge } from "@/components/Common/UI/Badge";
 import Button from "@/components/Common/UI/Button";
 import {
@@ -20,6 +20,7 @@ export default function AttendanceTable({
   onEdit,
   onDelete,
   onView,
+  onRecalculate,
 }) {
   const formatDate = (date) => {
     return new Date(date).toLocaleDateString('en-US', {
@@ -228,6 +229,19 @@ export default function AttendanceTable({
                     }`}
                   >
                     <Eye className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onRecalculate(record)}
+                    title="Recalculate from routes"
+                    className={`h-8 w-8 p-0 ${
+                      isDark
+                        ? "hover:bg-gray-700 hover:text-purple-400"
+                        : "hover:bg-gray-100 hover:text-purple-600"
+                    }`}
+                  >
+                    <RefreshCw className="h-4 w-4" />
                   </Button>
                   <Button
                     variant="ghost"
