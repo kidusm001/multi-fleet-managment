@@ -1,77 +1,8 @@
 import { PrismaClient } from '@prisma/client';
 import { auth } from '../lib/auth';
+import { generateUniqueEthiopianNames } from '../utils/uniqueEthiopianNames';
 
 const prisma = new PrismaClient();
-
-interface SyntheticEmployee {
-  name: string;
-  email: string;
-}
-
-// Generate realistic synthetic employees for Sterling Logistics
-function generateSyntheticEmployees(count: number): SyntheticEmployee[] {
-  const firstNames = [
-    // Amharic/Ethiopian names
-    'Abebe', 'Almaz', 'Amanuel', 'Azeb', 'Belete', 'Bethlehem', 'Biruk', 'Chaltu',
-    'Daniel', 'Dawit', 'Eleni', 'Emebet', 'Eshetu', 'Eyob', 'Fentaye', 'Fikirte',
-    'Getachew', 'Gelila', 'Habtamu', 'Hanna', 'Hiwot', 'Kalkidan', 'Kebede', 'Liya',
-    'Marta', 'Meaza', 'Meseret', 'Mulu', 'Nahom', 'Netsanet', 'Samuel', 'Sara',
-    'Seble', 'Seyoum', 'Sisay', 'Tadesse', 'Tewodros', 'Tigist', 'Tsion', 'Yared',
-    'Yohannes', 'Yonas', 'Zelalem', 'Zerihun', 'Zewdu',
-    // International names for diversity
-    'Sarah', 'Jennifer', 'Michael', 'David', 'John', 'Richard', 'Joseph', 'Thomas',
-    'Charles', 'Christopher', 'Matthew', 'Anthony', 'Mark', 'Steven', 'Emma', 'Olivia',
-    'Paul', 'Andrew', 'Joshua', 'Kenneth', 'Kevin', 'Brian', 'George', 'Edward',
-    'Ronald', 'Timothy', 'Jason', 'Jeffrey', 'Ryan', 'Jacob', 'Gary', 'Nicholas',
-    'Eric', 'Jonathan', 'Stephen', 'Larry', 'Justin', 'Scott', 'Brandon', 'Benjamin',
-    'Frank', 'Gregory', 'Alexander', 'Patrick', 'Jack', 'Dennis', 'Jerry', 'Sophia',
-    'Amelia', 'Isabella', 'Mia', 'Charlotte', 'Ava', 'Evelyn', 'Abigail', 'Harper',
-    'Emily', 'Elizabeth', 'Sofia', 'Avery', 'Ella', 'Scarlett', 'Grace', 'Chloe'
-  ];
-
-  const lastNames = [
-    // Ethiopian surnames
-    'Abebe', 'Alemu', 'Amare', 'Assefa', 'Bekele', 'Birhan', 'Chala', 'Demissie',
-    'Desta', 'Gebre', 'Gebru', 'Gemechu', 'Getachew', 'Girma', 'Haile', 'Kebede',
-    'Lemma', 'Mengistu', 'Mulugeta', 'Negash', 'Reta', 'Tadesse', 'Tefera', 'Tekle',
-    'Tesfaye', 'Teshome', 'Wolde', 'Worku', 'Yilma', 'Zenebe',
-    // International surnames for diversity
-    'Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Garcia', 'Miller', 'Davis',
-    'Rodriguez', 'Martinez', 'Hernandez', 'Lopez', 'Gonzalez', 'Wilson', 'Anderson',
-    'Thomas', 'Taylor', 'Moore', 'Jackson', 'Martin', 'Lee', 'Perez', 'Thompson',
-    'White', 'Harris', 'Sanchez', 'Clark', 'Ramirez', 'Lewis', 'Robinson', 'Young',
-    'Allen', 'King', 'Wright', 'Scott', 'Torres', 'Peterson', 'Phillips', 'Campbell',
-    'Parker', 'Evans', 'Edwards', 'Collins', 'Reyes', 'Stewart', 'Morris', 'Rogers',
-    'Morgan', 'Cooper', 'Reed', 'Cook', 'Bell', 'Murphy', 'Bailey', 'Rivera',
-    'Richardson', 'Cox', 'Howard', 'Ward', 'Brooks', 'Kelly', 'Sanders', 'Price',
-    'Bennett', 'Wood', 'Barnes', 'Ross', 'Henderson', 'Coleman', 'Jenkins', 'Perry'
-  ];
-
-  const employees: SyntheticEmployee[] = [];
-  const usedEmails = new Set<string>();
-
-  for (let i = 0; i < count; i++) {
-    const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
-    const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
-    const fullName = `${firstName} ${lastName}`;
-    
-    // Generate unique email
-    let email = `${firstName.toLowerCase()}.${lastName.toLowerCase()}@sterling-logistics.local`;
-    let counter = 1;
-    while (usedEmails.has(email)) {
-      email = `${firstName.toLowerCase()}.${lastName.toLowerCase()}${counter}@sterling-logistics.local`;
-      counter++;
-    }
-    usedEmails.add(email);
-
-    employees.push({
-      name: fullName,
-      email
-    });
-  }
-
-  return employees;
-}
 
 // Create a user via Better Auth
 async function createUserViaBetterAuth(email: string, name: string): Promise<string | null> {
@@ -142,9 +73,9 @@ async function main() {
       process.exit(1);
     }
 
-    // Generate 50 new synthetic employees
+    // Generate 50 new unique Ethiopian employees
     const newEmployeeCount = 50;
-    const syntheticEmployees = generateSyntheticEmployees(newEmployeeCount);
+    const syntheticEmployees = generateUniqueEthiopianNames(newEmployeeCount);
 
     console.log(`📝 Generating ${newEmployeeCount} synthetic employees...\n`);
     console.log(`🔐 Creating users via Better Auth...\n`);

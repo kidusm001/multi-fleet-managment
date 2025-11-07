@@ -1,6 +1,7 @@
 import { PrismaClient, ApprovalStatus, VehicleStatus, RouteStatus, NotificationType, NotificationStatus, DriverStatus, PaymentStatus } from '@prisma/client'
 import { createAdditionalEmployees } from './employee-data'
 import { auth } from '../src/lib/auth'
+import { generateUniqueEthiopianNames } from '../src/utils/uniqueEthiopianNames'
 import * as fs from 'fs'
 import * as path from 'path'
 
@@ -401,19 +402,23 @@ async function createEmployeesFromMembers(org: any, departments: any[], shifts: 
       where: { organizationId: org.id }
     })
     
-    // Assign each member to ONE department, shift, and location
-    for (let i = 0; i < eligibleMembers.length; i++) {
-      const member = eligibleMembers[i]
-      const department = departments[i % departments.length]
-      const shift = shifts[i % shifts.length]
-      const location = allLocations[i % allLocations.length]
-      
-      concentratedEmployees.push({
-        member,
-        department,
-        shift,
-        location
-      })
+    // For each shift, create employees concentrated in ALL locations
+    for (const shift of shifts) {
+      for (const location of allLocations) {
+        // Create 30-35 employees per shift/location combination
+        const employeesForThisCombo = Math.floor(Math.random() * 6) + 30 // 30-35 employees
+        
+        for (let i = 0; i < employeesForThisCombo; i++) {
+          // Use existing members in round-robin fashion
+          const member = eligibleMembers[i % eligibleMembers.length]
+          concentratedEmployees.push({
+            member,
+            department: departments[Math.floor(Math.random() * departments.length)],
+            shift,
+            location
+          })
+        }
+      }
     }
     
     // Convert to the format expected by the rest of the function
@@ -422,6 +427,9 @@ async function createEmployeesFromMembers(org: any, departments: any[], shifts: 
     // Store the concentrated assignments for later use
     ;(global as any).sterlingAssignments = concentratedEmployees
   }
+
+  // Generate unique Ethiopian names for all employees being created
+  const ethiopianNames = generateUniqueEthiopianNames(employeesToCreate.length)
 
   let createdEmployees = 0
   for (let i = 0; i < employeesToCreate.length; i++) {
@@ -446,7 +454,7 @@ async function createEmployeesFromMembers(org: any, departments: any[], shifts: 
       // Fallback if CSV data is insufficient
       employeeLocation = {
         district: 'Central',
-        subArea: `${member.user.name}'s Area`,
+        subArea: `${ethiopianNames[i].name}'s Area`,
         latitude: 9.0300 + (Math.random() - 0.5) * 0.1,
         longitude: 38.7400 + (Math.random() - 0.5) * 0.1
       }
@@ -455,7 +463,7 @@ async function createEmployeesFromMembers(org: any, departments: any[], shifts: 
     // Create a pickup stop for this employee using real location data
     const employeeStop = await prisma.stop.create({
       data: {
-        name: `${employeeLocation.subArea} - ${member.user.name} Pickup`,
+        name: `${employeeLocation.subArea} - ${ethiopianNames[i].name} Pickup`,
         address: `${employeeLocation.district}, ${employeeLocation.subArea}, Addis Ababa`,
         latitude: employeeLocation.latitude,
         longitude: employeeLocation.longitude,
@@ -466,7 +474,7 @@ async function createEmployeesFromMembers(org: any, departments: any[], shifts: 
     try {
       await prisma.employee.create({
         data: { 
-          name: member.user.name, 
+          name: ethiopianNames[i].name, 
           location: location.address, 
           locationId: location.id,
           stopId: employeeStop.id, // Assign the pickup stop
@@ -478,7 +486,7 @@ async function createEmployeesFromMembers(org: any, departments: any[], shifts: 
       })
       createdEmployees++
     } catch (error) {
-      console.log(`     ⚠️  Could not create employee record for ${member.user.name}: ${error}`)
+      console.log(`     ⚠️  Could not create employee record for ${ethiopianNames[i].name}: ${error}`)
     }
   }
   

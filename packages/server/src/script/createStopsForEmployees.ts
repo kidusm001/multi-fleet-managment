@@ -125,37 +125,46 @@ async function createStopsForEmployees() {
         continue
       }
 
-      // Create one unique stop per employee (stopId is unique in schema)
-      for (let i = 0; i < employeesWithoutStops.length; i++) {
-        const employee = employeesWithoutStops[i]
-        const stopData = addisAbabaStops[i % addisAbabaStops.length]
-        
+      // Create stops for this organization
+      const createdStops = []
+      for (const stopData of addisAbabaStops) {
         try {
-          // Create a unique stop for this employee
           const stop = await prisma.stop.create({
             data: {
-              name: `${stopData.name} - ${employee.name}`,
+              name: stopData.name,
               address: stopData.address,
-              latitude: stopData.latitude + (Math.random() - 0.5) * 0.001, // Slight variation
-              longitude: stopData.longitude + (Math.random() - 0.5) * 0.001,
+              latitude: stopData.latitude,
+              longitude: stopData.longitude,
               organizationId: org.id
             }
           })
+          createdStops.push(stop)
+          totalStopsCreated++
+        } catch (error) {
+          console.log(`⚠️  Could not create stop ${stopData.name}: ${error}`)
+        }
+      }
 
-          // Assign the unique stop to the employee
+      console.log(`Created ${createdStops.length} stops for ${org.name}`)
+
+      // Assign stops to employees
+      for (let i = 0; i < employeesWithoutStops.length; i++) {
+        const employee = employeesWithoutStops[i]
+        const stopIndex = i % createdStops.length
+        const stop = createdStops[stopIndex]
+
+        try {
           await prisma.employee.update({
             where: { id: employee.id },
             data: { stopId: stop.id }
           })
-          
-          totalStopsCreated++
           totalEmployeesAssigned++
         } catch (error) {
-          console.log(`⚠️  Could not create/assign stop for ${employee.name}: ${error}`)
+          console.log(`⚠️  Could not assign stop to employee ${employee.name}: ${error}`)
         }
       }
 
-      console.log(`Created and assigned ${totalEmployeesAssigned} unique stops for employees in ${org.name}`)
+      console.log(`Assigned stops to ${Math.min(employeesWithoutStops.length, createdStops.length)} employees in ${org.name}`)
     }
 
     console.log(`\n✅ Completed!`)

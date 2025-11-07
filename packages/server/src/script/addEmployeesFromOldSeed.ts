@@ -1,59 +1,11 @@
 import { PrismaClient } from '@prisma/client';
 import { auth } from '../lib/auth';
+import { generateUniqueEthiopianNames } from '../utils/uniqueEthiopianNames';
 
 const prisma = new PrismaClient();
 
-// Ethiopian employee names from old seed.ts
-const employeeNames = [
-  // Creative Department
-  'Mahlet Zelalem', 'Samuel Chalachew', 'Betelhem Alemu', 'Yared Tesfaye', 'Hana Bekele',
-  
-  // Cvent-Addis
-  'Mariyamwork Yilma', 'Hermella Engdawork', 'Mahader Agegnew', 'Robel Alemu', 'Selam Haftu',
-  'Obsinuf Tekel', 'Yosef Samuel', 'Samuel Sheferaw', 'Alazar Endal', 'Elda Jemo',
-  'Natnael Mesfin', 'Dawit Assegid', 'Meiraf Tegegne', 'Rediet Samson', 'Tiobsta Debebe',
-  'Aman Nigash', 'Raey Kebede', 'Anuar Abdursumed', 'Brook Solomon', 'Zerufael Aemiro',
-  'Abezer Fisaha', 'Bethelhem Taddesse', 'Feven Tsgaye', 'Tinu Mesert', 'Emebet Sheferaw',
-  'Mekdes Solomon', 'Mahelet Restu', 'Surafel Kebede', 'Solan Anteneh', 'Nardose Getachew',
-  
-  // Recruitment-Support
-  'Elias Negassa', 'Kidus Mekonnen', 'Rahel Tadesse', 'Biruk Alemu', 'Meskerem Abebe',
-  
-  // OPS-Support
-  'Nuhome Mekonene', 'Ruth Hailu', 'Etsube Yohnnes', 'Tarikua G/kidan', 'Betslot Alehegn',
-  'Mikedes Solomon', 'Konjet Alemu', 'Yohannes Bekele', 'Hirut Tessema', 'Beza Kebede',
-  
-  // IT-Support
-  'Samuel Baharu', 'Kirubeal Derselgn', 'Veronica Mohamed', 'Abayeneh Taye', 'Eden Fikru',
-  'Kaleb Tefera', 'Meron Assefa', 'Natan Girma', 'Seble Tadesse', 'Tesfaye Gebre',
-  
-  // HR-Support
-  'Mohamed Awol', 'Simert Mingeha', 'Helian Taye', 'Sofia Ahmed', 'Yenenesh Tekle',
-  'Zelalem Haile', 'Abel Mekonnen', 'Dagmawi Teshome', 'Fetiya Mohammed', 'Lidya Kebede',
-  
-  // Data Entry
-  'Behata Wubshet', 'Melat Tadesse', 'Nebiyat Solomon', 'Samrawit Yohannes', 'Tsegaye Alemu',
-  
-  // BDR
-  'Bethel Yemane', 'Anania G/tsion', 'Sarah Daniel', 'Helen Dawd', 'Liza Meberatu',
-  'Alazar Tewodrose', 'Tsion Eshetu', 'Yersema Elias', 'Nigist Desta', 'Tewodros Hailu',
-  
-  // Internova
-  'Henock Getachew', 'Meron Aragaw', 'Mekonene Assefa', 'Sydine Motuma', 'Kendey Buzayehu',
-  'Yonass Assefa', 'Amanuel Tadesse', 'Betelhem Tekle', 'Dawit Mengistu', 'Elsabet Girma',
-  
-  // Trade Surveillance
-  'Zekariyas Nicolas', 'Raey Zegeye', 'Yeabsera Solomon', 'Fiker Abebe', 'Girum Tesfaye',
-  'Hanna Mengistu', 'Kebede Solomon', 'Lemlem Teshome', 'Martha Alemu', 'Nahom Bekele',
-  
-  // Altour
-  'Luel Mesfin', 'Ezera Fisha', 'Melecot Getachew', 'Abebe Solomon', 'Aster Girma',
-  'Behailu Tekle', 'Daniel Yohannes', 'Eleni Assefa', 'Fasil Kebede', 'Genet Haile',
-  
-  // SDR-CTS
-  'Betlhem Zewdu', 'Eyerusalem Aklilu', 'Lily Negasa', 'Zemach Tamene', 'Eyerusalem Yemaneh',
-  'Habtamu Bekele', 'Isaiah Tesfaye', 'Jerusalem Alemu', 'Kidist Solomon', 'Leul Mengistu'
-];
+// Generate 123 unique Ethiopian employee names
+const employeeNames = generateUniqueEthiopianNames(123);
 
 async function addEmployeesFromOldSeed() {
   console.log('🏢 Adding employees from old seed.ts to Sterling Logistics...\n');
@@ -98,8 +50,7 @@ async function addEmployeesFromOldSeed() {
     let employeesCreated = 0;
 
     for (let i = 0; i < employeeNames.length; i++) {
-      const name = employeeNames[i];
-      const email = `${name.toLowerCase().replace(/\s+/g, '.')}@sterling.com`;
+      const { name, email } = employeeNames[i];
 
       try {
         let userData;

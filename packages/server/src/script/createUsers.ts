@@ -118,8 +118,8 @@ const users = [
         password: "Driver123!"
     },
     {
-        name: "James Brown",
-        email: "james.brown@fleetmanager.com",
+        name: "Abebe Tadesse",
+        email: "abebe.tadesse@fleetmanager.com",
         password: "Driver123!"
     },
     {
@@ -148,7 +148,7 @@ const users = [
         password: "Driver123!"
     },
     {
-        name: "Daniel Anderson",
+        name: "Meseret Alemu",
         email: "daniel.anderson@fleetmanager.com",
         password: "Driver123!"
     },
@@ -177,7 +177,7 @@ const users = [
     
     // Additional Fleet Managers
     {
-        name: "Angela Davis",
+        name: "Hirute Kebede",
         email: "angela.davis@fleetmanager.com",
         password: "Manager123!"
     },
@@ -187,7 +187,7 @@ const users = [
         password: "Manager123!"
     },
     {
-        name: "Patricia Lewis",
+        name: "Eyerusalem Mengistu",
         email: "patricia.lewis@fleetmanager.com",
         password: "Manager123!"
     },
@@ -229,7 +229,7 @@ const users = [
         password: "Driver123!"
     },
     {
-        name: "Gregory Miller",
+        name: "Dawit Assefa",
         email: "gregory.miller@fleetmanager.com",
         password: "Driver123!"
     },
@@ -274,7 +274,7 @@ const users = [
         password: "Driver123!"
     },
     {
-        name: "Helen Cooper",
+        name: "Tsion Gebremariam",
         email: "helen.cooper@fleetmanager.com",
         password: "Driver123!"
     },
@@ -370,7 +370,7 @@ const users = [
         password: "User123!"
     },
     {
-        name: "William Martinez",
+        name: "Yohannes Tekle",
         email: "william.martinez@fleetmanager.com",
         password: "User123!"
     },
@@ -402,7 +402,7 @@ const users = [
         password: "User123!"
     },
     {
-        name: "Alexander Martin",
+        name: "Mulugeta Haile",
         email: "alexander.martin@fleetmanager.com",
         password: "User123!"
     },
@@ -646,7 +646,7 @@ const users = [
     
     // Additional test users
     {
-        name: "Thomas Moore",
+        name: "Betelhem Solomon",
         email: "thomas.moore@fleetmanager.com",
         password: "TestUser123!"
     },
