@@ -4,14 +4,17 @@ import { cn } from "@/lib/utils";
 import { Input } from "@/components/Common/UI/Input";
 import Button from "@/components/Common/UI/Button";
 import { toast } from "sonner";
+import mapboxgl from 'mapbox-gl';
+import 'mapbox-gl/dist/mapbox-gl.css';
 
-export default function LocationMapPicker({ 
-  initialPosition = { lat: 9.0221, lng: 38.7468 }, 
+export default function LocationMapPicker({
+  initialPosition = { lat: 9.0221, lng: 38.7468 },
   onLocationSelect,
   isDark = false
 }) {
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
+  const markerRef = useRef(null);
   const [address, setAddress] = useState("");
   const [searchValue, setSearchValue] = useState("");
   const [loading, setLoading] = useState(true);
@@ -19,46 +22,197 @@ export default function LocationMapPicker({
   const [coordinates, setCoordinates] = useState(`${initialPosition.lat}, ${initialPosition.lng}`);
   const [copied, setCopied] = useState(false);
   const [manualCoords, setManualCoords] = useState("");
+  const [manualAddress, setManualAddress] = useState("");
   const [showManualInput, setShowManualInput] = useState(false);
+  const [neighborhood, setNeighborhood] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
+  const [showSearchResults, setShowSearchResults] = useState(false);
 
-  // Handle map initialization without external scripts
-  const initMapWithoutExternalScripts = useCallback(async () => {
+  // Keep coordinate display fields in sync
+  const updateCoordinateDisplay = useCallback((lat, lng) => {
+    const formattedCoords = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+    setCoordinates(formattedCoords);
+    setManualCoords(formattedCoords);
+    setManualAddress((prev) => (prev ? prev : address));
+  }, [address]);
+
+  // Reverse geocode coordinates to user-friendly address details
+  const reverseGeocode = useCallback(async (lat, lng) => {
     try {
-      const _token = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
+      const token = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
+
+      const response = await fetch(
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${token}&types=address,poi,neighborhood,locality,place,region,country`
+      );
+
+      if (!response.ok) {
+        throw new Error("Geocoding failed");
+      }
+
+      const data = await response.json();
+
+      if (data.features && data.features.length > 0) {
+        const features = data.features;
+
+        // Find neighborhood/locality information
+        let neighborhoodInfo = '';
+        const neighborhoodFeature = features.find(f =>
+          f.place_type.includes('neighborhood') ||
+          f.place_type.includes('locality')
+        );
+
+        if (neighborhoodFeature) {
+          neighborhoodInfo = neighborhoodFeature.text;
+        }
+
+        // Get the most relevant address
+        const addressFeature = features.find(f =>
+          f.place_type.includes('address') ||
+          f.place_type.includes('poi')
+        ) || features[0];
+
+        const fullAddress = addressFeature.place_name;
+        const shortAddress = addressFeature.text || fullAddress.split(',')[0];
+
+        setAddress(shortAddress);
+        setNeighborhood(neighborhoodInfo);
+  setManualAddress(shortAddress);
+
+        return { address: shortAddress, neighborhood: neighborhoodInfo, fullAddress };
+      }
+
+      return null;
+    } catch (error) {
+      console.error("Geocoding error:", error);
+      const fallbackAddress = `Lat: ${lat.toFixed(6)}, Lng: ${lng.toFixed(6)}`;
+      setAddress(fallbackAddress);
+      setNeighborhood('');
+  setManualAddress(fallbackAddress);
+      return { address: fallbackAddress, neighborhood: '', fullAddress: fallbackAddress };
+    }
+  }, []);
+
+  // Apply reverse geocoding results to state
+  const updateLocationInfo = useCallback(async (lat, lng) => {
+    updateCoordinateDisplay(lat, lng);
+
+    try {
+      await reverseGeocode(lat, lng);
+    } catch (error) {
+      console.error('Error updating location info:', error);
+      setAddress(`Lat: ${lat.toFixed(6)}, Lng: ${lng.toFixed(6)}`);
+      setNeighborhood('');
+    }
+  }, [reverseGeocode, updateCoordinateDisplay]);
+
+  // Initialize Mapbox and register interactive handlers
+  const initMapboxMap = useCallback(async () => {
+    try {
+      const token = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
+
+      if (!token) {
+        throw new Error("Mapbox access token not found");
+      }
+
+      mapboxgl.accessToken = token;
+
       const mapContainer = mapRef.current;
       if (!mapContainer) return;
-      mapContainer.style.width = '100%';
-      mapContainer.style.height = '100%';
-      mapContainer.style.backgroundColor = isDark ? '#1a1b26' : '#e9edf0';
-      setLoading(false);
-      setError("Map loading is blocked by Content-Security-Policy. Please use manual coordinate input instead.");
-      updateCoordinateDisplay(initialPosition.lat, initialPosition.lng);
-      setShowManualInput(true);
+
+      const map = new mapboxgl.Map({
+        container: mapContainer,
+        style: isDark
+          ? 'mapbox://styles/mapbox/dark-v11'
+          : 'mapbox://styles/mapbox/light-v11',
+        center: [initialPosition.lng, initialPosition.lat],
+        zoom: 12,
+        attributionControl: false
+      });
+
+      mapInstanceRef.current = map;
+
+      map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+      map.addControl(new mapboxgl.GeolocateControl({
+        positionOptions: { enableHighAccuracy: true },
+        trackUserLocation: true,
+        showUserHeading: true
+      }), 'top-right');
+
+      const marker = new mapboxgl.Marker({
+        color: '#3B82F6',
+        draggable: true
+      })
+        .setLngLat([initialPosition.lng, initialPosition.lat])
+        .addTo(map);
+
+      markerRef.current = marker;
+
+      map.on('click', async (e) => {
+        const { lng, lat } = e.lngLat;
+        updateMarkerPosition(lat, lng);
+        await updateLocationInfo(lat, lng);
+      });
+
+      marker.on('dragend', async () => {
+        const lngLat = marker.getLngLat();
+        await updateLocationInfo(lngLat.lat, lngLat.lng);
+      });
+
+      map.on('load', () => {
+        setLoading(false);
+        updateCoordinateDisplay(initialPosition.lat, initialPosition.lng);
+        updateLocationInfo(initialPosition.lat, initialPosition.lng);
+      });
+
+      map.on('error', (e) => {
+        console.error('Map error:', e);
+        setError('Failed to load map tiles');
+        setLoading(false);
+      });
+
     } catch (error) {
       console.error("Error initializing map:", error);
-      setError("Failed to load map. Please enter coordinates manually.");
+      setError("Failed to initialize map. Please enter coordinates manually.");
       setLoading(false);
       setShowManualInput(true);
     }
-  }, [initialPosition.lat, initialPosition.lng, isDark]);
+  }, [initialPosition.lat, initialPosition.lng, isDark, updateCoordinateDisplay, updateLocationInfo]);
 
-  // Initialize the map
+  // Initialize the map once the component mounts
   useEffect(() => {
-    initMapWithoutExternalScripts();
+    initMapboxMap();
     const localInstance = mapInstanceRef.current;
     return () => {
       if (localInstance) {
         localInstance.remove?.();
       }
     };
-  }, [initMapWithoutExternalScripts]);
+  }, [initMapboxMap]);
 
-  // Update coordinate display
-  const updateCoordinateDisplay = (lat, lng) => {
-    const formattedCoords = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
-    setCoordinates(formattedCoords);
-    setManualCoords(formattedCoords);
+  // Update marker position
+  const updateMarkerPosition = (lat, lng) => {
+    if (markerRef.current) {
+      markerRef.current.setLngLat([lng, lat]);
+    }
+    if (mapInstanceRef.current) {
+      mapInstanceRef.current.flyTo({
+        center: [lng, lat],
+        zoom: 15
+      });
+    }
   };
+
+  // Close search results when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (showSearchResults && !event.target.closest('.search-container')) {
+        setShowSearchResults(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showSearchResults]);
 
   // Handle manual coordinate input
   const handleManualCoordinateSubmit = () => {
@@ -78,12 +232,18 @@ export default function LocationMapPicker({
       
       // Update coordinates
       updateCoordinateDisplay(lat, lng);
-      
-      // Perform reverse geocoding if possible
-      reverseGeocode(lat, lng).catch(() => {
-        // If reverse geocoding fails, use coordinates as address
-        setAddress(`Lat: ${lat.toFixed(6)}, Lng: ${lng.toFixed(6)}`);
-      });
+
+      if (manualAddress.trim()) {
+        setAddress(manualAddress.trim());
+        setNeighborhood('');
+      } else {
+        // Perform reverse geocoding if possible
+        reverseGeocode(lat, lng).catch(() => {
+          const fallback = `Lat: ${lat.toFixed(6)}, Lng: ${lng.toFixed(6)}`;
+          setAddress(fallback);
+          setManualAddress(fallback);
+        });
+      }
       
       toast.success("Coordinates updated");
       
@@ -105,71 +265,62 @@ export default function LocationMapPicker({
     });
   };
 
-  // Reverse geocode a position to get address
-  const reverseGeocode = async (lat, lng) => {
-    try {
-      const token = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
-      
-      const response = await fetch(
-        `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${token}`
-      );
-      
-      if (!response.ok) {
-        throw new Error("Geocoding failed");
-      }
-      
-      const data = await response.json();
-      
-      if (data.features && data.features.length > 0) {
-        setAddress(data.features[0].place_name);
-        return data.features[0].place_name;
-      }
-      
-      return null;
-    } catch (error) {
-      console.error("Geocoding error:", error);
-      setAddress(`Lat: ${lat.toFixed(6)}, Lng: ${lng.toFixed(6)}`);
-      return null;
-    }
-  };
 
-  // Forward geocode to search for an address
+  // Forward geocode to search for an address or neighborhood
   const searchLocation = async () => {
     if (!searchValue.trim()) return;
-    
+
     try {
       setLoading(true);
-      
+      setShowSearchResults(false);
+
       const token = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
-      
-      // Add Ethiopia as a search parameter to prioritize Ethiopian results
+
+      // Search with broader types to include neighborhoods and landmarks
       const response = await fetch(
-        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(searchValue)}.json?country=ET&access_token=${token}`
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(searchValue)}.json?country=ET&types=address,poi,neighborhood,locality,place,region&limit=5&access_token=${token}`
       );
-      
+
       if (!response.ok) {
         throw new Error("Search failed");
       }
-      
+
       const data = await response.json();
-      
+
       if (data.features && data.features.length > 0) {
-        const result = data.features[0];
-        const [lng, lat] = result.center;
-        
-        // Update coordinates
-        updateCoordinateDisplay(lat, lng);
-        setAddress(result.place_name);
-        toast.success("Location found");
+        setSearchResults(data.features);
+        setShowSearchResults(true);
+
+        // If only one result, auto-select it
+        if (data.features.length === 1) {
+          const result = data.features[0];
+          const [lng, lat] = result.center;
+          updateMarkerPosition(lat, lng);
+          await updateLocationInfo(lat, lng);
+          setShowSearchResults(false);
+          toast.success("Location found");
+        }
       } else {
         toast.error("No results found for this search");
+        setSearchResults([]);
       }
     } catch (error) {
       console.error("Search error:", error);
       toast.error("Search failed. Please try again or enter coordinates manually.");
+      setSearchResults([]);
     } finally {
       setLoading(false);
     }
+  };
+
+  // Handle search result selection
+  const selectSearchResult = async (result) => {
+    const [lng, lat] = result.center;
+    updateMarkerPosition(lat, lng);
+    await updateLocationInfo(lat, lng);
+    setShowSearchResults(false);
+    setSearchValue(result.place_name.split(',')[0]); // Set search input to selected place
+    toast.success("Location selected");
   };
 
   // Handle confirmation of location
@@ -190,7 +341,7 @@ export default function LocationMapPicker({
   return (
     <div className="flex flex-col h-[500px]">
       {/* Search Bar */}
-      <div className="px-6 py-3 border-b border-gray-200 dark:border-gray-700 flex gap-2">
+      <div className="px-6 py-3 border-b border-gray-200 dark:border-gray-700 flex gap-2 search-container relative">
         <div className="relative flex-grow">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
           <Input
@@ -219,7 +370,75 @@ export default function LocationMapPicker({
         >
           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Search"}
         </Button>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => {
+            setShowManualInput((prev) => {
+              const next = !prev;
+              if (!prev) {
+                setManualCoords(coordinates);
+                setManualAddress(address);
+              }
+              return next;
+            });
+          }}
+          className={cn(
+            "whitespace-nowrap",
+            isDark ? "border-gray-700 bg-gray-800 text-gray-200 hover:bg-gray-700" : ""
+          )}
+        >
+          {showManualInput ? "Hide Manual Entry" : "Manual Entry"}
+        </Button>
       </div>
+
+      {/* Search Results Dropdown */}
+      {showSearchResults && searchResults.length > 0 && (
+        <div className={cn(
+          "absolute top-full left-6 right-6 z-50 mt-1 border rounded-lg shadow-lg max-h-60 overflow-y-auto",
+          isDark ? "bg-gray-800 border-gray-700" : "bg-white border-gray-200"
+        )}>
+          {searchResults.map((result, index) => (
+            <button
+              key={index}
+              onClick={() => selectSearchResult(result)}
+              className={cn(
+                "w-full px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700 border-b border-gray-100 dark:border-gray-700 last:border-b-0 transition-colors",
+                "focus:outline-none focus:bg-gray-50 dark:focus:bg-gray-700"
+              )}
+            >
+              <div className="flex items-start gap-3">
+                <MapPin className={cn(
+                  "h-4 w-4 mt-0.5 flex-shrink-0",
+                  isDark ? "text-blue-400" : "text-blue-600"
+                )} />
+                <div className="flex-grow min-w-0">
+                  <p className={cn(
+                    "text-sm font-medium truncate",
+                    isDark ? "text-gray-200" : "text-gray-900"
+                  )}>
+                    {result.text}
+                  </p>
+                  <p className={cn(
+                    "text-xs truncate",
+                    isDark ? "text-gray-400" : "text-gray-500"
+                  )}>
+                    {result.place_name}
+                  </p>
+                  {result.context && result.context.length > 0 && (
+                    <p className={cn(
+                      "text-xs mt-1",
+                      isDark ? "text-gray-500" : "text-gray-400"
+                    )}>
+                      {result.context.map(ctx => ctx.text).join(', ')}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Manual Coordinate Input */}
       <div className={cn(
@@ -252,6 +471,29 @@ export default function LocationMapPicker({
             >
               Apply
             </Button>
+          </div>
+          <div className="flex flex-col gap-1">
+            <label className={cn(
+              "text-sm font-medium",
+              isDark ? "text-gray-300" : "text-gray-700"
+            )}>
+              Address or Landmark (optional)
+            </label>
+            <Input
+              type="text"
+              placeholder="Bole, Addis Ababa"
+              className={cn(
+                isDark ? "bg-gray-800 border-gray-700" : ""
+              )}
+              value={manualAddress}
+              onChange={(e) => setManualAddress(e.target.value)}
+            />
+            <p className={cn(
+              "text-xs",
+              isDark ? "text-gray-500" : "text-gray-500"
+            )}>
+              Provide a recognizable name for the location; leave blank to auto fetch from Mapbox.
+            </p>
           </div>
           <p className={cn(
             "text-xs",
@@ -383,6 +625,14 @@ export default function LocationMapPicker({
             )}>
               {address || coordinates}
             </p>
+            {neighborhood && (
+              <p className={cn(
+                "text-xs mt-1 px-2 py-1 rounded-md inline-block",
+                isDark ? "bg-blue-900/30 text-blue-300" : "bg-blue-50 text-blue-700"
+              )}>
+                📍 {neighborhood}
+              </p>
+            )}
           </div>
           
           <Button

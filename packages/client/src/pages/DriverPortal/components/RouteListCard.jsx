@@ -2,12 +2,23 @@ import React from 'react';
 import { Truck, MapPin, Clock, TrendingUp } from 'lucide-react';
 import { useTheme } from '@contexts/ThemeContext';
 import { cn } from '@lib/utils';
+import { getRouteDateParts, getRouteStartTime } from '../utils/routeStatus';
 
 function RouteListCard({ route, onClick }) {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
 
   const status = (route?.driverStatus || route?.effectiveStatus || route?.status || '').toUpperCase();
+
+  const dateInfo = getRouteDateParts(route);
+  const startTime = getRouteStartTime(route);
+  const startLabel = startTime
+    ? startTime.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+    : route.shift?.startTime
+    ? new Date(route.shift.startTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+    : route.startTime
+    ? new Date(route.startTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+    : 'Time TBD';
 
   const getStatusColor = (status) => {
     switch (status) {
@@ -69,6 +80,14 @@ function RouteListCard({ route, onClick }) {
             )}>
               {route.shift?.name || 'No shift assigned'}
             </p>
+            {dateInfo.fullLabel && (
+              <p className={cn(
+                "text-xs md:text-sm",
+                isDark ? "text-gray-400" : "text-gray-600"
+              )}>
+                {dateInfo.fullLabel}
+              </p>
+            )}
           </div>
         </div>
 
@@ -97,7 +116,7 @@ function RouteListCard({ route, onClick }) {
               "text-xs md:text-sm",
               isDark ? "text-gray-300" : "text-gray-700"
             )}>
-              {status === 'ACTIVE' ? 'Started' : route.shift?.startTime ? new Date(route.shift.startTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : route.startTime ? new Date(route.startTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : 'TBD'}
+              {status === 'ACTIVE' ? 'Started' : startLabel}
             </span>
           </div>
 

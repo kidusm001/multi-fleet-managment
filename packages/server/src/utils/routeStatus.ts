@@ -115,12 +115,6 @@ export const deriveDriverStatus = (
 ): DriverFacingStatus => {
   const normalizedStatus = typeof route.status === 'string' ? route.status.toUpperCase() : '';
   const isVirtual = route.isVirtual === true;
-
-  // Explicit cancellation overrides everything (except virtual routes)
-  if (CANCELLED_STATUSES.has(normalizedStatus) && !isVirtual) {
-    return 'CANCELLED';
-  }
-
   const start = resolveRouteStartTime(route);
   const end = resolveRouteEndTime(route);
   const referenceTime = referenceDate.getTime();
@@ -128,16 +122,44 @@ export const deriveDriverStatus = (
   const startTime = start?.getTime() ?? null;
   const endTime = end?.getTime() ?? null;
 
-  // Check if driver marked as complete and if attendance exists
-  const driverMarkedComplete = COMPLETED_STATUSES.has(normalizedStatus) || Boolean(toDateOrNull(route.completedAt));
+  const completionTimestamp = toDateOrNull(route.completedAt);
+  const hasCompletionRecord = Boolean(completionTimestamp);
+  const hasCompletionStatus = COMPLETED_STATUSES.has(normalizedStatus);
   const hasAttendance = route.hasAttendanceRecord === true;
 
-  // Determine time-based active window (2 hours around start time)
+  const isPastRoute =
+    (endTime !== null && referenceTime > endTime) ||
+    (endTime === null && startTime !== null && referenceTime > startTime + AUTO_ACTIVATION_WINDOW_MS);
+
+  if (!isVirtual) {
+    if (CANCELLED_STATUSES.has(normalizedStatus)) {
+      return 'CANCELLED';
+    }
+
+    if (hasCompletionStatus || hasAttendance || hasCompletionRecord) {
+      return 'COMPLETED';
+    }
+
+    if (ACTIVE_STATUSES.has(normalizedStatus)) {
+      if (startTime !== null && referenceTime < startTime) {
+        return 'UPCOMING';
+      }
+      if (startTime === null && !isPastRoute) {
+        return 'UPCOMING';
+      }
+      if (isPastRoute && !hasAttendance && !hasCompletionRecord) {
+        return 'CANCELLED';
+      }
+      return 'ACTIVE';
+    }
+  }
+
+  // Determine time-based active window (starts at route start time)
   let activeWindowStart: number | null = null;
   let activeWindowEnd: number | null = null;
 
   if (startTime !== null) {
-    activeWindowStart = startTime - AUTO_ACTIVATION_WINDOW_MS;
+    activeWindowStart = startTime;
     activeWindowEnd = endTime ?? (startTime + AUTO_ACTIVATION_WINDOW_MS);
   } else if (endTime !== null) {
     activeWindowStart = endTime - AUTO_ACTIVATION_WINDOW_MS;
@@ -159,13 +181,9 @@ export const deriveDriverStatus = (
 
   // 3. Determine if route is in the past
   // Only mark as past if we're beyond the end time OR beyond the start time + window
-  const isPastRoute = 
-    (endTime !== null && referenceTime > endTime) ||
-    (endTime === null && startTime !== null && referenceTime > (startTime + AUTO_ACTIVATION_WINDOW_MS));
-
   if (isPastRoute) {
     // Route is in the past - check completion OR attendance
-    if (driverMarkedComplete || hasAttendance) {
+    if (hasCompletionStatus || hasCompletionRecord || hasAttendance) {
       // Driver marked complete OR attendance exists = COMPLETED
       return 'COMPLETED';
     }
@@ -179,7 +197,7 @@ export const deriveDriverStatus = (
   }
 
   // 4. No clear timing - check completion status
-  if (driverMarkedComplete && hasAttendance) {
+  if (hasCompletionStatus || hasCompletionRecord) {
     return 'COMPLETED';
   }
 

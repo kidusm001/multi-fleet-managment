@@ -11,7 +11,8 @@ import {
   sortRoutesByStartTime,
   findNextUpcomingRoute,
   getRouteStartTime,
-  filterUpcomingDisplayWindow
+  filterUpcomingDisplayWindow,
+  getRouteDateParts
 } from '../utils/routeStatus';
 
 /**
@@ -218,6 +219,19 @@ function DashboardView() {
           />
         ) : nextRoute ? (
           // Show next upcoming route with Start Tracking button
+            (() => {
+              const nextRouteStart = getRouteStartTime(nextRoute);
+              const nextRouteStartLabel = nextRouteStart
+                ? nextRouteStart.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+                : nextRoute.shift?.startTime
+                ? new Date(nextRoute.shift.startTime).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+                : 'Time TBD';
+
+              const nextRouteDateInfo = getRouteDateParts(nextRoute);
+              const nextRouteDayLabel = nextRouteDateInfo.fullLabel || nextRouteDateInfo.weekday || 'Date TBD';
+              const totalStops = nextRoute.stops?.length || 0;
+
+              return (
           <div className={cn(
             "rounded-lg border p-3 md:p-4",
             isDark
@@ -248,22 +262,17 @@ function DashboardView() {
                     {nextRoute.name || `Route ${nextRoute.id.slice(0, 8)}`}
                   </h4>
                   <div className="flex flex-wrap items-center gap-4 text-sm">
-                    {nextRoute.shift && (
-                      <div className="flex items-center gap-1.5">
-                        <Clock className={cn(
-                          "w-4 h-4",
-                          isDark ? "text-gray-400" : "text-gray-500"
-                        )} />
-                        <span className={cn(
-                          isDark ? "text-gray-300" : "text-gray-700"
-                        )}>
-                          {new Date(nextRoute.shift.startTime).toLocaleTimeString('en-US', { 
-                            hour: 'numeric', 
-                            minute: '2-digit' 
-                          })}
-                        </span>
-                      </div>
-                    )}
+                    <div className="flex items-center gap-1.5">
+                      <Clock className={cn(
+                        "w-4 h-4",
+                        isDark ? "text-gray-400" : "text-gray-500"
+                      )} />
+                      <span className={cn(
+                        isDark ? "text-gray-300" : "text-gray-700"
+                      )}>
+                        {nextRouteStartLabel}
+                      </span>
+                    </div>
                     <div className="flex items-center gap-1.5">
                       <Truck className={cn(
                         "w-4 h-4",
@@ -293,7 +302,18 @@ function DashboardView() {
                       <span className={cn(
                         isDark ? "text-gray-300" : "text-gray-700"
                       )}>
-                        {nextRoute.stops?.length || 0} stops
+                        {nextRouteDayLabel}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <MapPin className={cn(
+                        "w-4 h-4",
+                        isDark ? "text-gray-400" : "text-gray-500"
+                      )} />
+                      <span className={cn(
+                        isDark ? "text-gray-300" : "text-gray-700"
+                      )}>
+                        {totalStops} stops
                       </span>
                     </div>
                   </div>
@@ -314,6 +334,8 @@ function DashboardView() {
               </button>
             </div>
           </div>
+            );
+          })()
         ) : (
           <div className={cn(
             "rounded-lg border p-4 md:p-6 text-center",
@@ -435,7 +457,9 @@ function DashboardView() {
               Upcoming Routes
             </h2>
             <div className="space-y-3">
-              {upcomingShifts.map((shift) => (
+              {upcomingShifts.map((shift) => {
+                const dateInfo = getRouteDateParts(shift);
+                return (
                 <div
                   key={shift.id}
                   className={cn(
@@ -471,7 +495,7 @@ function DashboardView() {
                         "text-sm font-medium",
                         isDark ? "text-gray-300" : "text-gray-700"
                       )}>
-                        {new Date(shift.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        {dateInfo.fullLabel || dateInfo.weekday || 'Date TBD'}
                       </p>
                       <p className={cn(
                         "text-xs",
@@ -482,7 +506,8 @@ function DashboardView() {
                     </div>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}

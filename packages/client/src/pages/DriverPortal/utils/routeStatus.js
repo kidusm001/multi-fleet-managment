@@ -84,6 +84,29 @@ export const getRouteEndTime = (route) => {
   );
 };
 
+export const getRouteDateParts = (route) => {
+  const start = getRouteStartTime(route) || ensureDate(route?.date);
+  if (!start) {
+    return {
+      weekday: null,
+      dateLabel: null,
+      fullLabel: null,
+    };
+  }
+
+  const weekday = typeof route?.weekdayName === 'string' && route.weekdayName.trim()
+    ? route.weekdayName.trim()
+    : start.toLocaleDateString('en-US', { weekday: 'long' });
+
+  const dateLabel = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+  return {
+    weekday,
+    dateLabel,
+    fullLabel: `${weekday}, ${dateLabel}`,
+  };
+};
+
 export const getEffectiveRouteStatus = (route, now = new Date()) => {
   if (!route) return 'UPCOMING';
 

@@ -6,7 +6,7 @@ import { validateSchema, validateMultiple } from '../middleware/zodValidation';
 import { fromNodeHeaders } from 'better-auth/node';
 import { auth } from '../lib/auth';
 import prisma from '../db';
-import { driverNotifications, vehicleNotifications } from '../lib/notificationHelpers';
+import { driverNotifications, vehicleNotifications, routeNotifications, NotificationPayload } from '../lib/notificationHelpers';
 import { broadcastNotification } from '../lib/notificationBroadcaster';
 import {
     AnnotatedRoute,
@@ -92,6 +92,7 @@ const scheduleRouteInclude = Prisma.validator<Prisma.RouteInclude>()({
 type RouteForSchedule = Prisma.RouteGetPayload<{ include: typeof scheduleRouteInclude }> & {
     isVirtual?: boolean;
     originalRouteId?: string | null;
+    weekdayName?: string | null;
 };
 
 class HttpError extends Error {
@@ -246,6 +247,14 @@ const formatDateKey = (input: Date): string => {
     return `${year}-${month}-${day}`;
 };
 
+const formatWeekdayName = (input: Date | null): string | null => {
+    if (!input) {
+        return null;
+    }
+
+    return input.toLocaleDateString('en-US', { weekday: 'long' });
+};
+
 const isWeekend = (input: Date): boolean => {
     const day = input.getDay();
     return day === 0 || day === 6;
@@ -304,6 +313,7 @@ const createVirtualRoute = (template: RouteForSchedule, targetDate: Date, index:
             notes: null,
         })),
         vehicleAvailability: [],
+        weekdayName: formatWeekdayName(baseDate),
     };
 };
 
@@ -507,18 +517,24 @@ const buildDriverSchedule = async ({
 
     const synthesizedSchedule: RouteForSchedule[] = [];
     const dayCount = Math.floor((endDate.getTime() - startDate.getTime()) / (24 * 60 * 60 * 1000)) + 1;
+    const today = startOfDay(new Date());
+    const driverCreationDate = driverProfile.createdAt ? startOfDay(new Date(driverProfile.createdAt)) : null;
 
     for (let offset = 0; offset < dayCount; offset += 1) {
         const currentDate = addDays(startDate, offset);
         const dateKey = formatDateKey(currentDate);
         const actualRoutesForDay = scheduleByDate.get(dateKey) ?? [];
 
-        if (actualRoutesForDay.length > 0) {
-            synthesizedSchedule.push(...actualRoutesForDay);
+        if (currentDate < today) {
+            continue;
         }
 
         if (isWeekend(currentDate) || holidaySet.has(dateKey)) {
             continue;
+        }
+
+        if (actualRoutesForDay.length > 0) {
+            synthesizedSchedule.push(...actualRoutesForDay);
         }
 
         const existingRouteIds = new Set<string>();
@@ -553,6 +569,15 @@ const buildDriverSchedule = async ({
         });
 
         candidateTemplates.forEach((template, templateIndex) => {
+            const templateCreationDate = template.createdAt ? startOfDay(new Date(template.createdAt)) : null;
+            if (templateCreationDate && currentDate < templateCreationDate) {
+                return;
+            }
+
+            if (driverCreationDate && currentDate < driverCreationDate) {
+                return;
+            }
+
             if (existingRouteIds.has(template.id)) {
                 return;
             }
@@ -572,6 +597,7 @@ const buildDriverSchedule = async ({
                 ...route,
                 hasAttendanceRecord: false,
                 vehicle: route.vehicle || driverVehicle || null,
+                weekdayName: null,
             };
         }
 
@@ -586,6 +612,7 @@ const buildDriverSchedule = async ({
             ...route,
             hasAttendanceRecord,
             vehicle: route.vehicle || driverVehicle || null,
+            weekdayName: formatWeekdayName(routeDate),
         };
     });
 
@@ -1842,6 +1869,7 @@ router.patch('/me/routes/:routeId/status', requireAuth, async (req: Request, res
         }
 
         const normalizedTargetStatus = targetStatus as RouteStatus;
+        const isActiveStatus = normalizedTargetStatus === 'ACTIVE';
 
         // Verify the route belongs to this driver
         const route = await prisma.route.findFirst({
@@ -1862,7 +1890,10 @@ router.patch('/me/routes/:routeId/status', requireAuth, async (req: Request, res
         // Update the route status
         const updatedRoute = await prisma.route.update({
             where: { id: routeId },
-            data: { status: normalizedTargetStatus },
+            data: {
+                status: normalizedTargetStatus,
+                isActive: isActiveStatus,
+            },
             include: Prisma.validator<Prisma.RouteInclude>()({
                 vehicleAvailability: {
                     include: {
@@ -1908,6 +1939,37 @@ router.patch('/me/routes/:routeId/status', requireAuth, async (req: Request, res
         });
 
         const enrichedRoute = annotateRouteWithStatuses(updatedRoute, new Date());
+
+        const notificationsToBroadcast: NotificationPayload[] = [];
+        const organizationId = driverProfile.organizationId;
+
+        if (normalizedTargetStatus === 'ACTIVE') {
+            notificationsToBroadcast.push(routeNotifications.started(organizationId, updatedRoute, driverProfile));
+        } else if (normalizedTargetStatus === 'COMPLETED') {
+            notificationsToBroadcast.push(routeNotifications.completed(organizationId, updatedRoute, driverProfile));
+        } else if (normalizedTargetStatus === 'CANCELLED') {
+            const resolvedDate = resolveRouteStartTime(updatedRoute) ?? (updatedRoute.date ? new Date(updatedRoute.date) : null);
+            const formattedRouteDate = resolvedDate
+                ? formatDateKey(startOfDay(resolvedDate))
+                : formatDateKey(startOfDay(new Date()));
+
+            const employeeIds = (updatedRoute.stops ?? [])
+                .map((stop) => stop.employee?.id)
+                .filter((id): id is string => Boolean(id));
+
+            const cancellationNotifications = routeNotifications.cancelled(
+                organizationId,
+                updatedRoute,
+                formattedRouteDate,
+                employeeIds,
+            );
+
+            notificationsToBroadcast.push(...cancellationNotifications);
+        }
+
+        for (const notification of notificationsToBroadcast) {
+            await broadcastNotification(notification);
+        }
 
         res.json(enrichedRoute);
     } catch (error) {
