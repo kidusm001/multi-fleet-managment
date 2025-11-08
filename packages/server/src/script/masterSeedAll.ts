@@ -13,7 +13,7 @@ async function runCommand(command: string, description: string) {
   
   try {
     const { stdout, stderr } = await execAsync(command, { 
-      cwd: '/home/leul/Documents/github/multi-fleet-managment/packages/server',
+      cwd: '/home/leul/Documents/Github/multi-fleet-managment/packages/server',
       maxBuffer: 10 * 1024 * 1024
     });
     if (stdout) console.log(stdout);
@@ -31,13 +31,18 @@ async function cleanDatabase() {
   console.log('🗑️  CLEANING DATABASE');
   console.log(`${'='.repeat(60)}\n`);
 
-  const dbPath = '/home/leul/Documents/github/multi-fleet-managment/packages/server/prisma/dev.db';
-  
-  if (fs.existsSync(dbPath)) {
-    fs.unlinkSync(dbPath);
-    console.log('✅ Deleted existing database\n');
-  } else {
-    console.log('ℹ️  No existing database found\n');
+  // Reset PostgreSQL database instead of deleting SQLite file
+  try {
+    const { stdout, stderr } = await execAsync('npx prisma migrate reset --force --skip-seed', { 
+      cwd: '/home/leul/Documents/Github/multi-fleet-managment/packages/server',
+      maxBuffer: 10 * 1024 * 1024
+    });
+    if (stdout) console.log(stdout);
+    if (stderr) console.error(stderr);
+    console.log('✅ PostgreSQL database reset successful\n');
+  } catch (error) {
+    console.error('❌ Failed to reset PostgreSQL database:', error);
+    throw error;
   }
 }
 
@@ -131,13 +136,8 @@ async function main() {
     await cleanDatabase();
 
     await runCommand(
-      'npx prisma migrate reset --force --skip-seed',
-      'Step 1: Reset database and run migrations'
-    );
-
-    await runCommand(
       'npx tsx src/script/cleanupOrphanedMembers.ts',
-      'Step 1.5: Cleanup orphaned members (if any exist)'
+      'Step 1: Cleanup orphaned members (if any exist)'
     );
 
     await runCommand(
@@ -198,6 +198,11 @@ async function main() {
     await runCommand(
       'npx tsx src/script/addStopsFromOldSeed.ts',
       'Step 12: Create stops for employees from old seed.ts'
+    );
+
+    await runCommand(
+      'npx tsx src/script/addVitzVehiclesToSterling.ts',
+      'Step 13: Add Vitz shuttle vehicles to Sterling Logistics'
     );
 
     await verifyData();

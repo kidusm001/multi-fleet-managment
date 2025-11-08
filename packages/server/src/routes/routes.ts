@@ -970,6 +970,38 @@ router.post('/', requireAuth, validateSchema(CreateRouteSchema, 'body'), async (
             const notification = routeNotifications.created(activeOrgId, newRoute);
             await broadcastNotification(notification);
 
+            // Notify driver if this is a new route on their vehicle
+            if (vehicle?.driverId) {
+                const driver = await prisma.driver.findUnique({
+                    where: { id: vehicle.driverId }
+                });
+                const shift = await prisma.shift.findUnique({
+                    where: { id: shiftId }
+                });
+                
+                if (driver && shift) {
+                    const driverNotification = routeNotifications.createdForDriver(
+                        activeOrgId, 
+                        { ...newRoute, vehicleId, shiftId }, 
+                        driver, 
+                        shift
+                    );
+                    
+                    // Get driver's User ID
+                    if (driver.email) {
+                        const driverUser = await prisma.user.findUnique({
+                            where: { email: driver.email },
+                            select: { id: true }
+                        });
+                        if (driverUser) {
+                            driverNotification.toUserId = driverUser.id;
+                        }
+                    }
+                    
+                    await broadcastNotification(driverNotification);
+                }
+            }
+
             res.status(201).json(formatRouteForManagement(newRoute, new Date()));
         });
 
@@ -1526,7 +1558,11 @@ router.patch('/:id/status', requireAuth, validateMultiple([{ schema: RouteIdPara
         const route = await prisma.route.findFirst({ 
             where: { id, organizationId: activeOrgId },
             include: { 
-                vehicle: true, 
+                vehicle: {
+                    include: {
+                        driver: true
+                    }
+                }, 
                 shift: true,
                 stops: { include: { employee: true } }
             }
@@ -1557,6 +1593,16 @@ router.patch('/:id/status', requireAuth, validateMultiple([{ schema: RouteIdPara
         } else {
             const notifications = routeNotifications.deactivated(activeOrgId, updatedRoute);
             for (const notif of notifications) {
+                // Get driver's User ID if notification is for driver
+                if (notif.toRoles.includes('driver') && route.vehicle?.driver?.email) {
+                    const driverUser = await prisma.user.findUnique({
+                        where: { email: route.vehicle.driver.email },
+                        select: { id: true }
+                    });
+                    if (driverUser) {
+                        notif.toUserId = driverUser.id;
+                    }
+                }
                 await broadcastNotification(notif);
             }
         }

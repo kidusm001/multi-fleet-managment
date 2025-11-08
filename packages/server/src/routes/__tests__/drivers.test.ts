@@ -1,43 +1,42 @@
 import request from 'supertest';
 import express from 'express';
-import { beforeEach, describe, expect, it, Mock, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, Mock, vi } from 'vitest';
 import { Request, Response, NextFunction } from 'express';
-import driversRouter from '../drivers';
-import prisma from '../../db';
 import { auth } from '../../lib/auth';
 import * as authMiddleware from '../../middleware/auth';
+import { createMockPrismaClient } from '../../tests/utils/mockFactories';
+
+type PrismaClientMockShape = {
+  driver: {
+    findMany: Mock;
+    findUnique: Mock;
+    findFirst: Mock;
+    create: Mock;
+    update: Mock;
+    updateMany: Mock;
+  };
+  organization: {
+    findUnique: Mock;
+  };
+  vehicle: {
+    updateMany: Mock;
+    findFirst: Mock;
+    update: Mock;
+  };
+  user: {
+    findUnique: Mock;
+  };
+  $transaction: Mock;
+};
+let prismaMock: ReturnType<typeof createMockPrismaClient>;
+let mockPrisma: PrismaClientMockShape;
+let app: express.Express;
+
+let driversRouter: express.Router;
 
 vi.mock('../../db', () => {
-  const driver = {
-    findMany: vi.fn(),
-    findUnique: vi.fn(),
-    findFirst: vi.fn(),
-    create: vi.fn(),
-    update: vi.fn(),
-  };
-
-  const organization = {
-    findUnique: vi.fn(),
-  };
-
-  const vehicle = {
-    updateMany: vi.fn(),
-    findFirst: vi.fn(),
-    update: vi.fn(),
-  };
-
-  const prismaMock = {
-    driver,
-    organization,
-    vehicle,
-    $transaction: vi.fn(),
-  };
-
-  prismaMock.$transaction.mockImplementation(async (callback: any) => callback({
-    driver,
-    vehicle,
-  }));
-
+  prismaMock = createMockPrismaClient();
+  mockPrisma = prismaMock as unknown as PrismaClientMockShape;
   return {
     default: prismaMock,
   };
@@ -73,33 +72,11 @@ vi.mock('../../middleware/zodValidation', () => ({
   validateMultiple: vi.fn(() => (_req: Request, _res: Response, next: NextFunction) => next()),
 }));
 
-const mockPrisma = prisma as unknown as {
-  driver: {
-    findMany: Mock;
-    findUnique: Mock;
-    findFirst: Mock;
-    create: Mock;
-    update: Mock;
-  };
-  organization: {
-    findUnique: Mock;
-  };
-  vehicle: {
-    updateMany: Mock;
-    findFirst: Mock;
-    update: Mock;
-  };
-  $transaction: Mock;
-};
-
 const requireAuthMock = authMiddleware.requireAuth as unknown as Mock;
 const permissionMock = auth.api.hasPermission as unknown as Mock;
-const organizationMock = mockPrisma.organization.findUnique;
-const vehicleMock = mockPrisma.vehicle;
-
-const app = express();
-app.use(express.json());
-app.use('/drivers', driversRouter);
+let organizationMock: Mock;
+let vehicleMock: PrismaClientMockShape['vehicle'];
+let userMock: PrismaClientMockShape['user'];
 
 const baseDriver = {
   id: 'driver1',
@@ -117,7 +94,7 @@ const baseDriver = {
   organization: { id: 'org1', name: 'Org 1' },
   vehicleAvailability: [],
   payrollReports: [],
-  assignedVehicles: [],
+  assignedVehicle: null,
 };
 
 const resetMocks = () => {
@@ -162,14 +139,24 @@ const resetMocks = () => {
   vehicleMock.update.mockReset();
   vehicleMock.update.mockResolvedValue(null);
 
+  userMock.findUnique.mockReset();
+  userMock.findUnique.mockResolvedValue(null);
+
   mockPrisma.$transaction.mockReset();
-  mockPrisma.$transaction.mockImplementation(async (callback: any) => callback({
-    driver: mockPrisma.driver,
-    vehicle: mockPrisma.vehicle,
-  }));
+  mockPrisma.$transaction.mockImplementation(async (callback: any) => callback(mockPrisma));
 };
 
 describe('Drivers Routes', () => {
+  beforeAll(async () => {
+    driversRouter = (await import('../drivers')).default;
+    organizationMock = mockPrisma.organization.findUnique;
+    vehicleMock = mockPrisma.vehicle;
+    userMock = mockPrisma.user;
+    app = express();
+    app.use(express.json());
+    app.use('/drivers', driversRouter);
+  });
+
   beforeEach(() => {
     vi.clearAllMocks();
     resetMocks();
@@ -191,7 +178,7 @@ describe('Drivers Routes', () => {
             organization: true,
             vehicleAvailability: true,
             payrollReports: true,
-            assignedVehicles: true,
+            assignedVehicle: true,
             attendanceRecords: true,
             payrollEntries: true,
           },
@@ -203,7 +190,7 @@ describe('Drivers Routes', () => {
             organization: true,
             vehicleAvailability: true,
             payrollReports: true,
-            assignedVehicles: true,
+            assignedVehicle: true,
             attendanceRecords: true,
             payrollEntries: true,
           },
@@ -234,7 +221,7 @@ describe('Drivers Routes', () => {
             organization: true,
             vehicleAvailability: true,
             payrollReports: true,
-            assignedVehicles: true,
+            assignedVehicle: true,
             attendanceRecords: true,
             payrollEntries: true,
           },
@@ -263,7 +250,7 @@ describe('Drivers Routes', () => {
             organization: true,
             vehicleAvailability: true,
             payrollReports: true,
-            assignedVehicles: true,
+            assignedVehicle: true,
             attendanceRecords: true,
             payrollEntries: true,
           },
@@ -543,16 +530,16 @@ describe('Drivers Routes', () => {
   describe('User routes', () => {
     describe('GET /drivers', () => {
       it('returns drivers for active org', async () => {
-        mockPrisma.driver.findMany.mockResolvedValueOnce([{ ...baseDriver, assignedVehicles: [] }]);
+        mockPrisma.driver.findMany.mockResolvedValueOnce([{ ...baseDriver, assignedVehicle: null }]);
 
         const res = await request(app).get('/drivers');
 
-        const { assignedVehicles: _ignoredVehicles, ...driverWithoutVehicles } = baseDriver;
+        const { assignedVehicle: _ignoredVehicle, ...driverWithoutVehicle } = baseDriver;
 
         expect(res.status).toBe(200);
         expect(res.body).toEqual([
           {
-            ...driverWithoutVehicles,
+            ...driverWithoutVehicle,
             shuttleId: null,
             shuttle: null,
           },
@@ -594,7 +581,7 @@ describe('Drivers Routes', () => {
           where: {
             organizationId: 'org_test_123',
             deleted: false,
-            assignedVehicles: { none: {} },
+            assignedVehicle: null,
           },
         });
       });
@@ -743,15 +730,13 @@ describe('Drivers Routes', () => {
 
         const driverWithVehicle = {
           ...baseDriver,
-          assignedVehicles: [
-            {
-              id: 'vehicle1',
-              name: 'Shuttle 1',
-              plateNumber: 'ABC-123',
-              status: 'AVAILABLE',
-              capacity: 20,
-            },
-          ],
+          assignedVehicle: {
+            id: 'vehicle1',
+            name: 'Shuttle 1',
+            plateNumber: 'ABC-123',
+            status: 'AVAILABLE',
+            capacity: 20,
+          },
         };
 
         mockPrisma.driver.findUnique.mockResolvedValueOnce(driverWithVehicle);

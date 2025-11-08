@@ -6,7 +6,7 @@ import { validateSchema, validateMultiple } from '../middleware/zodValidation';
 import { fromNodeHeaders } from 'better-auth/node';
 import { auth } from '../lib/auth';
 import prisma from '../db';
-import { driverNotifications } from '../lib/notificationHelpers';
+import { driverNotifications, vehicleNotifications, routeNotifications, NotificationPayload } from '../lib/notificationHelpers';
 import { broadcastNotification } from '../lib/notificationBroadcaster';
 import {
     AnnotatedRoute,
@@ -22,7 +22,7 @@ type DriverList = Driver[];
 
 const driverInclude = {
     organization: true,
-    assignedVehicles: {
+    assignedVehicle: {
         where: {
             deleted: false,
         },
@@ -92,6 +92,7 @@ const scheduleRouteInclude = Prisma.validator<Prisma.RouteInclude>()({
 type RouteForSchedule = Prisma.RouteGetPayload<{ include: typeof scheduleRouteInclude }> & {
     isVirtual?: boolean;
     originalRouteId?: string | null;
+    weekdayName?: string | null;
 };
 
 class HttpError extends Error {
@@ -153,8 +154,8 @@ async function syncVehicleAssignment(
 }
 
 function mapDriverResponse(driver: any) {
-    const { assignedVehicles = [], ...rest } = driver;
-    const vehicle = Array.isArray(assignedVehicles) ? assignedVehicles[0] : null;
+    const { assignedVehicle, ...rest } = driver;
+    const vehicle = assignedVehicle || null;
 
     const shuttle = vehicle
         ? {
@@ -246,6 +247,14 @@ const formatDateKey = (input: Date): string => {
     return `${year}-${month}-${day}`;
 };
 
+const formatWeekdayName = (input: Date | null): string | null => {
+    if (!input) {
+        return null;
+    }
+
+    return input.toLocaleDateString('en-US', { weekday: 'long' });
+};
+
 const isWeekend = (input: Date): boolean => {
     const day = input.getDay();
     return day === 0 || day === 6;
@@ -304,6 +313,7 @@ const createVirtualRoute = (template: RouteForSchedule, targetDate: Date, index:
             notes: null,
         })),
         vehicleAvailability: [],
+        weekdayName: formatWeekdayName(baseDate),
     };
 };
 
@@ -333,6 +343,21 @@ const buildDriverSchedule = async ({
     endDate,
 }: ScheduleWindow): Promise<AnnotatedRoute<RouteForSchedule>[]> => {
     const templateWindowStart = addDays(startDate, -28);
+
+    // Get driver's assigned vehicle if any
+    const driverVehicle = await prisma.vehicle.findFirst({
+        where: {
+            driverId: driverProfile.id,
+            deleted: false,
+        },
+        select: {
+            id: true,
+            name: true,
+            plateNumber: true,
+            status: true,
+            capacity: true,
+        },
+    });
 
     const driverRoutes = await prisma.route.findMany({
         where: {
@@ -390,6 +415,46 @@ const buildDriverSchedule = async ({
     driverRoutes.forEach((route) => {
         if (recurringTemplateMap.has(route.id)) {
             recurringTemplateMap.set(route.id, route);
+        }
+    });
+
+    const attendanceRecords = await prisma.attendanceRecord.findMany({
+        where: {
+            organizationId: driverProfile.organizationId,
+            date: {
+                gte: templateWindowStart,
+                lte: endDate,
+            },
+            OR: [
+                { driverId: driverProfile.id },
+                {
+                    driverId: null,
+                    vehicle: {
+                        driverId: driverProfile.id,
+                    },
+                },
+            ],
+        },
+        select: {
+            id: true,
+            date: true,
+            vehicleId: true,
+        },
+    });
+
+    const attendanceByVehicle = new Set<string>();
+    const attendanceByDate = new Set<string>();
+
+    attendanceRecords.forEach((record) => {
+        const recordDate = new Date(record.date);
+        if (Number.isNaN(recordDate.getTime())) {
+            return;
+        }
+
+        const dateKey = formatDateKey(recordDate);
+        attendanceByDate.add(dateKey);
+        if (record.vehicleId) {
+            attendanceByVehicle.add(`${dateKey}::${record.vehicleId}`);
         }
     });
 
@@ -452,18 +517,24 @@ const buildDriverSchedule = async ({
 
     const synthesizedSchedule: RouteForSchedule[] = [];
     const dayCount = Math.floor((endDate.getTime() - startDate.getTime()) / (24 * 60 * 60 * 1000)) + 1;
+    const today = startOfDay(new Date());
+    const driverCreationDate = driverProfile.createdAt ? startOfDay(new Date(driverProfile.createdAt)) : null;
 
     for (let offset = 0; offset < dayCount; offset += 1) {
         const currentDate = addDays(startDate, offset);
         const dateKey = formatDateKey(currentDate);
         const actualRoutesForDay = scheduleByDate.get(dateKey) ?? [];
 
-        if (actualRoutesForDay.length > 0) {
-            synthesizedSchedule.push(...actualRoutesForDay);
+        if (currentDate < today) {
+            continue;
         }
 
         if (isWeekend(currentDate) || holidaySet.has(dateKey)) {
             continue;
+        }
+
+        if (actualRoutesForDay.length > 0) {
+            synthesizedSchedule.push(...actualRoutesForDay);
         }
 
         const existingRouteIds = new Set<string>();
@@ -498,6 +569,15 @@ const buildDriverSchedule = async ({
         });
 
         candidateTemplates.forEach((template, templateIndex) => {
+            const templateCreationDate = template.createdAt ? startOfDay(new Date(template.createdAt)) : null;
+            if (templateCreationDate && currentDate < templateCreationDate) {
+                return;
+            }
+
+            if (driverCreationDate && currentDate < driverCreationDate) {
+                return;
+            }
+
             if (existingRouteIds.has(template.id)) {
                 return;
             }
@@ -508,7 +588,39 @@ const buildDriverSchedule = async ({
 
     const now = new Date();
     const sortedSchedule = sortRoutesForSchedule([...synthesizedSchedule]);
-    return sortedSchedule.map((route) => annotateRouteWithStatuses(route, now));
+
+    const scheduleWithAttendance = sortedSchedule.map((route) => {
+        const routeDate = resolveRouteDate(route);
+
+        if (!routeDate) {
+            return {
+                ...route,
+                hasAttendanceRecord: false,
+                vehicle: route.vehicle || driverVehicle || null,
+                weekdayName: null,
+            };
+        }
+
+        const dateKey = formatDateKey(routeDate);
+        const vehicleIdentifier = route.vehicleId || route.vehicle?.id || null;
+        const vehicleKey = vehicleIdentifier ? `${dateKey}::${vehicleIdentifier}` : null;
+
+        const hasAttendanceRecord =
+            (vehicleKey && attendanceByVehicle.has(vehicleKey)) || attendanceByDate.has(dateKey);
+
+        return {
+            ...route,
+            hasAttendanceRecord,
+            vehicle: route.vehicle || driverVehicle || null,
+            weekdayName: formatWeekdayName(routeDate),
+        };
+    });
+
+    const annotated = scheduleWithAttendance.map((route) => {
+        return annotateRouteWithStatuses(route, now);
+    });
+
+    return annotated;
 };
 
 /**
@@ -527,7 +639,7 @@ router.get('/superadmin', requireAuth, requireRole(["superadmin"]), async (req: 
                 organization: true,
                 vehicleAvailability: true,
                 payrollReports: true,
-                assignedVehicles: true,
+                assignedVehicle: true,
                 attendanceRecords: true,
                 payrollEntries: true
             },
@@ -565,7 +677,7 @@ router.get('/superadmin/by-organization/:organizationId', requireAuth, requireRo
                 organization: true,
                 vehicleAvailability: true,
                 payrollReports: true,
-                assignedVehicles: true,
+                assignedVehicle: true,
                 attendanceRecords: true,
                 payrollEntries: true
             },
@@ -598,7 +710,7 @@ router.get('/superadmin/:id', requireAuth, requireRole(["superadmin"]), async (r
                 organization: true,
                 vehicleAvailability: true,
                 payrollReports: true,
-                assignedVehicles: true,
+                assignedVehicle: true,
                 attendanceRecords: true,
                 payrollEntries: true
             }
@@ -922,7 +1034,7 @@ router.get('/superadmin/stats/summary', requireAuth, requireRole(["superadmin"])
         const drivers = await prisma.driver.findMany({
             include: {
                 organization: true,
-                assignedVehicles: true
+                assignedVehicle: true
             }
         });
         const activeDrivers = drivers.filter(d => !d.deleted && d.isActive);
@@ -937,7 +1049,7 @@ router.get('/superadmin/stats/summary', requireAuth, requireRole(["superadmin"])
                 acc[orgName] += 1;
                 return acc;
             }, {} as Record<string, number>),
-            driversWithVehicles: activeDrivers.filter(d => d.assignedVehicles.length > 0).length,
+            driversWithVehicles: activeDrivers.filter(d => d.assignedVehicle !== null).length,
             topDrivers: activeDrivers
                 .sort((a, b) => (b.experienceYears || 0) - (a.experienceYears || 0))
                 .slice(0, 5)
@@ -946,7 +1058,7 @@ router.get('/superadmin/stats/summary', requireAuth, requireRole(["superadmin"])
                     name: d.name,
                     organization: d.organization.name,
                     experienceYears: d.experienceYears,
-                    vehicleCount: d.assignedVehicles.length
+                    vehicleCount: d.assignedVehicle ? 1 : 0
                 }))
         };
         res.json(stats);
@@ -992,7 +1104,7 @@ router.get('/', requireAuth, async (req: Request, res: Response) => {
                 deleted: false
             },
             include: {
-                assignedVehicles: {
+                assignedVehicle: {
                     where: {
                         deleted: false
                     },
@@ -1042,7 +1154,7 @@ router.get('/unassigned', requireAuth, async (req: Request, res: Response) => {
             where: {
                 organizationId: activeOrgId,
                 deleted: false,
-                assignedVehicles: { none: {} }
+                assignedVehicle: null
             }
         });
 
@@ -1090,7 +1202,7 @@ router.get('/:id', requireAuth, validateSchema(DriverIdParam, 'params'), async (
                 organization: true,
                 vehicleAvailability: true,
                 payrollReports: true,
-                assignedVehicles: true,
+                assignedVehicle: true,
                 attendanceRecords: true,
                 payrollEntries: true
             }
@@ -1279,6 +1391,9 @@ router.put('/:id',
                     id,
                     organizationId: activeOrgId,
                     deleted: false
+                },
+                include: {
+                    assignedVehicle: true  // Include vehicle to track changes
                 }
             });
 
@@ -1349,16 +1464,88 @@ router.put('/:id',
                 return refreshedDriver;
             });
 
+            // Get the User ID for the driver based on their email
+            let driverUserId: string | undefined;
+            if (driver.email) {
+                const driverUser = await prisma.user.findUnique({
+                    where: { email: driver.email },
+                    select: { id: true }
+                });
+                driverUserId = driverUser?.id;
+            }
+
             // Send status change notification if status changed
             if (status !== undefined && status !== existingDriver.status) {
                 const notifications = driverNotifications.statusChanged(activeOrgId, driver, status);
                 for (const notif of notifications) {
+                    // Override toUserId with actual User ID for driver notifications
+                    if (notif.toRoles.includes('driver') && driverUserId) {
+                        notif.toUserId = driverUserId;
+                    }
                     await broadcastNotification(notif);
                 }
             } else {
-                // General update notification
-                const notification = driverNotifications.updated(activeOrgId, driver);
-                await broadcastNotification(notification);
+                // Check if vehicle assignment changed
+                const vehicleChanged = vehicleId !== undefined && 
+                    (vehicleId !== null ? driver.assignedVehicle?.id !== existingDriver.assignedVehicle?.id : existingDriver.assignedVehicle !== null);
+                
+                // Determine if there are non-vehicle changes
+                const hasNonVehicleChanges = Object.keys(updateData).length > 0;
+                
+                // Always send driver update notification to managers if anything changed (vehicle or other fields)
+                if (vehicleChanged || hasNonVehicleChanges) {
+                    const adminNotification = driverNotifications.updated(activeOrgId, driver);
+                    await broadcastNotification(adminNotification);
+                }
+                
+                // Only notify driver about profile update if non-vehicle fields changed
+                // Driver will get vehicle-specific notifications separately
+                if (hasNonVehicleChanges && driverUserId) {
+                    const driverNotification = driverNotifications.profileUpdated(activeOrgId, driver);
+                    driverNotification.toUserId = driverUserId; // Use actual User ID
+                    await broadcastNotification(driverNotification);
+                }
+            }
+
+            // Check if vehicle assignment changed and send vehicle notifications
+            if (vehicleId !== undefined) {
+                const currentVehicle = driver.assignedVehicle;
+                const previousVehicle = existingDriver.assignedVehicle;
+
+                // Vehicle was assigned or changed
+                if (vehicleId && currentVehicle && currentVehicle.id !== previousVehicle?.id) {
+                    const vehicleNotifs = vehicleNotifications.assignedToDriver(activeOrgId, currentVehicle, driver);
+                    for (const notif of vehicleNotifs) {
+                        // Only send vehicle assignment notifications to the driver, not to managers
+                        // Managers already received the "Driver Updated" notification above
+                        // Skip notifications that are for managers/admins/owners
+                        const isManagerNotification = notif.toRoles.some(role => 
+                            ['owner', 'admin', 'manager'].includes(role)
+                        );
+                        
+                        if (!isManagerNotification && notif.toRoles.includes('driver') && driverUserId) {
+                            notif.toUserId = driverUserId;
+                            await broadcastNotification(notif);
+                        }
+                    }
+                }
+                // Vehicle was unassigned
+                else if (vehicleId === null && previousVehicle) {
+                    const vehicleNotifs = vehicleNotifications.unassignedFromDriver(activeOrgId, previousVehicle, driver);
+                    for (const notif of vehicleNotifs) {
+                        // Only send vehicle unassignment notifications to the driver, not to managers
+                        // Managers already received the "Driver Updated" notification above
+                        // Skip notifications that are for managers/admins/owners
+                        const isManagerNotification = notif.toRoles.some(role => 
+                            ['owner', 'admin', 'manager'].includes(role)
+                        );
+                        
+                        if (!isManagerNotification && notif.toRoles.includes('driver') && driverUserId) {
+                            notif.toUserId = driverUserId;
+                            await broadcastNotification(notif);
+                        }
+                    }
+                }
             }
 
             res.json(mapDriverResponse(driver));
@@ -1536,7 +1723,7 @@ router.get('/me/routes', requireAuth, async (req: Request, res: Response) => {
         let filteredRoutes = scheduleRoutes;
 
         if (normalizedStatus === 'CANCELLED') {
-            filteredRoutes = scheduleRoutes.filter((route) => (route.status ?? '').toUpperCase() === 'CANCELLED');
+            filteredRoutes = scheduleRoutes.filter((route) => route.driverStatus === 'CANCELLED');
         } else if (normalizedStatus === 'INACTIVE') {
             filteredRoutes = scheduleRoutes.filter((route) => route.managementStatus === 'INACTIVE');
         } else if (normalizedStatus) {
@@ -1682,6 +1869,7 @@ router.patch('/me/routes/:routeId/status', requireAuth, async (req: Request, res
         }
 
         const normalizedTargetStatus = targetStatus as RouteStatus;
+        const isActiveStatus = normalizedTargetStatus === 'ACTIVE';
 
         // Verify the route belongs to this driver
         const route = await prisma.route.findFirst({
@@ -1702,7 +1890,10 @@ router.patch('/me/routes/:routeId/status', requireAuth, async (req: Request, res
         // Update the route status
         const updatedRoute = await prisma.route.update({
             where: { id: routeId },
-            data: { status: normalizedTargetStatus },
+            data: {
+                status: normalizedTargetStatus,
+                isActive: isActiveStatus,
+            },
             include: Prisma.validator<Prisma.RouteInclude>()({
                 vehicleAvailability: {
                     include: {
@@ -1748,6 +1939,37 @@ router.patch('/me/routes/:routeId/status', requireAuth, async (req: Request, res
         });
 
         const enrichedRoute = annotateRouteWithStatuses(updatedRoute, new Date());
+
+        const notificationsToBroadcast: NotificationPayload[] = [];
+        const organizationId = driverProfile.organizationId;
+
+        if (normalizedTargetStatus === 'ACTIVE') {
+            notificationsToBroadcast.push(routeNotifications.started(organizationId, updatedRoute, driverProfile));
+        } else if (normalizedTargetStatus === 'COMPLETED') {
+            notificationsToBroadcast.push(routeNotifications.completed(organizationId, updatedRoute, driverProfile));
+        } else if (normalizedTargetStatus === 'CANCELLED') {
+            const resolvedDate = resolveRouteStartTime(updatedRoute) ?? (updatedRoute.date ? new Date(updatedRoute.date) : null);
+            const formattedRouteDate = resolvedDate
+                ? formatDateKey(startOfDay(resolvedDate))
+                : formatDateKey(startOfDay(new Date()));
+
+            const employeeIds = (updatedRoute.stops ?? [])
+                .map((stop) => stop.employee?.id)
+                .filter((id): id is string => Boolean(id));
+
+            const cancellationNotifications = routeNotifications.cancelled(
+                organizationId,
+                updatedRoute,
+                formattedRouteDate,
+                employeeIds,
+            );
+
+            notificationsToBroadcast.push(...cancellationNotifications);
+        }
+
+        for (const notification of notificationsToBroadcast) {
+            await broadcastNotification(notification);
+        }
 
         res.json(enrichedRoute);
     } catch (error) {

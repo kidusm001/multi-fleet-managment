@@ -1,40 +1,14 @@
 import { PrismaClient } from '@prisma/client';
 import { auth } from '../lib/auth';
+import { generateUniqueEthiopianNames } from '../utils/uniqueEthiopianNames';
 
 const prisma = new PrismaClient();
 
-const newMembers = [
-    { name: "Sarah Bennett", email: "sarah.bennett@fleetmanager.com", role: "employee" },
-    { name: "Michael Turner", email: "michael.turner@fleetmanager.com", role: "employee" },
-    { name: "Jessica Morgan", email: "jessica.morgan@fleetmanager.com", role: "employee" },
-    { name: "Andrew Foster", email: "andrew.foster@fleetmanager.com", role: "employee" },
-    { name: "Lauren Hayes", email: "lauren.hayes@fleetmanager.com", role: "employee" },
-    { name: "Christopher Ward", email: "christopher.ward@fleetmanager.com", role: "employee" },
-    { name: "Michelle Porter", email: "michelle.porter@fleetmanager.com", role: "employee" },
-    { name: "Brandon Cole", email: "brandon.cole@fleetmanager.com", role: "employee" },
-    { name: "Tiffany Brooks", email: "tiffany.brooks@fleetmanager.com", role: "employee" },
-    { name: "Justin Webb", email: "justin.webb@fleetmanager.com", role: "employee" },
-    { name: "Kimberly Flynn", email: "kimberly.flynn@fleetmanager.com", role: "employee" },
-    { name: "Derek Palmer", email: "derek.palmer@fleetmanager.com", role: "employee" },
-    { name: "Samantha Cruz", email: "samantha.cruz@fleetmanager.com", role: "employee" },
-    { name: "Timothy Shaw", email: "timothy.shaw@fleetmanager.com", role: "employee" },
-    { name: "Nicole Warren", email: "nicole.warren@fleetmanager.com", role: "employee" },
-    { name: "Jeffrey Price", email: "jeffrey.price@fleetmanager.com", role: "employee" },
-    { name: "Danielle Ross", email: "danielle.ross@fleetmanager.com", role: "employee" },
-    { name: "Travis Ford", email: "travis.ford@fleetmanager.com", role: "employee" },
-    { name: "Brittany Stone", email: "brittany.stone@fleetmanager.com", role: "employee" },
-    { name: "Kyle Marshall", email: "kyle.marshall@fleetmanager.com", role: "employee" },
-    { name: "Heather Reynolds", email: "heather.reynolds@fleetmanager.com", role: "employee" },
-    { name: "Nathan Pierce", email: "nathan.pierce@fleetmanager.com", role: "employee" },
-    { name: "Megan Walsh", email: "megan.walsh@fleetmanager.com", role: "employee" },
-    { name: "Chad Richards", email: "chad.richards@fleetmanager.com", role: "employee" },
-    { name: "Vanessa Hunt", email: "vanessa.hunt@fleetmanager.com", role: "employee" },
-    { name: "Craig Dixon", email: "craig.dixon@fleetmanager.com", role: "employee" },
-    { name: "Kristen Wallace", email: "kristen.wallace@fleetmanager.com", role: "employee" },
-    { name: "Marcus Bryant", email: "marcus.bryant@fleetmanager.com", role: "employee" },
-    { name: "Allison Harper", email: "allison.harper@fleetmanager.com", role: "employee" },
-    { name: "Wesley Griffin", email: "wesley.griffin@fleetmanager.com", role: "employee" },
-];
+// Generate 30 unique Ethiopian members
+const newMembers = generateUniqueEthiopianNames(30).map(member => ({
+  ...member,
+  role: "employee"
+}));
 
 async function addMembersToSterling() {
     console.log('🏢 Adding members to Sterling Logistics Solutions...\n');

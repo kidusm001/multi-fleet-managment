@@ -4,6 +4,8 @@
  * Using Ethiopian names for authentic localization
  */
 
+import { generateUniqueEthiopianNames } from '../src/utils/uniqueEthiopianNames.ts';
+
 export interface EmployeeData {
   name: string;
   email: string;
@@ -324,12 +326,32 @@ export async function createAdditionalEmployees(organizationId: string, prisma: 
     select: { slug: true, name: true }
   });
 
-  if (!org || !employeeData[org.slug]) {
-    console.log(`No additional employee data found for organization: ${org?.name || organizationId}`);
+  if (!org) {
+    console.log(`No organization found with ID: ${organizationId}`);
     return 0;
   }
 
-  const employeesToCreate = employeeData[org.slug];
+  // Generate unique Ethiopian names for this organization
+  // Each organization gets 45 employees across different departments and shifts
+  const employeeCount = 45;
+  const uniqueNameObjects = generateUniqueEthiopianNames(employeeCount);
+
+  // Create employee data with departments and shifts
+  const deptNames = ['Fleet Operations', 'Vehicle Maintenance', 'Administration', 'Customer Service', 'Logistics'];
+  const shiftNames = ['Morning Shift', 'Afternoon Shift', 'Night Shift'];
+
+  const employeesToCreate = uniqueNameObjects.map((nameObj, index) => {
+    const department = deptNames[index % deptNames.length];
+    const shift = shiftNames[index % shiftNames.length];
+    const email = `${nameObj.name.toLowerCase().replace(/\s+/g, '.')}@${org.slug}.com`;
+    return {
+      name: nameObj.name,
+      email,
+      department,
+      shift
+    };
+  });
+
   console.log(`Creating ${employeesToCreate.length} additional employees for ${org.name}...`);
 
   // Get existing departments, shifts, and HQ location

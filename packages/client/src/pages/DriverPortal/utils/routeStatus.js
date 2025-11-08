@@ -84,14 +84,39 @@ export const getRouteEndTime = (route) => {
   );
 };
 
+export const getRouteDateParts = (route) => {
+  const start = getRouteStartTime(route) || ensureDate(route?.date);
+  if (!start) {
+    return {
+      weekday: null,
+      dateLabel: null,
+      fullLabel: null,
+    };
+  }
+
+  const weekday = typeof route?.weekdayName === 'string' && route.weekdayName.trim()
+    ? route.weekdayName.trim()
+    : start.toLocaleDateString('en-US', { weekday: 'long' });
+
+  const dateLabel = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+  return {
+    weekday,
+    dateLabel,
+    fullLabel: `${weekday}, ${dateLabel}`,
+  };
+};
+
 export const getEffectiveRouteStatus = (route, now = new Date()) => {
   if (!route) return 'UPCOMING';
 
+  // Use driverStatus from server if available
   const driverStatus = typeof route.driverStatus === 'string' ? route.driverStatus.toUpperCase() : '';
-  if (driverStatus === 'UPCOMING' || driverStatus === 'ACTIVE' || driverStatus === 'COMPLETED') {
+  if (driverStatus === 'UPCOMING' || driverStatus === 'ACTIVE' || driverStatus === 'COMPLETED' || driverStatus === 'CANCELLED') {
     return driverStatus;
   }
 
+  // Fallback client-side logic (shouldn't be needed with server driverStatus)
   const statusRaw = typeof route.status === 'string' ? route.status.toUpperCase() : '';
   const status = statusRaw === 'IN_PROGRESS' ? 'ACTIVE' : statusRaw;
   const start = getRouteStartTime(route);
