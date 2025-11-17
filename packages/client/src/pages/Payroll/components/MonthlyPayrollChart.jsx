@@ -52,8 +52,10 @@ CustomTooltip.propTypes = {
 export function MonthlyPayrollChart({ data }) {
   console.log("MonthlyPayrollChart data:", data);
   
-  // Filter out zero values for cleaner display
-  const validData = data && Array.isArray(data) ? data.filter(item => item.amount > 0) : [];
+  // Filter out zero values and reverse to show oldest -> newest (left to right)
+  const validData = data && Array.isArray(data) 
+    ? data.filter(item => item.amount > 0).reverse() 
+    : [];
   
   // Calculate trend
   const calculateTrend = () => {

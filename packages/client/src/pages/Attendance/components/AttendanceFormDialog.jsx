@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Calendar, Clock, TrendingUp, Banknote } from "lucide-react";
+import { Calendar, Clock, TrendingUp, Banknote, Calculator, RefreshCw, Sparkles } from "lucide-react";
 import Button from "@/components/Common/UI/Button";
 import { Input } from "@/components/Common/UI/Input";
 import { Label } from "@/components/Common/UI/Label";
@@ -18,6 +18,7 @@ import {
   DialogDescription,
 } from "@/components/Common/UI/dialog";
 import { cn } from "@/lib/utils";
+import { attendanceService } from "@/services/attendanceService";
 
 /**
  * Attendance Form Dialog Component
@@ -37,12 +38,17 @@ export default function AttendanceFormDialog({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [validationErrors, setValidationErrors] = useState({});
+  const [isLoadingPreview, setIsLoadingPreview] = useState(false);
+  const [calculatedMetrics, setCalculatedMetrics] = useState(null);
+  const [autoCalculated, setAutoCalculated] = useState(false);
 
   // Reset errors when dialog opens
   useEffect(() => {
     if (isOpen) {
       setError(null);
       setValidationErrors({});
+      setCalculatedMetrics(null);
+      setAutoCalculated(false);
     }
   }, [isOpen]);
 
@@ -112,6 +118,51 @@ export default function AttendanceFormDialog({
       setError(err?.message || "An error occurred while saving the attendance record");
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  // Handle preview/calculate from routes
+  const handlePreviewMetrics = async () => {
+    if (!formData.vehicleId || !formData.date) {
+      setError("Please select a vehicle and date first");
+      return;
+    }
+
+    try {
+      setIsLoadingPreview(true);
+      setError(null);
+      
+      const preview = await attendanceService.previewCalculatedMetrics(
+        formData.vehicleId,
+        formData.date,
+        formData.driverId
+      );
+
+      setCalculatedMetrics(preview.calculatedMetrics);
+      
+      // Show success message
+      if (preview.routeCompletions.length === 0) {
+        setError("No completed routes found for this date. Metrics will be 0.");
+      }
+    } catch (err) {
+      console.error("Error previewing metrics:", err);
+      setError("Failed to calculate metrics from routes");
+    } finally {
+      setIsLoadingPreview(false);
+    }
+  };
+
+  // Apply calculated metrics to form
+  const handleApplyCalculated = () => {
+    if (calculatedMetrics) {
+      setFormData({
+        ...formData,
+        tripsCompleted: calculatedMetrics.tripsCompleted || 0,
+        kmsCovered: calculatedMetrics.kmsCovered || 0,
+        hoursWorked: calculatedMetrics.hoursWorked || "",
+      });
+      setAutoCalculated(true);
+      setCalculatedMetrics(null);
     }
   };
 
@@ -214,6 +265,91 @@ export default function AttendanceFormDialog({
               <p className="text-sm text-red-500">{validationErrors.date}</p>
             )}
           </div>
+
+          {/* Auto-Calculate Section */}
+          {!editMode && (
+            <div className="p-4 rounded-lg border-2 border-dashed border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/20">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Sparkles className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                    <h4 className="font-semibold text-blue-900 dark:text-blue-100">
+                      Auto-Calculate from Routes
+                    </h4>
+                  </div>
+                  <p className="text-sm text-blue-700 dark:text-blue-300 mb-3">
+                    Automatically calculate trips, kilometers, and hours from completed routes for this date.
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handlePreviewMetrics}
+                    disabled={isLoadingPreview || !formData.vehicleId || !formData.date}
+                    className="w-full sm:w-auto"
+                  >
+                    {isLoadingPreview ? (
+                      <>
+                        <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                        Calculating...
+                      </>
+                    ) : (
+                      <>
+                        <Calculator className="h-4 w-4 mr-2" />
+                        Calculate from Routes
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+
+              {/* Show calculated metrics */}
+              {calculatedMetrics && (
+                <div className="mt-4 p-3 rounded-md bg-white dark:bg-gray-800 border border-blue-200 dark:border-blue-800">
+                  <div className="flex items-center justify-between mb-3">
+                    <h5 className="font-semibold text-sm text-gray-900 dark:text-gray-100">
+                      Calculated Metrics
+                    </h5>
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={handleApplyCalculated}
+                    >
+                      Apply These Values
+                    </Button>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3 text-sm">
+                    <div>
+                      <p className="text-gray-600 dark:text-gray-400">Trips</p>
+                      <p className="font-semibold text-gray-900 dark:text-gray-100">
+                        {calculatedMetrics.tripsCompleted}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-gray-600 dark:text-gray-400">Kilometers</p>
+                      <p className="font-semibold text-gray-900 dark:text-gray-100">
+                        {calculatedMetrics.kmsCovered?.toFixed(1) || 0} km
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-gray-600 dark:text-gray-400">Hours</p>
+                      <p className="font-semibold text-gray-900 dark:text-gray-100">
+                        {calculatedMetrics.hoursWorked?.toFixed(1) || "N/A"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {autoCalculated && (
+                <div className="mt-3 p-2 rounded-md bg-green-100 dark:bg-green-900/30 border border-green-300 dark:border-green-700">
+                  <p className="text-xs text-green-800 dark:text-green-300 flex items-center gap-1">
+                    <Sparkles className="h-3 w-3" />
+                    Values were auto-calculated from completed routes
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Work Details */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

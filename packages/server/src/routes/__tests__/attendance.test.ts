@@ -23,6 +23,7 @@ vi.mock('../../db', () => ({
     attendanceRecord: {
       findMany: vi.fn(),
       findFirst: vi.fn(),
+      findUnique: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
       delete: vi.fn(),
@@ -34,6 +35,12 @@ vi.mock('../../db', () => ({
     },
     driver: {
       findFirst: vi.fn(),
+      findMany: vi.fn(),
+    },
+    routeCompletion: {
+      findMany: vi.fn(),
+    },
+    route: {
       findMany: vi.fn(),
     },
     $transaction: vi.fn(),
@@ -90,6 +97,8 @@ describe('Attendance API', () => {
       (prisma.vehicle.findFirst as any).mockResolvedValue(mockVehicle);
       (prisma.driver.findFirst as any).mockResolvedValue(mockDriver);
       (prisma.attendanceRecord.findFirst as any).mockResolvedValue(null); // No duplicate
+      (prisma.routeCompletion.findMany as any).mockResolvedValue([]); // No route completions
+      (prisma.route.findMany as any).mockResolvedValue([]);
       (prisma.attendanceRecord.create as any).mockResolvedValue(mockCreatedRecord);
 
       const response = await request(app)
@@ -130,6 +139,8 @@ describe('Attendance API', () => {
 
       (prisma.vehicle.findFirst as any).mockResolvedValue(mockVehicle);
       (prisma.attendanceRecord.findFirst as any).mockResolvedValue(null);
+      (prisma.routeCompletion.findMany as any).mockResolvedValue([]); // No route completions
+      (prisma.route.findMany as any).mockResolvedValue([]);
       (prisma.attendanceRecord.create as any).mockResolvedValue(mockCreatedRecord);
 
       const response = await request(app)
@@ -202,6 +213,7 @@ describe('Attendance API', () => {
         },
       ];
 
+      (prisma.driver.findFirst as any).mockResolvedValue({ id: mockDriverId, organizationId: mockOrganizationId });
       (prisma.attendanceRecord.findMany as any).mockResolvedValue(mockRecords);
 
       const response = await request(app)

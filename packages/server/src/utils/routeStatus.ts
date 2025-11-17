@@ -166,20 +166,20 @@ export const deriveDriverStatus = (
     activeWindowEnd = endTime;
   }
 
-  // 1. Check if we're in the active window (ACTIVE) - purely time-based
+  // 2. Check if we're in the active window (ACTIVE) - purely time-based
   if (activeWindowStart !== null && activeWindowEnd !== null) {
     if (referenceTime >= activeWindowStart && referenceTime <= activeWindowEnd) {
       return 'ACTIVE';
     }
   }
 
-  // 2. Check if we're before the route starts (UPCOMING)
+  // 3. Check if we're before the route starts (UPCOMING)
   // Do this BEFORE checking if past, to avoid misclassifying future routes
   if (startTime !== null && referenceTime < (startTime - AUTO_ACTIVATION_WINDOW_MS)) {
     return 'UPCOMING';
   }
 
-  // 3. Determine if route is in the past
+  // 4. Determine if route is in the past
   // Only mark as past if we're beyond the end time OR beyond the start time + window
   if (isPastRoute) {
     // Route is in the past - check completion OR attendance
@@ -191,17 +191,17 @@ export const deriveDriverStatus = (
     return 'CANCELLED';
   }
 
-  // 4. Between active window and start (shouldn't normally happen, but handle gracefully)
+  // 5. Between active window and start (shouldn't normally happen, but handle gracefully)
   if (startTime !== null && referenceTime < startTime) {
     return 'UPCOMING';
   }
 
-  // 4. No clear timing - check completion status
+  // 6. No clear timing - check completion status
   if (hasCompletionStatus || hasCompletionRecord) {
     return 'COMPLETED';
   }
 
-  // 5. Default fallback
+  // 7. Default fallback
   return 'UPCOMING';
 };
 

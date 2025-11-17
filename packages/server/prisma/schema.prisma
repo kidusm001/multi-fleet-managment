@@ -122,6 +122,7 @@ model Driver {
   assignedVehicle     Vehicle?              @relation("VehicleDriver")
   attendanceRecords   AttendanceRecord[]
   payrollEntries      PayrollEntry[]
+  routeCompletions    RouteCompletion[]
 
   @@unique([organizationId, email])
   @@unique([organizationId, licenseNumber])
@@ -214,6 +215,7 @@ model Vehicle {
   routes              Route[]
   attendanceRecords   AttendanceRecord[]
   payrollEntries      PayrollEntry[]
+  routeCompletions    RouteCompletion[]
 
   // Indexes
   // For filtering by vehicle status
@@ -294,6 +296,29 @@ model Stop {
   @@index([organizationId])
   @@index([routeId])
   @@map("stops")
+}
+
+model RouteCompletion {
+  id             String   @id @default(cuid())
+  routeId        String
+  driverId       String
+  vehicleId      String?
+  organizationId String
+  completedAt    DateTime @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  driver       Driver       @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle?     @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId])
+  @@index([routeId])
+  @@index([driverId])
+  @@index([completedAt])
+  @@map("route_completions")
 }
 
 model VehicleAvailability {
@@ -652,6 +677,7 @@ model Organization {
   vehicleRequests     VehicleRequest[]
   locations           Location[]
   shuttleRequests     ShuttleRequest[]
+  routeCompletions    RouteCompletion[]
 
   // Payroll relations
   serviceProviders  ServiceProvider[]

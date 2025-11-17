@@ -1,7 +1,9 @@
 import { Router, Request, Response } from 'express';
 import prisma from '../db';
 import { requireAuth, requireRole } from '../middleware/auth';
+import { validateSchema } from '../middleware/zodValidation';
 import { Decimal } from '@prisma/client/runtime/library';
+import { GeneratePayrollSchema } from '../schema/payrollSchema';
 
 const router = Router();
 
@@ -516,6 +518,309 @@ router.post('/:id/generate-entries', requireAuth, async (req: Request, res: Resp
     res.status(500).json({ message: 'Failed to generate payroll entries' });
   }
 });
+
+/**
+ * POST /generate-filtered - Generate payroll with filters (date range, vehicle type, shifts, departments, locations)
+ * Similar to notifications filtering pattern
+ */
+router.post('/generate-filtered', requireAuth, validateSchema(GeneratePayrollSchema), async (req: Request, res: Response) => {
+  try {
+    const organizationId = req.session?.session?.activeOrganizationId;
+    if (!organizationId) {
+      return res.status(400).json({ message: 'Active organization not found' });
+    }
+
+    const {
+      startDate,
+      endDate,
+      vehicleType,
+      vehicleIds,
+      name,
+    } = req.body;
+
+    // Parse dates
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    // Validate date range
+    if (start >= end) {
+      return res.status(400).json({ message: 'startDate must be before endDate' });
+    }
+
+    // Note: No overlap check for filtered payroll generation
+    // Filtered payrolls are meant to be run multiple times with different criteria
+    // (e.g., separate payrolls for BUS vs VAN, different departments, etc.)
+
+    // Auto-generate name if not provided
+    const periodName = name || `Payroll ${start.toISOString().split('T')[0]} to ${end.toISOString().split('T')[0]}`;
+
+    // Build attendance filter - only use fields that exist on AttendanceRecord
+    const attendanceWhere: any = {
+      organizationId,
+      date: {
+        gte: start,
+        lte: end,
+      },
+    };
+
+    // Apply vehicle filters
+    if (vehicleType || vehicleIds) {
+      attendanceWhere.vehicle = {};
+      
+      if (vehicleType) {
+        attendanceWhere.vehicle.type = vehicleType;
+      }
+      
+      if (vehicleIds && vehicleIds.length > 0) {
+        attendanceWhere.vehicle.id = { in: vehicleIds };
+      }
+    }
+
+    // Get filtered attendance records
+    const attendanceRecords = await prisma.attendanceRecord.findMany({
+      where: attendanceWhere,
+      include: {
+        driver: true,
+        vehicle: {
+          include: {
+            serviceProvider: true,
+          },
+        },
+      },
+    });
+
+    if (attendanceRecords.length === 0) {
+      return res.status(400).json({
+        message: 'No attendance records found matching the specified filters',
+        filters: {
+          dateRange: { startDate, endDate },
+          vehicleType,
+          vehicleIds,
+        },
+      });
+    }
+
+    // Create payroll period and generate entries in a transaction
+    const result = await prisma.$transaction(async (tx) => {
+      // Create the payroll period
+      const period = await tx.payrollPeriod.create({
+        data: {
+          organizationId,
+          name: periodName,
+          startDate: start,
+          endDate: end,
+          totalAmount: new Decimal(0),
+          status: 'PENDING',
+        },
+      });
+
+      // Group by driver and service provider
+      const driverMap = new Map<string, typeof attendanceRecords>();
+      const serviceProviderMap = new Map<string, typeof attendanceRecords>();
+
+      for (const record of attendanceRecords) {
+        // Group in-house driver records
+        if (record.driverId && record.vehicle.type === 'IN_HOUSE') {
+          const existing = driverMap.get(record.driverId) || [];
+          existing.push(record);
+          driverMap.set(record.driverId, existing);
+        }
+
+        // Group outsourced vehicle records
+        if (record.vehicle.type === 'OUTSOURCED' && record.vehicle.serviceProviderId) {
+          const spId = record.vehicle.serviceProviderId;
+          const existing = serviceProviderMap.get(spId) || [];
+          existing.push(record);
+          serviceProviderMap.set(spId, existing);
+        }
+      }
+
+      const entriesToCreate: any[] = [];
+
+      // Create entries for drivers (salary-based)
+      for (const [driverId, records] of driverMap) {
+        const driver = records[0].driver;
+        if (!driver) continue;
+
+        const summary = records.reduce(
+          (acc, r) => {
+            acc.daysWorked += 1;
+            acc.hoursWorked += r.hoursWorked || 0;
+            acc.tripsCompleted += r.tripsCompleted || 0;
+            acc.kmsCovered += r.kmsCovered || 0;
+            return acc;
+          },
+          { daysWorked: 0, hoursWorked: 0, tripsCompleted: 0, kmsCovered: 0 }
+        );
+
+        let basePay = new Decimal(0);
+        let overtimePay = new Decimal(0);
+        let bonuses = new Decimal(0);
+        let deductions = new Decimal(0);
+
+        // 1. Calculate base pay
+        if (driver.baseSalary) {
+          basePay = new Decimal(driver.baseSalary);
+        } else if (driver.hourlyRate) {
+          const regularHours = Math.min(summary.hoursWorked, 160);
+          basePay = new Decimal(driver.hourlyRate).mul(regularHours);
+        }
+
+        // 2. Calculate overtime
+        const regularHoursPerMonth = 160;
+        if (summary.hoursWorked > regularHoursPerMonth && driver.hourlyRate) {
+          const overtimeHours = summary.hoursWorked - regularHoursPerMonth;
+          const overtimeRate = driver.overtimeRate || 1.5;
+          overtimePay = new Decimal(driver.hourlyRate).mul(overtimeHours).mul(overtimeRate);
+        }
+
+        // 3. Calculate automated bonuses
+        if (summary.tripsCompleted > 50) {
+          bonuses = bonuses.add(new Decimal(summary.tripsCompleted - 50).mul(5));
+        }
+
+        const expectedWorkingDays = 22;
+        const attendanceRate = (summary.daysWorked / expectedWorkingDays) * 100;
+        if (attendanceRate >= 95) {
+          bonuses = bonuses.add(100);
+        }
+
+        const avgKmPerHour = summary.hoursWorked > 0 ? summary.kmsCovered / summary.hoursWorked : 0;
+        if (avgKmPerHour > 10) {
+          bonuses = bonuses.add(50);
+        }
+
+        // 4. Calculate automated deductions
+        const grossPay = basePay.add(overtimePay).add(bonuses);
+        deductions = deductions.add(grossPay.mul(0.10)); // Tax
+
+        const lateDays = records.filter(r => r.hoursWorked && r.hoursWorked < 8).length;
+        if (lateDays > 0) {
+          deductions = deductions.add(new Decimal(lateDays).mul(20));
+        }
+
+        // 5. Calculate net pay
+        const netPay = grossPay.sub(deductions);
+
+        entriesToCreate.push({
+          payrollPeriodId: period.id,
+          organizationId,
+          driverId,
+          vehicleId: records[0].vehicleId,
+          payrollType: 'SALARY',
+          description: `Salary for ${summary.daysWorked} days (${summary.hoursWorked.toFixed(1)}h, ${summary.tripsCompleted} trips)`,
+          amount: basePay.add(overtimePay),
+          bonuses: bonuses,
+          deductions: deductions,
+          netPay: netPay,
+          daysWorked: summary.daysWorked,
+          hoursWorked: summary.hoursWorked,
+          tripsCompleted: summary.tripsCompleted,
+          kmsCovered: summary.kmsCovered,
+          paymentMethod: 'BANK_TRANSFER',
+          status: 'PENDING',
+        });
+      }
+
+      // Create entries for service providers (outsourced vehicles)
+      for (const [serviceProviderId, records] of serviceProviderMap) {
+        const serviceProvider = records[0].vehicle.serviceProvider;
+        if (!serviceProvider) continue;
+
+        const summary = records.reduce(
+          (acc, r) => {
+            acc.daysWorked += 1;
+            acc.tripsCompleted += r.tripsCompleted || 0;
+            acc.kmsCovered += r.kmsCovered || 0;
+            acc.fuelCost += parseFloat(r.fuelCost?.toString() || '0');
+            acc.tollCost += parseFloat(r.tollCost?.toString() || '0');
+            return acc;
+          },
+          { daysWorked: 0, tripsCompleted: 0, kmsCovered: 0, fuelCost: 0, tollCost: 0 }
+        );
+
+        let basePay = new Decimal(0);
+        let reimbursements = new Decimal(0);
+
+        // Calculate base pay based on service provider rates
+        if (serviceProvider.monthlyRate) {
+          basePay = new Decimal(serviceProvider.monthlyRate);
+        }
+
+        if (serviceProvider.perKmRate && summary.kmsCovered > 0) {
+          basePay = basePay.add(new Decimal(serviceProvider.perKmRate).mul(summary.kmsCovered));
+        }
+
+        if (serviceProvider.perTripRate && summary.tripsCompleted > 0) {
+          basePay = basePay.add(new Decimal(serviceProvider.perTripRate).mul(summary.tripsCompleted));
+        }
+
+        // Add fuel and toll reimbursements
+        reimbursements = new Decimal(summary.fuelCost).add(summary.tollCost);
+
+        const netPay = basePay.add(reimbursements);
+
+        entriesToCreate.push({
+          payrollPeriodId: period.id,
+          organizationId,
+          serviceProviderId,
+          vehicleId: records[0].vehicleId,
+          payrollType: 'SERVICE_PROVIDER',
+          description: `Service for ${summary.daysWorked} days (${summary.kmsCovered.toFixed(1)}km, ${summary.tripsCompleted} trips)`,
+          amount: basePay,
+          bonuses: reimbursements, // Using bonuses field for reimbursements
+          deductions: new Decimal(0),
+          netPay: netPay,
+          daysWorked: summary.daysWorked,
+          hoursWorked: 0,
+          tripsCompleted: summary.tripsCompleted,
+          kmsCovered: summary.kmsCovered,
+          paymentMethod: 'BANK_TRANSFER',
+          status: 'PENDING',
+        });
+      }
+
+      // Create all entries
+      const entries = await tx.payrollEntry.createMany({
+        data: entriesToCreate,
+      });
+
+      // Calculate total amount
+      const totalAmount = entriesToCreate.reduce(
+        (sum, entry) => sum.add(entry.netPay),
+        new Decimal(0)
+      );
+
+      // Update period with total amount
+      await tx.payrollPeriod.update({
+        where: { id: period.id },
+        data: { totalAmount },
+      });
+
+      return {
+        period,
+        entriesCount: entries.count,
+        totalAmount: totalAmount.toString(),
+      };
+    });
+
+    res.status(201).json({
+      message: `Successfully generated payroll with ${result.entriesCount} entries`,
+      period: result.period,
+      entriesCount: result.entriesCount,
+      totalAmount: result.totalAmount,
+      filters: {
+        dateRange: { startDate, endDate },
+        vehicleType,
+        vehicleIds,
+      },
+    });
+  } catch (error) {
+    console.error('Error generating filtered payroll:', error);
+    res.status(500).json({ message: 'Failed to generate payroll' });
+  }
+});
+
 
 /**
  * PATCH /:id/status - Update payroll period status

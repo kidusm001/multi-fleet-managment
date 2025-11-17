@@ -11,7 +11,8 @@ import {
   RefreshCw,
   FileText,
   Filter,
-  Search
+  Search,
+  BarChart3
 } from "lucide-react";
 import { useState, useEffect, useMemo } from "react";
 import { useTheme } from "@contexts/ThemeContext";
@@ -38,10 +39,17 @@ import {
 import { MonthlyPayrollChart } from "./components/MonthlyPayrollChart";
 import { ShuttleTable } from "./components/ShuttleTable";
 import { ShuttleAnalysis } from "./components/ShuttleAnalysis";
+import { GenerateFilteredPayrollDialog } from "./components/GenerateFilteredPayrollDialog";
+import KPIDashboard from "./components/KPIDashboard";
+import TrendsChart from "./components/TrendsChart";
+import ComparisonChart from "./components/ComparisonChart";
+import { useOrganization } from '@contexts/OrganizationContext';
 
 export default function EnhancedShuttlePayrollDashboard() {
   const { theme } = useTheme();
   const isDark = theme === 'dark';
+  const { activeOrganization } = useOrganization();
+  const [activeTab, setActiveTab] = useState('overview');
   const [_selectedMonth, setSelectedMonth] = useState("");
   const [selectedShuttle, setSelectedShuttle] = useState(null);
   const [shuttleData, setShuttleData] = useState([]);
@@ -60,6 +68,7 @@ export default function EnhancedShuttlePayrollDashboard() {
   const [error, setError] = useState(null);
   const [currentPeriod, setCurrentPeriod] = useState(null);
   const [isGeneratingPayroll, setIsGeneratingPayroll] = useState(false);
+  const [showFilteredPayrollDialog, setShowFilteredPayrollDialog] = useState(false);
 
   const handleSearchChange = (event) => {
     setSearchTerm(event.target.value);
@@ -207,7 +216,8 @@ export default function EnhancedShuttlePayrollDashboard() {
               }
               
               return {
-                id: entry.vehicle?.id || entry.id,
+                id: entry.id, // Use payroll entry ID as unique identifier
+                vehicleId: entry.vehicle?.id, // Store vehicle ID separately
                 type: entry.driver ? 'Owned' : 'Outsourced',
                 model: entry.vehicle?.model || 'Unknown',
                 usageDays: daysWorked,
@@ -217,7 +227,11 @@ export default function EnhancedShuttlePayrollDashboard() {
                 efficiency: efficiency,
                 totalAmount: Number(entry.netPay || 0),
                 // Store original values for display/details
-                grossAmount: Number(entry.amount || 0),
+                // amount field in PayrollEntry is the base salary/gross before bonuses
+                // So: Gross = amount + bonuses, Net = gross - deductions
+                amount: Number(entry.amount || 0) + Number(entry.bonuses || 0), // Gross amount (amount + bonuses)
+                grossAmount: Number(entry.amount || 0) + Number(entry.bonuses || 0),
+                netPay: Number(entry.netPay || 0), // Net amount (for calculateMonthlyCost)
                 bonuses: Number(entry.bonuses || 0),
                 deductions: Number(entry.deductions || 0),
                 hoursWorked: hoursWorked,
@@ -371,7 +385,8 @@ export default function EnhancedShuttlePayrollDashboard() {
   };
 
   const calculateMonthlyCost = (shuttle) => {
-    return parseFloat((shuttle.usageDays * shuttle.costPerDay).toFixed(2));
+    // For payroll entries, this should return the net pay
+    return parseFloat((shuttle.netPay || 0).toFixed(2));
   };
 
   const generateReport = async () => {
@@ -554,30 +569,103 @@ export default function EnhancedShuttlePayrollDashboard() {
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>
-          <Button
-            className="bg-green-600 hover:bg-green-700 text-white"
-            onClick={handleGeneratePayroll}
-            disabled={isGeneratingPayroll || !currentPeriod}
-          >
-            {isGeneratingPayroll ? (
-              <>
-                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                Generating...
-              </>
-            ) : (
-              <>
-                <CheckCircle className="h-4 w-4 mr-2" />
-                Generate Payroll
-              </>
-            )}
-          </Button>
-          <Button onClick={generateReport}>
-            <Download className="h-4 w-4 mr-2" />
-            Export Report
-          </Button>
+          {activeTab === 'overview' && (
+            <>
+              <Button
+                variant="outline"
+                onClick={() => setShowFilteredPayrollDialog(true)}
+                className="border-blue-500 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950"
+              >
+                <Filter className="h-4 w-4 mr-2" />
+                Generate with Filters
+              </Button>
+              <Button
+                className="bg-green-600 hover:bg-green-700 text-white"
+                onClick={handleGeneratePayroll}
+                disabled={isGeneratingPayroll || !currentPeriod}
+              >
+                {isGeneratingPayroll ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Generate Payroll
+                  </>
+                )}
+              </Button>
+              <Button onClick={generateReport}>
+                <Download className="h-4 w-4 mr-2" />
+                Export Report
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
+      {/* Tab Navigation */}
+      <div className={`border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+        <nav className="flex space-x-8" aria-label="Tabs">
+          <button
+            onClick={() => setActiveTab('overview')}
+            className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+              activeTab === 'overview'
+                ? 'border-blue-500 text-blue-600'
+                : `border-transparent ${isDark ? 'text-gray-400 hover:text-gray-300' : 'text-gray-500 hover:text-gray-700'}`
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              Overview
+            </div>
+          </button>
+          <button
+            onClick={() => setActiveTab('kpi-dashboard')}
+            className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+              activeTab === 'kpi-dashboard'
+                ? 'border-blue-500 text-blue-600'
+                : `border-transparent ${isDark ? 'text-gray-400 hover:text-gray-300' : 'text-gray-500 hover:text-gray-700'}`
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <BarChart3 className="h-4 w-4" />
+              KPI Dashboard
+            </div>
+          </button>
+          <button
+            onClick={() => setActiveTab('trends')}
+            className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+              activeTab === 'trends'
+                ? 'border-blue-500 text-blue-600'
+                : `border-transparent ${isDark ? 'text-gray-400 hover:text-gray-300' : 'text-gray-500 hover:text-gray-700'}`
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <TrendingUp className="h-4 w-4" />
+              Trends
+            </div>
+          </button>
+          <button
+            onClick={() => setActiveTab('comparison')}
+            className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${
+              activeTab === 'comparison'
+                ? 'border-blue-500 text-blue-600'
+                : `border-transparent ${isDark ? 'text-gray-400 hover:text-gray-300' : 'text-gray-500 hover:text-gray-700'}`
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <Users className="h-4 w-4" />
+              Comparison
+            </div>
+          </button>
+        </nav>
+      </div>
+
+      {/* Tab Content */}
+      {activeTab === 'overview' && (
+        <>
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -842,6 +930,33 @@ export default function EnhancedShuttlePayrollDashboard() {
           onClose={() => setSelectedShuttle(null)}
         />
       )}
+      </> )}
+
+      {/* KPI Dashboard Tab */}
+      {activeTab === 'kpi-dashboard' && activeOrganization && (
+        <KPIDashboard organizationId={activeOrganization.id} />
+      )}
+
+      {/* Trends Tab */}
+      {activeTab === 'trends' && activeOrganization && (
+        <TrendsChart organizationId={activeOrganization.id} dimensionType="department" />
+      )}
+
+      {/* Comparison Tab */}
+      {activeTab === 'comparison' && activeOrganization && (
+        <ComparisonChart organizationId={activeOrganization.id} />
+      )}
+
+      {/* Filtered Payroll Generation Dialog */}
+      <GenerateFilteredPayrollDialog
+        open={showFilteredPayrollDialog}
+        onOpenChange={setShowFilteredPayrollDialog}
+        onSuccess={(result) => {
+          console.log('Payroll generated:', result);
+          // Refresh the data
+          window.location.reload();
+        }}
+      />
     </div>
   );
 }

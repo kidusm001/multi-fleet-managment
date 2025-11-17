@@ -116,6 +116,52 @@ export const attendanceService = {
       throw error;
     }
   },
+
+  /**
+   * Preview calculated metrics from completed routes without saving
+   */
+  async previewCalculatedMetrics(vehicleId, date, driverId = null) {
+    try {
+      const params = { vehicleId, date };
+      if (driverId) params.driverId = driverId;
+      
+      const response = await api.get('/attendance/calculate-preview', { params });
+      return response.data;
+    } catch (error) {
+      console.error("Error previewing calculated metrics:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Recalculate metrics for a single attendance record
+   */
+  async recalculateAttendanceMetrics(id) {
+    try {
+      const response = await api.post(`/attendance/${id}/recalculate`);
+      return response.data;
+    } catch (error) {
+      console.error("Error recalculating attendance metrics:", error);
+      throw error;
+    }
+  },
+
+  /**
+   * Bulk recalculate metrics for attendance records in a date range
+   */
+  async bulkRecalculateMetrics(startDate, endDate, driverId = null, vehicleId = null) {
+    try {
+      const data = { startDate, endDate };
+      if (driverId) data.driverId = driverId;
+      if (vehicleId) data.vehicleId = vehicleId;
+      
+      const response = await api.post('/attendance/bulk-recalculate', data);
+      return response.data;
+    } catch (error) {
+      console.error("Error bulk recalculating metrics:", error);
+      throw error;
+    }
+  },
 };
 
 export default attendanceService;
