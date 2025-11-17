@@ -1,0 +1,57 @@
+@startuml Vehicle Status State Machine
+
+title Vehicle Status State Machine
+
+[*] --> AVAILABLE : Vehicle registered/activated
+AVAILABLE --> IN_USE : Driver assigned to vehicle\n(vehicle dispatched)
+IN_USE --> AVAILABLE : Driver unassigned\n(vehicle returned)
+AVAILABLE --> MAINTENANCE : Maintenance scheduled\n(set status to MAINTENANCE)
+MAINTENANCE --> AVAILABLE : Maintenance completed\n(set status to AVAILABLE)
+MAINTENANCE --> OUT_OF_SERVICE : Major repair needed\n(set status to OUT_OF_SERVICE)
+OUT_OF_SERVICE --> MAINTENANCE : Repair scheduled\n(set status to MAINTENANCE)
+AVAILABLE --> OUT_OF_SERVICE : Vehicle decommissioned\n(set status to OUT_OF_SERVICE)
+IN_USE --> OUT_OF_SERVICE : Vehicle breakdown\n(set status to OUT_OF_SERVICE)
+MAINTENANCE --> INACTIVE : Vehicle permanently removed\n(set status to INACTIVE)
+OUT_OF_SERVICE --> INACTIVE : Vehicle permanently removed\n(set status to INACTIVE)
+AVAILABLE --> INACTIVE : Vehicle permanently removed\n(set status to INACTIVE)
+IN_USE --> INACTIVE : Vehicle permanently removed\n(set status to INACTIVE)
+
+note right of AVAILABLE
+  - Vehicle ready for assignment
+  - Can be assigned to drivers
+  - Appears in available vehicle lists
+end note
+
+note right of IN_USE
+  - Vehicle assigned to driver
+  - Currently in operation
+  - Cannot be assigned to another driver
+end note
+
+note right of MAINTENANCE
+  - Vehicle undergoing scheduled maintenance
+  - Not available for assignment
+  - Regular maintenance activities
+end note
+
+note right of OUT_OF_SERVICE
+  - Vehicle needs major repair
+  - Unavailable for extended period
+  - May require external service
+end note
+
+note right of INACTIVE
+  - Vehicle permanently removed
+  - No longer in fleet
+  - Historical records only
+end note
+
+note bottom
+  State transitions based on:
+  - vehicles.ts controller logic
+  - VehicleStatus enum values
+  - Driver assignment/unassignment
+  - Maintenance scheduling
+end note
+
+@enduml

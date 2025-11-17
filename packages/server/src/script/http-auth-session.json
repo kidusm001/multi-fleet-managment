@@ -1,0 +1,21 @@
+{
+  "cookie": "better-auth.session_token=MsWcJaim8xu4DgzEkoUXWVm9TjyH4kS6.oatKKgIpopFP%2FI9v9e9PFBxe18h83tTN%2B%2FYfNtSpZP0%3D",
+  "fullCookies": [
+    "better-auth.session_token=MsWcJaim8xu4DgzEkoUXWVm9TjyH4kS6.oatKKgIpopFP%2FI9v9e9PFBxe18h83tTN%2B%2FYfNtSpZP0%3D; Max-Age=604800; Path=/; HttpOnly; SameSite=Lax"
+  ],
+  "responseData": {
+    "redirect": false,
+    "token": "MsWcJaim8xu4DgzEkoUXWVm9TjyH4kS6",
+    "user": {
+      "id": "tni1A3xOUmmdLQTnPLrpicM2SdbXpnVq",
+      "email": "robert.sterling@fleetmanager.com",
+      "name": "Robert Sterling",
+      "image": null,
+      "emailVerified": false,
+      "createdAt": "2025-09-04T14:52:25.159Z",
+      "updatedAt": "2025-09-04T14:52:25.159Z"
+    }
+  },
+  "timestamp": "2025-09-04T14:57:03.420Z",
+  "email": "robert.sterling@fleetmanager.com"
+}

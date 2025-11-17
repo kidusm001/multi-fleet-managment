@@ -1,0 +1,173 @@
+Detailed Algorithm Explanation: assign_routes.py
+============================================
+
+1. Core Functions and Their Algorithms
+------------------------------------
+
+calculate_bearing(pointA, pointB):
+--------------------------------
+Purpose: Calculates the compass bearing between two geographic points
+Algorithm:
+- Converts latitude/longitude to radians
+- Uses spherical trigonometry formula:
+  bearing = atan2(sin(Δlong)cos(lat2), 
+                  cos(lat1)sin(lat2) - sin(lat1)cos(lat2)cos(Δlong))
+- Normalizes result to 0-360 degrees
+Importance: Helps optimize route straightness
+
+calculate_distance_and_bearing_matrix(locations):
+----------------------------------------------
+Purpose: Creates distance and bearing lookup tables
+Algorithm:
+1. Iterates through all location pairs
+2. For each pair:
+   - Calculates haversine distance
+   - Calculates bearing
+3. Creates two matrices:
+   - Distance matrix[i][j] = distance from point i to j
+   - Bearing matrix[i][j] = bearing from point i to j
+Complexity: O(n²) where n is number of locations
+
+assign_employees_to_shuttles():
+-----------------------------
+Purpose: Core routing optimization algorithm
+Components:
+
+1. Problem Setup:
+   - Creates routing index manager for n locations and k shuttles
+   - Initializes routing model
+   - Defines start point (HQ = node 0)
+
+2. Cost Function (combined_cost_callback):
+   - Combines distance and bearing penalties
+   - Formula: cost = distance * 1000 + bearing_penalty
+   - bearing_penalty = 10 (configurable)
+   - Higher penalties discourage sharp turns
+
+3. Capacity Constraints:
+   - HQ demand = 0
+   - Each employee location demand = 1
+   - Enforces shuttle capacity limits
+   - Uses OR-Tools Dimension feature
+
+4. Solver Configuration:
+   - First solution: PATH_CHEAPEST_ARC
+   - Optimization: GUIDED_LOCAL_SEARCH
+   - Time limit: 30 seconds
+   - Focuses on finding feasible solution quickly
+
+verify_unique_assignments():
+--------------------------
+Purpose: Validates route solution
+Checks:
+1. No duplicate assignments
+2. All employees assigned
+3. Capacity constraints met
+4. Route completeness
+
+2. Key Algorithmic Components
+---------------------------
+
+Distance Calculation (Haversine):
+-------------------------------
+- Accounts for Earth's spherical shape
+- More accurate than straight-line distance
+- Formula considers:
+  * Latitude differences
+  * Longitude differences
+  * Earth's radius
+  * Great circle distance
+
+Route Optimization:
+-----------------
+1. Initial Solution:
+   - Greedy algorithm (PATH_CHEAPEST_ARC)
+   - Builds routes by selecting nearest unassigned points
+   - Respects capacity constraints
+
+2. Solution Improvement:
+   - Guided Local Search metaheuristic
+   - Iteratively improves initial solution
+   - Escape local optima through penalties
+   - Balances exploration and exploitation
+
+3. Optimization Objectives:
+   - Minimize total distance
+   - Minimize sharp turns
+   - Balance load across shuttles
+   - Ensure feasibility
+
+3. Constraints and Considerations
+-------------------------------
+
+Hard Constraints:
+---------------
+1. Shuttle Capacity
+   - Cannot exceed defined capacity
+   - Must pick up exactly one employee per stop
+
+2. Assignment Constraints
+   - Each employee assigned exactly once
+   - All employees must be assigned
+   - All routes start/end at HQ
+
+Soft Constraints:
+---------------
+1. Route Efficiency
+   - Minimize total distance
+   - Prefer straighter routes
+
+2. Load Balancing
+   - Implicit through cost function
+   - No explicit balance enforcement
+
+4. Performance Optimizations
+--------------------------
+
+1. Matrix Pre-calculation
+   - Compute distances/bearings once
+   - Avoid repeated calculations
+   - Trade memory for speed
+
+2. Time Management
+   - 30-second solver timeout
+   - Ensures practical response times
+   - Returns best solution found
+
+3. Memory Efficiency
+   - Uses integer costs
+   - Efficient data structures
+   - Minimal memory overhead
+
+5. Error Handling
+----------------
+
+1. Input Validation
+   - JSON file format checking
+   - Coordinate validation
+   - Capacity validation
+
+2. Solution Verification
+   - Route feasibility checks
+   - Assignment completeness
+   - Capacity constraint validation
+
+6. Limitations and Trade-offs
+---------------------------
+
+1. Time vs. Optimality
+   - May not find global optimum
+   - Focuses on good feasible solutions
+   - 30-second timeout is practical limit
+
+2. Scale Limitations
+   - O(n²) memory for matrices
+   - Performance degrades with size
+   - Practical limit around 100-200 locations
+
+3. Geographic Assumptions
+   - Assumes direct paths possible
+   - No traffic consideration
+   - No road network constraints
+
+This algorithm provides a practical solution to the shuttle routing problem while balancing multiple competing objectives and constraints. The implementation focuses on finding good feasible solutions quickly rather than guaranteed optimal solutions, which would be computationally intractable for real-world sized problems. 

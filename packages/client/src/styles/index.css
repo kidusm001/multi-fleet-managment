@@ -1,0 +1,468 @@
+/* Accessibility: Skip link (visible on focus) */
+.skip-to-content {
+  position: absolute;
+  left: -9999px;
+  top: auto;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+.skip-to-content:focus {
+  position: fixed;
+  left: 1rem;
+  top: 1rem;
+  width: auto;
+  height: auto;
+  padding: 0.5rem 0.75rem;
+  background: #111827;
+  color: #fff;
+  border-radius: 0.375rem;
+  z-index: 10000;
+}
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Primary Colors */
+  --primary: #4272ff;
+  --primary-dark: #2952d9;
+  --primary-light: #6b8fff;
+  --primary-lighter: #e6ecff;
+
+  /* Secondary Colors */
+  --secondary: #6a89a7;
+  --secondary-dark: #4f6d8a;
+  --secondary-light: #8ba3bc;
+  --secondary-lighter: #e9eff4;
+
+  /* Accent Colors */
+  --accent: #ff7e42;
+  --accent-dark: #e65c1c;
+  --accent-light: #ffa375;
+  --accent-lighter: #fff0e8;
+
+  /* Success Colors */
+  --success: #16a34a;
+  --success-dark: #15803d;
+  --success-light: #22c55e;
+  --success-lighter: #dcfce7;
+
+  /* Warning Colors */
+  --warning: #fbbf24;
+  --warning-dark: #d97706;
+  --warning-light: #fcd34d;
+  --warning-lighter: #fef3c7;
+
+  /* Error Colors */
+  --error: #dc2626;
+  --error-dark: #b91c1c;
+  --error-light: #ef4444;
+  --error-lighter: #fee2e2;
+
+  /* Neutral Colors */
+  --gray-50: #f8fafc;
+  --gray-100: #f1f5f9;
+  --gray-200: #e2e8f0;
+  --gray-300: #cbd5e1;
+  --gray-400: #94a3b8;
+  --gray-500: #64748b;
+  --gray-600: #475569;
+  --gray-700: #334155;
+  --gray-800: #1e293b;
+  --gray-900: #0f172a;
+
+  /* Light Mode Colors */
+  --background: #ffffff;
+  --text-primary: #27374d;
+  --text-secondary: #64748b;
+  --text-muted: #94a3b8;
+  --subtle: #bdddfc;
+  --subtle-hover: #a3cffb;
+  --subtle-active: #89c1fa;
+
+  /* Component Colors */
+  --card-background: #ffffff;
+  --input-background: #ffffff;
+  --input-border: #e2e8f0;
+  --button-hover: #3461e6;
+  --divider: #e5e7eb;
+
+  /* Interactive States */
+  --hover-overlay: rgba(66, 114, 255, 0.1);
+  --active-overlay: rgba(66, 114, 255, 0.2);
+  --disabled-opacity: 0.5;
+
+  /* Shadows */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+/* Dark mode overrides */
+.dark {
+  --background: #0f172a;
+  --text-primary: #f8fafc;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
+  --card-background: #1e293b;
+  --input-background: #1e293b;
+  --input-border: #334155;
+  --button-hover: #5483ff;
+  --divider: #334155;
+  --subtle: #384959;
+  --subtle-hover: #465b6f;
+  --subtle-active: #546b82;
+}
+
+@layer base {
+  html {
+    @apply transition-colors duration-300;
+  }
+
+  body {
+    @apply bg-[var(--background)] text-[var(--text-primary)] transition-colors duration-300;
+  }
+
+  /* Typography */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  p,
+  span,
+  div:not([contenteditable="true"]),
+  label,
+  th,
+  td {
+    cursor: default;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  /* Interactive Elements */
+  button,
+  a {
+    @apply transition-colors duration-200;
+  }
+
+  /* Form Elements */
+  input,
+  select,
+  textarea {
+    @apply bg-[var(--input-background)] border-[var(--input-border)];
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-[var(--card-background)] border-[var(--divider)];
+  }
+
+  .button-primary {
+    @apply bg-[var(--primary)] text-white hover:bg-[var(--button-hover)];
+  }
+
+  .button-secondary {
+    @apply bg-[var(--secondary)] text-white hover:opacity-90;
+  }
+
+  .button-accent {
+    @apply bg-[var(--accent)] text-white hover:opacity-90;
+  }
+}
+
+/* Transition Smoothing */
+* {
+  transition: background-color 0.3s ease, color 0.3s ease,
+    border-color 0.3s ease;
+}
+
+body {
+  margin: 0 !important;
+  padding: 0 !important;
+  min-height: 100vh;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
+    "Ubuntu", "Cantarell", "Fira Sans", "Droid Sans", "Helvetica Neue",
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color: var(--text-primary);
+  background-color: var(--background);
+}
+
+.app-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  position: relative;
+}
+
+.main-content {
+  display: flex;
+  flex: 1 0 auto; /* Changed to flex-grow: 1, flex-shrink: 0 */
+  margin-top: 60px;
+  min-height: calc(100vh - 60px);
+}
+
+.content-area {
+  flex: 1;
+  padding: 1rem 0;
+  overflow-y: auto;
+  padding-left: 0;
+  min-height: calc(
+    100vh - 60px - 4rem
+  ); /* Account for top margin and padding */
+}
+
+/* Ensure footer stays at bottom */
+footer {
+  margin-top: auto;
+  flex-shrink: 0;
+  position: relative;
+  width: 100%;
+  z-index: 10;
+}
+
+/* Specifically target route details panel */
+.route-details-panel {
+  z-index: 9999 !important;
+}
+
+.route-details-panel.fixed {
+  position: absolute !important;
+  bottom: 1.5rem !important;
+  right: 1.5rem !important;
+}
+/* Modal Styles */
+#modal-root {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 99999;
+  pointer-events: none;
+}
+
+#modal-root > * {
+  pointer-events: auto;
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: grid;
+  place-items: center;
+  background-color: rgba(0, 0, 0, 0.5);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  padding: 2rem;
+}
+
+.modal-content {
+  position: relative;
+  width: 90vw;
+  max-width: 1200px;
+  max-height: 90vh;
+  overflow: auto;
+  border-radius: 1.5rem;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+}
+
+/* Modal close button */
+.modal-close-button {
+  position: absolute !important;
+  top: 1.5rem !important;
+  right: 1.5rem !important;
+  z-index: 50 !important;
+  width: 2.25rem !important;
+  height: 2.25rem !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 9999px !important;
+  background-color: var(--background) !important;
+  border: 1px solid var(--border) !important;
+  color: var(--text-muted) !important;
+  transition: all 0.2s !important;
+}
+
+.modal-close-button:hover {
+  background-color: var(--gray-100) !important;
+  color: var(--text-primary) !important;
+}
+
+.dark .modal-close-button {
+  background-color: var(--gray-800) !important;
+}
+
+.dark .modal-close-button:hover {
+  background-color: var(--gray-700) !important;
+}
+
+/* Light mode */
+.modal-content {
+  background-color: white;
+  border: 1px solid var(--gray-200);
+}
+
+/* Dark mode */
+.dark .modal-overlay {
+  background-color: rgba(0, 0, 0, 0.7);
+}
+
+.dark .modal-content {
+  background-color: var(--card-background);
+  border: 1px solid var(--border);
+}
+
+/* Route Card Styles */
+.route-card {
+  @apply relative p-6 rounded-2xl border border-border transition-all duration-200;
+  @apply bg-card hover:bg-accent/5 hover:-translate-y-0.5 hover:shadow-lg;
+}
+
+.route-card.selected {
+  @apply border-2 border-primary bg-accent/5;
+}
+
+.route-card .selection-indicator {
+  @apply absolute top-4 right-4 w-6 h-6 rounded-full flex items-center justify-center;
+  @apply text-primary opacity-0 transition-opacity;
+}
+
+.route-card.selected .selection-indicator {
+  @apply opacity-100;
+}
+
+.route-card-header {
+  @apply flex items-start gap-4 mb-4;
+}
+
+.route-icon-wrapper {
+  @apply p-3 rounded-xl bg-primary/10;
+}
+
+.route-info-wrapper {
+  @apply flex-1;
+}
+
+.route-name {
+  @apply text-lg font-semibold mb-1;
+}
+
+.route-subtitle {
+  @apply text-sm text-muted-foreground;
+}
+
+.capacity-indicator {
+  @apply px-4 py-1.5 rounded-full border border-border bg-background/50;
+  @apply text-sm font-medium flex items-center gap-2;
+}
+
+/* Progress Bar */
+.progress-bar {
+  @apply h-1.5 bg-muted rounded-full mb-4 overflow-hidden;
+}
+
+.progress-bar-fill {
+  @apply h-full bg-primary rounded-full transition-all duration-300;
+}
+
+/* Route Details */
+.route-details-grid {
+  @apply grid grid-cols-2 gap-4 mb-4;
+}
+
+.detail-item {
+  @apply flex items-center gap-2 text-sm;
+}
+
+.detail-item-icon {
+  @apply w-4 h-4 text-muted-foreground;
+}
+
+.detail-item-label {
+  @apply text-muted-foreground;
+}
+
+.detail-item-value {
+  @apply font-medium;
+}
+
+/* Stops List */
+.stops-list {
+  @apply mt-4 pt-4 border-t border-border;
+}
+
+.stops-header {
+  @apply flex items-center justify-between mb-3;
+}
+
+.stops-title {
+  @apply flex items-center gap-2 text-sm font-medium;
+}
+
+.stops-grid {
+  @apply grid grid-cols-2 gap-2;
+}
+
+.stop-badge {
+  @apply px-3 py-1.5 rounded-lg bg-muted/50 text-xs flex items-center gap-1.5;
+  @apply border border-border/50;
+}
+
+/* Map Container */
+.map-container {
+  @apply absolute inset-0 rounded-2xl overflow-hidden border border-border;
+}
+
+/* Button Styles */
+.button-primary {
+  @apply px-6 py-2.5 rounded-xl bg-primary text-primary-foreground font-medium;
+  @apply flex items-center gap-2 transition-colors hover:bg-primary/90;
+  @apply disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+/* Dark Mode Overrides */
+.dark .route-card {
+  @apply hover:bg-primary/5;
+}
+
+.dark .route-card.selected {
+  @apply bg-primary/10;
+}
+
+.dark .capacity-indicator {
+  @apply bg-background/10;
+}
+
+.dark .stop-badge {
+  @apply bg-background/10;
+}
+
+/* Ensure modal is always centered */
+@media (min-height: 800px) {
+  .modal-content {
+    margin: auto;
+  }
+}
+
+/* Prevent background scroll when modal is open */
+body:has(.modal-overlay) {
+  overflow: hidden !important;
+  padding-right: var(--scrollbar-width, 0px);
+}
+
+/* Global styles or CSS module */
+.dropdown-menu-item-dark-hover:hover {
+  color: black; /* Or your desired dark theme text color */
+}
+
+.dropdown-menu-item-light-hover:hover {
+  color: black; /* Or your desired light theme text color */
+}

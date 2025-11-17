@@ -1,0 +1,37 @@
+@startuml Route Lifecycle State Machine
+
+title Route Lifecycle State Machine
+
+[*] --> ACTIVE : Route created/activated
+ACTIVE --> INACTIVE : Admin deactivates route\n(set status to INACTIVE)
+INACTIVE --> ACTIVE : Admin reactivates route\n(set status to ACTIVE)
+ACTIVE --> CANCELLED : Route cancelled\n(set status to CANCELLED)
+INACTIVE --> CANCELLED : Route cancelled\n(set status to CANCELLED)
+
+note right of ACTIVE
+  - Route is available for vehicle assignments
+  - Drivers can be assigned to active routes
+  - Route appears in active route lists
+end note
+
+note right of INACTIVE
+  - Route is temporarily disabled
+  - No new assignments allowed
+  - Existing assignments may be affected
+  - Route can be reactivated
+end note
+
+note right of CANCELLED
+  - Route is permanently cancelled
+  - No further use possible
+  - May be soft-deleted later
+end note
+
+note bottom
+  State transitions based on:
+  - routes.ts controller logic
+  - RouteStatus enum values
+  - Business rules in route management
+end note
+
+@enduml

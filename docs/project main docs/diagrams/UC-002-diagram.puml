@@ -1,0 +1,67 @@
+@startuml UC-002 Driver's Daily Workflow & Live Updates
+!theme plain
+skinparam backgroundColor #FEFEFE
+skinparam actor {
+  BackgroundColor #E3F2FD
+  BorderColor #1976D2
+  FontColor #0D47A1
+}
+skinparam usecase {
+  BackgroundColor #E8F5E8
+  BorderColor #388E3C
+  FontColor #1B5E20
+}
+skinparam note {
+  BackgroundColor #FFF3E0
+  BorderColor #F57C00
+  FontColor #E65100
+}
+skinparam arrow {
+  Color #424242
+}
+
+' --- Actors ---
+actor "Driver" as DR #E3F2FD
+actor "Fleet Manager" as FM #E3F2FD
+
+rectangle "UC-002: Driver's Daily Workflow & Live Updates" as UC002 {
+  usecase "Log into Driver Portal" as UC1
+  usecase "View Assigned Route\n(Map & Stop Order)" as UC2
+  usecase "Review Route for\nNavigation & Planning" as UC3
+  usecase "Receive Live Route Update\n(if modified mid-shift)" as EXT1 #FFEBEE
+}
+
+' --- Vertical flow ---
+DR -down-> UC1
+UC1 -down-> UC2
+UC2 -down-> UC3
+
+' --- Extension ---
+EXT1 ..> UC2 : extends (live update)
+
+' --- Manager pushes updates ---
+FM --> EXT1 : modifies route
+
+' --- Preconditions & Validation ---
+note right of UC1
+  **Precondition:**  
+  - Dispatched route exists for the driver's shift.
+end note
+
+note right of UC2
+  **Validation Criteria:**  
+  - System verifies route is published  
+  - Route visible to assigned driver
+end note
+
+note as N1
+  **Goal:** Provide drivers with a read-only interface  
+  for viewing their assigned routes.  
+  **Description:** Driver receives route details (map, stop order)  
+  and uses them during shift. Updates are pushed instantly  
+  if the Fleet Manager changes the route.
+end note
+
+DR .. N1
+
+@enduml

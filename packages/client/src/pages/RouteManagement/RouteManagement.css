@@ -1,0 +1,137 @@
+.route-management {
+  padding: 2rem;
+}
+
+.route-header {
+  margin-bottom: 2rem;
+}
+
+.route-title {
+  font-size: 1.875rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  background: linear-gradient(to right, var(--primary), var(--secondary));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.route-subtitle {
+  color: var(--secondary);
+  margin-top: 0.5rem;
+}
+
+.route-grid {
+  display: grid;
+  grid-template-columns: 350px 1fr;
+  gap: 2rem;
+  background-color: var(--card-background);
+  border-radius: 1.5rem;
+  padding: 2rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.route-controls {
+  background-color: var(--card-background);
+  border: 1px solid var(--divider);
+  border-radius: 1rem;
+  padding: 1.5rem;
+}
+
+.route-data {
+  background-color: var(--card-background);
+  border: 1px solid var(--divider);
+  border-radius: 1rem;
+  padding: 1.5rem;
+}
+
+.route-map {
+  margin-top: 1.5rem;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  border: 1px solid var(--divider);
+}
+
+/* Custom Switch Styles */
+.container {
+  width: auto;
+  margin-left: auto;
+  padding-left: 1rem;
+  padding-right: 0;
+  min-width: 80%;
+}
+
+.tabs {
+  display: flex;
+  position: relative;
+  background-color: var(--card-background);
+  box-shadow: 0 0 1px 0 rgba(var(--primary-rgb), 0.15),
+    0 6px 12px 0 rgba(var(--primary-rgb), 0.15);
+  padding: 0.5rem;
+  border-radius: 99px;
+  border: 1px solid var(--divider);
+  width: 350px;
+  margin-left: auto;
+  z-index: 0;
+}
+
+.tabs * {
+  z-index: 2;
+}
+
+.container input[type="radio"] {
+  display: none;
+}
+
+.tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 28px;
+  width: 120px; /* Adjust width for each tab (450px / 3) */
+  font-size: 0.8rem;
+  color: var(--text-primary);
+  font-weight: 500;
+  border-radius: 99px;
+  cursor: pointer;
+  transition: color 0.15s ease-in;
+}
+
+.container input[type="radio"]:checked + label {
+  color: var(--primary);
+}
+
+.glider {
+  position: absolute;
+  display: flex;
+  height: 28px;
+  width: 100px;
+  background-color: var(--hover-overlay);
+  z-index: 1;
+  border-radius: 99px;
+  transition: 0.25s ease-out;
+  left: 10px;
+}
+
+.container .tabs input[id="radio-1"]:checked ~ .glider {
+  transform: translateX(5px);
+}
+
+.container .tabs input[id="radio-2"]:checked ~ .glider {
+  transform: translateX(115px);
+}
+
+.container .tabs input[id="radio-3"]:checked ~ .glider {
+  transform: translateX(225px);
+}
+
+@media (max-width: 700px) {
+  .tabs {
+    transform: scale(0.9);
+  }
+}
+
+@media (max-width: 1024px) {
+  .route-grid {
+    grid-template-columns: 1fr;
+  }
+}

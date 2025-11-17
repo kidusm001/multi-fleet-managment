@@ -1,0 +1,5 @@
+.tableHeader {
+  /* ... existing styles ... */
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+} 

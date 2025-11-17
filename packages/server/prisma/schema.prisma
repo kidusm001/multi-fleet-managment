@@ -1,0 +1,981 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Location {
+  id             String       @id @default(cuid())
+  address        String?
+  latitude       Float?
+  longitude      Float?
+  type           LocationType @default(BRANCH)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organizationId String
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  employees    Employee[]   @relation("EmployeeLocation")
+  routes       Route[]      @relation("RouteLocation")
+  sourceRoutes Route[]      @relation("RouteSource")
+
+  @@map("locations")
+}
+
+model Department {
+  id             String   @id @default(cuid())
+  name           String
+  organizationId String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  employees    Employee[]
+
+  @@index([organizationId])
+  @@map("departments")
+}
+
+model Shift {
+  id             String   @id @default(cuid())
+  name           String
+  startTime      DateTime
+  endTime        DateTime
+  timeZone       String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  organizationId String
+
+  employees           Employee[]
+  routes              Route[]
+  organization        Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicleAvailability VehicleAvailability[]
+  shuttleRequests     ShuttleRequest[]
+
+  @@index([organizationId])
+  @@map("shifts")
+}
+
+model Employee {
+  id             String    @id @default(cuid())
+  name           String
+  location       String?
+  assigned       Boolean   @default(false)
+  departmentId   String
+  shiftId        String
+  stopId         String?   @unique
+  organizationId String
+  userId         String
+  locationId     String?
+  deleted        Boolean   @default(false)
+  deletedAt      DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  department      Department       @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  shift           Shift            @relation(fields: [shiftId], references: [id], onDelete: Cascade)
+  stop            Stop?            @relation(fields: [stopId], references: [id], onDelete: SetNull)
+  workLocation    Location?        @relation("EmployeeLocation", fields: [locationId], references: [id], onDelete: SetNull)
+  shuttleRequests ShuttleRequest[]
+
+  @@index([assigned])
+  @@index([organizationId])
+  @@index([departmentId])
+  @@index([shiftId])
+  @@index([deleted, deletedAt])
+  @@map("employees")
+}
+
+model Driver {
+  id              String       @id @default(cuid())
+  name            String
+  email           String?
+  licenseNumber   String
+  phoneNumber     String?
+  status          DriverStatus @default(ACTIVE) // active, off-duty, on-break
+  experienceYears Int?
+  rating          Float?       @default(0.0)
+  isActive        Boolean      @default(true)
+  organizationId  String
+  deleted         Boolean      @default(false)
+  deletedAt       DateTime?
+
+  baseSalary   Decimal? @db.Decimal(10, 2)
+  hourlyRate   Decimal? @db.Decimal(10, 2)
+  overtimeRate Float?   @default(1.5)
+
+  bankAccountNumber String?
+  bankName          String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization        Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicleAvailability VehicleAvailability[]
+  payrollReports      PayrollReport[]
+  assignedVehicle     Vehicle?              @relation("VehicleDriver")
+  attendanceRecords   AttendanceRecord[]
+  payrollEntries      PayrollEntry[]
+  routeCompletions    RouteCompletion[]
+
+  @@unique([organizationId, email])
+  @@unique([organizationId, licenseNumber])
+  @@unique([organizationId, phoneNumber])
+  @@index([organizationId])
+  @@index([status])
+  @@index([isActive])
+  @@index([deleted, deletedAt])
+  @@map("drivers")
+}
+
+model VehicleCategory {
+  id              String           @id @default(cuid())
+  name            String
+  capacity        Int              @default(0)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  organizationId  String
+  organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicleRequests VehicleRequest[]
+  vehicles        Vehicle[]
+
+  @@index([organizationId])
+  @@map("vehicle_categories")
+}
+
+model ServiceProvider {
+  id            String  @id @default(cuid())
+  companyName   String
+  contactPerson String
+  email         String
+  phoneNumber   String
+  address       String?
+
+  monthlyRate Decimal? @db.Decimal(10, 2)
+  perKmRate   Decimal? @db.Decimal(10, 2)
+  perTripRate Decimal? @db.Decimal(10, 2)
+
+  bankAccountNumber String?
+  bankName          String?
+
+  isActive       Boolean @default(true)
+  organizationId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicles       Vehicle[]
+  payrollEntries PayrollEntry[]
+
+  @@unique([organizationId, email])
+  @@index([organizationId])
+  @@index([isActive])
+  @@map("service_providers")
+}
+
+model Vehicle {
+  id                String        @id @default(cuid())
+  plateNumber       String        @unique
+  name              String?
+  model             String
+  make              String?
+  type              VehicleType   @default(IN_HOUSE) // in-house or outsourced
+  vendor            String? // For outsourced vehicles
+  capacity          Int
+  year              Int?
+  status            VehicleStatus @default(AVAILABLE)
+  lastMaintenance   DateTime?
+  nextMaintenance   DateTime?
+  dailyRate         Decimal?      @db.Decimal(10, 2)
+  isActive          Boolean       @default(true)
+  categoryId        String?
+  driverId          String?       @unique // Assigned driver (one-to-one)
+  serviceProviderId String? // For service provider vehicles
+  organizationId    String
+  deleted           Boolean       @default(false)
+  deletedAt         DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  organization        Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  category            VehicleCategory?      @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  driver              Driver?               @relation("VehicleDriver", fields: [driverId], references: [id], onDelete: SetNull)
+  serviceProvider     ServiceProvider?      @relation(fields: [serviceProviderId], references: [id], onDelete: SetNull)
+  vehicleAvailability VehicleAvailability[]
+  payrollReports      PayrollReport[]
+  routes              Route[]
+  attendanceRecords   AttendanceRecord[]
+  payrollEntries      PayrollEntry[]
+  routeCompletions    RouteCompletion[]
+
+  // Indexes
+  // For filtering by vehicle status
+  // For filtering in-house vs outsourced
+  @@index([organizationId])
+  @@index([categoryId])
+  @@index([driverId])
+  @@index([serviceProviderId])
+  @@index([status])
+  @@index([type])
+  @@index([isActive])
+  @@index([deleted, deletedAt])
+  @@map("vehicles")
+}
+
+model Route {
+  id             String      @id @default(cuid())
+  name           String
+  description    String?
+  vehicleId      String?
+  shiftId        String?
+  date           DateTime?
+  startTime      DateTime?
+  endTime        DateTime?
+  totalDistance  Float?
+  totalTime      Float?
+  status         RouteStatus @default(ACTIVE)
+  isActive       Boolean     @default(true)
+  organizationId String
+  locationId     String?
+  sourceId       String?
+  deleted        Boolean     @default(false)
+  deletedAt      DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  organization        Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle             Vehicle?              @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  shift               Shift?                @relation(fields: [shiftId], references: [id], onDelete: SetNull)
+  source              Location?             @relation("RouteSource", fields: [sourceId], references: [id], onDelete: SetNull)
+  location            Location?             @relation("RouteLocation", fields: [locationId], references: [id], onDelete: SetNull)
+  stops               Stop[]
+  vehicleAvailability VehicleAvailability[]
+
+  // Indexes
+  @@index([organizationId])
+  @@index([vehicleId])
+  @@index([shiftId])
+  @@index([locationId])
+  @@index([sourceId])
+  @@map("routes")
+}
+
+model Stop {
+  id                   String    @id @default(cuid())
+  name                 String
+  latitude             Float?
+  longitude            Float?
+  address              String?
+  sequence             Int?      @default(0)
+  order                Int       @default(0)
+  routeId              String?
+  organizationId       String
+  estimatedArrivalTime DateTime?
+  completedAt          DateTime?
+  notes                String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  route        Route?       @relation(fields: [routeId], references: [id], onDelete: SetNull)
+  employee     Employee?
+
+  @@index([organizationId])
+  @@index([routeId])
+  @@map("stops")
+}
+
+model RouteCompletion {
+  id             String   @id @default(cuid())
+  routeId        String
+  driverId       String
+  vehicleId      String?
+  organizationId String
+  completedAt    DateTime @default(now())
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  driver       Driver       @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle?     @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId])
+  @@index([routeId])
+  @@index([driverId])
+  @@index([completedAt])
+  @@map("route_completions")
+}
+
+model VehicleAvailability {
+  id             String       @id @default(cuid())
+  date           DateTime
+  startTime      DateTime
+  endTime        DateTime
+  vehicleId      String
+  driverId       String
+  routeId        String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  available      Boolean      @default(true)
+  shiftId        String?
+  organizationId String
+  driver         Driver       @relation(fields: [driverId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  route          Route?       @relation(fields: [routeId], references: [id])
+  shift          Shift?       @relation(fields: [shiftId], references: [id])
+  vehicle        Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@unique([vehicleId, shiftId, date])
+  @@index([organizationId])
+  @@index([vehicleId])
+  @@index([driverId])
+  @@index([routeId])
+  @@index([shiftId])
+  @@index([date])
+  @@map("vehicle_availability")
+}
+
+model PayrollReport {
+  id              String        @id @default(cuid())
+  vehicleId       String?
+  driverId        String?
+  workedDays      Int?
+  dailyRate       Decimal?      @db.Decimal(10, 2)
+  totalPayment    Decimal       @db.Decimal(10, 2)
+  payDate         DateTime?
+  period          String // e.g., "2024-01", "Q1-2024"
+  month           String?
+  year            Int?
+  status          PaymentStatus @default(PENDING)
+  maintenanceCost Decimal?      @db.Decimal(10, 2)
+  insuranceCost   Decimal?      @db.Decimal(10, 2)
+  otherExpenses   Decimal?      @db.Decimal(10, 2)
+  efficiency      Int           @default(0) // Efficiency percentage
+  utilizationRate Int           @default(0) // Utilization rate percentage
+  totalAmount     Float?
+  hoursWorked     Float?
+  overtimeHours   Float?
+  deductions      Float?
+  bonuses         Float?
+  organizationId  String
+  generatedAt     DateTime      @default(now())
+  paidAt          DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  vehicle      Vehicle?     @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  driver       Driver?      @relation(fields: [driverId], references: [id], onDelete: SetNull)
+
+  // Indexes
+  @@index([organizationId])
+  @@index([vehicleId])
+  @@index([driverId])
+  @@index([period])
+  @@map("payroll_reports")
+}
+
+model AttendanceRecord {
+  id        String   @id @default(cuid())
+  driverId  String? // Only for in-house drivers
+  vehicleId String
+  date      DateTime
+
+  // Work metrics
+  hoursWorked    Float?
+  tripsCompleted Int    @default(0)
+  kmsCovered     Float?
+
+  // Expenses
+  fuelCost Decimal? @db.Decimal(8, 2)
+  tollCost Decimal? @db.Decimal(8, 2)
+
+  organizationId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  driver       Driver?      @relation(fields: [driverId], references: [id], onDelete: SetNull)
+  vehicle      Vehicle      @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([driverId])
+  @@index([vehicleId])
+  @@index([date])
+  @@map("attendance_records")
+}
+
+model PayrollPeriod {
+  id          String        @id @default(cuid())
+  name        String // "January 2024"
+  startDate   DateTime
+  endDate     DateTime
+  totalAmount Decimal       @db.Decimal(12, 2)
+  status      PaymentStatus @default(PENDING)
+
+  organizationId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  payrollEntries PayrollEntry[]
+
+  @@index([organizationId])
+  @@index([startDate, endDate])
+  @@map("payroll_periods")
+}
+
+model PayrollEntry {
+  id              String @id @default(cuid())
+  payrollPeriodId String
+
+  // Recipient (only one should be filled)
+  driverId          String? // For employee salary
+  serviceProviderId String? // For service provider payment
+  vehicleId         String? // Vehicle involved
+
+  payrollType PayrollType
+  description String?
+
+  // Payment details
+  amount     Decimal @db.Decimal(10, 2)
+  bonuses    Decimal @default(0) @db.Decimal(10, 2)
+  deductions Decimal @default(0) @db.Decimal(10, 2)
+  netPay     Decimal @db.Decimal(10, 2)
+
+  // Work summary
+  daysWorked     Int    @default(0)
+  hoursWorked    Float?
+  tripsCompleted Int    @default(0)
+  kmsCovered     Float?
+
+  // Payment processing
+  paymentMethod PaymentMethod @default(BANK_TRANSFER)
+  status        PaymentStatus @default(PENDING)
+  paidAt        DateTime?
+
+  organizationId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  payrollPeriod   PayrollPeriod    @relation(fields: [payrollPeriodId], references: [id], onDelete: Cascade)
+  driver          Driver?          @relation(fields: [driverId], references: [id], onDelete: SetNull)
+  serviceProvider ServiceProvider? @relation(fields: [serviceProviderId], references: [id], onDelete: SetNull)
+  vehicle         Vehicle?         @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId])
+  @@index([payrollPeriodId])
+  @@index([driverId])
+  @@index([serviceProviderId])
+  @@index([payrollType])
+  @@map("payroll_entries")
+}
+
+model Notification {
+  id              String             @id @default(cuid())
+  title           String
+  message         String
+  type            NotificationType   @default(INFO)
+  status          NotificationStatus @default(UNREAD)
+  userId          String?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  fromRole        String?
+  localTime       String?
+  relatedEntityId String?
+  toRoles         String[]
+  organizationId  String
+  importance      ImportanceLevel    @default(MEDIUM)
+  seenBy          NotificationSeen[] @relation("NotificationSeenBy")
+  organization    Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([userId])
+  @@index([status])
+  @@index([type])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+model NotificationSeen {
+  id             String       @id @default(cuid())
+  userId         String
+  notificationId String
+  seenAt         DateTime     @default(now())
+  readAt         DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  notification   Notification @relation("NotificationSeenBy", fields: [notificationId], references: [id], onDelete: Cascade)
+  user           User         @relation("UserSeenNotifications", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, notificationId])
+  @@index([userId])
+  @@index([notificationId])
+  @@map("notification_seen")
+}
+
+model VehicleRequest {
+  id             String           @id @default(cuid())
+  name           String
+  licensePlate   String
+  categoryId     String?
+  dailyRate      Float?
+  capacity       Int
+  type           String
+  model          String
+  vendor         String?
+  status         ApprovalStatus   @default(PENDING)
+  requestedBy    String
+  approvedBy     String?
+  approvedAt     DateTime?
+  comment        String?
+  requestedAt    DateTime         @default(now())
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+  organizationId String
+  category       VehicleCategory? @relation(fields: [categoryId], references: [id])
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([categoryId])
+  @@map("vehicle_requests")
+}
+
+model ShuttleRequest {
+  id             String        @id @default(cuid())
+  employeeId     String
+  date           DateTime
+  shiftId        String
+  pickupLocation String
+  notes          String?
+  status         RequestStatus @default(PENDING)
+  organizationId String
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  employee     Employee     @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  shift        Shift        @relation(fields: [shiftId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId])
+  @@index([organizationId])
+  @@index([status])
+  @@map("shuttle_requests")
+}
+
+// ===========Better-Auth models=============
+
+model User {
+  id            String       @id
+  name          String
+  email         String
+  emailVerified Boolean
+  image         String?
+  createdAt     DateTime
+  updatedAt     DateTime
+  role          String?
+  banned        Boolean?
+  banReason     String?
+  banExpires    DateTime?
+  sessions      Session[]
+  accounts      Account[]
+  members       Member[]
+  invitations   Invitation[]
+  employees     Employee[] // Back-reference to Employee
+
+  isSubscribed Boolean?
+
+  seenNotifications NotificationSeen[] @relation("UserSeenNotifications")
+  aiConversations   AiConversation[]   @relation("UserConversations")
+
+  @@unique([email])
+  @@map("user")
+}
+
+model Session {
+  id                   String   @id
+  expiresAt            DateTime
+  token                String
+  createdAt            DateTime
+  updatedAt            DateTime
+  ipAddress            String?
+  userAgent            String?
+  userId               String
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  impersonatedBy       String?
+  activeOrganizationId String?
+
+  @@unique([token])
+  @@map("session")
+}
+
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime
+  updatedAt             DateTime
+
+  @@map("account")
+}
+
+model Organization {
+  id          String       @id
+  name        String
+  slug        String?
+  logo        String?
+  createdAt   DateTime
+  metadata    String?
+  members     Member[]
+  invitations Invitation[]
+
+  // Business model relations
+  departments         Department[]
+  shifts              Shift[]
+  employees           Employee[]
+  drivers             Driver[]
+  vehicleCategories   VehicleCategory[]
+  vehicles            Vehicle[]
+  routes              Route[]
+  stops               Stop[]
+  vehicleAvailability VehicleAvailability[]
+  payrollReports      PayrollReport[]
+  notifications       Notification[]
+  vehicleRequests     VehicleRequest[]
+  locations           Location[]
+  shuttleRequests     ShuttleRequest[]
+  routeCompletions    RouteCompletion[]
+
+  // Payroll relations
+  serviceProviders  ServiceProvider[]
+  attendanceRecords AttendanceRecord[]
+  payrollPeriods    PayrollPeriod[]
+  payrollEntries    PayrollEntry[]
+
+  // AI Assistant relations
+  aiConversations AiConversation[] @relation("OrgConversations")
+
+  @@unique([slug])
+  @@map("organization")
+}
+
+model Member {
+  id             String       @id
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role           String
+  createdAt      DateTime
+
+  @@map("member")
+}
+
+model Invitation {
+  id             String       @id
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  email          String
+  role           String?
+  status         String
+  expiresAt      DateTime
+  inviterId      String
+  user           User         @relation(fields: [inviterId], references: [id], onDelete: Cascade)
+
+  @@map("invitation")
+}
+
+model Verification {
+  id         String    @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime?
+  updatedAt  DateTime?
+
+  @@map("verification")
+}
+
+enum Role {
+  admin
+  manager
+  driver
+  superadmin
+  owner
+  employee
+}
+
+enum VehicleStatus {
+  AVAILABLE
+  IN_USE
+  MAINTENANCE
+  OUT_OF_SERVICE
+  INACTIVE
+}
+
+enum NotificationType {
+  INFO
+  WARNING
+  ALERT
+  SYSTEM
+  VEHICLE_CREATED
+  VEHICLE_UPDATED
+  VEHICLE_DELETED
+  VEHICLE_MAINTENANCE
+  VEHICLE_STATUS_CHANGED
+  VEHICLE_ASSIGNED
+  VEHICLE_UNASSIGNED
+  ROUTE_CREATED
+  ROUTE_UPDATED
+  ROUTE_DELETED
+  ROUTE_ACTIVATED
+  ROUTE_DEACTIVATED
+  ROUTE_ASSIGNED
+  ROUTE_UNASSIGNED
+  ROUTE_MODIFIED
+  ROUTE_CANCELLED
+  ROUTE_DELAY
+  ROUTE_STARTED
+  ROUTE_COMPLETED
+  ROUTE_OPTIMIZED
+  EMPLOYEE_CREATED
+  EMPLOYEE_UPDATED
+  EMPLOYEE_DELETED
+  EMPLOYEE_ASSIGNED_ROUTE
+  EMPLOYEE_REMOVED_ROUTE
+  EMPLOYEE_BULK_IMPORT
+  EMPLOYEE_DEPARTMENT_CHANGED
+  EMPLOYEE_SHIFT_CHANGED
+  EMPLOYEE_STOP_CHANGED
+  DRIVER_CREATED
+  DRIVER_UPDATED
+  DRIVER_DELETED
+  DRIVER_STATUS_CHANGED
+  DRIVER_LICENSE_EXPIRY
+  DRIVER_AVAILABILITY_CHANGED
+  DRIVER_SHIFT_ASSIGNED
+  DEPARTMENT_CREATED
+  DEPARTMENT_UPDATED
+  DEPARTMENT_DELETED
+  SHIFT_CREATED
+  SHIFT_UPDATED
+  SHIFT_DELETED
+  SHIFT_TIME_CHANGED
+  REQUEST_CREATED
+  REQUEST_APPROVED
+  REQUEST_REJECTED
+  REQUEST_CANCELLED
+  REQUEST_PENDING
+  AVAILABILITY_CREATED
+  AVAILABILITY_UPDATED
+  AVAILABILITY_DELETED
+  VEHICLE_OVERBOOKED
+  LOW_AVAILABILITY
+  STOP_CREATED
+  STOP_UPDATED
+  STOP_DELETED
+  STOP_RELOCATED
+  ORG_CREATED
+  ORG_UPDATED
+  ORG_DELETED
+  ORG_SUSPENDED
+  ORG_SUBSCRIPTION_EXPIRING
+  ORG_USER_LIMIT
+  ORG_STORAGE_WARNING
+  USER_INVITED
+  USER_JOINED
+  USER_ROLE_CHANGED
+  USER_REMOVED
+  USER_ACCESS_REVOKED
+  USER_REACTIVATED
+  PERMISSIONS_UPDATED
+  ACCOUNT_SUSPENDED
+  PAYROLL_GENERATED
+  PAYROLL_APPROVED
+  PAYROLL_AVAILABLE
+  PAYMENT_PROCESSED
+  PAYROLL_ISSUE
+  REPORT_GENERATED
+  REPORT_EXPORTED
+  SYSTEM_MAINTENANCE_SCHEDULED
+  SYSTEM_MAINTENANCE_STARTED
+  SYSTEM_MAINTENANCE_COMPLETED
+  SYSTEM_BACKUP_COMPLETED
+  SYSTEM_BACKUP_FAILED
+  SYSTEM_UPDATE_AVAILABLE
+  SYSTEM_PERFORMANCE_ALERT
+  SYSTEM_SECURITY_ALERT
+  SERVICE_OUTAGE
+  SUSPICIOUS_ACTIVITY
+  DATA_EXPORTED
+  BULK_DELETE
+  CONFIG_CHANGED
+}
+
+enum NotificationStatus {
+  UNREAD
+  READ
+  ARCHIVED
+}
+
+enum RouteStatus {
+  PENDING
+  ACTIVE
+  IN_PROGRESS
+  COMPLETED
+  INACTIVE
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSED
+  CANCELLED
+  PAID
+}
+
+enum PayrollType {
+  SALARY
+  SERVICE_FEE
+  OVERTIME
+  BONUS
+  ALLOWANCE
+  PENALTY
+}
+
+enum PaymentMethod {
+  BANK_TRANSFER
+  CASH
+  CHECK
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum DriverStatus {
+  ACTIVE
+  OFF_DUTY
+  ON_BREAK
+  INACTIVE
+}
+
+enum VehicleType {
+  IN_HOUSE
+  OUTSOURCED
+}
+
+enum ImportanceLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum LocationType {
+  BRANCH
+  HQ
+}
+
+// AI Assistant Models
+model AiConversation {
+  id             String   @id @default(cuid())
+  userId         String
+  organizationId String?
+  userRole       String // Role at time of conversation
+  title          String? // Auto-generated from first message
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  archived       Boolean  @default(false)
+
+  user         User          @relation("UserConversations", fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization? @relation("OrgConversations", fields: [organizationId], references: [id], onDelete: Cascade)
+  messages     AiMessage[]
+
+  @@index([userId])
+  @@index([organizationId])
+  @@index([createdAt])
+  @@map("ai_conversations")
+}
+
+model AiMessage {
+  id             String      @id @default(cuid())
+  conversationId String
+  role           MessageRole // user or assistant
+  content        String      @db.Text
+  tokens         Int? // Track token usage
+  cost           Decimal?    @db.Decimal(10, 6) // Track cost per message
+  contextUsed    String?     @db.Text // What context was provided to the AI
+  createdAt      DateTime    @default(now())
+
+  conversation AiConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@index([createdAt])
+  @@map("ai_messages")
+}
+
+model AiUsageLog {
+  id             String   @id @default(cuid())
+  userId         String
+  organizationId String?
+  endpoint       String // Which endpoint was called
+  tokensUsed     Int
+  cost           Decimal  @db.Decimal(10, 6)
+  success        Boolean  @default(true)
+  errorMessage   String?
+  responseTime   Int? // milliseconds
+  createdAt      DateTime @default(now())
+
+  @@index([userId])
+  @@index([organizationId])
+  @@index([createdAt])
+  @@map("ai_usage_logs")
+}
+
+enum MessageRole {
+  user
+  assistant
+  system
+}

@@ -1,0 +1,315 @@
+@startuml Fleet Management System - Core Entities
+
+!theme plain
+skinparam backgroundColor #FEFEFE
+skinparam class {
+    BackgroundColor #FFFFFF
+    BorderColor #333333
+    BorderThickness 1
+    FontSize 9
+}
+
+' Color scheme for different entity groups
+skinparam classBackgroundColor<<Organization>> #E8F5E8
+skinparam classBackgroundColor<<User>> #E3F2FD
+skinparam classBackgroundColor<<Fleet>> #FFF3E0
+skinparam classBackgroundColor<<Route>> #FCE4EC
+skinparam classBackgroundColor<<Support>> #F3E5F5
+
+' Core Organization Entity
+class Organization <<Organization>> {
+    +id: String (CUID)
+    +name: String
+    +slug: String?
+    +logo: String?
+    +createdAt: DateTime
+    +metadata: String?
+}
+
+' User and Authentication
+class User <<User>> {
+    +id: String
+    +name: String
+    +email: String
+    +emailVerified: Boolean
+    +image: String?
+    +role: String?
+    +isSubscribed: Boolean?
+    +createdAt/updatedAt: DateTime
+}
+
+class Employee <<User>> {
+    +id: String (CUID)
+    +name: String
+    +location: String?
+    +assigned: Boolean
+    +departmentId: String
+    +shiftId: String
+    +stopId: String?
+    +userId: String
+    +locationId: String?
+    +organizationId: String
+    +deleted: Boolean
+    +createdAt/updatedAt: DateTime
+}
+
+class Department <<User>> {
+    +id: String (CUID)
+    +name: String
+    +organizationId: String
+    +createdAt/updatedAt: DateTime
+}
+
+' Fleet Management
+class Vehicle <<Fleet>> {
+    +id: String (CUID)
+    +plateNumber: String (unique)
+    +name: String?
+    +model: String
+    +make: String?
+    +type: VehicleType
+    +vendor: String?
+    +capacity: Int
+    +year: Int?
+    +status: VehicleStatus
+    +lastMaintenance: DateTime?
+    +nextMaintenance: DateTime?
+    +dailyRate: Decimal?
+    +categoryId: String?
+    +driverId: String?
+    +organizationId: String
+    +isActive: Boolean
+    +deleted: Boolean
+    +createdAt/updatedAt: DateTime
+}
+
+class VehicleCategory <<Fleet>> {
+    +id: String (CUID)
+    +name: String
+    +capacity: Int
+    +organizationId: String
+    +createdAt/updatedAt: DateTime
+}
+
+class Driver <<Fleet>> {
+    +id: String (CUID)
+    +name: String
+    +email: String?
+    +licenseNumber: String
+    +phoneNumber: String?
+    +status: DriverStatus
+    +experienceYears: Int?
+    +rating: Float?
+    +isActive: Boolean
+    +organizationId: String
+    +deleted: Boolean
+    +createdAt/updatedAt: DateTime
+}
+
+' Route Management
+class Route <<Route>> {
+    +id: String (CUID)
+    +name: String
+    +description: String?
+    +vehicleId: String?
+    +shiftId: String?
+    +date: DateTime?
+    +startTime/endTime: DateTime?
+    +totalDistance: Float?
+    +totalTime: Float?
+    +status: RouteStatus
+    +isActive: Boolean
+    +organizationId: String
+    +locationId: String?
+    +deleted: Boolean
+    +createdAt/updatedAt: DateTime
+}
+
+class Stop <<Route>> {
+    +id: String (CUID)
+    +name: String
+    +latitude/longitude: Float?
+    +address: String?
+    +sequence: Int?
+    +order: Int
+    +routeId: String?
+    +organizationId: String
+    +estimatedArrivalTime: DateTime?
+    +createdAt/updatedAt: DateTime
+}
+
+class Shift <<Route>> {
+    +id: String (CUID)
+    +name: String
+    +startTime/endTime: DateTime
+    +timeZone: String
+    +organizationId: String
+    +createdAt/updatedAt: DateTime
+}
+
+' Supporting Entities
+class Location <<Support>> {
+    +id: String (CUID)
+    +address: String?
+    +latitude/longitude: Float?
+    +type: LocationType
+    +organizationId: String
+    +createdAt/updatedAt: DateTime
+}
+
+class VehicleAvailability <<Support>> {
+    +id: String (CUID)
+    +date: DateTime
+    +startTime/endTime: DateTime
+    +available: Boolean
+    +vehicleId: String
+    +driverId: String
+    +routeId: String?
+    +shiftId: String?
+    +organizationId: String
+    +createdAt/updatedAt: DateTime
+}
+
+class PayrollReport <<Support>> {
+    +id: String (CUID)
+    +vehicleId/driverId: String?
+    +workedDays: Int?
+    +dailyRate: Decimal?
+    +totalPayment: Decimal
+    +payDate: DateTime?
+    +period: String
+    +month/year: String/Int?
+    +status: PaymentStatus
+    +maintenanceCost: Decimal?
+    +insuranceCost: Decimal?
+    +otherExpenses: Decimal?
+    +efficiency: Int (%)
+    +utilizationRate: Int (%)
+    +totalAmount: Float?
+    +hoursWorked: Float?
+    +overtimeHours: Float?
+    +deductions/bonuses: Float?
+    +organizationId: String
+    +generatedAt/paidAt: DateTime?
+    +createdAt/updatedAt: DateTime
+}
+
+class Notification <<Support>> {
+    +id: String (CUID)
+    +title: String
+    +message: String
+    +type: NotificationType
+    +status: NotificationStatus
+    +toRoles: String[]
+    +fromRole: String?
+    +importance: ImportanceLevel
+    +localTime: String?
+    +relatedEntityId: String?
+    +userId: String?
+    +organizationId: String
+    +createdAt/updatedAt: DateTime
+}
+
+class VehicleRequest <<Support>> {
+    +id: String (CUID)
+    +name: String
+    +licensePlate: String
+    +categoryId: String?
+    +dailyRate: Float?
+    +capacity: Int
+    +type/model/vendor: String
+    +status: ApprovalStatus
+    +requestedBy/approvedBy: String
+    +approvedAt: DateTime?
+    +comment: String?
+    +organizationId: String
+    +requestedAt: DateTime
+    +createdAt/updatedAt: DateTime
+}
+
+' Relationships with proper UML notation
+' Composition (strong ownership): Organization owns all entities
+Organization *-- Department : owns 1..*
+Organization *-- Employee : owns 1..*
+Organization *-- Driver : owns 1..*
+Organization *-- Vehicle : owns 1..*
+Organization *-- VehicleCategory : owns 1..*
+Organization *-- Route : owns 1..*
+Organization *-- Stop : owns 1..*
+Organization *-- Shift : owns 1..*
+Organization *-- Location : owns 1..*
+Organization *-- VehicleAvailability : owns 1..*
+Organization *-- PayrollReport : owns 1..*
+Organization *-- Notification : owns 1..*
+Organization *-- VehicleRequest : owns 1..*
+
+' One-to-one relationships
+User "1" -- "1" Employee : represents
+
+' Many-to-one relationships (aggregation)
+Employee "0..*" -- "1" Department : belongs to
+Employee "0..*" -- "1" Shift : assigned to
+Employee "0..*" -- "0..1" Stop : pickup point
+Employee "0..*" -- "0..1" Location : work location
+
+Vehicle "0..*" -- "0..1" VehicleCategory : categorized as
+Vehicle "0..*" -- "0..1" Driver : currently assigned
+
+Driver "0..*" -- "0..*" Vehicle : assigned vehicles
+
+Route "0..*" -- "0..1" Vehicle : uses
+Route "0..*" -- "0..1" Shift : scheduled for
+Route "0..*" -- "0..1" Location : serves
+
+Stop "0..*" -- "0..1" Employee : pickup for
+
+VehicleAvailability "0..*" -- "1" Vehicle : for
+VehicleAvailability "0..*" -- "1" Driver : with
+VehicleAvailability "0..*" -- "0..1" Route : on
+VehicleAvailability "0..*" -- "0..1" Shift : during
+
+PayrollReport "0..*" -- "0..1" Vehicle : for
+PayrollReport "0..*" -- "0..1" Driver : for
+
+VehicleRequest "0..*" -- "0..1" VehicleCategory : requests
+
+' One-to-many relationships (composition within entities)
+Vehicle "1" *-- "0..*" Route : assigned to
+Vehicle "1" *-- "0..*" VehicleAvailability : availability
+Vehicle "1" *-- "0..*" PayrollReport : reports
+
+Driver "1" *-- "0..*" VehicleAvailability : availability
+Driver "1" *-- "0..*" PayrollReport : reports
+
+Route "1" *-- "0..*" Stop : consists of
+Route "1" *-- "0..*" VehicleAvailability : availability
+
+Shift "1" *-- "0..*" Employee : has
+Shift "1" *-- "0..*" Route : schedules
+Shift "1" *-- "0..*" VehicleAvailability : availability
+
+Location "1" *-- "0..*" Employee : serves
+Location "1" *-- "0..*" Route : served by
+
+' Legend
+legend right
+  |= Type |= Symbol |= Meaning |
+  | Composition | *-- | Strong ownership |
+  | Aggregation | o-- | Weak association |
+  | One-to-one | "1"--"1" | Exactly one |
+  | One-to-many | "1"*--"0..*" | One required, many optional |
+  | Many-to-one | "0..*"--"1" | Many optional, one required |
+  | Many-to-many | "0..*"--"0..*" | Both sides optional |
+endlegend
+
+' Note
+note as N1
+  **Multi-tenant Fleet Management System**
+  - Organization is the root entity
+  - All entities belong to an Organization
+  - User authentication entities omitted for clarity
+  - All relationships verified against Prisma schema
+end note
+
+@enduml</content>
+<parameter name="filePath">/home/leul/Documents/Github/multi-fleet-managment/fleet-management-core-diagram.puml

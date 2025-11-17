@@ -1,6 +1,7 @@
 # Dependency directories
 node_modules/
 .pnpm-store/
+.venv/
 
 # Environment files
 .env
@@ -24,6 +25,9 @@ pnpm-debug.log*
 # Editor directories and files
 .idea/
 .vscode/
+.cursor/
+.taskmaster/
+.github/
 *.suo
 *.ntvs*
 *.njsproj
@@ -33,3 +37,26 @@ pnpm-debug.log*
 # OS generated files
 .DS_Store
 Thumbs.db
+
+yarn-error.log*
+dev-debug.log
+# Environment variables
+.idea
+.vscode
+# OS specific
+
+# ai
+# taskmaster
+*.mdc
+
+# Environment files
+.env
+.env.local
+
+# Task files
+# tasks.json
+# tasks/ 
+
+# Test artifacts
+coverage/
+packages/*/coverage/

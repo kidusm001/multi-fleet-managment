@@ -1,0 +1,91 @@
+@startuml UC-013 Notification Management System
+!theme plain
+skinparam backgroundColor #FEFEFE
+skinparam actor {
+  BackgroundColor #E3F2FD
+  BorderColor #1976D2
+  FontColor #0D47A1
+}
+skinparam usecase {
+  BackgroundColor #E8F5E8
+  BorderColor #388E3C
+  FontColor #1B5E20
+}
+skinparam note {
+  BackgroundColor #FFF3E0
+  BorderColor #F57C00
+  FontColor #E65100
+}
+skinparam arrow {
+  Color #424242
+}
+
+top to bottom direction
+
+actor "System/Event Engine" as SEE #E3F2FD
+actor "User/Notification Consumer" as UNC #E3F2FD
+
+rectangle "UC-013: Notification Management System" as UC013 {
+  usecase "Monitor Operational Events\n(Route Changes, Vehicle Status)" as UC1
+  usecase "Evaluate Event Significance\nand Determine Recipients" as UC2
+  usecase "Generate Notification Content\nwith Operational Context" as UC3
+  usecase "Establish WebSocket Connection\nfor Real-time Delivery" as UC4
+  usecase "Deliver Notification via WebSocket\nwith Automatic Reconnection" as UC5
+  usecase "Fallback to Polling Mechanism\nwhen WebSocket Unavailable" as UC6
+  usecase "Retrieve Notification History\nwith Filtering and Search" as UC7
+  usecase "Mark Notifications as Read\nand Update Status" as UC8
+  usecase "Apply Organization Scoping\nand Role-based Filtering" as UC9
+  usecase "Clean Up Expired Notifications\nBased on Retention Policies" as UC10
+
+  note right of UC4 : WebSocket infrastructure\nwith connection management
+  note right of UC9 : Organization-scoped delivery\nwith role-based access
+
+  usecase "WebSocket Connection Failure\n(Automatic Reconnection)" as EXT1 #FFEBEE
+  usecase "Event Processing Overload\n(Queue Management)" as EXT2 #FFEBEE
+  usecase "Notification Delivery Timeout\n(Retry with Backoff)" as EXT3 #FFEBEE
+  usecase "Bulk Notification Cleanup\n(Background Processing)" as EXT4 #FFEBEE
+}
+
+actor "WebSocket Server\n& Connection Manager" as WSCM #E3F2FD
+actor "Notification Database\n(PostgreSQL)" as NDB #E3F2FD
+actor "Event Processing\nEngine" as EPE #E3F2FD
+actor "Organization Context\nManager" as OCM #E3F2FD
+actor "Polling Fallback\nService" as PFS #E3F2FD
+
+SEE --> UC1
+UC1 --> UC2
+UC2 --> UC3
+UC3 --> UC4
+UC4 --> UC5
+UC5 --> UC6
+UC6 --> UC7
+UC7 --> UC8
+UC7 --> UC9
+UC9 --> UC10
+
+UC1 --> EPE : monitors events
+UC2 --> EPE : evaluates significance
+UC3 --> EPE : generates content
+UC4 --> WSCM : establishes connection
+UC5 --> WSCM : delivers notification
+UC6 --> PFS : fallback delivery
+UC7 --> NDB : retrieves history
+UC8 --> NDB : updates status
+UC9 --> OCM : applies scoping
+UC10 --> NDB : cleanup expired
+
+EXT1 ..> UC4 : extends (connection failure)
+EXT2 ..> UC2 : extends (processing overload)
+EXT3 ..> UC5 : extends (delivery timeout)
+EXT4 ..> UC10 : extends (bulk cleanup)
+
+note as N1
+  **Goal:** Establish comprehensive notification framework
+  for real-time operational communication and event awareness.
+  **Scope:** Event monitoring, WebSocket delivery, fallback mechanisms,
+  history management, and organization-scoped notifications.
+end note
+
+SEE .. N1
+UNC .. N1
+@enduml

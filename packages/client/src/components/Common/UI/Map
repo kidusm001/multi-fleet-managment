@@ -1,0 +1,59 @@
+.marker-popup {
+  padding: 0.5rem;
+}
+
+.marker-popup h3 {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: var(--text-primary);
+}
+
+.popup-details {
+  margin-bottom: 0.75rem;
+}
+
+.popup-details p {
+  display: flex;
+  justify-content: space-between;
+  margin: 0.25rem 0;
+  font-size: 0.875rem;
+}
+
+.label {
+  color: var(--text-secondary);
+  margin-right: 0.5rem;
+}
+
+.status {
+  padding: 0.125rem 0.375rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.status.active {
+  background: var(--success-color-light);
+  color: var(--success-color);
+}
+
+.status.maintenance {
+  background: var(--warning-color-light);
+  color: var(--warning-color);
+}
+
+.track-button {
+  width: 100%;
+  padding: 0.5rem;
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.track-button:hover {
+  background: var(--primary-color-dark);
+} 

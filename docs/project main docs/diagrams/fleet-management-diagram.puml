@@ -1,0 +1,560 @@
+@startuml Fleet Management System - Class Diagram
+
+!theme plain
+skinparam backgroundColor #FEFEFE
+skinparam class {
+    BackgroundColor #FFFFFF
+    BorderColor #333333
+    BorderThickness 1
+    FontSize 10
+}
+
+' Core Organization and User Management
+class Organization {
+    +id: String
+    +name: String
+    +slug: String?
+    +logo: String?
+    +createdAt: DateTime
+    +metadata: String?
+    --
+    +members: Member[]
+    +invitations: Invitation[]
+    +locations: Location[]
+    +departments: Department[]
+    +shifts: Shift[]
+    +employees: Employee[]
+    +drivers: Driver[]
+    +vehicleCategories: VehicleCategory[]
+    +vehicles: Vehicle[]
+    +routes: Route[]
+    +stops: Stop[]
+    +vehicleAvailability: VehicleAvailability[]
+    +payrollReports: PayrollReport[]
+    +notifications: Notification[]
+    +vehicleRequests: VehicleRequest[]
+}
+
+class User {
+    +id: String
+    +name: String
+    +email: String
+    +emailVerified: Boolean
+    +image: String?
+    +createdAt: DateTime
+    +updatedAt: DateTime
+    +role: String?
+    +banned: Boolean?
+    +banReason: String?
+    +banExpires: DateTime?
+    +isSubscribed: Boolean?
+    --
+    +sessions: Session[]
+    +accounts: Account[]
+    +members: Member[]
+    +invitations: Invitation[]
+    +employees: Employee[]
+}
+
+class Member {
+    +id: String
+    +organizationId: String
+    +userId: String
+    +role: String
+    +createdAt: DateTime
+    --
+    +organization: Organization
+    +user: User
+}
+
+' Authentication and Session Management
+class Session {
+    +id: String
+    +expiresAt: DateTime
+    +token: String
+    +createdAt: DateTime
+    +updatedAt: DateTime
+    +ipAddress: String?
+    +userAgent: String?
+    +userId: String
+    +impersonatedBy: String?
+    +activeOrganizationId: String?
+    --
+    +user: User
+}
+
+class Account {
+    +id: String
+    +accountId: String
+    +providerId: String
+    +userId: String
+    +accessToken: String?
+    +refreshToken: String?
+    +idToken: String?
+    +accessTokenExpiresAt: DateTime?
+    +refreshTokenExpiresAt: DateTime?
+    +scope: String?
+    +password: String?
+    +createdAt: DateTime
+    +updatedAt: DateTime
+    --
+    +user: User
+}
+
+class Invitation {
+    +id: String
+    +organizationId: String
+    +email: String
+    +role: String?
+    +status: String
+    +expiresAt: DateTime
+    +inviterId: String
+    +createdAt: DateTime
+    --
+    +organization: Organization
+    +user: User
+}
+
+class Verification {
+    +id: String
+    +identifier: String
+    +value: String
+    +expiresAt: DateTime
+    +createdAt: DateTime?
+    +updatedAt: DateTime?
+}
+
+' Operational Entities
+class Location {
+    +id: String
+    +address: String?
+    +latitude: Float?
+    +longitude: Float?
+    +type: LocationType
+    +organizationId: String
+    +createdAt: DateTime
+    +updatedAt: DateTime
+    --
+    +organization: Organization
+    +employees: Employee[]
+    +routes: Route[]
+}
+
+enum LocationType {
+    BRANCH
+    HQ
+}
+
+class Department {
+    +id: String
+    +name: String
+    +organizationId: String
+    +createdAt: DateTime
+    +updatedAt: DateTime
+    --
+    +organization: Organization
+    +employees: Employee[]
+}
+
+class Shift {
+    +id: String
+    +name: String
+    +startTime: DateTime
+    +endTime: DateTime
+    +timeZone: String
+    +organizationId: String
+    +createdAt: DateTime
+    +updatedAt: DateTime
+    --
+    +organization: Organization
+    +employees: Employee[]
+    +routes: Route[]
+    +vehicleAvailability: VehicleAvailability[]
+}
+
+class Employee {
+    +id: String
+    +name: String
+    +location: String?
+    +assigned: Boolean
+    +departmentId: String
+    +shiftId: String
+    +stopId: String?
+    +organizationId: String
+    +userId: String
+    +locationId: String?
+    +deleted: Boolean
+    +deletedAt: DateTime?
+    +createdAt: DateTime
+    +updatedAt: DateTime
+    --
+    +organization: Organization
+    +user: User
+    +department: Department
+    +shift: Shift
+    +stop: Stop?
+    +workLocation: Location?
+}
+
+class Driver {
+    +id: String
+    +name: String
+    +email: String?
+    +licenseNumber: String
+    +phoneNumber: String?
+    +status: DriverStatus
+    +experienceYears: Int?
+    +rating: Float?
+    +isActive: Boolean
+    +organizationId: String
+    +deleted: Boolean
+    +deletedAt: DateTime?
+    +createdAt: DateTime
+    +updatedAt: DateTime
+    --
+    +organization: Organization
+    +vehicleAvailability: VehicleAvailability[]
+    +payrollReports: PayrollReport[]
+    +assignedVehicles: Vehicle[]
+}
+
+enum DriverStatus {
+    ACTIVE
+    OFF_DUTY
+    ON_BREAK
+    INACTIVE
+}
+
+class VehicleCategory {
+    +id: String
+    +name: String
+    +capacity: Int
+    +organizationId: String
+    +createdAt: DateTime
+    +updatedAt: DateTime
+    --
+    +organization: Organization
+    +vehicles: Vehicle[]
+    +vehicleRequests: VehicleRequest[]
+}
+
+class Vehicle {
+    +id: String
+    +plateNumber: String
+    +name: String?
+    +model: String
+    +make: String?
+    +type: VehicleType
+    +vendor: String?
+    +capacity: Int
+    +year: Int?
+    +status: VehicleStatus
+    +lastMaintenance: DateTime?
+    +nextMaintenance: DateTime?
+    +dailyRate: Decimal?
+    +isActive: Boolean
+    +categoryId: String?
+    +driverId: String?
+    +organizationId: String
+    +deleted: Boolean
+    +deletedAt: DateTime?
+    +createdAt: DateTime
+    +updatedAt: DateTime
+    --
+    +organization: Organization
+    +category: VehicleCategory?
+    +driver: Driver?
+    +vehicleAvailability: VehicleAvailability[]
+    +payrollReports: PayrollReport[]
+    +routes: Route[]
+}
+
+enum VehicleType {
+    IN_HOUSE
+    OUTSOURCED
+}
+
+enum VehicleStatus {
+    AVAILABLE
+    IN_USE
+    MAINTENANCE
+    OUT_OF_SERVICE
+    INACTIVE
+}
+
+class Route {
+    +id: String
+    +name: String
+    +description: String?
+    +vehicleId: String?
+    +shiftId: String?
+    +date: DateTime?
+    +startTime: DateTime?
+    +endTime: DateTime?
+    +totalDistance: Float?
+    +totalTime: Float?
+    +status: RouteStatus
+    +isActive: Boolean
+    +organizationId: String
+    +locationId: String?
+    +deleted: Boolean
+    +deletedAt: DateTime?
+    +createdAt: DateTime
+    +updatedAt: DateTime
+    --
+    +organization: Organization
+    +vehicle: Vehicle?
+    +shift: Shift?
+    +location: Location?
+    +stops: Stop[]
+    +vehicleAvailability: VehicleAvailability[]
+}
+
+enum RouteStatus {
+    ACTIVE
+    INACTIVE
+    CANCELLED
+}
+
+class Stop {
+    +id: String
+    +name: String
+    +latitude: Float?
+    +longitude: Float?
+    +address: String?
+    +sequence: Int?
+    +order: Int
+    +routeId: String?
+    +organizationId: String
+    +estimatedArrivalTime: DateTime?
+    +createdAt: DateTime
+    +updatedAt: DateTime
+    --
+    +organization: Organization
+    +route: Route?
+    +employee: Employee?
+}
+
+class VehicleAvailability {
+    +id: String
+    +date: DateTime
+    +startTime: DateTime
+    +endTime: DateTime
+    +available: Boolean
+    +vehicleId: String
+    +driverId: String
+    +routeId: String?
+    +shiftId: String?
+    +organizationId: String
+    +createdAt: DateTime
+    +updatedAt: DateTime
+    --
+    +organization: Organization
+    +vehicle: Vehicle
+    +driver: Driver
+    +route: Route?
+    +shift: Shift?
+}
+
+class PayrollReport {
+    +id: String
+    +vehicleId: String?
+    +driverId: String?
+    +workedDays: Int?
+    +dailyRate: Decimal?
+    +totalPayment: Decimal
+    +payDate: DateTime?
+    +period: String
+    +month: String?
+    +year: Int?
+    +status: PaymentStatus
+    +maintenanceCost: Decimal?
+    +insuranceCost: Decimal?
+    +otherExpenses: Decimal?
+    +efficiency: Int
+    +utilizationRate: Int
+    +totalAmount: Float?
+    +hoursWorked: Float?
+    +overtimeHours: Float?
+    +deductions: Float?
+    +bonuses: Float?
+    +organizationId: String
+    +generatedAt: DateTime
+    +paidAt: DateTime?
+    +createdAt: DateTime
+    +updatedAt: DateTime
+    --
+    +organization: Organization
+    +vehicle: Vehicle?
+    +driver: Driver?
+}
+
+enum PaymentStatus {
+    PENDING
+    PROCESSED
+    CANCELLED
+}
+
+class Notification {
+    +id: String
+    +title: String
+    +message: String
+    +type: NotificationType
+    +status: NotificationStatus
+    +toRoles: String[]
+    +fromRole: String?
+    +importance: ImportanceLevel
+    +localTime: String?
+    +relatedEntityId: String?
+    +userId: String?
+    +organizationId: String
+    +createdAt: DateTime
+    +updatedAt: DateTime
+    --
+    +organization: Organization
+}
+
+enum NotificationType {
+    INFO
+    WARNING
+    ALERT
+    SYSTEM
+}
+
+enum NotificationStatus {
+    UNREAD
+    READ
+    ARCHIVED
+}
+
+enum ImportanceLevel {
+    LOW
+    MEDIUM
+    HIGH
+    CRITICAL
+}
+
+class VehicleRequest {
+    +id: String
+    +name: String
+    +licensePlate: String
+    +categoryId: String?
+    +dailyRate: Float?
+    +capacity: Int
+    +type: String
+    +model: String
+    +vendor: String?
+    +status: ApprovalStatus
+    +requestedBy: String
+    +approvedBy: String?
+    +approvedAt: DateTime?
+    +comment: String?
+    +organizationId: String
+    +requestedAt: DateTime
+    +createdAt: DateTime
+    +updatedAt: DateTime
+    --
+    +organization: Organization
+    +category: VehicleCategory?
+}
+
+enum ApprovalStatus {
+    PENDING
+    APPROVED
+    REJECTED
+}
+
+' Relationships
+Organization ||--o{ Member : has
+Organization ||--o{ Invitation : has
+Organization ||--o{ Location : has
+Organization ||--o{ Department : has
+Organization ||--o{ Shift : has
+Organization ||--o{ Employee : has
+Organization ||--o{ Driver : has
+Organization ||--o{ VehicleCategory : has
+Organization ||--o{ Vehicle : has
+Organization ||--o{ Route : has
+Organization ||--o{ Stop : has
+Organization ||--o{ VehicleAvailability : has
+Organization ||--o{ PayrollReport : has
+Organization ||--o{ Notification : has
+Organization ||--o{ VehicleRequest : has
+
+User ||--o{ Session : has
+User ||--o{ Account : has
+User ||--o{ Member : belongs
+User ||--o{ Invitation : sent
+User ||--|| Employee : "1-1"
+
+Member }o--|| Organization : belongs
+Member }o--|| User : represents
+
+Session }o--|| User : belongs
+Account }o--|| User : belongs
+Invitation }o--|| Organization : for
+Invitation }o--|| User : sent
+
+Location }o--|| Organization : belongs
+Location ||--o{ Employee : "work location"
+Location ||--o{ Route : serves
+
+Department }o--|| Organization : belongs
+Department ||--o{ Employee : has
+
+Shift }o--|| Organization : belongs
+Shift ||--o{ Employee : has
+Shift ||--o{ Route : has
+Shift ||--o{ VehicleAvailability : has
+
+Employee }o--|| Organization : belongs
+Employee }o--|| User : "1-1"
+Employee }o--|| Department : belongs
+Employee }o--|| Shift : assigned
+Employee }o--o| Stop : pickup
+Employee }o--o| Location : "work location"
+
+Driver }o--|| Organization : belongs
+Driver ||--o{ VehicleAvailability : has
+Driver ||--o{ PayrollReport : has
+Driver }o--o{ Vehicle : "assigned to"
+
+VehicleCategory }o--|| Organization : belongs
+VehicleCategory ||--o{ Vehicle : has
+VehicleCategory ||--o{ VehicleRequest : has
+
+Vehicle }o--|| Organization : belongs
+Vehicle }o--o| VehicleCategory : belongs
+Vehicle }o--o| Driver : "current driver"
+Vehicle ||--o{ VehicleAvailability : has
+Vehicle ||--o{ PayrollReport : has
+Vehicle ||--o{ Route : assigned
+
+Route }o--|| Organization : belongs
+Route }o--o| Vehicle : assigned
+Route }o--o| Shift : belongs
+Route }o--o| Location : serves
+Route ||--o{ Stop : has
+Route ||--o{ VehicleAvailability : has
+
+Stop }o--|| Organization : belongs
+Stop }o--o| Route : belongs
+Stop }o--o| Employee : pickup
+
+VehicleAvailability }o--|| Organization : belongs
+VehicleAvailability }o--|| Vehicle : for
+VehicleAvailability }o--|| Driver : with
+VehicleAvailability }o--o| Route : on
+VehicleAvailability }o--o| Shift : during
+
+PayrollReport }o--|| Organization : belongs
+PayrollReport }o--o| Vehicle : for
+PayrollReport }o--o| Driver : for
+
+Notification }o--|| Organization : belongs
+
+VehicleRequest }o--|| Organization : belongs
+VehicleRequest }o--o| VehicleCategory : for
+
+@enduml</content>
+<parameter name="filePath">/home/leul/Documents/Github/multi-fleet-managment/fleet-management-diagram.puml

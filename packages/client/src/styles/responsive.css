@@ -1,0 +1,148 @@
+/* Responsive Utility Classes for Mobile-First Design */
+
+/* Container spacing utilities */
+.responsive-container {
+  @apply px-4 sm:px-6 lg:px-8;
+}
+
+.responsive-section-padding {
+  @apply py-8 sm:py-12 lg:py-16;
+}
+
+/* Typography scaling utilities */
+.responsive-heading-lg {
+  @apply text-4xl sm:text-5xl md:text-6xl;
+}
+
+.responsive-heading-md {
+  @apply text-3xl sm:text-4xl md:text-5xl;
+}
+
+.responsive-heading-sm {
+  @apply text-2xl sm:text-3xl md:text-4xl;
+}
+
+.responsive-text-lg {
+  @apply text-lg sm:text-xl;
+}
+
+.responsive-text-base {
+  @apply text-base sm:text-lg;
+}
+
+/* Layout utilities */
+.responsive-grid-2 {
+  @apply grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6;
+}
+
+.responsive-grid-3 {
+  @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6;
+}
+
+.responsive-flex-row {
+  @apply flex flex-col sm:flex-row gap-4 sm:gap-6;
+}
+
+/* Card and component utilities */
+.responsive-card-padding {
+  @apply px-4 py-6 sm:px-6 sm:py-8 lg:px-8;
+}
+
+.responsive-button-spacing {
+  @apply flex flex-wrap items-center justify-center gap-4;
+}
+
+/* Mobile-specific utilities */
+.mobile-menu-height {
+  @apply h-[calc(100vh-60px)];
+}
+
+.mobile-nav-safe-area {
+  @apply pt-safe-top pb-safe-bottom;
+}
+
+/* Dashboard specific responsive utilities */
+.dashboard-mobile-height {
+  @apply h-[40vh] sm:h-[45vh] md:h-[55vh] lg:h-[60vh];
+}
+
+.dashboard-overlay-responsive {
+  @apply absolute inset-0 md:relative md:inset-auto;
+}
+
+/* Animation utilities for responsive states */
+.mobile-slide-in {
+  @apply transform transition-transform duration-300 ease-in-out 
+         translate-x-full data-[state=open]:translate-x-0;
+}
+
+.mobile-fade-in {
+  @apply transition-opacity duration-200 ease-in-out 
+         opacity-0 data-[state=open]:opacity-100;
+}
+
+/* Focus and accessibility utilities */
+.mobile-focus-ring {
+  @apply focus:outline-none focus:ring-2 focus:ring-[#f3684e] focus:ring-offset-2;
+}
+
+.mobile-touch-target {
+  @apply min-h-[44px] min-w-[44px] flex items-center justify-center;
+}
+
+/* Responsive spacing scale */
+.space-responsive-xs {
+  @apply space-y-2 sm:space-y-3;
+}
+
+.space-responsive-sm {
+  @apply space-y-4 sm:space-y-6;
+}
+
+.space-responsive-md {
+  @apply space-y-6 sm:space-y-8;
+}
+
+.space-responsive-lg {
+  @apply space-y-8 sm:space-y-12;
+}
+
+/* Safe area utilities for mobile devices */
+.safe-top {
+  padding-top: env(safe-area-inset-top);
+}
+
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.safe-left {
+  padding-left: env(safe-area-inset-left);
+}
+
+.safe-right {
+  padding-right: env(safe-area-inset-right);
+}
+
+/* Responsive border radius */
+.responsive-rounded {
+  @apply rounded-lg sm:rounded-xl lg:rounded-2xl;
+}
+
+/* Hide/show utilities for different screen sizes */
+.mobile-only {
+  @apply block sm:hidden;
+}
+
+.tablet-up {
+  @apply hidden sm:block;
+}
+
+.desktop-only {
+  @apply hidden lg:block;
+}
+
+/* Responsive backdrop utilities */
+.responsive-backdrop {
+  @apply backdrop-blur-sm sm:backdrop-blur-md lg:backdrop-blur-lg;
+}

@@ -1,0 +1,131 @@
+/**
+ * Landing Page Custom Styles
+ * Supplemental styles for the landing page components
+ * Uses only CSS transitions (no complex animations)
+ */
+
+/* Smooth scroll behavior */
+html.landing-scroll {
+  scroll-behavior: smooth;
+}
+
+/* Remove default focus outline, add custom */
+.landing-page *:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* Custom scrollbar for landing sections */
+.landing-page::-webkit-scrollbar {
+  width: 8px;
+}
+
+.landing-page::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.landing-page::-webkit-scrollbar-thumb {
+  background-color: var(--primary-light);
+  border-radius: 4px;
+}
+
+/* Entrance animations base */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes scaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Smooth hover transitions */
+.landing-card-hover {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              border-color 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              background-color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.landing-card-hover:hover {
+  transform: translateY(-4px);
+}
+
+/* Button press effect */
+.landing-btn {
+  transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1),
+              background-color 0.3s ease;
+}
+
+.landing-btn:active {
+  transform: scale(0.97);
+}
+
+/* Icon float effect */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+.landing-icon-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+/* Gradient text (disabled by default, for future use) */
+.landing-gradient-text {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .landing-page {
+    --border-opacity: 0.3;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Print styles */
+@media print {
+  .landing-nav,
+  .landing-cta {
+    display: none;
+  }
+}

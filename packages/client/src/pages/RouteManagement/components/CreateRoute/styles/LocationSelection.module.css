@@ -1,0 +1,225 @@
+/* LocationSelection.module.css */
+
+.container {
+  width: 85%;
+  max-width: 600px;
+}
+
+.content {
+  background-color: white;
+  padding: 1.5rem;
+  border-radius: 1rem;
+  border: 1px solid rgba(229, 231, 235, 0.5);
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+}
+
+.selectTitle {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: #111827;
+}
+
+.selectWrapper {
+  position: relative;
+  margin-bottom: 1rem;
+}
+
+.trigger {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border-radius: 0.75rem;
+  border: 1px solid #d1d5db;
+  background-color: white;
+  font-size: 0.875rem;
+  color: #1f2937;
+  transition: all 0.2s;
+}
+
+.trigger:hover {
+  border-color: #60a5fa;
+}
+
+.trigger:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+}
+
+.trigger:disabled {
+  background-color: #f3f4f6;
+  cursor: not-allowed;
+}
+
+.trigger.unselectedGlow {
+  position: relative;
+  border: 2px solid transparent;
+  background-image: 
+    linear-gradient(white, white),
+    conic-gradient(from var(--angle, 0deg), 
+      transparent 0deg,
+      transparent 270deg,
+      rgba(59, 130, 246, 0.9) 300deg,
+      rgba(59, 130, 246, 0.6) 330deg,
+      transparent 360deg
+    );
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+  animation: rotateBorder 2.5s linear infinite;
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.3);
+}
+
+@property --angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+.selectedLocationInfo {
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  background-color: #eff6ff;
+  border: 1px solid #dbeafe;
+}
+
+.locationStats {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(229, 231, 235, 0.5);
+}
+
+.statItem {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.statLabel {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #6b7280;
+}
+
+.statValue {
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: #2563eb;
+}
+
+.errorState {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem;
+  border-radius: 0.5rem;
+  background-color: #fef2f2;
+  border: 1px solid #fecaca;
+}
+
+.errorText {
+  font-size: 0.875rem;
+  color: #dc2626;
+}
+
+/* Dark mode support */
+:global(.dark) .content {
+  background-color: hsl(var(--card));
+  border-color: hsl(var(--border));
+}
+
+:global(.dark) .selectTitle {
+  color: hsl(var(--foreground));
+}
+
+:global(.dark) .trigger {
+  background-color: hsl(var(--background));
+  border-color: hsl(var(--border));
+  color: hsl(var(--foreground));
+}
+
+:global(.dark) .trigger:hover {
+  border-color: hsl(var(--primary));
+}
+
+:global(.dark) .trigger:focus {
+  border-color: hsl(var(--primary));
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.2);
+}
+
+:global(.dark) .trigger:disabled {
+  background-color: hsl(var(--muted));
+}
+
+:global(.dark) .trigger.unselectedGlow {
+  border: 2px solid transparent;
+  background-image: 
+    linear-gradient(hsl(var(--background)), hsl(var(--background))),
+    conic-gradient(from var(--angle, 0deg), 
+      transparent 0deg,
+      transparent 270deg,
+      rgba(30, 58, 138, 1) 300deg,
+      rgba(30, 58, 138, 0.9) 330deg,
+      transparent 360deg
+    );
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+  box-shadow: 0 0 0 1px rgba(30, 58, 138, 0.7);
+  z-index: 10;
+}:global(.dark) .selectedLocationInfo {
+  background-color: hsl(var(--primary) / 0.1);
+  border-color: hsl(var(--primary) / 0.2);
+}
+
+:global(.dark) .locationStats {
+  border-top-color: hsl(var(--border));
+}
+
+:global(.dark) .statLabel {
+  color: hsl(var(--muted-foreground));
+}
+
+:global(.dark) .statValue {
+  color: hsl(var(--primary));
+}
+
+:global(.dark) .errorState {
+  background-color: hsl(var(--destructive) / 0.1);
+  border-color: hsl(var(--destructive) / 0.3);
+}
+
+:global(.dark) .errorText {
+  color: hsl(var(--destructive));
+}
+
+/* Keyframes for smooth rotating border animation */
+@keyframes rotateBorder {
+  0% {
+    --angle: 0deg;
+  }
+  100% {
+    --angle: 360deg;
+  }
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .content {
+    padding: 1rem;
+  }
+  
+  .locationStats {
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: flex-start;
+  }
+  
+  .statItem {
+    width: 100%;
+    justify-content: space-between;
+  }
+}

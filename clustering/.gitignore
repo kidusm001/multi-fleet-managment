@@ -1,0 +1,14 @@
+/venv
+backup.py
+__pycache__/
+*.pyc
+/data
+uv.lock
+logs.json
+route_map.html
+.vscode/
+.idea/
+dist/
+build/
+*.egg-info/
+.DS_Store

@@ -1,0 +1,12 @@
+fastapi==0.109.0
+uvicorn==0.27.0
+numpy==1.26.3
+haversine==2.8.0
+ortools
+httpx==0.28.1
+pytest==7.4.3
+pytest-asyncio==0.21.1
+pytest-cov==4.1.0
+requests==2.31.0
+folium
+requests

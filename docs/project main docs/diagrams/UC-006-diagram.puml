@@ -1,0 +1,70 @@
+@startuml UC-006 Operational Reporting Dashboard
+!theme plain
+skinparam backgroundColor #FEFEFE
+skinparam actor {
+  BackgroundColor #E3F2FD
+  BorderColor #1976D2
+  FontColor #0D47A1
+}
+skinparam usecase {
+  BackgroundColor #E8F5E8
+  BorderColor #388E3C
+  FontColor #1B5E20
+}
+skinparam note {
+  BackgroundColor #FFF3E0
+  BorderColor #F57C00
+  FontColor #E65100
+}
+skinparam arrow {
+  Color #424242
+}
+
+top to bottom direction
+
+actor "Fleet Manager" as FM #E3F2FD
+
+rectangle "UC-006: Operational Reporting Dashboard" as UC006 {
+  usecase "Access Operational Dashboard\nwith Authentication" as UC1
+  usecase "View Basic Statistics Cards\n(Active Routes, Passengers, Stops)" as UC2
+  usecase "Browse Route List with\nSearch and Status Filtering" as UC3
+  usecase "Select Route to View on Map\nand Display Route Details" as UC4
+  usecase "Review Route Assignment\nInformation and Stop Details" as UC5
+
+  note right of UC2 : Statistics calculated from\ncurrent route and stop data
+  note right of UC4 : Interactive map shows\nselected route visualization
+
+  usecase "Data Loading Failure\n(Show Error Message)" as EXT1 #FFEBEE
+  usecase "Route Selection Error\n(Fallback to Default)" as EXT2 #FFEBEE
+  usecase "Map Rendering Failure\n(Show Placeholder)" as EXT3 #FFEBEE
+}
+
+actor "Route Data Service\n(REST API)" as RDS #E3F2FD
+actor "Map Component\n(Mapbox GL)" as MC #E3F2FD
+actor "Authentication Provider\n(Better Auth/Fayda)" as AP #E3F2FD
+
+FM --> UC1
+UC1 --> UC2
+UC2 --> UC3
+UC3 --> UC4
+UC4 --> UC5
+
+UC1 --> AP : authenticates user
+UC2 --> RDS : fetches statistics
+UC3 --> RDS : retrieves routes
+UC4 --> MC : displays route
+UC5 --> RDS : loads details
+
+EXT1 ..> UC2 : extends (loading failure)
+EXT2 ..> UC4 : extends (selection error)
+EXT3 ..> UC4 : extends (map failure)
+
+note as N1
+  **Goal:** Provide basic operational overview through
+  statistics display and route visualization.
+  **Scope:** Dashboard access, basic metrics display,
+  route browsing, and map visualization.
+end note
+
+FM .. N1
+@enduml

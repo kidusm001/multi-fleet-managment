@@ -1,0 +1,16 @@
+@startuml RouteCreationSequence
+actor User
+participant Frontend
+participant API
+database DB
+User -> Frontend: Initiate Create Route
+Frontend -> API: POST /routes {payload}
+API -> API: Validate + authorize (tenant, role)
+API -> DB: BEGIN TX
+API -> DB: Insert Route
+API -> DB: Insert Stops (loop)
+DB --> API: Commit OK
+API --> Frontend: 201 Created {routeId}
+Frontend -> API: (optional) POST /routes/{id}/optimize
+API --> Frontend: 202 Accepted (future async)
+@enduml

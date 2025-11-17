@@ -1,0 +1,213 @@
+import React, { useEffect, useState, useRef } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { authClient } from '@/lib/auth-client';
+import { Building2 } from 'lucide-react';
+import { useTheme } from '@/contexts/ThemeContext';
+import { useRole } from '@/contexts/RoleContext';
+import { cn } from '@/lib/utils';
+import LoadingAnimation from '@/components/Common/LoadingAnimation';
+
+/**
+ * Organization Guard Component
+ * 
+ * Checks if authenticated users have access to organizations.
+ * Superadmin and Owner bypass organization requirements.
+ * If they don't have any organizations, redirects them to create one.
+ * If they have organizations but no active one, helps them select one.
+ */
+export default function OrganizationGuard({ children }) {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { theme } = useTheme();
+  const { role } = useRole();
+  const isDark = theme === 'dark';
+  
+  const [isChecking, setIsChecking] = useState(true);
+  const [_needsOrganization, _setNeedsOrganization] = useState(false);
+
+  // Debounce ref to prevent rapid organization checks
+  const debounceRef = useRef(null);
+  
+  // Cache ref to track if we've already validated organizations for this session
+  const hasValidatedRef = useRef(false);
+
+  // Auth hooks
+  const { useSession, useListOrganizations, useActiveOrganization } = authClient;
+  const { data: session, isLoading: sessionLoading } = useSession();
+  const { data: organizations, isLoading: orgsLoading } = useListOrganizations();
+  const { data: activeOrganization, isPending: activeOrgLoading } = useActiveOrganization();
+
+  const isSuperadmin = role === 'superadmin';
+
+  // Reset validation cache when session changes
+  useEffect(() => {
+    hasValidatedRef.current = false;
+  }, [session?.user?.id]);
+
+  // Skip organization checks for certain routes
+  const skipRoutes = [
+    '/auth/login',
+    '/auth/signup', 
+    '/unauthorized',
+  ];
+
+  const shouldSkipCheck = skipRoutes.some(route => 
+    location.pathname.startsWith(route)
+  );
+  
+  // Any user without an active organization (except superadmin) should be on /organizations
+  const isOnOrganizationPage = location.pathname.startsWith('/organizations');
+  const needsOrganizationRedirect = !isSuperadmin && !activeOrganization && !isOnOrganizationPage;
+
+  useEffect(() => {
+    // Clear any existing debounce timeout
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+
+    // Don't check if we're not authenticated or on excluded routes
+    if (!session || shouldSkipCheck || sessionLoading) {
+      setIsChecking(false);
+      return;
+    }
+
+    // Superadmin bypasses organization requirements
+    if (isSuperadmin) {
+      setIsChecking(false);
+      return;
+    }
+    
+    // Wait for active organization data to load before making decisions
+    if (activeOrgLoading) {
+      setIsChecking(true);
+      return;
+    }
+    
+    // Any user without active organization must be redirected to /organizations
+    if (needsOrganizationRedirect) {
+      console.log('OrganizationGuard - User without active org, redirecting to /organizations');
+      navigate('/organizations', { replace: true });
+      setIsChecking(false);
+      return;
+    }
+
+    // If we've already validated organizations for this session and user has active org, skip
+    if (hasValidatedRef.current && activeOrganization && organizations?.length > 0) {
+      setIsChecking(false);
+      return;
+    }
+
+    // If still loading organizations, wait and don't redirect
+    if (orgsLoading) {
+      setIsChecking(true);
+      return;
+    }
+
+    // Debounce the organization check to prevent rapid re-checks
+    debounceRef.current = setTimeout(() => {
+      const checkOrganizationAccess = async () => {
+        try {
+          console.log('OrganizationGuard - Checking organization access:', {
+            session: !!session,
+            organizations: organizations?.length || 0,
+            activeOrganization: activeOrganization?.name || 'none',
+            orgsLoading,
+            role
+          });
+
+          // If user has organizations but no active one, set the first one as active
+          if (!activeOrganization && organizations?.length > 0) {
+            console.log('User has organizations but none active, setting first as active');
+            try {
+              await authClient.organization.setActive({
+                organizationId: organizations[0].id
+              });
+              console.log('Set active organization to:', organizations[0].name);
+              hasValidatedRef.current = true; // Mark as validated
+              // Don't navigate away - stay on current route
+              return;
+            } catch (error) {
+              console.error('Failed to set active organization:', error);
+              // If setting active fails, redirect to organization selection
+              navigate('/organizations', { replace: true });
+              return;
+            }
+          }
+
+          // If user has no organizations at all, redirect to organization selection
+          if (!organizations || organizations.length === 0) {
+            console.log('User has no organizations, redirecting to organization selection');
+            navigate('/organizations', { replace: true });
+            return;
+          }
+
+          // If we get here, validation passed
+          hasValidatedRef.current = true;
+          console.log('Organization check passed:', {
+            organizations: organizations?.length,
+            activeOrganization: activeOrganization?.name
+          });
+        } catch (error) {
+          console.error('Error checking organization access:', error);
+          // On error, redirect to organization selection to be safe
+          navigate('/organizations', { replace: true });
+        } finally {
+          setIsChecking(false);
+        }
+      };
+
+      // Only run organization check when we have definitive data
+      checkOrganizationAccess();
+    }, 200); // 200ms debounce
+
+    // Cleanup function to clear timeout on unmount or dependency change
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+    };
+  }, [session, organizations, activeOrganization, sessionLoading, orgsLoading, activeOrgLoading, navigate, shouldSkipCheck, location.pathname, isSuperadmin, role, needsOrganizationRedirect]);
+
+  // Show loading screen while checking or while data is loading
+  if (isChecking || sessionLoading || activeOrgLoading || (session && orgsLoading)) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-slate-900">
+        <LoadingAnimation />
+      </div>
+    );
+  }
+
+  // Show organization creation prompt if needed
+  if (_needsOrganization) {
+    return (
+      <div className={cn(
+        "min-h-screen flex items-center justify-center",
+        isDark ? "bg-slate-900" : "bg-gray-50"
+      )}>
+        <div className="text-center max-w-md mx-auto p-6">
+          <Building2 className="w-16 h-16 mx-auto mb-4 text-primary" />
+          <h2 className="text-2xl font-bold mb-2">Welcome to Fleet Management!</h2>
+          <p className="text-muted-foreground mb-4">
+            To get started, you&apos;ll need to create or join an organization.
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Redirecting you to organization setup...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // If we get here and user is authenticated but on excluded routes, render children
+  if (shouldSkipCheck) {
+    return children;
+  }
+
+  // If user has organizations and active organization, render children
+  if (session && organizations?.length > 0 && activeOrganization) {
+    return children;
+  }
+
+  // Fallback - shouldn't normally reach here
+  return children;
+}
