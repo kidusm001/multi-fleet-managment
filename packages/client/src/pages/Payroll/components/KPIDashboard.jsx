@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { format, parse } from 'date-fns';
+import { api } from '@/services/api';
 
 const KPIDashboard = ({ organizationId }) => {
   const [dashboardData, setDashboardData] = useState(null);
@@ -15,16 +16,17 @@ const KPIDashboard = ({ organizationId }) => {
       const start = format(startDate, 'yyyy-MM-dd');
       const end = format(endDate, 'yyyy-MM-dd');
       
-      const response = await fetch(
-        `/api/kpi/dashboard?organizationId=${organizationId}&startDate=${start}&endDate=${end}`
-      );
-      
-      if (!response.ok) throw new Error('Failed to fetch KPI dashboard');
-      const data = await response.json();
+      const { data } = await api.get('/kpi/dashboard', {
+        params: {
+          organizationId,
+          startDate: start,
+          endDate: end,
+        },
+      });
       setDashboardData(data);
       setError(null);
     } catch (err) {
-      setError(err.message);
+      setError(err?.response?.data?.error || err?.message || 'Failed to fetch KPI dashboard');
       console.error('Error fetching dashboard:', err);
     } finally {
       setLoading(false);

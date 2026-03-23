@@ -13,6 +13,38 @@ import {
 import { Decimal } from '@prisma/client/runtime/library';
 
 export class PayrollKpiService {
+  private isMissingTableError(error: unknown): boolean {
+    if (!error || typeof error !== 'object') {
+      return false;
+    }
+
+    const maybeError = error as { code?: string; message?: string };
+    const message = maybeError.message || '';
+
+    return (
+      maybeError.code === 'P2021' ||
+      /table .* does not exist/i.test(message) ||
+      /invalid .* invocation/i.test(message)
+    );
+  }
+
+  private async safeFindMany<T>(
+    query: () => Promise<T[]>,
+    modelName: string
+  ): Promise<T[]> {
+    try {
+      return await query();
+    } catch (error) {
+      if (this.isMissingTableError(error)) {
+        console.warn(
+          `[KPI] Skipping ${modelName} query because table is missing in current DB.`
+        );
+        return [];
+      }
+      throw error;
+    }
+  }
+
   /**
    * Calculate Department KPIs
    * Primary: Cost per employee, budget variance
@@ -25,19 +57,23 @@ export class PayrollKpiService {
     });
 
     // Get route completions for the period
-    const completions = await prisma.routeCompletion.findMany({
-      where: {
-        organizationId: filters.organizationId,
-        completedAt: {
-          gte: filters.startDate,
-          lte: filters.endDate,
-        },
-      },
-      include: {
-        driver: true,
-        vehicle: true,
-      },
-    });
+    const completions = await this.safeFindMany(
+      () =>
+        prisma.routeCompletion.findMany({
+          where: {
+            organizationId: filters.organizationId,
+            completedAt: {
+              gte: filters.startDate,
+              lte: filters.endDate,
+            },
+          },
+          include: {
+            driver: true,
+            vehicle: true,
+          },
+        }),
+      'routeCompletion'
+    );
 
     // Get attendance records for the period (these link to employees who have departments)
     const attendance = await prisma.attendanceRecord.findMany({
@@ -378,19 +414,23 @@ export class PayrollKpiService {
    */
   async calculateRouteKPIs(filters: KPIFilters): Promise<RouteKPIs[]> {
     // Get actual completed routes
-    const completions = await prisma.routeCompletion.findMany({
-      where: {
-        organizationId: filters.organizationId,
-        completedAt: {
-          gte: filters.startDate,
-          lte: filters.endDate,
-        },
-      },
-      include: {
-        vehicle: true,
-        driver: true,
-      },
-    });
+    const completions = await this.safeFindMany(
+      () =>
+        prisma.routeCompletion.findMany({
+          where: {
+            organizationId: filters.organizationId,
+            completedAt: {
+              gte: filters.startDate,
+              lte: filters.endDate,
+            },
+          },
+          include: {
+            vehicle: true,
+            driver: true,
+          },
+        }),
+      'routeCompletion'
+    );
 
     // Get route details
     const uniqueRouteIds = [...new Set(completions.map(c => c.routeId))];
@@ -631,6 +671,22 @@ export class PayrollKpiService {
 
     const finalVehicleCount = vehicleCount > 0 ? vehicleCount : routeVehicleCount;
 
+    let finalTotalEmployees = totalEmployees;
+    if (finalTotalEmployees === 0) {
+      try {
+        if (prisma.employee?.count) {
+          finalTotalEmployees = await prisma.employee.count({
+            where: {
+              organizationId: filters.organizationId,
+              deleted: false,
+            },
+          });
+        }
+      } catch (error) {
+        console.warn('[KPI] Unable to derive employee fallback count:', error);
+      }
+    }
+
     console.log(`[KPI Debug] Total vehicles: ${finalVehicleCount} (from categories: ${vehicleCount}, from routes: ${routeVehicleCount})`);
 
     return {
@@ -641,9 +697,10 @@ export class PayrollKpiService {
       endDate: filters.endDate,
       organizationId: filters.organizationId,
       totalCost,
-      totalEmployees,
+      totalEmployees: finalTotalEmployees,
       totalVehicles: finalVehicleCount,
-      avgCostPerEmployee: totalEmployees > 0 ? totalCost / totalEmployees : 0,
+      avgCostPerEmployee:
+        finalTotalEmployees > 0 ? totalCost / finalTotalEmployees : 0,
       departmentKPIs,
       shiftKPIs,
       dateTimeKPIs,
@@ -685,15 +742,19 @@ export class PayrollKpiService {
     });
 
     // Get route completions for activity tracking
-    const completions = await prisma.routeCompletion.findMany({
-      where: {
-        organizationId: filters.organizationId,
-        completedAt: {
-          gte: filters.startDate,
-          lte: filters.endDate,
-        },
-      },
-    });
+    const completions = await this.safeFindMany(
+      () =>
+        prisma.routeCompletion.findMany({
+          where: {
+            organizationId: filters.organizationId,
+            completedAt: {
+              gte: filters.startDate,
+              lte: filters.endDate,
+            },
+          },
+        }),
+      'routeCompletion'
+    );
 
     // Get attendance for worked days
     const attendance = await prisma.attendanceRecord.findMany({
@@ -708,84 +769,58 @@ export class PayrollKpiService {
 
     const trendMap = new Map<string, any>();
 
-    // Process payroll periods for costs
-    payrollPeriods.forEach((period) => {
-      let periodKey: string;
-      const date = period.startDate;
+    const getPeriodKey = (dateValue: Date | string, intervalType: 'daily' | 'weekly' | 'monthly'): string | null => {
+      const date = new Date(dateValue);
+      if (Number.isNaN(date.getTime())) return null;
 
-      if (interval === 'daily') {
-        periodKey = date.toISOString().split('T')[0];
-      } else if (interval === 'weekly') {
-        const weekStart = new Date(date);
-        weekStart.setDate(date.getDate() - date.getDay());
-        periodKey = weekStart.toISOString().split('T')[0];
-      } else {
-        periodKey = date.toISOString().substring(0, 7);
+      if (intervalType === 'daily') {
+        return date.toISOString().split('T')[0];
       }
 
+      if (intervalType === 'weekly') {
+        const weekStart = new Date(date);
+        weekStart.setDate(date.getDate() - date.getDay());
+        return weekStart.toISOString().split('T')[0];
+      }
+
+      return date.toISOString().substring(0, 7);
+    };
+
+    const addToTrend = (periodKey: string) => {
       if (!trendMap.has(periodKey)) {
         trendMap.set(periodKey, {
-          totalCost: 0,
+          dailyCost: 0,
           routeCompletions: 0,
           attendanceDays: 0,
         });
       }
+      return trendMap.get(periodKey);
+    };
 
-      const trend = trendMap.get(periodKey);
-      trend.totalCost += Number(period.totalAmount || 0);
+    // Process payroll periods for costs
+    payrollPeriods.forEach((period) => {
+      const periodKey = getPeriodKey(period.startDate, interval);
+      if (!periodKey) return;
+
+      const trend = addToTrend(periodKey);
+      trend.dailyCost += Number(period.totalAmount || 0);
     });
 
     // Process route completions
     completions.forEach((completion) => {
-      let periodKey: string;
-      const date = completion.completedAt;
+      const periodKey = getPeriodKey(completion.completedAt, interval);
+      if (!periodKey) return;
 
-      if (interval === 'daily') {
-        periodKey = date.toISOString().split('T')[0];
-      } else if (interval === 'weekly') {
-        const weekStart = new Date(date);
-        weekStart.setDate(date.getDate() - date.getDay());
-        periodKey = weekStart.toISOString().split('T')[0];
-      } else {
-        periodKey = date.toISOString().substring(0, 7);
-      }
-
-      if (!trendMap.has(periodKey)) {
-        trendMap.set(periodKey, {
-          totalCost: 0,
-          routeCompletions: 0,
-          attendanceDays: 0,
-        });
-      }
-
-      const trend = trendMap.get(periodKey);
+      const trend = addToTrend(periodKey);
       trend.routeCompletions += 1;
     });
 
     // Process attendance
     attendance.forEach((record) => {
-      let periodKey: string;
-      const date = record.date;
+      const periodKey = getPeriodKey(record.date, interval);
+      if (!periodKey) return;
 
-      if (interval === 'daily') {
-        periodKey = date.toISOString().split('T')[0];
-      } else if (interval === 'weekly') {
-        const weekStart = new Date(date);
-        weekStart.setDate(date.getDate() - date.getDay());
-        periodKey = weekStart.toISOString().split('T')[0];
-      } else {
-        periodKey = date.toISOString().substring(0, 7);
-      }
-
-      if (!trendMap.has(periodKey)) {
-        trendMap.set(periodKey, {
-          totalCost: 0,
-          routeCompletions: 0,
-          attendanceDays: 0,
-        });
-      }
-
-      const trend = trendMap.get(periodKey);
+      const trend = addToTrend(periodKey);
       trend.attendanceDays += 1;
     });
 
@@ -793,11 +828,12 @@ export class PayrollKpiService {
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([period, data], index, array) => ({
         period,
-        value: data.totalCost,
+        dailyCost: data.dailyCost,
+        value: data.dailyCost,
         routeCompletions: data.routeCompletions,
         attendanceDays: data.attendanceDays,
-        previousValue: index > 0 ? array[index - 1][1].totalCost : data.totalCost,
-        change: index > 0 ? data.totalCost - array[index - 1][1].totalCost : 0,
+        previousDailyCost: index > 0 ? array[index - 1][1].dailyCost : data.dailyCost,
+        change: index > 0 ? data.dailyCost - array[index - 1][1].dailyCost : 0,
       }));
   }
 

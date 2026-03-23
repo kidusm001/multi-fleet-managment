@@ -220,20 +220,32 @@ export class PayrollKpiController {
         });
       }
 
+      const start = new Date(startDate as string);
+      const end = new Date(endDate as string);
+
+      if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+        return res.status(400).json({
+          error: 'startDate and endDate must be valid ISO dates',
+        });
+      }
+
       const filters: KPIFilters = {
         organizationId: organizationId as string,
-        startDate: new Date(startDate as string),
-        endDate: new Date(endDate as string),
+        startDate: start,
+        endDate: end,
       };
 
-      const trends = await payrollKpiService.getKPITrends(
-        filters,
-        (interval as 'daily' | 'weekly' | 'monthly') || 'weekly'
-      );
+      const selectedInterval = ['daily', 'weekly', 'monthly'].includes(
+        String(interval)
+      )
+        ? (interval as 'daily' | 'weekly' | 'monthly')
+        : 'weekly';
+
+      const trends = await payrollKpiService.getKPITrends(filters, selectedInterval);
       res.json(trends);
     } catch (error: any) {
       console.error('Error fetching KPI trends:', error);
-      res.status(500).json({ error: error.message });
+      res.status(500).json({ error: 'Failed to calculate KPI trends' });
     }
   }
 

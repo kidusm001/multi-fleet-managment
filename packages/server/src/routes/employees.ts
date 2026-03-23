@@ -894,10 +894,12 @@ router.get('/management', requireAuth, async (req: Request, res: Response) => {
             }
         })
 
-        // Transform employees to include computed location field prioritizing stop address
+        // Preserve living location separately from work location
         const transformedEmployees = employees.map(employee => ({
             ...employee,
-            location: employee.stop?.address || 'No stop assigned'
+            location: employee.location?.trim() || 'Not set',
+            workLocationAddress: employee.workLocation?.address || null,
+            pickupStopAddress: employee.stop?.address || null,
         }));
 
         res.json(transformedEmployees);
