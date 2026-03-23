@@ -206,57 +206,6 @@ router.get('/calculate-preview', requireAuth, async (req: Request, res: Response
 });
 
 /**
- * GET /:id - Get specific attendance record
- */
-router.get('/:id', requireAuth, async (req: Request, res: Response) => {
-  try {
-    const organizationId = req.session?.session?.activeOrganizationId;
-    if (!organizationId) {
-      return res.status(400).json({ message: 'Active organization not found' });
-    }
-
-    const { id } = req.params;
-
-    const record = await prisma.attendanceRecord.findFirst({
-      where: {
-        id,
-        organizationId,
-      },
-      include: {
-        driver: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            licenseNumber: true,
-            baseSalary: true,
-            hourlyRate: true,
-          },
-        },
-        vehicle: {
-          select: {
-            id: true,
-            model: true,
-            plateNumber: true,
-            type: true,
-            dailyRate: true,
-          },
-        },
-      },
-    });
-
-    if (!record) {
-      return res.status(404).json({ message: 'Attendance record not found' });
-    }
-
-    res.json(record);
-  } catch (error) {
-    console.error('Error fetching attendance record:', error);
-    res.status(500).json({ message: 'Failed to fetch attendance record' });
-  }
-});
-
-/**
  * POST / - Create attendance record
  */
 router.post('/', requireAuth, async (req: Request, res: Response) => {
@@ -386,8 +335,187 @@ router.post('/', requireAuth, async (req: Request, res: Response) => {
 });
 
 /**
- * PUT /:id - Update attendance record
+ * GET /summary/driver/:driverId - Get attendance summary for a driver
  */
+router.get('/summary/driver/:driverId', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const organizationId = req.session?.session?.activeOrganizationId;
+    if (!organizationId) {
+      return res.status(400).json({ message: 'Active organization not found' });
+    }
+
+    const { driverId } = req.params;
+    const { startDate, endDate } = req.query;
+
+    const where: any = {
+      organizationId,
+      driverId,
+    };
+
+    if (startDate && endDate) {
+      where.date = {
+        gte: new Date(startDate as string),
+        lte: new Date(endDate as string),
+      };
+    }
+
+    const records = await prisma.attendanceRecord.findMany({
+      where,
+      orderBy: { date: 'asc' },
+    });
+
+    const summary = records.reduce(
+      (acc, record) => {
+        acc.totalDays += 1;
+        acc.totalHours += record.hoursWorked || 0;
+        acc.totalTrips += record.tripsCompleted || 0;
+        acc.totalKms += record.kmsCovered || 0;
+        acc.totalFuelCost += parseFloat(record.fuelCost?.toString() || '0');
+        acc.totalTollCost += parseFloat(record.tollCost?.toString() || '0');
+        return acc;
+      },
+      {
+        totalDays: 0,
+        totalHours: 0,
+        totalTrips: 0,
+        totalKms: 0,
+        totalFuelCost: 0,
+        totalTollCost: 0,
+      }
+    );
+
+    res.json({
+      driverId,
+      period: { startDate, endDate },
+      summary,
+      records,
+    });
+  } catch (error) {
+    console.error('Error fetching driver attendance summary:', error);
+    res.status(500).json({ message: 'Failed to fetch driver attendance summary' });
+  }
+});
+
+/**
+ * GET /summary/vehicle/:vehicleId - Get attendance summary for a vehicle
+ */
+router.get('/summary/vehicle/:vehicleId', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const organizationId = req.session?.session?.activeOrganizationId;
+    if (!organizationId) {
+      return res.status(400).json({ message: 'Active organization not found' });
+    }
+
+    const { vehicleId } = req.params;
+    const { startDate, endDate } = req.query;
+
+    const where: any = {
+      organizationId,
+      vehicleId,
+    };
+
+    if (startDate && endDate) {
+      where.date = {
+        gte: new Date(startDate as string),
+        lte: new Date(endDate as string),
+      };
+    }
+
+    const records = await prisma.attendanceRecord.findMany({
+      where,
+      include: {
+        driver: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+      orderBy: { date: 'asc' },
+    });
+
+    const summary = records.reduce(
+      (acc, record) => {
+        acc.totalDays += 1;
+        acc.totalHours += record.hoursWorked || 0;
+        acc.totalTrips += record.tripsCompleted || 0;
+        acc.totalKms += record.kmsCovered || 0;
+        acc.totalFuelCost += parseFloat(record.fuelCost?.toString() || '0');
+        acc.totalTollCost += parseFloat(record.tollCost?.toString() || '0');
+        return acc;
+      },
+      {
+        totalDays: 0,
+        totalHours: 0,
+        totalTrips: 0,
+        totalKms: 0,
+        totalFuelCost: 0,
+        totalTollCost: 0,
+      }
+    );
+
+    res.json({
+      vehicleId,
+      period: { startDate, endDate },
+      summary,
+      records,
+    });
+  } catch (error) {
+    console.error('Error fetching vehicle attendance summary:', error);
+    res.status(500).json({ message: 'Failed to fetch vehicle attendance summary' });
+  }
+});
+
+/**
+ * GET /:id - Get specific attendance record
+ */
+router.get('/:id', requireAuth, async (req: Request, res: Response) => {
+  try {
+    const organizationId = req.session?.session?.activeOrganizationId;
+    if (!organizationId) {
+      return res.status(400).json({ message: 'Active organization not found' });
+    }
+
+    const { id } = req.params;
+
+    const record = await prisma.attendanceRecord.findFirst({
+      where: {
+        id,
+        organizationId,
+      },
+      include: {
+        driver: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            licenseNumber: true,
+            baseSalary: true,
+            hourlyRate: true,
+          },
+        },
+        vehicle: {
+          select: {
+            id: true,
+            model: true,
+            plateNumber: true,
+            type: true,
+            dailyRate: true,
+          },
+        },
+      },
+    });
+
+    if (!record) {
+      return res.status(404).json({ message: 'Attendance record not found' });
+    }
+
+    res.json(record);
+  } catch (error) {
+    console.error('Error fetching attendance record:', error);
+    res.status(500).json({ message: 'Failed to fetch attendance record' });
+  }
+});
 router.put('/:id', requireAuth, async (req: Request, res: Response) => {
   try {
     const organizationId = req.session?.session?.activeOrganizationId;

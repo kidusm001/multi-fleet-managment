@@ -5,6 +5,24 @@ import prisma from '../../db.js';
 
 vi.mock('../../db', () => ({
   default: {
+    department: {
+      findMany: vi.fn(),
+    },
+    routeCompletion: {
+      findMany: vi.fn(),
+    },
+    attendanceRecord: {
+      findMany: vi.fn(),
+    },
+    payrollPeriod: {
+      findMany: vi.fn(),
+    },
+    vehicleAvailability: {
+      findMany: vi.fn(),
+    },
+    route: {
+      findMany: vi.fn(),
+    },
     payrollReport: {
       findMany: vi.fn(),
     },
@@ -42,7 +60,10 @@ describe('PayrollKpiService', () => {
 
   describe('calculateDepartmentKPIs', () => {
     it('should handle empty data', async () => {
-      vi.mocked(prisma.payrollReport.findMany).mockResolvedValue([]);
+      vi.mocked(prisma.department.findMany).mockResolvedValue([]);
+      vi.mocked(prisma.routeCompletion.findMany).mockResolvedValue([]);
+      vi.mocked(prisma.attendanceRecord.findMany).mockResolvedValue([]);
+      vi.mocked(prisma.payrollPeriod.findMany).mockResolvedValue([]);
       const result = await payrollKpiService.calculateDepartmentKPIs(filters);
       expect(Array.isArray(result)).toBe(true);
     });
@@ -50,7 +71,8 @@ describe('PayrollKpiService', () => {
 
   describe('calculateShiftKPIs', () => {
     it('should handle empty data', async () => {
-      vi.mocked(prisma.payrollReport.findMany).mockResolvedValue([]);
+      vi.mocked(prisma.vehicleAvailability.findMany).mockResolvedValue([]);
+      vi.mocked(prisma.payrollPeriod.findMany).mockResolvedValue([]);
       const result = await payrollKpiService.calculateShiftKPIs(filters);
       expect(Array.isArray(result)).toBe(true);
     });
@@ -58,7 +80,7 @@ describe('PayrollKpiService', () => {
 
   describe('calculateDateTimeKPIs', () => {
     it('should handle empty data', async () => {
-      vi.mocked(prisma.payrollReport.findMany).mockResolvedValue([]);
+      vi.mocked(prisma.payrollPeriod.findMany).mockResolvedValue([]);
       const result = await payrollKpiService.calculateDateTimeKPIs(filters);
       expect(Array.isArray(result)).toBe(true);
     });
@@ -66,7 +88,9 @@ describe('PayrollKpiService', () => {
 
   describe('calculateRouteKPIs', () => {
     it('should handle empty data', async () => {
-      vi.mocked(prisma.payrollReport.findMany).mockResolvedValue([]);
+      vi.mocked(prisma.routeCompletion.findMany).mockResolvedValue([]);
+      vi.mocked(prisma.route.findMany).mockResolvedValue([]);
+      vi.mocked(prisma.payrollPeriod.findMany).mockResolvedValue([]);
       const result = await payrollKpiService.calculateRouteKPIs(filters);
       expect(Array.isArray(result)).toBe(true);
     });
@@ -74,7 +98,7 @@ describe('PayrollKpiService', () => {
 
   describe('calculateVehicleCategoryKPIs', () => {
     it('should handle empty data', async () => {
-      vi.mocked(prisma.payrollReport.findMany).mockResolvedValue([]);
+      vi.mocked(prisma.payrollPeriod.findMany).mockResolvedValue([]);
       const result = await payrollKpiService.calculateVehicleCategoryKPIs(filters);
       expect(Array.isArray(result)).toBe(true);
     });
@@ -82,7 +106,7 @@ describe('PayrollKpiService', () => {
 
   describe('calculateLocationKPIs', () => {
     it('should handle empty data', async () => {
-      vi.mocked(prisma.payrollReport.findMany).mockResolvedValue([]);
+      vi.mocked(prisma.payrollPeriod.findMany).mockResolvedValue([]);
       const result = await payrollKpiService.calculateLocationKPIs(filters);
       expect(Array.isArray(result)).toBe(true);
     });
@@ -90,7 +114,12 @@ describe('PayrollKpiService', () => {
 
   describe('generateKPIDashboard', () => {
     it('should generate dashboard with required properties', async () => {
-      vi.mocked(prisma.payrollReport.findMany).mockResolvedValue([]);
+      vi.mocked(prisma.department.findMany).mockResolvedValue([]);
+      vi.mocked(prisma.routeCompletion.findMany).mockResolvedValue([]);
+      vi.mocked(prisma.attendanceRecord.findMany).mockResolvedValue([]);
+      vi.mocked(prisma.vehicleAvailability.findMany).mockResolvedValue([]);
+      vi.mocked(prisma.payrollPeriod.findMany).mockResolvedValue([]);
+      vi.mocked(prisma.route.findMany).mockResolvedValue([]);
       const result = await payrollKpiService.generateKPIDashboard(filters);
 
       expect(result).toBeDefined();
@@ -113,7 +142,9 @@ describe('PayrollKpiService', () => {
 
   describe('getKPITrends', () => {
     it('should return trends array', async () => {
-      vi.mocked(prisma.payrollReport.findMany).mockResolvedValue([]);
+      vi.mocked(prisma.payrollPeriod.findMany).mockResolvedValue([]);
+      vi.mocked(prisma.routeCompletion.findMany).mockResolvedValue([]);
+      vi.mocked(prisma.attendanceRecord.findMany).mockResolvedValue([]);
       const result = await payrollKpiService.getKPITrends(filters, 'weekly');
       expect(Array.isArray(result)).toBe(true);
     });
@@ -121,7 +152,12 @@ describe('PayrollKpiService', () => {
 
   describe('compareKPIPeriods', () => {
     it('should return comparison with required metrics', async () => {
-      vi.mocked(prisma.payrollReport.findMany).mockResolvedValue([]);
+      vi.mocked(prisma.department.findMany).mockResolvedValue([]);
+      vi.mocked(prisma.routeCompletion.findMany).mockResolvedValue([]);
+      vi.mocked(prisma.attendanceRecord.findMany).mockResolvedValue([]);
+      vi.mocked(prisma.vehicleAvailability.findMany).mockResolvedValue([]);
+      vi.mocked(prisma.payrollPeriod.findMany).mockResolvedValue([]);
+      vi.mocked(prisma.route.findMany).mockResolvedValue([]);
       const currentFilters: KPIFilters = { ...filters };
       const previousFilters: KPIFilters = {
         organizationId: 'org-123',

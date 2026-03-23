@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
-import { format, parse, eachDayOfInterval, eachWeekOfInterval, eachMonthOfInterval } from 'date-fns';
+import React, { useState, useEffect, useCallback } from 'react';
+import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { format, parse } from 'date-fns';
 
 const TrendsChart = ({ organizationId, dimensionType = 'department' }) => {
   const [trendsData, setTrendsData] = useState(null);
@@ -12,7 +12,7 @@ const TrendsChart = ({ organizationId, dimensionType = 'department' }) => {
   const [dimension, setDimension] = useState(dimensionType);
   const [specificDimension, setSpecificDimension] = useState(''); // e.g., department ID or shift ID
 
-  const fetchTrends = async () => {
+  const fetchTrends = useCallback(async () => {
     try {
       setLoading(true);
       const start = format(startDate, 'yyyy-MM-dd');
@@ -43,13 +43,13 @@ const TrendsChart = ({ organizationId, dimensionType = 'department' }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [startDate, endDate, interval, dimension, specificDimension, organizationId]);
 
   useEffect(() => {
     if (organizationId) {
       fetchTrends();
     }
-  }, [organizationId, startDate, endDate, interval, dimension, specificDimension]);
+  }, [organizationId, fetchTrends]);
 
   if (loading) {
     return (

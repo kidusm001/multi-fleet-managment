@@ -1088,14 +1088,14 @@ export const payrollService = {
         }
 
         // Helper function to convert hex to RGB
-        function hexToRgb(hex) {
+        const hexToRgb = (hex) => {
           const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
           return result ? [
             parseInt(result[1], 16),
             parseInt(result[2], 16),
             parseInt(result[3], 16)
           ] : [0, 0, 0];
-        }
+        };
 
         // Cost efficiency indicator
         if (kpiData && kpiData.totalCost && kpiData.totalEmployees) {
@@ -1522,7 +1522,6 @@ export const payrollService = {
         const totalCost = kpiData ? (kpiData.totalCost || totalNetPay) : totalNetPay;
         const totalEmployees = kpiData ? (kpiData.totalEmployees || entries.length) : entries.length;
         const totalVehicles = kpiData ? (kpiData.totalVehicles || entries.length) : entries.length;
-        const avgUtilization = kpiData ? (kpiData.avgUtilizationRate || 0) : 0;
         const costPerEmployee = totalEmployees > 0 ? totalCost / totalEmployees : 0;
 
         // Card 1: Total Cost
@@ -1717,7 +1716,6 @@ export const payrollService = {
           doc.text('Department Cost Analysis', 20, financialY);
           financialY += 8;
 
-          const chartStartY = financialY;
           const chartHeight = 60;
           const chartWidth = 170;
           const barWidth = 25;
@@ -1796,7 +1794,6 @@ export const payrollService = {
           doc.text('Shift Performance Comparison', 20, financialY);
           financialY += 8;
 
-          const chartStartY = financialY;
           const chartHeight = 50;
           const chartWidth = 170;
           const barWidth = 30;
@@ -1866,14 +1863,14 @@ export const payrollService = {
         }
 
         // Helper function to convert hex to RGB
-        function hexToRgb(hex) {
+        const hexToRgb = (hex) => {
           const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
           return result ? [
             parseInt(result[1], 16),
             parseInt(result[2], 16),
             parseInt(result[3], 16)
           ] : [0, 0, 0];
-        }
+        };
 
         // ===== KEY INSIGHTS BOX =====
         doc.setFont('helvetica', 'bold');
