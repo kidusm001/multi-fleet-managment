@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import React, { useState, useEffect, useCallback } from 'react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { format, parse } from 'date-fns';
 
 const ComparisonChart = ({ organizationId }) => {
@@ -11,7 +11,7 @@ const ComparisonChart = ({ organizationId }) => {
   const [previousStartDate, setPreviousStartDate] = useState(new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1));
   const [previousEndDate, setPreviousEndDate] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 0));
 
-  const fetchComparison = async () => {
+  const fetchComparison = useCallback(async () => {
     try {
       setLoading(true);
       const currentStart = format(currentStartDate, 'yyyy-MM-dd');
@@ -33,13 +33,13 @@ const ComparisonChart = ({ organizationId }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [organizationId, currentStartDate, currentEndDate, previousStartDate, previousEndDate]);
 
   useEffect(() => {
     if (organizationId) {
       fetchComparison();
     }
-  }, [organizationId, currentStartDate, currentEndDate, previousStartDate, previousEndDate]);
+  }, [organizationId, fetchComparison]);
 
   if (loading) {
     return (
@@ -188,7 +188,6 @@ const ComparisonChart = ({ organizationId }) => {
             <XAxis dataKey="label" angle={-15} textAnchor="end" height={80} />
             <YAxis />
             <Tooltip />
-            <Legend />
             <Bar dataKey="previous" fill="#9ca3af" name="Previous Period" />
             <Bar dataKey="current" fill="#3b82f6" name="Current Period" />
           </BarChart>

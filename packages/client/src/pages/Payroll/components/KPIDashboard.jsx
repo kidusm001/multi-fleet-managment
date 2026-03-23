@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import React, { useState, useEffect, useCallback } from 'react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { format, parse } from 'date-fns';
 
 const KPIDashboard = ({ organizationId }) => {
@@ -9,7 +9,7 @@ const KPIDashboard = ({ organizationId }) => {
   const [startDate, setStartDate] = useState(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
   const [endDate, setEndDate] = useState(new Date());
 
-  const fetchDashboard = async () => {
+  const fetchDashboard = useCallback(async () => {
     try {
       setLoading(true);
       const start = format(startDate, 'yyyy-MM-dd');
@@ -29,13 +29,13 @@ const KPIDashboard = ({ organizationId }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [startDate, endDate, organizationId]);
 
   useEffect(() => {
     if (organizationId) {
       fetchDashboard();
     }
-  }, [organizationId, startDate, endDate]);
+  }, [organizationId, fetchDashboard]);
 
   if (loading) {
     return (
