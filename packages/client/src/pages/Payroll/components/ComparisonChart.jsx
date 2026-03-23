@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { format, parse } from 'date-fns';
+import { api } from '@/services/api';
 
 const ComparisonChart = ({ organizationId }) => {
   const [comparisonData, setComparisonData] = useState(null);
@@ -19,16 +20,19 @@ const ComparisonChart = ({ organizationId }) => {
       const prevStart = format(previousStartDate, 'yyyy-MM-dd');
       const prevEnd = format(previousEndDate, 'yyyy-MM-dd');
       
-      const response = await fetch(
-        `/api/kpi/compare?organizationId=${organizationId}&currentStartDate=${currentStart}&currentEndDate=${currentEnd}&previousStartDate=${prevStart}&previousEndDate=${prevEnd}`
-      );
-      
-      if (!response.ok) throw new Error('Failed to fetch comparison data');
-      const data = await response.json();
+      const { data } = await api.get('/kpi/compare', {
+        params: {
+          organizationId,
+          currentStartDate: currentStart,
+          currentEndDate: currentEnd,
+          previousStartDate: prevStart,
+          previousEndDate: prevEnd,
+        },
+      });
       setComparisonData(data);
       setError(null);
     } catch (err) {
-      setError(err.message);
+      setError(err?.response?.data?.error || err?.message || 'Failed to fetch comparison data');
       console.error('Error fetching comparison:', err);
     } finally {
       setLoading(false);

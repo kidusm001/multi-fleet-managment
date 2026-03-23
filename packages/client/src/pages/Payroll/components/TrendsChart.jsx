@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { format, parse } from 'date-fns';
+import { api } from '@/services/api';
 
 const TrendsChart = ({ organizationId, dimensionType = 'department' }) => {
   const [trendsData, setTrendsData] = useState(null);
@@ -18,15 +19,15 @@ const TrendsChart = ({ organizationId, dimensionType = 'department' }) => {
       const start = format(startDate, 'yyyy-MM-dd');
       const end = format(endDate, 'yyyy-MM-dd');
       
-      let url = `/api/kpi/trends?organizationId=${organizationId}&startDate=${start}&endDate=${end}&interval=${interval}`;
-      if (specificDimension) {
-        url += `&dimensionType=${dimension}&dimensionId=${specificDimension}`;
-      }
-      
-      const response = await fetch(url);
-      
-      if (!response.ok) throw new Error('Failed to fetch trend data');
-      const data = await response.json();
+      const { data } = await api.get('/kpi/trends', {
+        params: {
+          organizationId,
+          startDate: start,
+          endDate: end,
+          interval,
+          ...(specificDimension ? { dimensionType: dimension, dimensionId: specificDimension } : {}),
+        },
+      });
       
       // Transform data for charts
       const transformed = data.map(item => ({
@@ -38,7 +39,20 @@ const TrendsChart = ({ organizationId, dimensionType = 'department' }) => {
       setTrendsData(transformed);
       setError(null);
     } catch (err) {
-      setError(err.message);
+      const status = err?.response?.status;
+      let message;
+
+      if (status === 401) {
+        message = 'Authentication required. Please log in to view trends.';
+      } else if (status === 403) {
+        message = 'Insufficient permissions to view trend data. Contact admin.';
+      } else if (status >= 500) {
+        message = 'Server error while fetching trend data. Try again later.';
+      } else {
+        message = err?.response?.data?.error || err?.message || 'Failed to fetch trend data';
+      }
+
+      setError(message);
       console.error('Error fetching trends:', err);
     } finally {
       setLoading(false);

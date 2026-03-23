@@ -162,7 +162,7 @@ class EmployeeService {
    * @param {boolean} useCache Whether to use cached data
    * @returns {Promise<Array>} List of all employees including deleted ones
    */
-  listEmployeesForManagement = AsyncHandler(async (useCache = true) => {
+  listEmployeesForManagement = AsyncHandler(async (useCache = false) => {
     if (useCache && 
         this.cache.managementEmployees && 
         this.cache.managementLastFetched && 
