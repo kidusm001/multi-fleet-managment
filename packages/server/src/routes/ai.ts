@@ -13,6 +13,17 @@ import prisma from '../db';
 
 const router = express.Router();
 
+function isQuotaOrRateLimitError(error: unknown): boolean {
+  const message = ((error as { message?: string })?.message || String(error || '')).toLowerCase();
+  return (
+    message.includes('429') ||
+    message.includes('quota') ||
+    message.includes('rate limit') ||
+    message.includes('resource_exhausted') ||
+    message.includes('too many requests')
+  );
+}
+
 /**
  * POST /api/ai/chat
  * Send a message and get AI response
@@ -115,7 +126,8 @@ router.post('/chat', requireAuth, aiRateLimit, async (req, res) => {
       console.error('Failed to log error:', logError);
     }
     
-    res.status(500).json({
+    const statusCode = isQuotaOrRateLimitError(error) ? 429 : 500;
+    res.status(statusCode).json({
       error: 'Failed to process AI request',
       message: error.message,
     });
