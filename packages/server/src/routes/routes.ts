@@ -34,6 +34,76 @@ const router = express.Router();
 
 type RouteList = Route[];
 
+async function resolveRouteCreateOrganizationId(
+    req: Request,
+    payload: { locationId?: string | null; shiftId?: string | null; vehicleId?: string | null }
+): Promise<string | null> {
+    let organizationId: string | null = req.activeOrganizationId ?? req.session?.session?.activeOrganizationId ?? null;
+    if (organizationId) {
+        return organizationId;
+    }
+
+    const userId: string | undefined = req.user?.id;
+    if (!userId) {
+        return null;
+    }
+
+    const candidateOrgIds = new Set<string>();
+
+    if (payload.locationId) {
+        const location = await prisma.location.findUnique({
+            where: { id: payload.locationId },
+            select: { organizationId: true }
+        });
+        if (location?.organizationId) {
+            candidateOrgIds.add(location.organizationId);
+        }
+    }
+
+    if (payload.shiftId) {
+        const shift = await prisma.shift.findUnique({
+            where: { id: payload.shiftId },
+            select: { organizationId: true }
+        });
+        if (shift?.organizationId) {
+            candidateOrgIds.add(shift.organizationId);
+        }
+    }
+
+    if (payload.vehicleId) {
+        const vehicle = await prisma.vehicle.findUnique({
+            where: { id: payload.vehicleId },
+            select: { organizationId: true }
+        });
+        if (vehicle?.organizationId) {
+            candidateOrgIds.add(vehicle.organizationId);
+        }
+    }
+
+    for (const candidateOrgId of candidateOrgIds) {
+        const membership = await prisma.member.findFirst({
+            where: { organizationId: candidateOrgId, userId },
+            select: { id: true }
+        });
+        if (membership) {
+            return candidateOrgId;
+        }
+    }
+
+    const memberships = await prisma.member.findMany({
+        where: { userId },
+        select: { organizationId: true },
+        distinct: ['organizationId'],
+        take: 2
+    });
+
+    if (memberships.length === 1) {
+        return memberships[0].organizationId;
+    }
+
+    return null;
+}
+
 /**
  * @route   GET /superadmin
  * @desc    Get all routes
@@ -745,7 +815,12 @@ router.post('/', requireAuth, validateSchema(CreateRouteSchema, 'body'), async (
             sourceId,
         } = req.body as CreateRouteInput;
 
-        const activeOrgId = req.session?.session?.activeOrganizationId;
+        const activeOrgId = await resolveRouteCreateOrganizationId(req, {
+            locationId,
+            shiftId,
+            vehicleId,
+        });
+
         if (!activeOrgId) {
             return res.status(400).json({ message: 'Active organization not found' });
         }
@@ -763,12 +838,33 @@ router.post('/', requireAuth, validateSchema(CreateRouteSchema, 'body'), async (
             return res.status(400).json({ message: 'locationId is required' });
         }
 
-        const hasPermission = await auth.api.hasPermission({
-            headers: await fromNodeHeaders(req.headers),
-            body: { permissions: { route: ["create"] } }
-        });
-        if (!hasPermission.success) {
-            return res.status(403).json({ message: 'Unauthorized' });
+        let canCreateRoute = false;
+        try {
+            const hasPermission = await auth.api.hasPermission({
+                headers: await fromNodeHeaders(req.headers),
+                body: { permissions: { route: ["create"] } }
+            });
+            canCreateRoute = Boolean(hasPermission.success);
+        } catch (permissionError) {
+            console.warn('Route create permission check failed; falling back to membership role check', permissionError);
+        }
+
+        if (!canCreateRoute) {
+            const fallbackMember = await prisma.member.findFirst({
+                where: {
+                    organizationId: activeOrgId,
+                    userId: req.user?.id,
+                },
+                select: { role: true },
+            });
+
+            const fallbackRole = fallbackMember?.role?.toLowerCase();
+            const isPrivilegedMember = fallbackRole === 'owner' || fallbackRole === 'admin' || fallbackRole === 'manager';
+            const isSuperadmin = req.user?.role?.toLowerCase() === 'superadmin';
+
+            if (!isPrivilegedMember && !isSuperadmin) {
+                return res.status(403).json({ message: 'Unauthorized' });
+            }
         }
 
         // Validate location exists and belongs to organization

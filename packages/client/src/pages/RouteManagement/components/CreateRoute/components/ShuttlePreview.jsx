@@ -89,7 +89,7 @@ const ShuttlePreview = ({ routeData, onClose, onAccept, show }) => {
     () =>
       employeesWithCoordinates.map((employee) => {
         const locationLabel = formatDisplayAddress(
-          employee.stop?.address || employee.location || ""
+          employee.location || employee.stop?.address || employee.workLocation?.address || ""
         );
 
         return {
@@ -135,8 +135,8 @@ const ShuttlePreview = ({ routeData, onClose, onAccept, show }) => {
         stopNumber: null,
         locationLabel:
           formatDisplayAddress(
-            employee.workLocation?.address ||
-              employee.location ||
+            employee.location ||
+              employee.workLocation?.address ||
               ""
           ) || "Location information missing",
       })),
@@ -282,7 +282,7 @@ const ShuttlePreview = ({ routeData, onClose, onAccept, show }) => {
           furthestDistance = distance;
           // Use stop address and extract first two parts after removing the leading segment
           const formattedAddress = formatDisplayAddress(
-            employee.stop?.address || employee.location || ''
+            employee.location || employee.stop?.address || employee.workLocation?.address || ''
           );
           const addressParts = formattedAddress
             .split(',')
@@ -408,9 +408,9 @@ const ShuttlePreview = ({ routeData, onClose, onAccept, show }) => {
 
         const locationLabel = entry.locationLabel ||
         formatDisplayAddress(
-          employee.stop?.address ||
+          employee.location ||
+            employee.stop?.address ||
             employee.workLocation?.address ||
-            employee.location ||
             ""
         ) || "N/A";
 

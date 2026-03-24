@@ -102,7 +102,7 @@ const MobileShuttlePreview = ({ routeData, onClose, onAccept, show }) => {
           areas: [
             originLabel,
             ...validEmployees.map((emp) =>
-              formatDisplayAddress(emp.stop?.address || emp.location || "Unknown") ||
+              formatDisplayAddress(emp.location || emp.stop?.address || emp.workLocation?.address || "Unknown") ||
               "Unknown"
             ),
             originLabel,
@@ -182,7 +182,7 @@ const MobileShuttlePreview = ({ routeData, onClose, onAccept, show }) => {
           furthestDistance = distance;
           // Use stop address and extract first two parts after removing the leading segment
           const formattedAddress = formatDisplayAddress(
-            employee.stop?.address || employee.location || ''
+            employee.location || employee.stop?.address || employee.workLocation?.address || ''
           );
           const addressParts = formattedAddress
             .split(',')
@@ -415,7 +415,8 @@ const MobileShuttlePreview = ({ routeData, onClose, onAccept, show }) => {
                     </div>
                     <Badge variant="secondary" className="text-xs shrink-0">
                       {formatDisplayAddress(
-                        employee.stop?.address ||
+                        employee.location ||
+                          employee.stop?.address ||
                           employee.workLocation?.address ||
                           'N/A'
                       ) || 'N/A'}

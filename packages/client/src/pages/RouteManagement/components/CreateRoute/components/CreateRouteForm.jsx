@@ -508,7 +508,7 @@ export default function CreateRouteForm({
           furthestDistance = distance;
           // Use stop location and extract first two parts after removing the leading segment
           const formattedAddress = formatDisplayAddress(
-            employee.stop?.address || employee.location || ''
+            employee.location || employee.stop?.address || employee.workLocation?.address || ''
           );
           const addressParts = formattedAddress
             .split(',')

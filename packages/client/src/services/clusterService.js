@@ -46,16 +46,45 @@ fastApi.interceptors.response.use(
 let currentOptimizeRequest = null;
 let isRequestInProgress = false;
 
+function parseCoordinate(value) {
+  if (value == null) return null;
+  const parsed = typeof value === 'number' ? value : Number.parseFloat(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function resolveEmployeeCoordinates(employee) {
+  const stopLat = parseCoordinate(employee?.stop?.latitude);
+  const stopLng = parseCoordinate(employee?.stop?.longitude);
+  if (stopLat != null && stopLng != null && stopLat !== 0 && stopLng !== 0) {
+    return {
+      latitude: stopLat,
+      longitude: stopLng,
+      source: 'stop',
+    };
+  }
+
+  const workLat = parseCoordinate(employee?.workLocation?.latitude);
+  const workLng = parseCoordinate(employee?.workLocation?.longitude);
+  if (workLat != null && workLng != null && workLat !== 0 && workLng !== 0) {
+    return {
+      latitude: workLat,
+      longitude: workLng,
+      source: 'workLocation',
+    };
+  }
+
+  return null;
+}
+
 export const clusterService = {
   // Get optimal clusters for multiple shuttles
   optimizeClusters: async (employees, shuttles, options = {}) => {
     const { location } = options;
 
     try {
-      // If a request is already in progress, don't start another one
-      if (isRequestInProgress) {
-        console.log('Request already in progress, skipping...');
-        return {};
+      // If a request is already in progress, cancel it and proceed with latest request
+      if (isRequestInProgress && currentOptimizeRequest) {
+        currentOptimizeRequest.cancel('Superseded by a newer optimize request');
       }
 
       // Calculate total shuttle capacity
@@ -111,13 +140,14 @@ export const clusterService = {
       isRequestInProgress = true;
 
       // Format request data
-      // Filter out employees without valid coordinates to prevent 422 errors
-      const validEmployees = employees.filter(emp =>
-        emp.stop?.latitude &&
-        emp.stop?.longitude &&
-        emp.stop.latitude !== 0 &&
-        emp.stop.longitude !== 0
-      );
+      // Filter out employees without valid coordinates to prevent 422 errors.
+      // Prefer stop coordinates, fallback to work location coordinates.
+      const employeesWithCoordinates = employees
+        .map((emp) => {
+          const coordinates = resolveEmployeeCoordinates(emp);
+          return coordinates ? { ...emp, _clusterCoordinates: coordinates } : null;
+        })
+        .filter(Boolean);
 
       // Filter out shuttles without valid capacity
       // Prefer vehicle's direct capacity, fallback to category capacity
@@ -127,11 +157,11 @@ export const clusterService = {
       });
 
       // If no valid employees or shuttles, return early
-      if (validEmployees.length === 0 || validShuttles.length === 0) {
+      if (employeesWithCoordinates.length === 0 || validShuttles.length === 0) {
         isRequestInProgress = false;
         return {
           success: false,
-          message: validEmployees.length === 0 ?
+          message: employeesWithCoordinates.length === 0 ?
             "No employees with valid locations found" :
             "No shuttles with valid capacity found",
           routes: [],
@@ -153,10 +183,10 @@ export const clusterService = {
           HQ: location && location.longitude && location.latitude
             ? [location.longitude, location.latitude] // Use selected location coordinates
             : [9.0222, 38.7468], // Addis Ababa coordinates as fallback HQ
-          employees: validEmployees.map(emp => ({
+          employees: employeesWithCoordinates.map(emp => ({
             id: emp.id.toString(),
-            latitude: emp.stop.latitude,
-            longitude: emp.stop.longitude
+            latitude: emp._clusterCoordinates.latitude,
+            longitude: emp._clusterCoordinates.longitude
           }))
         },
         shuttles: validShuttles.map(shuttle => ({
