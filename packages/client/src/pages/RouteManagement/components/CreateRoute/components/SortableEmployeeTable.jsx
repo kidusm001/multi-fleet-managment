@@ -45,10 +45,10 @@ export default function SortableEmployeeTable({
     // Special handling for location sorting
     if (sortConfig.key === "location") {
       aValue = formatDisplayAddress(
-        a.stop?.address || a.workLocation?.address || ""
+        a.location || a.stop?.address || a.workLocation?.address || ""
       );
       bValue = formatDisplayAddress(
-        b.stop?.address || b.workLocation?.address || ""
+        b.location || b.stop?.address || b.workLocation?.address || ""
       );
     }
 
@@ -194,7 +194,8 @@ export default function SortableEmployeeTable({
                 <td>
                   <Badge variant="outline" className="font-normal">
                     {formatDisplayAddress(
-                      employee.stop?.address ||
+                      employee.location ||
+                        employee.stop?.address ||
                         employee.workLocation?.address ||
                         "N/A"
                     ) || "N/A"}

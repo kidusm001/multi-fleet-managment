@@ -298,7 +298,7 @@ class RouteService {
       throw new Error('Route ID and Employee ID are required');
     }
 
-    // Clean and validate both IDs as strings (cuid format)
+    // Clean and validate both IDs as strings.
     const cleanRouteId = String(routeId).trim();
     const cleanEmployeeId = String(employeeId).trim();
 
@@ -307,11 +307,10 @@ class RouteService {
       throw new Error('Invalid route ID');
     }
 
-    // Validate employee ID is a valid CUID (starts with 'c' followed by alphanumeric)
-    const cuidRegex = /^c[a-z0-9]{24,}$/i;
-    if (!cuidRegex.test(cleanEmployeeId)) {
-      console.error('Invalid employee ID format:', cleanEmployeeId);
-      throw new Error('Invalid employee ID format');
+    // Accept both CUID and legacy seeded IDs while rejecting empty/invalid placeholders.
+    if (!cleanEmployeeId || cleanEmployeeId === 'NaN') {
+      console.error('Invalid employee ID:', cleanEmployeeId);
+      throw new Error('Invalid employee ID');
     }
 
     // Log the request details for debugging
@@ -322,7 +321,9 @@ class RouteService {
     });
 
     try {
-      const response = await api.patch(`/routes/${cleanRouteId}/employees/${cleanEmployeeId}/add-stop`, {
+      const encodedRouteId = encodeURIComponent(cleanRouteId);
+      const encodedEmployeeId = encodeURIComponent(cleanEmployeeId);
+      const response = await api.patch(`/routes/${encodedRouteId}/employees/${encodedEmployeeId}/add-stop`, {
         totalDistance: routeMetrics?.totalDistance,
         totalTime: routeMetrics?.totalTime
       });

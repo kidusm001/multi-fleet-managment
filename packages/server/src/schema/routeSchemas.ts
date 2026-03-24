@@ -3,6 +3,7 @@ import { z } from 'zod';
 // Define route status enum that matches Prisma schema
 const RouteStatusEnum = z.enum(['PENDING', 'ACTIVE', 'IN_PROGRESS', 'COMPLETED', 'INACTIVE', 'CANCELLED']);
 const ManagerRouteStatusEnum = z.enum(['ACTIVE', 'INACTIVE']);
+const LegacyCompatibleIdSchema = z.string().min(1, 'ID is required').max(191, 'ID is too long');
 
 // Base Route schema for validation
 const BaseRouteSchema = z.object({
@@ -24,8 +25,8 @@ const BaseRouteSchema = z.object({
 // Create Route schema
 export const CreateRouteSchema = BaseRouteSchema.extend({
     employees: z.array(z.object({
-        employeeId: z.cuid('Employee ID must be a valid CUID'),
-        stopId: z.cuid('Stop ID must be a valid CUID'),
+        employeeId: LegacyCompatibleIdSchema,
+        stopId: LegacyCompatibleIdSchema,
     })).min(1, 'At least one employee is required'),
 }).required({
     name: true,
@@ -68,8 +69,8 @@ export const UpdateRouteStatusSchema = z.object({
 
 // Employee assignment schemas for routes
 export const RouteEmployeeSchema = z.object({
-    employeeId: z.cuid('Employee ID must be a valid CUID'),
-    stopId: z.cuid('Stop ID must be a valid CUID'),
+    employeeId: LegacyCompatibleIdSchema,
+    stopId: LegacyCompatibleIdSchema,
 });
 
 export const RouteEmployeesSchema = z.object({
@@ -108,7 +109,7 @@ export const RoutesByLocationParamSchema = z.object({
 
 export const RouteEmployeeParamSchema = z.object({
     routeId: z.cuid('Route ID must be a valid CUID'),
-    employeeId: z.cuid('Employee ID must be a valid CUID'),
+    employeeId: LegacyCompatibleIdSchema,
 });
 
 // Export types for TypeScript

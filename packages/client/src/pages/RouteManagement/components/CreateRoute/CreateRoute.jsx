@@ -388,8 +388,15 @@ function CreateRoute() {
         },
       });
     } catch (error) {
+      const serverMessage =
+        error?.response?.data?.error ||
+        error?.response?.data?.message ||
+        (Array.isArray(error?.response?.data?.errors)
+          ? error.response.data.errors.map((entry) => `${entry.field}: ${entry.message}`).join(', ')
+          : null);
+
       toast.error(
-        "Failed to create route: " + (error.message || "Unknown error")
+        "Failed to create route: " + (serverMessage || error.message || "Unknown error")
       );
       setLoading(false);
     }

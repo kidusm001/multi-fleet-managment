@@ -192,12 +192,11 @@ function DataSection({
         throw new Error("Invalid route ID");
       }
 
-      // Clean and validate employee ID (cuid format: starts with 'c' followed by alphanumeric)
+      // Accept both CUID and legacy seeded employee IDs.
       const cleanEmployeeId = String(employeeId).trim();
-      const cuidRegex = /^c[a-z0-9]{24,}$/i;
-      if (!cuidRegex.test(cleanEmployeeId)) {
-        console.error("Invalid employee ID format:", cleanEmployeeId);
-        throw new Error("Invalid employee ID format");
+      if (!cleanEmployeeId || cleanEmployeeId === "NaN") {
+        console.error("Invalid employee ID:", cleanEmployeeId);
+        throw new Error("Invalid employee ID");
       }
 
       // Find the employee in the available employees list to check their stop

@@ -30,7 +30,8 @@ export default function EmployeeTable({ data }) {
               <TableCell>{employee.name}</TableCell>
               <TableCell>
                 {formatDisplayAddress(
-                  employee.stop?.address ||
+                  employee.location ||
+                    employee.stop?.address ||
                     employee.workLocation?.address ||
                     "N/A"
                 ) || "N/A"}

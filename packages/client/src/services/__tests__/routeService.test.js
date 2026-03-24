@@ -516,7 +516,29 @@ describe('routeService', () => {
 
       expect(api.patch).toHaveBeenCalledWith(
         '/routes/route1/employees/c1234567890abcdefghijklmno/add-stop',
-        routeMetrics
+        {
+          totalDistance: 30.5,
+          totalTime: 75,
+        }
+      );
+      expect(result).toEqual({ success: true });
+    });
+
+    it('should add employee to route with legacy employee ID', async () => {
+      api.patch.mockResolvedValue({ data: { success: true } });
+
+      const result = await routeService.addEmployeeToRoute(
+        'route1',
+        'rest_7946eb99875f1ecd2b7e030264d701da',
+        { totalDistance: 12.4, totalTime: 33 }
+      );
+
+      expect(api.patch).toHaveBeenCalledWith(
+        '/routes/route1/employees/rest_7946eb99875f1ecd2b7e030264d701da/add-stop',
+        {
+          totalDistance: 12.4,
+          totalTime: 33,
+        }
       );
       expect(result).toEqual({ success: true });
     });
@@ -536,9 +558,9 @@ describe('routeService', () => {
         .rejects.toThrow('Invalid route ID');
     });
 
-    it('should throw error when employeeId format is invalid', async () => {
-      await expect(routeService.addEmployeeToRoute('route1', 'invalid-id', {}))
-        .rejects.toThrow('Invalid employee ID format');
+    it('should throw error when employeeId is NaN string', async () => {
+      await expect(routeService.addEmployeeToRoute('route1', 'NaN', {}))
+        .rejects.toThrow('Invalid employee ID');
     });
 
     it('should handle API errors with descriptive messages', async () => {
