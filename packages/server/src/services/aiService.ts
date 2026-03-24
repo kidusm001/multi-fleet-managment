@@ -7,10 +7,15 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
 const FALLBACK_MODELS = [
   process.env.GEMINI_MODEL,
+  'gemini-3-flash-preview',
+  'gemini-3.1-flash-lite-preview',
+  'gemini-flash-latest',
+  'gemini-pro-latest',
+  'gemini-2.5-pro',
+  'gemini-2.5-flash',
+  'gemini-2.5-flash-lite',
   'gemini-2.0-flash-exp',
   'gemini-2.0-flash',
-  'gemini-1.5-flash-latest',
-  'gemini-1.5-flash',
 ];
 
 let resolvedModelName: string | null = null;
@@ -33,6 +38,18 @@ function isModelNotFoundError(error: unknown): boolean {
   return message.includes('models/') && message.toLowerCase().includes('not found');
 }
 
+function isQuotaOrRateLimitError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const message = ((error as { message?: string }).message || String(error)).toLowerCase();
+  return (
+    message.includes('429') ||
+    message.includes('quota') ||
+    message.includes('rate limit') ||
+    message.includes('resource_exhausted') ||
+    message.includes('too many requests')
+  );
+}
+
 async function runWithGeminiModel<T>(
   action: (modelName: string, model: GenerativeModel) => Promise<T>,
 ): Promise<T> {
@@ -45,8 +62,9 @@ async function runWithGeminiModel<T>(
       return result;
     } catch (error) {
       lastError = error;
-      if (isModelNotFoundError(error)) {
-        console.warn(`Gemini model not found: ${candidate}. Trying next fallback.`);
+      if (isModelNotFoundError(error) || isQuotaOrRateLimitError(error)) {
+        const reason = isModelNotFoundError(error) ? 'not found' : 'quota/rate-limited';
+        console.warn(`Gemini model ${reason}: ${candidate}. Trying next fallback.`);
         continue;
       }
       throw error;
