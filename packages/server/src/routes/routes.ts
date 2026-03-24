@@ -789,9 +789,9 @@ router.post('/', requireAuth, validateSchema(CreateRouteSchema, 'body'), async (
             }
         }
 
-        // Validate totalTime does not exceed 90 minutes
-        if (totalTime && totalTime > 90) {
-            res.status(400).json({ error: 'Total time of the route cannot exceed 90 minutes.' });
+        // Validate totalTime does not exceed schema-supported 180 minutes
+        if (totalTime && totalTime > 180) {
+            res.status(400).json({ error: 'Total time of the route cannot exceed 180 minutes.' });
             return;
         }
 
