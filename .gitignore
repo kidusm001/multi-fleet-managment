@@ -60,3 +60,6 @@ dev-debug.log
 # Test artifacts
 coverage/
 packages/*/coverage/
+
+# Docker backups
+DOCKER_ENV_BACKUP.md

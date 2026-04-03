@@ -1,0 +1,23 @@
+FROM node:22-alpine
+
+WORKDIR /app
+
+RUN npm install -g pnpm
+
+# Copy workspace and lock files
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+
+# Copy package configurations
+COPY packages/shared/package.json packages/shared/
+COPY packages/server/package.json packages/server/
+COPY packages/client/package.json packages/client/
+
+# Install dependencies
+RUN pnpm install --frozen-lockfile
+
+# Copy source code
+COPY . .
+
+WORKDIR /app/packages/client
+
+CMD ["pnpm", "dev", "--host", "0.0.0.0"]

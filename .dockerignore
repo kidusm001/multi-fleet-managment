@@ -1,0 +1,12 @@
+node_modules
+.pnpm-store
+npm-debug.log
+yarn-error.log
+pnpm-debug.log
+dist
+build
+.env
+.run-logs
+.git
+.github
+*.log

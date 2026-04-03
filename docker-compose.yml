@@ -1,0 +1,80 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:16
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: shuttle
+      POSTGRES_PASSWORD: shuttle
+      POSTGRES_DB: multi_fleet_management
+    volumes:
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    restart: unless-stopped
+
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
+    command: redis-server --save "" --appendonly no
+    restart: unless-stopped
+
+  server:
+    build:
+      context: .
+      dockerfile: Dockerfile.server
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgresql://shuttle:shuttle@postgres:5432/multi_fleet_management
+      - PORT=3000
+      - NODE_ENV=development
+      - REDIS_ENABLED=true
+      - REDIS_URL=redis://redis:6379
+      - FASTAPI_URL=http://fastapi:8000
+      - ENABLE_HTTP_LOGGING=true
+      - HTTP_LOG_LEVEL=simple
+      - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET:-your-better-auth-secret-here}
+      - BETTER_AUTH_URL=http://localhost:3000
+      - VITE_API_URL=http://localhost:3000
+      - CLIENT_ID=${CLIENT_ID:-your-client-id}
+      - BULLMQ_ENABLED=true
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-your-gemini-key}
+      - GEMINI_MODEL=gemini-3-flash-preview
+      - RESEND_API_KEY=${RESEND_API_KEY:-your-resend-key}
+      - RESEND_SENDER_NAME=Routegna
+      - RESEND_SENDER_EMAIL=noreply@dev.crosscode.tech
+      - CLIENT_URL=http://localhost:5173
+    depends_on:
+      - postgres
+      - redis
+      - fastapi
+    restart: unless-stopped
+
+  client:
+    build:
+      context: .
+      dockerfile: Dockerfile.client
+    ports:
+      - "5173:5173"
+    environment:
+      - VITE_API_BASE=http://localhost:3000
+      - VITE_API_URL=http://localhost:3000
+      - VITE_MAPBOX_ACCESS_TOKEN=${VITE_MAPBOX_ACCESS_TOKEN:-your-mapbox-token}
+      - VITE_MAPBOX_LIGHT_STYLE=mapbox://styles/skywalkertew/cm3oo0bb3007e01qw3rd7gdcl
+      - VITE_MAPBOX_DARK_STYLE=mapbox://styles/skywalkertew/cm3gy93ro005g01se5hube11j
+      - VITE_HQ_NAME="Routegna (HQ)"
+      - VITE_HQ_LONGITUDE=38.76856893855111
+      - VITE_HQ_LATITUDE=9.016465390275195
+    depends_on:
+      - server
+    restart: unless-stopped
+
+  fastapi:
+    build:
+      context: .
+      dockerfile: Dockerfile.fastapi
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
