@@ -11,26 +11,18 @@ export default defineConfig({
     open: false,
     proxy: {
       '/_auth': {
-        target: 'http://localhost:3000',
+        target: 'http://server:3000',
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path.replace(/^\/_auth/, '/auth'),
       },
-      // '/api/fastapi': {
-      //   target: 'http://localhost:3000',
-      //   changeOrigin: true,
-      //   secure: false,
-      //   rewrite: (path) => path.replace(/^\/api\/fastapi/, '/fastapi'),
-      // },
       '/api': {
-        target: 'http://localhost:3000',
+        target: 'http://server:3000',
         changeOrigin: true,
         secure: false,
-        // keep path as-is to hit backend '/api/*'
-      }
-      ,
+      },
       '/socket.io': {
-        target: 'http://localhost:3000',
+        target: 'http://server:3000',
         ws: true,
         changeOrigin: true,
         secure: false,
@@ -57,9 +49,7 @@ export default defineConfig({
   },
   worker: {
     format: 'es',
-    plugins: () => [
-      // ...existing plugins...
-    ],
+    plugins: () => [],
     rollupOptions: {
       external: [],
     },
